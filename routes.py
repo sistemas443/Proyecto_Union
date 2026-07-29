@@ -229,5 +229,3 @@ def agregar_peso_real():
     finally:
         cur.close()
         conn.close()
-        
-        
