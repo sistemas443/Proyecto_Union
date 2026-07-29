@@ -1,0 +1,253 @@
+{% extends 'layout.html' %}
+{% block title %}Producción Diaria – Avícola San Martín{% endblock %}
+
+{% block content %}
+<div class="alert py-2 mb-3 fw-bold text-center text-uppercase fs-5 shadow-sm"
+  style="background-color: #343a40; color: #ffff; border: none;">
+  INFORME DIARIO
+</div>
+
+<div class="filtro-bar mb-4 card shadow-sm p-3 bg-light border-0">
+  <form method="POST" class="d-flex align-items-center gap-3">
+    <label for="lote" class="mb-0 fw-bold text-secondary">SELECCIONE UN LOTE:</label>
+    <select name="lote" id="lote" class="form-select border-dark" style="width:300px; font-weight: bold;">
+      <option value="">-- Seleccione --</option>
+      {% for l in lotes %}
+      <option value="{{ l }}" {% if lote_seleccionado==l %}selected{% endif %}>LOTE {{ l }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-naranja fw-bold px-4">Cargar Datos</button>
+  </form>
+</div>
+
+{% if lote_seleccionado %}
+<div class="card mb-4 shadow-sm border-0">
+  <div class="card-header bg-dark text-white fw-bold py-2 d-flex justify-content-between align-items-center">
+    <span><i class='bx bx-info-circle me-1'></i> Información General del Lote</span>
+    <span class="badge bg-naranja fs-6">LOTE: {{ lote_seleccionado }}</span>
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-bordered table-sm mb-0">
+      <tbody class="align-middle">
+        <tr>
+          <th class="bg-light text-end pe-3" style="width:20%;">Cliente:</th>
+          <td class="fw-bold text-naranja" style="width:30%;">{{ cabecera.cliente or '---' }}</td>
+          <th class="bg-light text-end pe-3" style="width:20%;">Variedad:</th>
+          <td class="fw-semibold" style="width:30%;">{{ cabecera.variedad or '---' }}</td>
+        </tr>
+        <tr>
+          <th class="bg-light text-end pe-3">Granja de Levante:</th>
+          <td>{{ cabecera.granja_lev or '---' }}</td>
+          <th class="bg-light text-end pe-3">Granja de Producción:</th>
+          <td>{{ cabecera.granja_prod or '---' }}</td>
+        </tr>
+        <tr>
+          <th class="bg-light text-end pe-3">Fecha Recepción:</th>
+          <td>{{ cabecera.fecha_recepcion or '---' }}</td>
+          <th class="bg-light text-end pe-3">Fecha Encasetamiento:</th>
+          <td>{{ cabecera.fecha_encasetamiento or '---' }}</td>
+        </tr>
+        <tr>
+          <th class="bg-light text-end pe-3">Nº Pollitas Recibidas:</th>
+          <td>{{ cabecera.no_pollitas_recibidas or '---' }}</td>
+          <th class="bg-light text-end pe-3">Aves Encasetadas:</th>
+          <td>{{ cabecera.no_aves_encasetadas or '---' }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="alert alert-info text-center shadow-sm">
+  <i class='bx bx-up-arrow-alt fs-4 align-middle'></i> Seleccione un lote en la barra superior para ver su información y
+  registros diarios.
+</div>
+{% endif %}
+
+{% if lote_seleccionado %}
+<div class="tabla-scroll shadow-sm border rounded">
+  <table class="table table-sm table-fixed mb-0" style="width: 100% !important; min-width: 1600px;">
+
+    <colgroup>
+      <col style="width:140px;">
+      <col style="width:90px;">
+      <col style="width:80px;">
+      <col style="width:100px;">
+      <col style="width:90px;">
+      <col style="width:90px;">
+      <col style="width:90px;">
+      <col style="width:80px;">
+      <col style="width:auto;">
+      <col style="width:100px;">
+      <col style="width:110px;">
+      <col style="width:100px;">
+      <col style="width:80px;">
+      <col style="width:90px;">
+      <col style="width:90px;">
+    </colgroup>
+
+    <thead>
+      <tr>
+        <th rowspan="2" class="th-black">Fecha Día</th>
+        <th colspan="2" class="th-orange">Edad</th>
+        <th rowspan="2" class="th-orange">Producción</th>
+        <th colspan="1" class="th-orange">Consumo</th>
+        <th rowspan="2" class="th-orange">Mortalidad</th>
+        <th rowspan="2" class="th-orange">Sel</th>
+        <th rowspan="2" class="th-orange">Otros</th>
+        <th rowspan="2" class="th-black">Observaciones</th>
+        <th rowspan="2" class="th-orange">Saldo aves</th>
+        <th rowspan="2" class="th-orange">Cons. Gr.A.D</th>
+        <th rowspan="2" class="th-orange">Gr.A.D Tab</th>
+        <th rowspan="2" class="th-orange">% Prod</th>
+        <th rowspan="2" class="th-orange">Prom. Ave</th>
+        <th rowspan="2" class="th-orange">Agua</th>
+      </tr>
+      <tr>
+        <th class="th-black">Días</th>
+        <th class="th-black">Semana</th>
+        <th class="th-black">Kilos</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for f in filas %}
+      <tr data-id="{{ f['id_diario'] if 'id_diario' in f else f[0] }}">
+
+        <td><input type="text" data-col="fecha" data-fecha-original="{{ f['fecha_dia'] or f[10] or '' }}" 
+            class="form-control form-control-sm border-0 bg-transparent text-center formato-fecha" readonly></td>
+        <td><input type="number" data-col="dias" value="{{ f['dias'] or f[7] or '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center px-1 fw-semibold" readonly></td>
+        <td><input type="text" data-col="sem" value="{{ f['sem'] or f[8] or '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center px-1" readonly></td>
+            
+        <!-- Producción: oculta el cero -->
+        <td><input type="text" data-col="produccion" value="{{ f['produccion'] | int if f['produccion'] else '' }}"   
+            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        
+        <!-- Consumo: oculta el cero -->
+        <td><input type="number" data-col="consumo_kg" value="{{ f['consumo_kg'] if f['consumo_kg'] else '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+            
+        <!-- MORTALIDAD: Mantiene el cero si el usuario lo digita -->
+        <td><input type="number" data-col="mortalidad" value="{{ f['mortalidad'] if f['mortalidad'] is not none else '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+            
+        <!-- Sel y Otros: ocultan el cero por defecto -->
+        <td><input type="number" data-col="sel" value="{{ f['sel'] if f['sel'] else '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="otros" value="{{ f['otros'] if f['otros'] else '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        
+        <td><input type="text" data-col="observaciones" value="{{ f['observaciones'] or '' }}"
+            class="form-control form-control-sm border-0 bg-transparent"></td>
+        
+        <!-- Saldo de Aves -->
+        <td><input type="text" data-col="saldo_aves" value="{{ f['saldo_aves'] if f['saldo_aves'] is not none else '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold celda-saldo_aves" readonly>
+        </td>
+        
+        <!-- CÁLCULOS MATEMÁTICOS: Filtro especial para que si es 0.0 quede totalmente en blanco -->
+        <td><input type="text" data-col="consumo_gr_a_d" value="{{ f['consumo_gr_a_d'] if f['consumo_gr_a_d'] and f['consumo_gr_a_d']|float != 0 else '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center celda-consumo_gr_a_d" readonly></td>
+            
+        <td><input type="text" data-col="consumo_gr_a_tab" value="{{ f['consumo_gr_a_tab'] if f['consumo_gr_a_tab'] and f['consumo_gr_a_tab']|float != 0 else '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center celda-consumo_gr_a_tab" readonly>
+        </td>
+        
+        <td><input type="text" data-col="percent_diario_prod" value="{{ '%.1f'|format(f['percent_diario_prod']|float) if f['percent_diario_prod'] and f['percent_diario_prod']|float != 0 else '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center celda-percent_diario_prod" readonly>
+        </td>
+        
+        <td><input type="text" data-col="prom_ave_dia_cc" value="{{ '%.1f'|format(f['prom_ave_dia_cc']|float) if f['prom_ave_dia_cc'] and f['prom_ave_dia_cc']|float != 0 else '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center celda-prom_ave_dia_cc" readonly>
+        </td>
+        
+        <!-- Agua -->
+        <td><input type="number" data-col="consumo_agua" value="{{ f['consumo_agua'] | int if f['consumo_agua'] else '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="15" class="text-center text-muted py-5">
+          <h5>No hay registros diarios para este lote</h5>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const API_URL = "{{ url_for('main.actualizar_diario') }}";
+
+  document.querySelectorAll('.table-fixed input:not([readonly])').forEach(function (input) {
+    input.addEventListener('change', function () {
+      const fila = this.closest('tr');
+      const id = fila.dataset.id;
+      const columna = this.dataset.col;
+      const valor = this.value;
+      const el = this;
+
+      fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: id, columna: columna, valor: valor })
+      })
+        .then(r => r.json())
+        .then(data => {
+          if (data.status === 'ok') {
+            el.style.backgroundColor = "rgba(40, 167, 69, 0.2)";
+            setTimeout(() => el.style.backgroundColor = "transparent", 800);
+
+            if (data.updated_data) {
+              Object.keys(data.updated_data).forEach(key => {
+                const celdaTarget = fila.querySelector(`.celda-${key}`);
+                if (celdaTarget) {
+                  // Si el sistema devuelve 0.0, el JS lo deja en blanco visualmente
+                  if (parseFloat(data.updated_data[key]) === 0) {
+                      celdaTarget.value = '';
+                  } else {
+                      celdaTarget.value = data.updated_data[key];
+                  }
+                }
+              });
+            }
+          } else {
+            alert('Error al guardar: ' + data.msg);
+            el.style.backgroundColor = "rgba(220, 53, 69, 0.2)";
+          }
+        })
+        .catch(err => {
+          console.error('Error de red:', err);
+          el.style.backgroundColor = "rgba(220, 53, 69, 0.2)";
+        });
+    });
+  });
+
+  document.addEventListener("DOMContentLoaded", function() {
+    document.querySelectorAll('.formato-fecha').forEach(function(input) {
+      const fechaOriginal = input.getAttribute('data-fecha-original');
+      
+      if (fechaOriginal && fechaOriginal.trim() !== '') {
+        const dateObj = new Date(fechaOriginal.trim() + 'T00:00:00');
+        let opciones = { weekday: 'short', day: '2-digit', month: 'short' };
+        let fechaStr = dateObj.toLocaleDateString('es-ES', opciones);
+        fechaStr = fechaStr.replace(/\./g, '');
+        let partes = fechaStr.replace(',', '').split(' ');
+        if (partes.length >= 3) {
+          let diaSem = partes[0];
+          let diaNum = partes[1];
+          let mesNum = partes[2];
+          input.value = `${diaSem}, ${diaNum}-${mesNum}`;
+        } else {
+          input.value = fechaStr; 
+        }
+      }
+    });
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,374 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="container-fluid mt-2">
+    <div class="alert py-2 mb-3 fw-bold text-center text-uppercase fs-5 shadow-sm"
+        style="background-color: #343a40; color: #ffff; border: none;">
+        GESTIÓN MAESTRA DE LOTES
+    </div>
+
+    <div class="d-flex justify-content-end mb-3">
+        <button type="button" class="btn btn-naranja shadow-sm fw-bold px-4" data-bs-toggle="modal"
+            data-bs-target="#modalLote" onclick="configurarModal('crear')">
+            <i class='bx bx-plus'></i> Nuevo Lote
+        </button>
+    </div>
+
+    <div class="card shadow border-0">
+        <div class="card-body table-responsive p-0">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th class="ps-3">Lote</th>
+                        <th>Cliente</th>
+                        <th>Granja Levante</th>
+                        <th>Granja Prod.</th>
+                        <th>No. Aves Encas.</th>
+                        <th class="text-center pe-3">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for lote in lotes %}
+                    <tr>
+                        <td class="fw-bold ps-3">{{ lote.lote }}</td>
+                        <td>{{ lote.cliente or '-' }}</td>
+                        <td>{{ lote.granja_lev or '-' }}</td>
+                        <td>{{ lote.granja_prod or '-' }}</td>
+                        <td>{{ lote.no_aves_encasetadas or '-' }}</td>
+                        <td class="text-center pe-3">
+                            <button class="btn btn-sm btn-dark btn-ver text-white"
+                                data-lote="{{ lote | tojson | forceescape }}" title="Ver detalles"><i
+                                    class='bx bx-show'></i></button>
+                            <button class="btn btn-sm btn-naranja btn-editar text-white"
+                                data-lote="{{ lote | tojson | forceescape }}" title="Editar lote"><i
+                                    class='bx bx-edit'></i></button>
+                            <button class="btn btn-sm btn-danger btn-borrar" data-id="{{ lote.id }}"
+                                title="Borrar lote"><i class='bx bx-trash'></i></button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalLote" tabindex="-1" aria-labelledby="modalLoteLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title fw-bold" id="modalLoteLabel">Formulario de Lote</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                    aria-label="Close"></button>
+            </div>
+
+            <form id="formLote" action="/guardar-lote" method="POST">
+                <div class="modal-body bg-light">
+                    <input type="hidden" name="id" id="lote_id">
+
+                    <h6 class="text-naranja fw-bold border-bottom border-warning pb-2 mb-3">Información General</h6>
+                    <div class="row mb-3">
+                        <div class="col-md-3 mb-2">
+                            <label class="form-label fw-semibold">Lote *</label>
+                            <input type="text" name="lote" id="f_lote" class="form-control" required>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <label class="form-label fw-semibold">Cliente</label>
+                            <select name="cliente" id="f_cliente" class="form-select creatable-select"
+                                placeholder="Seleccione o escriba...">
+                                <option value="">Seleccione o escriba...</option>
+                                <option value="Avicola San Martin">Avicola San Martin</option>
+                                {% for item in opciones.cliente %}
+                                <option value="{{ item }}">{{ item }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <label class="form-label fw-semibold">Ciudad</label>
+                            <select name="ciudad" id="f_ciudad" class="form-select creatable-select"
+                                placeholder="Seleccione o escriba...">
+                                <option value="">Seleccione o escriba...</option>
+                                <option value="El Santuario">El Santuario</option>
+                                {% for item in opciones.ciudad %}
+                                <option value="{{ item }}">{{ item }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <label class="form-label fw-semibold">Clima</label>
+                            <select name="clima" id="f_clima" class="form-select creatable-select"
+                                placeholder="Seleccione o escriba...">
+                                <option value="">Seleccione o escriba...</option>
+                                <option value="Frio">Frio</option>
+                                {% for item in opciones.clima %}
+                                <option value="{{ item }}">{{ item }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row mb-4">
+                        <div class="col-md-6 mb-2">
+                            <label class="form-label fw-semibold">Responsable Técnico</label>
+                            <select name="responsable_tecnico" id="f_responsable" class="form-select creatable-select"
+                                placeholder="Seleccione o escriba...">
+                                <option value="">Seleccione o escriba...</option>
+                                <option value="GUSTAVO GOMEZ CALAD">GUSTAVO GOMEZ CALAD</option>
+                                {% for item in opciones.responsable_tecnico %}
+                                <option value="{{ item }}">{{ item }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <label class="form-label fw-semibold">Nutricionista</label>
+                            <select name="nutricionista" id="f_nutricionista" class="form-select creatable-select"
+                                placeholder="Seleccione o escriba...">
+                                <option value="">Seleccione o escriba...</option>
+                                <option value="OSCAR BUITRAGO">OSCAR BUITRAGO</option>
+                                {% for item in opciones.nutricionista %}
+                                <option value="{{ item }}">{{ item }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <h6 class="fw-bold mb-3 text-uppercase" style="color: #5e2129;"> Datos de Recepción (Día 0)</h6>
+                        <div class="row g-2">
+                            <div class="col-md-3">
+                                <label class="form-label small fw-bold">Kilos Semanal (Kg)</label>
+                                <input type="number" step="0.1" name="dia0_consumo_kg"
+                                    class="form-control form-control-sm">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-bold">K. Acumulado (Kg)</label>
+                                <input type="number" step="0.1" name="dia0_cons_k_acum"
+                                    class="form-control form-control-sm">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-bold">Mortalidad (Día 0)</label>
+                                <input type="number" name="dia0_mortalidad" class="form-control form-control-sm">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-bold">Selección - Día 0</label>
+                                <input type="number" name="dia0_sel" class="form-control form-control-sm">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-bold">Peso Real (g)</label>
+                                <input type="number" step="0.01" name="dia0_peso_real"
+                                    class="form-control form-control-sm">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-bold">10% Menos</label>
+                                <input type="number" step="0.1" name="dia0_unif_10_menos" class="form-control form-control-sm">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-bold">% Uniformidad Inicial</label>
+                                <input type="number" step="0.01" name="dia0_porc_uniformidad"
+                                    class="form-control form-control-sm">
+                            </div>
+
+                            <div class="col-md-3">
+                                <label class="form-label small fw-bold">10% Más</label>
+                                <input type="number" step="0.1" name="dia0_unif_10_mas" class="form-control form-control-sm">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-bold">Coef. Variación (C.V.)</label>
+                                <input type="number" step="0.01" name="dia0_coef_variacion"
+                                    class="form-control form-control-sm">
+                            </div>
+                            </div>
+
+                    <h6 class="text-success fw-bold border-bottom pb-2 mb-3 mt-4">Datos de Recepción / Levante</h6>
+                    <div class="row mb-3">
+                        <div class="col-md-3 mb-2">
+                            <label class="form-label fw-semibold">Granja Levante</label>
+                            <select name="granja_lev" id="f_granja_lev" class="form-select creatable-select"
+                                placeholder="Seleccione o escriba...">
+                                <option value="">Seleccione o escriba...</option>
+                                <option value="LOURDES">LOURDES</option>
+                                {% for item in opciones.granja_lev %}
+                                <option value="{{ item }}">{{ item }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <label class="form-label fw-semibold">Fecha Recepción</label>
+                            <input type="date" name="fecha_recepcion" id="f_fecha_rec" class="form-control">
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <label class="form-label fw-semibold">No. Pollitas Recibidas</label>
+                            <input type="number" name="no_pollitas_recibidas" id="f_pollitas" class="form-control">
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <label class="form-label fw-semibold">Variedad</label>
+                            <select name="variedad" id="f_variedad" class="form-select creatable-select"
+                                placeholder="Seleccione o escriba...">
+                                <option value="">Seleccione o escriba...</option>
+                                <option value="HY LINE BROWN">HY LINE BROWN</option>
+                                <option value="LOHMANN BROWN">LOHMANN BROWN</option>
+                                {% for item in opciones.variedad %}
+                                <option value="{{ item }}">{{ item }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row mb-4">
+                        <div class="col-md-3 mb-2">
+                            <label class="form-label fw-semibold">Peso</label>
+                            <input type="number" step="0.01" name="peso" id="f_peso" class="form-control">
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <label class="form-label fw-semibold">Unidad Peso (Decimal)</label>
+                            <input type="number" step="0.01" name="unidad_peso" id="f_unidad_peso" class="form-control">
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <label class="form-label fw-semibold">Uniformidad (%)</label>
+                            <input type="number" step="0.01" name="uniformidad" id="f_uniformidad" class="form-control">
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <label class="form-label fw-semibold">Coef. Variación</label>
+                            <input type="number" step="0.01" name="coeficiente_variacion" id="f_coef"
+                                class="form-control">
+                        </div>
+                    </div>
+
+                    <h6 class="text-secondary fw-bold border-bottom pb-2 mb-3">Datos de Encasetamiento / Producción</h6>
+                    <div class="row mb-3">
+                        <div class="col-md-3 mb-2">
+                            <label class="form-label fw-semibold">Granja Producción</label>
+                            <select name="granja_prod" id="f_granja_prod" class="form-select creatable-select"
+                                placeholder="Seleccione o escriba...">
+                                <option value="">Seleccione o escriba...</option>
+                                <option value="VARGAS">VARGAS</option>
+                                {% for item in opciones.granja_prod %}
+                                <option value="{{ item }}">{{ item }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <label class="form-label fw-semibold">Fecha Encasetamiento</label>
+                            <input type="date" name="fecha_encasetamiento" id="f_fecha_enc" class="form-control">
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <label class="form-label fw-semibold">No. Aves Encasetadas</label>
+                            <input type="number" name="no_aves_encasetadas" id="f_aves_enc" class="form-control">
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <label class="form-label fw-semibold">Tipo Galpón</label>
+                            <select name="tipo_galpon" id="f_tipo_galpon" class="form-select creatable-select"
+                                placeholder="Seleccione o escriba...">
+                                <option value="">Seleccione o escriba...</option>
+                                <option value="Jaulón">Jaulón</option>
+                                <option value="Piso">Piso</option>
+                                {% for item in opciones.tipo_galpon %}
+                                <option value="{{ item }}">{{ item }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col-md-3 mb-2">
+                            <label class="form-label fw-semibold">Marca Galpón</label>
+                            <select name="marca_galpon" id="f_marca_galpon" class="form-select creatable-select"
+                                placeholder="Seleccione o escriba...">
+                                <option value="">Seleccione o escriba...</option>
+                                <option value="BIG DUTCHMAN">BIG DUTCHMAN</option>
+                                <option value="FACCO">FACCO</option>
+                                {% for item in opciones.marca_galpon %}
+                                <option value="{{ item }}">{{ item }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <label class="form-label fw-semibold">Unidad Medida</label>
+                            <input type="text" name="unidad_medida" id="f_unidad_med" class="form-control">
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" id="btnGuardar" class="btn btn-naranja fw-bold px-4">Guardar Lote</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Función para limpiar o preparar el modal según la acción
+    function configurarModal(accion) {
+        const form = document.getElementById('formLote');
+        const titulo = document.getElementById('modalLoteLabel');
+        const btnGuardar = document.getElementById('btnGuardar');
+        
+        form.reset(); // Limpia todas las cajas de texto siempre al abrir
+        
+        if (accion === 'crear') {
+            titulo.textContent = 'Crear Nuevo Lote';
+            btnGuardar.textContent = 'Guardar Lote';
+            document.getElementById('lote_id').value = '';
+            document.getElementById('f_lote').readOnly = false;
+        }
+    }
+
+    // Capturador de clics en los botones de "Editar"
+    document.addEventListener('DOMContentLoaded', function() {
+        const botonesEditar = document.querySelectorAll('.btn-editar');
+        
+        botonesEditar.forEach(boton => {
+            boton.addEventListener('click', function() {
+                // 1. Convertimos los datos del lote que inyectó Jinja2 a formato JavaScript
+                const loteData = JSON.parse(this.getAttribute('data-lote'));
+                
+                // 2. Preparamos visualmente el modal
+                document.getElementById('modalLoteLabel').textContent = 'Editar Lote: ' + loteData.lote;
+                document.getElementById('btnGuardar').textContent = 'Actualizar Lote';
+                
+                // 3. Bloqueamos el nombre del lote para que no lo cambien por error
+                document.getElementById('f_lote').readOnly = true;
+                
+                // 4. Llenamos los IDs ocultos y datos principales de la Cabecera
+                document.getElementById('lote_id').value = loteData.id || '';
+                document.getElementById('f_lote').value = loteData.lote || '';
+                
+                // Llenar Selects de Información General y Granja
+                if(document.getElementById('f_cliente')) document.getElementById('f_cliente').value = loteData.cliente || '';
+                if(document.getElementById('f_ciudad')) document.getElementById('f_ciudad').value = loteData.ciudad || '';
+                if(document.getElementById('f_clima')) document.getElementById('f_clima').value = loteData.clima || '';
+                if(document.getElementById('f_responsable')) document.getElementById('f_responsable').value = loteData.responsable_tecnico || '';
+                if(document.getElementById('f_nutricionista')) document.getElementById('f_nutricionista').value = loteData.nutricionista || '';
+                if(document.getElementById('f_granja_lev')) document.getElementById('f_granja_lev').value = loteData.granja_lev || '';
+                if(document.getElementById('f_fecha_rec')) document.getElementById('f_fecha_rec').value = loteData.fecha_recepcion || '';
+                if(document.getElementById('f_pollitas')) document.getElementById('f_pollitas').value = loteData.no_pollitas_recibidas || '';
+                if(document.getElementById('f_variedad')) document.getElementById('f_variedad').value = loteData.variedad || '';
+                if(document.getElementById('f_peso')) document.getElementById('f_peso').value = loteData.peso || '';
+                if(document.getElementById('f_unidad_peso')) document.getElementById('f_unidad_peso').value = loteData.unidad_peso || '';
+                if(document.getElementById('f_uniformidad')) document.getElementById('f_uniformidad').value = loteData.uniformidad || '';
+                if(document.getElementById('f_coef')) document.getElementById('f_coef').value = loteData.coeficiente_variacion || '';
+                if(document.getElementById('f_granja_prod')) document.getElementById('f_granja_prod').value = loteData.granja_prod || '';
+                if(document.getElementById('f_fecha_enc')) document.getElementById('f_fecha_enc').value = loteData.fecha_encasetamiento || '';
+                if(document.getElementById('f_aves_enc')) document.getElementById('f_aves_enc').value = loteData.no_aves_encasetadas || '';
+                if(document.getElementById('f_tipo_galpon')) document.getElementById('f_tipo_galpon').value = loteData.tipo_galpon || '';
+                if(document.getElementById('f_marca_galpon')) document.getElementById('f_marca_galpon').value = loteData.marca_galpon || '';
+                if(document.getElementById('f_unidad_med')) document.getElementById('f_unidad_med').value = loteData.unidad_medida || '';
+
+                // 🚀 5. LA MAGIA: Llenamos los datos exclusivos del DÍA 0 traídos desde Primera Semana
+                document.querySelector('[name="dia0_consumo_kg"]').value = loteData.dia0_consumo_kg !== undefined && loteData.dia0_consumo_kg !== null ? loteData.dia0_consumo_kg : '';
+                document.querySelector('[name="dia0_cons_k_acum"]').value = loteData.dia0_cons_k_acum !== undefined && loteData.dia0_cons_k_acum !== null ? loteData.dia0_cons_k_acum : '';
+                document.querySelector('[name="dia0_mortalidad"]').value = loteData.dia0_mortalidad !== undefined && loteData.dia0_mortalidad !== null ? loteData.dia0_mortalidad : '';
+                document.querySelector('[name="dia0_sel"]').value = loteData.dia0_sel !== undefined && loteData.dia0_sel !== null ? loteData.dia0_sel : '';
+                document.querySelector('[name="dia0_peso_real"]').value = loteData.dia0_peso_real !== undefined && loteData.dia0_peso_real !== null ? loteData.dia0_peso_real : '';
+                document.querySelector('[name="dia0_unif_10_menos"]').value = loteData.dia0_unif_10_menos !== undefined && loteData.dia0_unif_10_menos !== null ? loteData.dia0_unif_10_menos : '';
+                document.querySelector('[name="dia0_porc_uniformidad"]').value = loteData.dia0_porc_uniformidad !== undefined && loteData.dia0_porc_uniformidad !== null ? loteData.dia0_porc_uniformidad : '';
+                document.querySelector('[name="dia0_unif_10_mas"]').value = loteData.dia0_unif_10_mas !== undefined && loteData.dia0_unif_10_mas !== null ? loteData.dia0_unif_10_mas : '';
+                document.querySelector('[name="dia0_coef_variacion"]').value = loteData.dia0_coef_variacion !== undefined && loteData.dia0_coef_variacion !== null ? loteData.dia0_coef_variacion : '';
+
+                // Abrimos el modal con Bootstrap
+                var modal = new bootstrap.Modal(document.getElementById('modalLote'));
+                modal.show();
+            });
+        });
+    });
+</script>
+{% endblock %}

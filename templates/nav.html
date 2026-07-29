@@ -1,0 +1,124 @@
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
+  <div class="container-fluid px-3">
+
+    <a class="navbar-brand d-flex align-items-center gap-2" href="{{ url_for('main.index') }}">
+      <img src="{{ url_for('static', filename='img/LOGO_AVICOLA_SAN_MARTIN.png') }}"
+           alt="Logo" style="height:38px; width:auto;">
+      <span class="fw-semibold" style="font-size:.95rem; letter-spacing:.03em;">AVÍCOLA SAN MARTÍN S.A</span>
+    </a>
+
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+            data-bs-target="#navMain" aria-controls="navMain"
+            aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="navMain">
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" role="button"
+             data-bs-toggle="dropdown" aria-expanded="false">
+            Producción
+          </a>
+          <ul class="dropdown-menu dropdown-menu-dark">
+            
+            <li class="dropdown-submenu">
+              <a class="dropdown-item dropdown-toggle" href="#">Lotes</a>
+              <ul class="dropdown-menu dropdown-menu-dark">
+                <li>
+                  <a class="dropdown-item fw-bold" href="{{ url_for('main.vista_lotes') }}">
+                    <i class='bx bx-list-ul'></i> Gestión de Lotes
+                  </a>
+                </li>
+                <li><hr class="dropdown-divider"></li>
+                
+                <li><a class="dropdown-item" href="{{ url_for('main.primera_semana') }}">1era Semana</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('main.semanal_levante') }}">Semanal levante</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('main.diario') }}">Diario</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('main.semanal') }}">Semanal Prod.</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('main.clas_prod') }}">Clasificación Prod.</a></li>
+              </ul>
+            </li>
+            <li><a class="dropdown-item disabled" href="#">Reportes</a></li>
+          </ul>
+        </li>
+
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" role="button"
+             data-bs-toggle="dropdown" aria-expanded="false">
+            Planta de Alimentos
+          </a>
+          <ul class="dropdown-menu dropdown-menu-dark">
+            <li class="dropdown-submenu">
+              <a class="dropdown-item dropdown-toggle" href="#">Lotes</a>
+              <ul class="dropdown-menu dropdown-menu-dark">
+                <li><a class="dropdown-item disabled" href="#">Diario</a></li>
+                <li><a class="dropdown-item disabled" href="#">Semanal</a></li>
+                <li><a class="dropdown-item disabled" href="#">Mensual</a></li>
+              </ul>
+            </li>
+            <li><a class="dropdown-item disabled" href="#">Reportes</a></li>
+          </ul>
+        </li>
+
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" role="button"
+             data-bs-toggle="dropdown" aria-expanded="false">
+            Clasificación
+          </a>
+          <ul class="dropdown-menu dropdown-menu-dark">
+            <li class="dropdown-submenu">
+              <a class="dropdown-item dropdown-toggle" href="#">Lotes</a>
+              <ul class="dropdown-menu dropdown-menu-dark">
+                <li><a class="dropdown-item disabled" href="#">Diario</a></li>
+                <li><a class="dropdown-item disabled" href="#">Semanal</a></li>
+                <li><a class="dropdown-item disabled" href="#">Mensual</a></li>
+              </ul>
+            </li>
+            <li><a class="dropdown-item disabled" href="#">Reportes</a></li>
+          </ul>
+        </li>
+
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<style>
+  /* Submenú a la derecha */
+  .dropdown-submenu { position: relative; }
+  .dropdown-submenu > .dropdown-menu {
+    top: 0; left: 100%; margin-top: -1px; display: none;
+  }
+  .dropdown-submenu:hover > .dropdown-menu { display: block; }
+  .dropdown-submenu > a::after {
+    content: "";
+    float: right;
+    border-top: 4px solid transparent;
+    border-left: 5px solid currentColor;
+    border-bottom: 4px solid transparent;
+    margin-top: 6px; margin-left: 8px;
+  }
+  @media (min-width: 992px) {
+    .dropdown:hover > .dropdown-menu { display: block; }
+  }
+  .navbar { z-index: 1050; }
+</style>
+
+<script>
+/* Submenú en móvil: toggle al hacer click */
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('.dropdown-submenu > a').forEach(function (el) {
+    el.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      const sub = this.nextElementSibling;
+      this.closest('.dropdown-menu')
+          .querySelectorAll('.dropdown-menu')
+          .forEach(m => { if (m !== sub) m.style.display = 'none'; });
+      sub.style.display = sub.style.display === 'block' ? 'none' : 'block';
+    });
+  });
+});
+</script>

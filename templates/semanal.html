@@ -1,0 +1,443 @@
+{% extends 'layout.html' %}
+{% block title %}Producción Semanal – Avícola San Martín{% endblock %}
+
+{% block content %}
+<div class="alert py-2 mb-3 fw-bold text-center text-uppercase fs-5 shadow-sm"
+  style="background-color: #343a40; color: #ffff; border: none;">
+  INFORME SEMANAL DE PRODUCCIÓN
+</div>
+
+<div class="filtro-bar mb-4 card shadow-sm p-3 bg-light border-0">
+  <form method="POST" class="d-flex align-items-center gap-3">
+    <label for="lote" class="mb-0 fw-bold text-secondary">SELECCIONE UN LOTE:</label>
+    <select name="lote" id="lote" class="form-select border-dark" style="width:300px; font-weight: bold;">
+      <option value="">-- Seleccione --</option>
+      {% for l in lotes %}
+      <option value="{{ l }}" {% if lote_seleccionado==l %}selected{% endif %}>LOTE {{ l }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-naranja fw-bold px-4">Cargar Datos</button>
+  </form>
+</div>
+
+{% if lote_seleccionado %}
+<div class="card mb-4 shadow-sm border-0">
+  <div class="card-header bg-dark text-white fw-bold py-2 d-flex justify-content-between align-items-center">
+    <span><i class='bx bx-info-circle me-1'></i> Información General del Lote</span>
+    <span class="badge bg-naranja fs-6">LOTE: {{ lote_seleccionado }}</span>
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-bordered table-sm mb-0">
+      <tbody class="align-middle">
+        <tr>
+          <th class="bg-light text-end pe-3" style="width:20%;">Cliente:</th>
+          <td class="fw-bold text-naranja" style="width:30%;">{{ cabecera.cliente or '---' }}</td>
+          <th class="bg-light text-end pe-3" style="width:20%;">Variedad:</th>
+          <td class="fw-semibold" style="width:30%;">{{ cabecera.variedad or '---' }}</td>
+        </tr>
+        <tr>
+          <th class="bg-light text-end pe-3">Granja Producción:</th>
+          <td>{{ cabecera.granja_prod or '---' }}</td>
+          <th class="bg-light text-end pe-3">Unidad Medida:</th>
+          <td class="fw-semibold">{{ cabecera.unidad_medida or '---' }}</td>
+        </tr>
+        <tr>
+          <th class="bg-light text-end pe-3">Fecha Encasetamiento:</th>
+          <td>{{ cabecera.fecha_encasetamiento or '---' }}</td>
+          <th class="bg-light text-end pe-3">Aves Encasetadas:</th>
+          <td class="fw-bold">{{ cabecera.no_aves_encasetadas or '---' }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% if lote_seleccionado %}
+<div class="tabla-scroll shadow-sm border rounded">
+  <!-- Se amplió el min-width a 7500px para que las columnas respiren -->
+  <table class="table table-sm table-fixed mb-0" style="min-width: 7500px !important;">
+
+    <colgroup>
+      <col style="width:140px;"> {# Fecha fin sem #}
+      <col style="width:100px;"> {# Sem Prod #}
+
+      {# PRODUCCIÓN HUEVO (3) #}
+      <col style="width:110px;">
+      <col style="width:100px;">
+      <col style="width:110px;">
+
+      {# H.AV.ALOJ (2) #}
+      <col style="width:100px;">
+      <col style="width:100px;">
+
+      {# CONSUMO ALIMENTO (4) #}
+      <col style="width:110px;">
+      <col style="width:100px;">
+      <col style="width:110px;">
+      <col style="width:100px;">
+
+      {# CONVERSIÓN (2) #}
+      <col style="width:100px;">
+      <col style="width:110px;">
+
+      {# AVES INVENTARIO (8) #}
+      <col style="width:100px;">
+      <col style="width:100px;">
+      <col style="width:100px;">
+      <col style="width:100px;">
+      <col style="width:100px;">
+      <col style="width:100px;">
+      <col style="width:100px;">
+      <col style="width:100px;">
+
+      {# PESO AVES (4) #}
+      <col style="width:100px;">
+      <col style="width:100px;">
+      <col style="width:100px;">
+      <col style="width:100px;">
+
+      {# PESO HUEVO (2) #}
+      <col style="width:100px;">
+      <col style="width:100px;">
+
+      {# SALDO E OBSER (2) #}
+      <col style="width:130px;">
+      <col style="width:350px;">
+
+      {# MASA HUEVO (4) #}
+      <col style="width:110px;">
+      <col style="width:110px;">
+      <col style="width:110px;">
+      <col style="width:110px;">
+
+      {# CONS. AGUA (2) #}
+      <col style="width:100px;">
+      <col style="width:100px;">
+
+      {# H ACUM Y CONV (2) #}
+      <col style="width:120px;">
+      <col style="width:140px;">
+
+      {# KILOS (2) #}
+      <col style="width:100px;">
+      <col style="width:100px;">
+
+      {# SALIDAS Y GRxH (2) #}
+      <col style="width:120px;">
+      <col style="width:110px;">
+
+      {# SECCIÓN GRÁFICOS (26 nuevas columnas) #}
+      <col style="width:110px;"><col style="width:120px;"><col style="width:110px;"><col style="width:110px;">
+      <col style="width:110px;"><col style="width:120px;"><col style="width:110px;"><col style="width:130px;">
+      <col style="width:120px;"><col style="width:120px;"><col style="width:140px;"><col style="width:150px;">
+      <col style="width:120px;"><col style="width:110px;"><col style="width:140px;"><col style="width:130px;">
+      <col style="width:230px;"><col style="width:160px;"><col style="width:160px;"><col style="width:180px;">
+      <col style="width:160px;"><col style="width:160px;"><col style="width:180px;"><col style="width:160px;">
+      <col style="width:230px;"><col style="width:160px;">
+    </colgroup>
+
+    <thead>
+      <tr>
+        <th rowspan="2" class="th-black">Fecha Fin Sem</th>
+        <th rowspan="2" class="th-black">Sem Prod</th>
+
+        <th colspan="3" class="th-orange">PRODUCCIÓN DE HUEVO</th>
+        <th colspan="2" class="th-orange">H.AV.ALOJ</th>
+        <th colspan="4" class="th-orange">CONSUMO DE ALIMENTO</th>
+        <th colspan="2" class="th-orange">CONVERSIÓN</th>
+        <th colspan="8" class="th-orange">AVES – INVENTARIO</th>
+        <th colspan="4" class="th-orange">PESO AVES</th>
+        <th colspan="2" class="th-orange">PESO HUEVO</th>
+
+        <th rowspan="2" class="th-black">SALDO AVES</th>
+        <th rowspan="2" class="th-black">OBSERVACIONES</th>
+
+        <th colspan="4" class="th-orange">MASA HUEVO</th>
+        <th colspan="2" class="th-orange">CONSUMO AGUA</th>
+
+        <th rowspan="2" class="th-orange">H. ACUM</th>
+        <th rowspan="2" class="th-orange">Conv Kg/Doc Acum</th>
+
+        <th colspan="2" class="th-orange">KILOS</th>
+        <th rowspan="2" class="th-orange">SALIDAS ACUM</th>
+        <th rowspan="2" class="th-orange">GR x H</th>
+
+        <!-- Nuevas columnas para Gráficos con rowspan="2" para no desalinear -->
+        <th rowspan="2" class="th-black text-center">SEM</th>
+        <th rowspan="2" class="th-black text-center">% Prod. TB</th>
+        <th rowspan="2" class="th-black text-center">% Tb</th>
+        <th rowspan="2" class="th-black text-center">% Tx</th>
+        <th rowspan="2" class="th-black text-center">% Rx</th>
+        <th rowspan="2" class="th-black text-center">H.A.A. TAB</th>
+        <th rowspan="2" class="th-black text-center">GR/TB</th>
+        <th rowspan="2" class="th-black text-center">% Prod. Real</th>
+        <th rowspan="2" class="th-black text-center">H.A.A. Real</th>
+        <th rowspan="2" class="th-black text-center">Gr. Ave Día</th>
+        <th rowspan="2" class="th-black text-center">% Mort. Acum.</th>
+        <th rowspan="2" class="th-black text-center">Peso Huevo Real</th>
+        <th rowspan="2" class="th-black text-center">Conv. Acum</th>
+        <th rowspan="2" class="th-black text-center">Gr X H</th>
+        <th rowspan="2" class="th-black text-center">PRECIO DIETA$</th>
+        <th rowspan="2" class="th-black text-center">Costo Huevo</th>
+        <th rowspan="2" class="th-black text-center">Produccion Tab-Unidad-Huevo</th>
+        <th rowspan="2" class="th-black text-center">Consumo KG TAB</th>
+        <th rowspan="2" class="th-black text-center">Huevos Acom Tab</th>
+        <th rowspan="2" class="th-black text-center">Consumo ACOM TAB</th>
+        <th rowspan="2" class="th-black text-center">Conversion Acom</th>
+        <th rowspan="2" class="th-black text-center">Conversion Acom</th>
+        <th rowspan="2" class="th-black text-center">%Huevo no conforme</th>
+        <th rowspan="2" class="th-black text-center">Total Huevo Real</th>
+        <th rowspan="2" class="th-black text-center">Cantidad Unidades perdida</th>
+        <th rowspan="2" class="th-black text-center">Suma Saldo Aves</th>
+      </tr>
+      <tr>
+        <th class="th-black">SEMANA</th>
+        <th class="th-black">% TB</th>
+        <th class="th-black">REAL</th>
+
+        <th class="th-black">TB</th>
+        <th class="th-black">REAL</th>
+
+        <th class="th-black">KILOS</th>
+        <th class="th-black">TB</th>
+        <th class="th-black">REAL</th>
+        <th class="th-black">K.A.A</th>
+
+        <th class="th-black">SEM</th>
+        <th class="th-black">ACUM</th>
+
+        <th class="th-black">MO</th>
+        <th class="th-black">SEL</th>
+        <th class="th-black">VEN</th>
+        <th class="th-black">%M Sm</th>
+        <th class="th-black">%M Ac</th>
+        <th class="th-black">% SeL Sm</th>
+        <th class="th-black">%M+S Ac</th>
+        <th class="th-black">M.TAB</th>
+
+        <th class="th-black">REAL</th>
+        <th class="th-black">TAB</th>
+        <th class="th-black">UNIF</th>
+        <th class="th-black">CV</th>
+
+        <th class="th-black">REAL</th>
+        <th class="th-black">TAB</th>
+
+        <th class="th-black">Real sem</th>
+        <th class="th-black">Tab sem</th>
+        <th class="th-black">Real Acum</th>
+        <th class="th-black">Tab Acum</th>
+
+        <th class="th-black">REAL</th>
+        <th class="th-black">TABLA</th>
+
+        <th class="th-black">SEM</th>
+        <th class="th-black">ACUM</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for f in filas %}
+      <tr data-id="{{ f['id_sem_prod'] }}">
+        <td><input type="text" data-col="fecha_fin_sem" data-fecha-original="{{ f['fecha_fin_sem'] or '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold formato-fecha-prod"
+            readonly></td>
+        <td><input type="number" data-col="sem_prod" value="{{ f['sem_prod'] or '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold" readonly></td>
+
+        <td><input type="number" data-col="prod_huevo_sem" value="{{ f['prod_huevo_sem'] or '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="prod_huevo_tab" value="{{ f['prod_huevo_tab'] or '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <!-- PRODUCCIÓN HUEVO REAL con Comentario -->
+        <td class="indicador-excel" 
+            title="Relación vs Tabla: {{ (f['prod_huevo_real']|float - f['prod_huevo_tab']|float)|round(1) if f['prod_huevo_real'] != None and f['prod_huevo_tab'] != None else '---' }}">
+            <input type="number" data-col="prod_huevo_real" value="{{ f['prod_huevo_real'] or '' }}"
+                class="form-control form-control-sm border-0 bg-transparent text-center fw-bold">
+        </td>
+
+        <td><input type="number" data-col="h_av_aloj_tab" value="{{ f['h_av_aloj_tab'] or '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <!-- H.AV.ALOJ REAL con Comentario -->
+        <td class="indicador-excel" 
+            title="Relación vs Tabla: {{ (f['h_av_aloj_real']|float - f['h_av_aloj_tab']|float)|round(1) if f['h_av_aloj_real'] != None and f['h_av_aloj_tab'] != None else '---' }}">
+            <input type="number" data-col="h_av_aloj_real" value="{{ f['h_av_aloj_real'] or '' }}"
+                class="form-control form-control-sm border-0 bg-transparent text-center fw-bold">
+        </td>
+
+        <td><input type="number" data-col="consumo_alim_kg" value="{{ f['consumo_alim_kg'] or '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="consumo_alim_tab" value="{{ f['consumo_alim_tab'] or '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="consumo_alim_real" value="{{ f['consumo_alim_real'] or '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="consumo_alim_k_a_a" value="{{ f['consumo_alim_k_a_a'] or '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+
+        <td><input type="number" data-col="conv_sem_tab" value="{{ f['conv_sem_tab'] or '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="conv_acum_tab" value="{{ f['conv_acum_tab'] or '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+
+        <td><input type="number" data-col="mort_sem" value="{{ f['mort_sem'] or '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold"></td>
+        <td><input type="number" data-col="mort_select_sem" value="{{ f['mort_select_sem'] or '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="mort_venta" value="{{ f['mort_venta'] or '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="percent_mort_sem" value="{{ f['percent_mort_sem'] or '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="percent_mort_acum" value="{{ f['percent_mort_acum'] or '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="percent_select_sem" value="{{ f['percent_select_sem'] or '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="percent_mort_and_select_acum" value="{{ f['percent_mort_and_select_acum'] or '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="mort_tab" value="{{ f['mort_tab'] or '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+
+        <td><input type="number" data-col="peso_ave_real" value="{{ f['peso_ave_real'] or '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold"></td>
+        <td><input type="number" data-col="peso_ave_tab" value="{{ f['peso_ave_tab'] or '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="unif" value="{{ f['unif'] or '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="cv" value="{{ f['cv'] or '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+
+        <td><input type="number" data-col="peso_huevo_real" value="{{ f['peso_huevo_real'] or '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold"></td>
+        <td><input type="number" data-col="peso_huevo_tab" value="{{ f['peso_huevo_tab'] or '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+
+        <td><input type="number" data-col="saldo_ave" value="{{ f['saldo_ave'] or '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold"></td>
+        <td><input type="text" data-col="observaciones" value="{{ f['observaciones'] or '' }}"
+            class="form-control form-control-sm border-0 bg-transparent"></td>
+
+        <td><input type="number" data-col="masa_huevo_real_sem" value="{{ f['masa_huevo_real_sem'] or '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="masa_huevo_tab_sem" value="{{ f['masa_huevo_tab_sem'] or '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="masa_huevo_real_acum" value="{{ f['masa_huevo_real_acum'] or '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="masa_huevo_tab_acum" value="{{ f['masa_huevo_tab_acum'] or '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+
+        <td><input type="number" data-col="cons_agua_real" value="{{ f['cons_agua_real'] or '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="cons_agua_tab" value="{{ f['cons_agua_tab'] or '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+
+        <td><input type="number" data-col="huevo_acum" value="{{ f['huevo_acum'] or '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold"></td>
+        <td><input type="number" data-col="conv_kg_doc_acum" value="{{ f['conv_kg_doc_acum'] or '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+
+        <td><input type="number" data-col="kg_sem" value="{{ f['kg_sem'] or '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="kg_acum" value="{{ f['kg_acum'] or '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+
+        <td><input type="number" data-col="salidas_acum" value="{{ f['salidas_acum'] or '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="gr_x_huevo" value="{{ f['gr_x_huevo'] or '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+
+        <!-- SECCIÓN GRÁFICOS INPUTS (26 columnas con step="any" para decimales) -->
+        <td><input type="number" step="any" data-col="sem_graf" value="{{ f['sem_graf'] if f['sem_graf'] != None else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" step="any" data-col="porcentaje_prod_tb" value="{{ f['porcentaje_prod_tb'] if f['porcentaje_prod_tb'] != None else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" step="any" data-col="porcentaje_tb" value="{{ f['porcentaje_tb'] if f['porcentaje_tb'] != None else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" step="any" data-col="porcentaje_tx" value="{{ f['porcentaje_tx'] if f['porcentaje_tx'] != None else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" step="any" data-col="porcentaje_rx" value="{{ f['porcentaje_rx'] if f['porcentaje_rx'] != None else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" step="any" data-col="haa_tab" value="{{ f['haa_tab'] if f['haa_tab'] != None else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" step="any" data-col="gr_tb_graf" value="{{ f['gr_tb_graf'] if f['gr_tb_graf'] != None else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" step="any" data-col="porcentaje_prod_real" value="{{ f['porcentaje_prod_real'] if f['porcentaje_prod_real'] != None else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" step="any" data-col="haa_real" value="{{ f['haa_real'] if f['haa_real'] != None else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" step="any" data-col="gr_ave_dia_graf" value="{{ f['gr_ave_dia_graf'] if f['gr_ave_dia_graf'] != None else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" step="any" data-col="porcentaje_mort_acum_graf" value="{{ f['porcentaje_mort_acum_graf'] if f['porcentaje_mort_acum_graf'] != None else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <!-- Reutilizamos el dato existente para peso_huevo_real -->
+        <td><input type="number" step="any" data-col="peso_huevo_real" value="{{ f['peso_huevo_real'] if f['peso_huevo_real'] != None else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" step="any" data-col="conv_acum" value="{{ f['conv_acum'] if f['conv_acum'] != None else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" step="any" data-col="gr_por_huevo" value="{{ f['gr_por_huevo'] if f['gr_por_huevo'] != None else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" step="any" data-col="precio_dieta" value="{{ f['precio_dieta'] if f['precio_dieta'] != None else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" step="any" data-col="costo_huevo" value="{{ f['costo_huevo'] if f['costo_huevo'] != None else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" step="any" data-col="prod_tab_unidad_huevo" value="{{ f['prod_tab_unidad_huevo'] if f['prod_tab_unidad_huevo'] != None else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" step="any" data-col="consumo_kg_tab_graf" value="{{ f['consumo_kg_tab_graf'] if f['consumo_kg_tab_graf'] != None else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" step="any" data-col="huevos_acum_tab" value="{{ f['huevos_acum_tab'] if f['huevos_acum_tab'] != None else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" step="any" data-col="consumo_acum_tab" value="{{ f['consumo_acum_tab'] if f['consumo_acum_tab'] != None else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" step="any" data-col="conv_acum_tab_1" value="{{ f['conv_acum_tab_1'] if f['conv_acum_tab_1'] != None else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" step="any" data-col="conv_acum_tab_2" value="{{ f['conv_acum_tab_2'] if f['conv_acum_tab_2'] != None else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" step="any" data-col="porcentaje_huevo_nc" value="{{ f['porcentaje_huevo_nc'] if f['porcentaje_huevo_nc'] != None else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" step="any" data-col="total_huevo_real" value="{{ f['total_huevo_real'] if f['total_huevo_real'] != None else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" step="any" data-col="cant_unidades_perdida" value="{{ f['cant_unidades_perdida'] if f['cant_unidades_perdida'] != None else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" step="any" data-col="suma_saldo_aves" value="{{ f['suma_saldo_aves'] if f['suma_saldo_aves'] != None else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="68" class="text-center text-muted py-5">
+          <h5>No hay registros para este lote</h5>
+          <p>La estructura se generará automáticamente en el futuro.</p>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const API_URL_SEM = "{{ url_for('main.actualizar_semanal') }}";
+
+  document.querySelectorAll('.table-fixed input:not([readonly])').forEach(function (input) {
+    input.addEventListener('change', function () {
+      const id = this.closest('tr').dataset.id;
+      const columna = this.dataset.col;
+      const valor = this.value;
+      const el = this;
+
+      fetch(API_URL_SEM, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: id, columna: columna, valor: valor })
+      })
+        .then(r => r.json())
+        .then(data => {
+          if (data.status === 'ok') {
+            el.style.backgroundColor = "rgba(40, 167, 69, 0.2)";
+            setTimeout(() => el.style.backgroundColor = "transparent", 800);
+          } else {
+            alert('Error al guardar: ' + data.msg);
+            el.style.backgroundColor = "rgba(220, 53, 69, 0.2)";
+          }
+        })
+        .catch(err => {
+          console.error('Error de red:', err);
+          el.style.backgroundColor = "rgba(220, 53, 69, 0.2)";
+        });
+    });
+  });
+  // LÓGICA DE FORMATEO DE FECHA (Ej. 16-ene-25)
+  document.addEventListener("DOMContentLoaded", function () {
+    const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+
+    document.querySelectorAll('.formato-fecha-prod').forEach(function (input) {
+      const fechaOriginal = input.getAttribute('data-fecha-original');
+
+      if (fechaOriginal && fechaOriginal.trim() !== '') {
+        const dateObj = new Date(fechaOriginal.trim() + 'T00:00:00');
+
+        const dia = String(dateObj.getDate()).padStart(2, '0');
+        const mes = meses[dateObj.getMonth()];
+        const anio = String(dateObj.getFullYear()).slice(-2);
+
+        input.value = `${dia}-${mes}-${anio}`;
+      }
+    });
+  });
+</script>
+{% endblock %}
