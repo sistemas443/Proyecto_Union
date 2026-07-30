@@ -61,41 +61,29 @@
 
 {% if lote_seleccionado %}
 <div class="tabla-scroll shadow-sm border rounded">
-  <table class="table table-sm table-fixed mb-0" style="width: 100% !important; min-width: 2200px;">
+  <table class="table table-sm table-fixed mb-0" style="width: 100% !important; min-width: 2500px;">
 
     <colgroup>
-      <col style="width:130px;"> {# Fecha #}
-      <col style="width:90px;">  {# Semana #}
-
-      {# CONSUMO DE ALIMENTO (6) #}
-      <col style="width:110px;"> {# Tabla diaria #}
-      <col style="width:110px;"> {# Real diaria #}
-      <col style="width:110px;"> {# Kilos semana #}
-      <col style="width:110px;"> {# K. acum. Real #}
-      <col style="width:110px;"> {# Gr ave tab ac #}
-      <col style="width:110px;"> {# Gr ave real ac #}
-
-      {# MORTALIDAD (4) #}
-      <col style="width:95px;">  {# Mortalidad #}
-      <col style="width:70px;">  {# Sel #}
-      <col style="width:110px;"> {# % Mort. Sem #}
-      <col style="width:120px;"> {# % Mort. Acum #}
-
-      {# SALDO AVES (1) #}
+      <col style="width:130px;">
+      <col style="width:90px;">
       <col style="width:110px;">
-
-      {# PESO CORPORAL (2) #}
-      <col style="width:110px;"> {# Peso tabla #}
-      <col style="width:110px;"> {# Peso real #}
-
-      {# UNIFORMIDAD (4) #}
-      <col style="width:100px;"> {# 10% menos #}
-      <col style="width:130px;"> {# % uniformidad #}
-      <col style="width:100px;"> {# 10% mas #}
-      <col style="width:170px;"> {# Coef. variacion #}
-
-      {# OBSERVACIONES (1) #}
-      <col style="width: auto;">
+      <col style="width:110px;">
+      <col style="width:110px;">
+      <col style="width:110px;">
+      <col style="width:110px;">
+      <col style="width:110px;">
+      <col style="width:95px;">
+      <col style="width:70px;">
+      <col style="width:110px;">
+      <col style="width:120px;">
+      <col style="width:110px;">
+      <col style="width:110px;">
+      <col style="width:110px;">
+      <col style="width:100px;">
+      <col style="width:130px;">
+      <col style="width:100px;">
+      <col style="width:170px;">
+      <col style="width: 450px;">
     </colgroup>
 
     <thead>
@@ -138,10 +126,8 @@
     <tbody>
       {% for f in filas %}
       <tr data-id="{{ f['id_diario'] }}">
-        {# 1. Celda de Fecha #}
         <td><input type="text" data-fecha-original="{{ f['fecha_dia'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center formato-fecha-primera" readonly></td>
         
-        {# 2. Celda de Semana #}
         <td>
           <input type="text" 
                  value="{% if loop.index == 1 %}0{% else %}0/{{ loop.index - 1 }}{% endif %}" 
@@ -149,35 +135,41 @@
                  readonly>
         </td>
 
-        {# 3 a 8. BLOQUE CONSUMO DE ALIMENTO #}
         <td><input type="number" data-col="consumo_gr_a_tab" value="{{ f['consumo_gr_a_tab'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
         <td><input type="text"   value="{{ f['consumo_gr_a_d'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center celda-consumo_gr_a_d" readonly></td>
         <td><input type="number" data-col="consumo_kg"       value="{{ f['consumo_kg'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
-        <td><input type="text"   value="{{ f['cons_k_acum'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center" readonly></td>
-        <td><input type="text"   value="{{ f['cons_gr_ave_tab_acum'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center" readonly></td>
-        <td><input type="text"   value="{{ f['cons_gr_ave_ac'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center" readonly></td>
+        <td><input type="text"   value="{{ f['cons_k_acum'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center celda-cons_k_acum" readonly></td>
+        <td><input type="text"   value="{{ f['cons_gr_ave_tab_acum'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center celda-cons_gr_ave_tab_acum" readonly></td>
+        <td><input type="text"   value="{{ f['cons_gr_ave_ac'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center celda-cons_gr_ave_ac" readonly></td>
 
-        {# 9 a 12. BLOQUE MORTALIDAD #}
-        <td><input type="number" data-col="mortalidad" value="{{ f['mortalidad'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
-        <td><input type="number" data-col="sel"        value="{{ f['sel'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
-        <td><input type="text"   value="{{ f['porc_mort_sem'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center" readonly></td>
-        <td><input type="text"   value="{{ f['porc_mort_acum'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center" readonly></td>
-
-        {# 13. BLOQUE SALDO AVES #}
+        <td><input type="number" data-col="mortalidad" value="{{ f['mortalidad'] if f['mortalidad'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="sel"        value="{{ f['sel'] if f['sel'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="text"   value="{{ f['porc_mort_sem'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center celda-porc_mort_sem" readonly></td>
+        <td><input type="text"   value="{{ f['porc_mort_acum'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center celda-porc_mort_acum" readonly></td>
         <td><input type="text"   value="{{ f['saldo_aves'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold celda-saldo_aves" readonly></td>
 
-        {# 14 y 15. BLOQUE PESO CORPORAL (¡Habilitados!) #}
         <td><input type="number" data-col="peso_tabla" value="{{ f['peso_tabla'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
         <td><input type="number" data-col="peso_real"  value="{{ f['peso_real'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
-
-        {# 16 a 19. BLOQUE UNIFORMIDAD (¡Habilitados!) #}
         <td><input type="number" data-col="unif_10_menos"    value="{{ f['unif_10_menos'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
         <td><input type="number" data-col="porc_uniformidad" value="{{ f['porc_uniformidad'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
         <td><input type="number" data-col="unif_10_mas"      value="{{ f['unif_10_mas'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
         <td><input type="number" data-col="coef_variacion"   value="{{ f['coef_variacion'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        
+        <!-- Celda de Observaciones Modificada -->
+        <td class="position-relative">
+          <div class="d-flex align-items-center h-100">
+            <!-- Se agregó padding derecho (pe-4) para que el texto no se monte sobre la flecha -->
+            <input type="text" data-col="observaciones" value="{{ f['observaciones'] or '' }}" 
+                   title="{{ f['observaciones'] or 'Escribir observación...' }}" placeholder="..." 
+                   class="form-control form-control-sm border-0 bg-transparent text-start px-2 w-100 pe-4">
+            
+            <!-- Icono de Flecha Vinotinto -->
+            <i class='bx bxs-chevron-down position-absolute' 
+               style="right: 8px; cursor: pointer; color: #97271C; font-size: 1.4rem; z-index: 10;" 
+               onclick="abrirModalObs(this)" title="Ampliar observación"></i>
+          </div>
+        </td>
 
-        {# 20. BLOQUE OBSERVACIONES (¡Habilitado para escribir!) #}
-        <td><input type="text"   data-col="observaciones"    value="{{ f['observaciones'] or '' }}" class="form-control form-control-sm border-0 bg-transparent"></td>
       </tr>
       {% else %}
       <tr>
@@ -190,21 +182,98 @@
     </tbody>
   </table>
 </div>
+
+<!-- Modal para Escribir/Expandir Observaciones -->
+<div class="modal fade" id="modalObs" tabindex="-1" aria-labelledby="modalObsLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-dark text-white">
+        <h5 class="modal-title" id="modalObsLabel">Detalle de Observación</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <textarea id="textoObsModal" class="form-control" rows="6" placeholder="Escriba la observación más detallada aquí..."></textarea>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn text-white" style="background-color: #97271C;" onclick="guardarObsModal()">Guardar Texto</button>
+      </div>
+    </div>
+  </div>
+</div>
 {% endif %}
 {% endblock %}
 
 {% block scripts %}
 <script>
- const API_URL_PRIMERA = "/api/primera-semana/actualizar";
+  const API_URL_PRIMERA = "/api/primera-semana/actualizar";
+  let modalObservacion;
 
+  document.addEventListener("DOMContentLoaded", function() {
+    // Inicializar Modal de Bootstrap
+    if(typeof bootstrap !== 'undefined') {
+      modalObservacion = new bootstrap.Modal(document.getElementById('modalObs'));
+    }
+
+    // Formateo de fechas
+    document.querySelectorAll('.formato-fecha-primera').forEach(function(input) {
+      const fechaOriginal = input.getAttribute('data-fecha-original');
+      if (fechaOriginal && fechaOriginal.trim() !== '') {
+        const dateObj = new Date(fechaOriginal.trim() + 'T00:00:00');
+        let opciones = { weekday: 'short', day: '2-digit', month: 'short' };
+        let fechaStr = dateObj.toLocaleDateString('es-ES', opciones);
+        fechaStr = fechaStr.replace(/\./g, '');
+        let partes = fechaStr.replace(',', '').split(' ');
+        if (partes.length >= 3) {
+          input.value = `${partes[0]}, ${partes[1]}-${partes[2]}`;
+        } else {
+          input.value = fechaStr; 
+        }
+      }
+    });
+  });
+
+  // Funciones para el Modal de Observaciones
+  function abrirModalObs(icono) {
+    const input = icono.previousElementSibling; // Encuentra el input que está justo antes de la flecha
+    const textarea = document.getElementById('textoObsModal');
+    
+    textarea.value = input.value;
+    input.setAttribute('id', 'obs-activa-temp'); // Marca este input temporalmente
+    
+    modalObservacion.show();
+  }
+
+  function guardarObsModal() {
+    const input = document.getElementById('obs-activa-temp');
+    const textarea = document.getElementById('textoObsModal');
+    
+    if(input) {
+      input.value = textarea.value;
+      input.title = textarea.value; // Actualiza el cuadrito amarillo nativo
+      input.removeAttribute('id');
+      
+      // Dispara el evento 'change' para que se guarde en la BD automáticamente
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    modalObservacion.hide();
+  }
+
+  // Si cierran la ventana sin guardar, quitamos la marca
+  document.getElementById('modalObs').addEventListener('hidden.bs.modal', function () {
+      const input = document.getElementById('obs-activa-temp');
+      if(input) input.removeAttribute('id');
+  });
+
+  // Salto de celda con tecla ENTER
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Enter' && e.target.tagName === 'INPUT') {
       e.preventDefault();
       const currentInput = e.target;
       const colName = currentInput.getAttribute('data-col');
       const currentRow = currentInput.closest('tr');
-
       const nextRow = currentRow.nextElementSibling;
+      
       if (nextRow) {
         const nextInput = nextRow.querySelector(`input[data-col="${colName}"]`);
         if (nextInput && !nextInput.readOnly) {
@@ -215,7 +284,7 @@
     }
   });
 
-  // 2. GUARDADO AUTOMÁTICO AJAX
+  // GUARDADO AUTOMÁTICO AJAX - SIN RECARGA DE PÁGINA
   document.querySelectorAll('.table-fixed input:not([readonly])').forEach(function (input) {
     input.addEventListener('change', function () {
       const fila = this.closest('tr');
@@ -235,10 +304,18 @@
             el.style.backgroundColor = "rgba(40, 167, 69, 0.2)";
             setTimeout(() => el.style.backgroundColor = "transparent", 800);
 
-            if (['mortalidad', 'sel', 'consumo_kg', 'consumo_gr_a_tab', 'peso_real', 'peso_tabla', 'unif_10_menos', 'porc_uniformidad', 'unif_10_mas', 'coef_variacion', 'observaciones'].includes(columna)) {
-              setTimeout(() => window.location.reload(), 200);
+            if (data.updated_data) {
+              Object.keys(data.updated_data).forEach(key => {
+                const celdaTarget = fila.querySelector(`.celda-${key}`);
+                if (celdaTarget) {
+                  if (parseFloat(data.updated_data[key]) === 0) {
+                      celdaTarget.value = '';
+                  } else {
+                      celdaTarget.value = data.updated_data[key];
+                  }
+                }
+              });
             }
-
           } else {
             alert('Error al guardar:\n' + data.msg);
             el.style.backgroundColor = "rgba(220, 53, 69, 0.2)";
@@ -248,31 +325,6 @@
           console.error('Error de red:', err);
           el.style.backgroundColor = "rgba(220, 53, 69, 0.2)";
         });
-    });
-  });
-  // 3. LÓGICA DE FORMATEO DE FECHA (Ej. vie, 10-ene)
-  document.addEventListener("DOMContentLoaded", function() {
-    document.querySelectorAll('.formato-fecha-primera').forEach(function(input) {
-      const fechaOriginal = input.getAttribute('data-fecha-original');
-      
-      if (fechaOriginal && fechaOriginal.trim() !== '') {
-        const dateObj = new Date(fechaOriginal.trim() + 'T00:00:00');
-        
-        let opciones = { weekday: 'short', day: '2-digit', month: 'short' };
-        let fechaStr = dateObj.toLocaleDateString('es-ES', opciones);
-        fechaStr = fechaStr.replace(/\./g, ''); // Limpiar puntos
-        
-        let partes = fechaStr.replace(',', '').split(' ');
-        if (partes.length >= 3) {
-          let diaSem = partes[0];
-          let diaNum = partes[1];
-          let mesNum = partes[2];
-          
-          input.value = `${diaSem}, ${diaNum}-${mesNum}`;
-        } else {
-          input.value = fechaStr; 
-        }
-      }
     });
   });
 </script>

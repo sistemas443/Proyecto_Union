@@ -66,24 +66,24 @@
 
 {% if lote_seleccionado %}
 <div class="tabla-scroll shadow-sm border rounded">
-  <table class="table table-sm table-fixed mb-0" style="width: 100% !important; min-width: 1600px;">
+  <table class="table table-sm table-fixed mb-0" style="width: 100% !important; min-width: 1900px;">
 
     <colgroup>
-      <col style="width:140px;">
-      <col style="width:90px;">
-      <col style="width:80px;">
-      <col style="width:100px;">
-      <col style="width:90px;">
-      <col style="width:90px;">
-      <col style="width:90px;">
-      <col style="width:80px;">
-      <col style="width:auto;">
-      <col style="width:100px;">
-      <col style="width:110px;">
-      <col style="width:100px;">
-      <col style="width:80px;">
-      <col style="width:90px;">
-      <col style="width:90px;">
+      <col style="width:140px;"> <!-- Fecha Día -->
+      <col style="width:90px;">  <!-- Días -->
+      <col style="width:80px;">  <!-- Semana -->
+      <col style="width:100px;"> <!-- Producción -->
+      <col style="width:90px;">  <!-- Consumo Kilos -->
+      <col style="width:90px;">  <!-- Mortalidad -->
+      <col style="width:90px;">  <!-- Sel -->
+      <col style="width:80px;">  <!-- Otros -->
+      <col style="width:450px;"> <!-- Observaciones (Ajustado a 450px) -->
+      <col style="width:100px;"> <!-- Saldo aves -->
+      <col style="width:110px;"> <!-- Cons. Gr.A.D -->
+      <col style="width:100px;"> <!-- Gr.A.D Tab -->
+      <col style="width:80px;">  <!-- % Prod -->
+      <col style="width:90px;">  <!-- Prom. Ave -->
+      <col style="width:90px;">  <!-- Agua -->
     </colgroup>
 
     <thead>
@@ -139,8 +139,18 @@
         <td><input type="number" data-col="otros" value="{{ f['otros'] if f['otros'] else '' }}"
             class="form-control form-control-sm border-0 bg-transparent text-center"></td>
         
-        <td><input type="text" data-col="observaciones" value="{{ f['observaciones'] or '' }}"
-            class="form-control form-control-sm border-0 bg-transparent"></td>
+        <!-- Celda de Observaciones con Flecha Vinotinto -->
+        <td class="position-relative">
+          <div class="d-flex align-items-center h-100">
+            <input type="text" data-col="observaciones" value="{{ f['observaciones'] or '' }}" 
+                   title="{{ f['observaciones'] or 'Escribir observación...' }}" placeholder="..." 
+                   class="form-control form-control-sm border-0 bg-transparent text-start px-2 w-100 pe-4">
+            
+            <i class='bx bxs-chevron-down position-absolute' 
+               style="right: 8px; cursor: pointer; color: #97271C; font-size: 1.4rem; z-index: 10;" 
+               onclick="abrirModalObs(this)" title="Ampliar observación"></i>
+          </div>
+        </td>
         
         <!-- Saldo de Aves -->
         <td><input type="text" data-col="saldo_aves" value="{{ f['saldo_aves'] if f['saldo_aves'] is not none else '' }}"
@@ -177,11 +187,70 @@
     </tbody>
   </table>
 </div>
+
+<!-- Modal para Escribir/Expandir Observaciones -->
+<div class="modal fade" id="modalObs" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-dark text-white">
+        <h5 class="modal-title"><i class='bx bx-edit me-2'></i>Detalle de Observación</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <textarea id="textoObsModal" class="form-control" rows="6" placeholder="Escriba toda la observación detallada aquí..."></textarea>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn text-white" style="background-color: #97271C;" onclick="guardarObsModal()">Guardar Texto</button>
+      </div>
+    </div>
+  </div>
+</div>
 {% endif %}
 {% endblock %}
 
 {% block scripts %}
 <script>
+  // --- INICIO LÓGICA MODAL OBSERVACIONES ---
+  let modalObservacion;
+
+  document.addEventListener("DOMContentLoaded", function() {
+    if(typeof bootstrap !== 'undefined') {
+      modalObservacion = new bootstrap.Modal(document.getElementById('modalObs'));
+    }
+  });
+
+  function abrirModalObs(icono) {
+    const input = icono.previousElementSibling; 
+    const textarea = document.getElementById('textoObsModal');
+    
+    textarea.value = input.value;
+    input.setAttribute('id', 'obs-activa-temp'); 
+    
+    modalObservacion.show();
+  }
+
+  function guardarObsModal() {
+    const input = document.getElementById('obs-activa-temp');
+    const textarea = document.getElementById('textoObsModal');
+    
+    if(input) {
+      input.value = textarea.value;
+      input.title = textarea.value; 
+      input.removeAttribute('id');
+      
+      // Dispara el guardado automático simulando que el usuario escribió
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    modalObservacion.hide();
+  }
+
+  document.getElementById('modalObs').addEventListener('hidden.bs.modal', function () {
+      const input = document.getElementById('obs-activa-temp');
+      if(input) input.removeAttribute('id');
+  });
+  // --- FIN LÓGICA MODAL OBSERVACIONES ---
+
   const API_URL = "{{ url_for('main.actualizar_diario') }}";
 
   document.querySelectorAll('.table-fixed input:not([readonly])').forEach(function (input) {

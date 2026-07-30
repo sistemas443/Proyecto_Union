@@ -54,7 +54,8 @@
 </div>
 
 <div class="tabla-scroll shadow-sm border rounded">
-  <table class="table table-sm table-fixed mb-0" style="min-width: 4500px !important; width: 100% !important;">
+  <!-- Aumentamos el min-width de la tabla a 4700px -->
+  <table class="table table-sm table-fixed mb-0" style="min-width: 4700px !important; width: 100% !important;">
     <colgroup>
       <col style="width:130px;">
       <col style="width:70px;">
@@ -93,7 +94,9 @@
       <col style="width:110px;">
       <col style="width:110px;">
 
-      <col style="width:300px;">
+      <!-- Modificamos la columna de observaciones a 450px -->
+      <col style="width:450px;">
+      
       <col style="width:160px;">
       <col style="width:110px;">
       <col style="width:120px;">
@@ -239,8 +242,19 @@
         <td><input type="number" data-col="cons_agua_tab" value="{{ f['cons_agua_tab'] or '' }}"
             class="form-control form-control-sm border-0 bg-transparent text-center text-dark"></td>
 
-        <td><input type="text" data-col="observaciones_lev" value="{{ f['observaciones_lev'] or '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-dark"></td>
+        <!-- Celda de Observaciones con Flecha Vinotinto -->
+        <td class="position-relative">
+          <div class="d-flex align-items-center h-100">
+            <input type="text" data-col="observaciones_lev" value="{{ f['observaciones_lev'] or '' }}" 
+                   title="{{ f['observaciones_lev'] or 'Escribir observación...' }}" placeholder="..." 
+                   class="form-control form-control-sm border-0 bg-transparent text-start px-2 w-100 pe-4 text-dark">
+            
+            <i class='bx bxs-chevron-down position-absolute' 
+               style="right: 8px; cursor: pointer; color: #97271C; font-size: 1.4rem; z-index: 10;" 
+               onclick="abrirModalObs(this)" title="Ampliar observación"></i>
+          </div>
+        </td>
+
         <td><input type="text" data-col="marca_tipo_de" value="{{ f['marca_tipo_de'] or '' }}"
             class="form-control form-control-sm border-0 bg-transparent text-center text-dark"></td>
         <td><input type="text" data-col="conv_sem"
@@ -277,11 +291,70 @@
     </tbody>
   </table>
 </div>
+
+<!-- Modal para Escribir/Expandir Observaciones -->
+<div class="modal fade" id="modalObs" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-dark text-white">
+        <h5 class="modal-title"><i class='bx bx-edit me-2'></i>Detalle de Observación</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <textarea id="textoObsModal" class="form-control" rows="6" placeholder="Escriba toda la observación detallada aquí..."></textarea>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn text-white" style="background-color: #97271C;" onclick="guardarObsModal()">Guardar Texto</button>
+      </div>
+    </div>
+  </div>
+</div>
 {% endif %}
 {% endblock %}
 
 {% block scripts %}
 <script>
+  // --- INICIO LÓGICA MODAL OBSERVACIONES ---
+  let modalObservacion;
+
+  document.addEventListener("DOMContentLoaded", function() {
+    if(typeof bootstrap !== 'undefined') {
+      modalObservacion = new bootstrap.Modal(document.getElementById('modalObs'));
+    }
+  });
+
+  function abrirModalObs(icono) {
+    const input = icono.previousElementSibling; 
+    const textarea = document.getElementById('textoObsModal');
+    
+    textarea.value = input.value;
+    input.setAttribute('id', 'obs-activa-temp'); 
+    
+    modalObservacion.show();
+  }
+
+  function guardarObsModal() {
+    const input = document.getElementById('obs-activa-temp');
+    const textarea = document.getElementById('textoObsModal');
+    
+    if(input) {
+      input.value = textarea.value;
+      input.title = textarea.value; 
+      input.removeAttribute('id');
+      
+      // Dispara el guardado automático simulando que el usuario escribió
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    modalObservacion.hide();
+  }
+
+  document.getElementById('modalObs').addEventListener('hidden.bs.modal', function () {
+      const input = document.getElementById('obs-activa-temp');
+      if(input) input.removeAttribute('id');
+  });
+  // --- FIN LÓGICA MODAL OBSERVACIONES ---
+
   const API_URL = "{{ url_for('main.actualizar_semanal') }}";
 
   // Lógica de Guardado AJAX
