@@ -2,51 +2,41 @@
   <div class="container-fluid px-3">
 
     <a class="navbar-brand d-flex align-items-center gap-2" href="{{ url_for('main.index') }}">
-      <img src="{{ url_for('static', filename='img/LOGO_AVICOLA_SAN_MARTIN.png') }}"
-           alt="Logo" style="height:38px; width:auto;">
+      <img src="{{ url_for('static', filename='img/LOGO_AVICOLA_SAN_MARTIN.png') }}" alt="Logo"
+        style="height:38px; width:auto;">
       <span class="fw-semibold" style="font-size:.95rem; letter-spacing:.03em;">AVÍCOLA SAN MARTÍN S.A</span>
     </a>
 
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
-            data-bs-target="#navMain" aria-controls="navMain"
-            aria-expanded="false" aria-label="Toggle navigation">
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMain"
+      aria-controls="navMain" aria-expanded="false" aria-label="Toggle navigation">
       <span class="navbar-toggler-icon"></span>
     </button>
 
     <div class="collapse navbar-collapse" id="navMain">
+
+      <!-- Bloqueo condicional de renderizado del menu principal en ausencia de token de sesion -->
+      {% if session.get('user_id') %}
       <ul class="navbar-nav me-auto mb-2 mb-lg-0">
 
         <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle" href="#" role="button"
-             data-bs-toggle="dropdown" aria-expanded="false">
+          <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
             Producción
           </a>
           <ul class="dropdown-menu dropdown-menu-dark">
             
-            <li class="dropdown-submenu">
-              <a class="dropdown-item dropdown-toggle" href="#">Lotes</a>
-              <ul class="dropdown-menu dropdown-menu-dark">
-                <li>
-                  <a class="dropdown-item fw-bold" href="{{ url_for('main.vista_lotes') }}">
-                    <i class='bx bx-list-ul'></i> Gestión de Lotes
-                  </a>
-                </li>
-                <li><hr class="dropdown-divider"></li>
-                
-                <li><a class="dropdown-item" href="{{ url_for('main.primera_semana') }}">1era Semana</a></li>
-                <li><a class="dropdown-item" href="{{ url_for('main.semanal_levante') }}">Semanal levante</a></li>
-                <li><a class="dropdown-item" href="{{ url_for('main.diario') }}">Diario</a></li>
-                <li><a class="dropdown-item" href="{{ url_for('main.semanal') }}">Semanal Prod.</a></li>
-                <li><a class="dropdown-item" href="{{ url_for('main.clas_prod') }}">Clasificación Prod.</a></li>
-              </ul>
+            <!-- BOTÓN INTERRUPTOR PARA LA BARRA LATERAL (LIMPIO SIN SUBMENÚS) -->
+            <li>
+              <a class="dropdown-item fw-bold" href="#" onclick="toggleSidebarLotes(event)">
+                <i class='bx bx-sidebar me-2'></i> Lotes
+              </a>
             </li>
+            
             <li><a class="dropdown-item disabled" href="#">Reportes</a></li>
           </ul>
         </li>
 
         <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle" href="#" role="button"
-             data-bs-toggle="dropdown" aria-expanded="false">
+          <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
             Planta de Alimentos
           </a>
           <ul class="dropdown-menu dropdown-menu-dark">
@@ -63,8 +53,7 @@
         </li>
 
         <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle" href="#" role="button"
-             data-bs-toggle="dropdown" aria-expanded="false">
+          <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
             Clasificación
           </a>
           <ul class="dropdown-menu dropdown-menu-dark">
@@ -80,45 +69,114 @@
           </ul>
         </li>
 
+        <!-- ENLACE EXCLUSIVO PARA EL SUPERADMIN CON ESTILO NAV-LINK ESTÁNDAR -->
+        {% if session.get('user_rol') == 'Superadmin' %}
+        <li class="nav-item">
+          <a class="nav-link" href="{{ url_for('main.gestion_usuarios') }}">
+            Usuarios
+          </a>
+        </li>
+        {% endif %}
+
       </ul>
+      {% else %}
+      <!-- Espaciador estructural flexbox para empujar el area de login a la derecha -->
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0"></ul>
+      {% endif %}
+
+      <!-- SECCIÓN DE PERFIL Y LOGIN EN NAVBAR -->
+      <ul class="navbar-nav ms-auto align-items-center mt-3 mt-lg-0">
+        {% if session.get('user_id') %}
+        <!-- Vista de usuario autenticado con diseño actualizado -->
+        <li class="nav-item me-3 d-flex align-items-center mb-2 mb-lg-0">
+
+          <!-- Círculo para foto de perfil -->
+          <div
+            class="rounded-circle overflow-hidden bg-secondary d-flex align-items-center justify-content-center me-2 shadow-sm"
+            style="width: 38px; height: 38px; border: 2px solid #ffffff;">
+            {% if session.get('user_foto') %}
+            <img src="{{ url_for('static', filename='uploads/usuarios/' + session.get('user_foto')) }}"
+              alt="Foto Perfil" style="width: 100%; height: 100%; object-fit: cover;">
+            {% else %}
+            <i class='bx bxs-user text-white fs-4'></i>
+            {% endif %}
+          </div>
+
+          <!-- Nombre del usuario en color blanco -->
+          <span class="fw-bold text-white fs-6">{{ session.get('user_nombre') }}</span>
+
+          <!-- Insignia del Rol en color vinotinto -->
+          <span class="badge ms-2 shadow-sm" style="background-color: #97271C; font-size: 0.75rem;">
+            {{ session.get('user_rol') }}
+          </span>
+        </li>
+        <li class="nav-item">
+          <!-- Botón de salir estilizado -->
+          <a href="{{ url_for('main.logout') }}" class="btn btn-sm fw-bold shadow-sm w-100"
+            style="color: #dc3545; border: 1px solid #dc3545; background-color: transparent;"
+            onmouseover="this.style.backgroundColor='#dc3545'; this.style.color='white';"
+            onmouseout="this.style.backgroundColor='transparent'; this.style.color='#dc3545';">
+            <i class='bx bx-log-out-circle align-middle me-1'></i>Salir
+          </a>
+        </li>
+        {% endif %}
+      </ul>
+
     </div>
   </div>
 </nav>
 
 <style>
-  /* Submenú a la derecha */
-  .dropdown-submenu { position: relative; }
-  .dropdown-submenu > .dropdown-menu {
-    top: 0; left: 100%; margin-top: -1px; display: none;
+  /* Comportamiento anidado de submenus en cascada */
+  .dropdown-submenu {
+    position: relative;
   }
-  .dropdown-submenu:hover > .dropdown-menu { display: block; }
-  .dropdown-submenu > a::after {
+
+  .dropdown-submenu>.dropdown-menu {
+    top: 0;
+    left: 100%;
+    margin-top: -1px;
+    display: none;
+  }
+
+  .dropdown-submenu:hover>.dropdown-menu {
+    display: block;
+  }
+
+  .dropdown-submenu>a::after {
     content: "";
     float: right;
     border-top: 4px solid transparent;
     border-left: 5px solid currentColor;
     border-bottom: 4px solid transparent;
-    margin-top: 6px; margin-left: 8px;
+    margin-top: 6px;
+    margin-left: 8px;
   }
+
   @media (min-width: 992px) {
-    .dropdown:hover > .dropdown-menu { display: block; }
+    .dropdown:hover>.dropdown-menu {
+      display: block;
+    }
   }
-  .navbar { z-index: 1050; }
+
+  .navbar {
+    z-index: 1050;
+  }
 </style>
 
 <script>
-/* Submenú en móvil: toggle al hacer click */
-document.addEventListener('DOMContentLoaded', function () {
-  document.querySelectorAll('.dropdown-submenu > a').forEach(function (el) {
-    el.addEventListener('click', function (e) {
-      e.preventDefault();
-      e.stopPropagation();
-      const sub = this.nextElementSibling;
-      this.closest('.dropdown-menu')
+  /* Controlador de propagacion de eventos para menus en dispositivos tactiles */
+  document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.dropdown-submenu > a').forEach(function (el) {
+      el.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const sub = this.nextElementSibling;
+        this.closest('.dropdown-menu')
           .querySelectorAll('.dropdown-menu')
           .forEach(m => { if (m !== sub) m.style.display = 'none'; });
-      sub.style.display = sub.style.display === 'block' ? 'none' : 'block';
+        sub.style.display = sub.style.display === 'block' ? 'none' : 'block';
+      });
     });
   });
-});
 </script>

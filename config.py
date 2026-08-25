@@ -1,7 +1,6 @@
 import os
 import psycopg2
 
-
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
 
@@ -10,7 +9,6 @@ class Config:
     DB_USER = os.environ.get('DB_USER', 'admin_app')
     DB_PASSWORD = os.environ.get('DB_PASSWORD', 'TuClaveSegura123')
     DB_PORT = os.environ.get('DB_PORT', '5432')
-
 
 try:
     conn = psycopg2.connect(
@@ -22,10 +20,14 @@ try:
         connect_timeout=5
     )
 
-    print("✅ Conectado correctamente a PostgreSQL")
-    print(f"Host: {Config.DB_HOST}")
-    print(f"Base de datos: {Config.DB_NAME}")
-    print(f"Usuario: {Config.DB_USER}")
+    # --- INICIO DE SILENCIO DE BASE DE DATOS ---
+    # Comentamos las siguientes líneas para que la terminal no se llene de texto 
+    # cada vez que el servidor se reinicia o detecta un cambio.
+    # print("✅ Conectado correctamente a PostgreSQL")
+    # print(f"Host: {Config.DB_HOST}")
+    # print(f"Base de datos: {Config.DB_NAME}")
+    # print(f"Usuario: {Config.DB_USER}")
+    # --- FIN DE SILENCIO ---
 
     conn.close()
 

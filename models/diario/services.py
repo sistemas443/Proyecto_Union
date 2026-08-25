@@ -1,3 +1,4 @@
+# models/diario/services.py
 from datetime import datetime, timedelta, date
 from models.base import get_db_connection, parse_empty, to_float_safe
 from models.diario.schemas import MAPA_COLUMNAS, COLUMNAS_PERMITIDAS
@@ -5,18 +6,68 @@ from models.diario import model
 from models.cabecera.model import fetch_cabecera_by_lote 
 from models.semanal.services import recalcular_lote_semanal_completo_directo
 
+def obtener_guia_grad_tab():
+    """ Devuelve la guia teorica con margen de sobra para cubrir los 770 dias sin error de indice """
+    guia = [
+        12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 18.0, 20.0, 21.0, 22.0, 23.0, 24.0, 25.0, 25.0, 26.0, 27.0, 28.0, 29.0, 30.0, 31.0,
+        32.0, 33.0, 35.0, 36.0, 37.0, 38.0, 40.0, 40.0, 40.0, 40.0, 40.0, 41.0, 42.0, 43.0, 44.0, 46.0, 48.0, 48.0, 49.0, 49.0,
+        51.0, 51.0, 53.0, 54.0, 55.0, 56.0, 56.0, 56.0, 56.0, 58.0, 60.0, 60.0, 62.0, 64.0, 66.0, 66.0, 66.0, 66.0, 66.0, 68.0,
+        70.0, 70.0, 72.0, 72.0, 74.0, 74.0, 74.0, 74.0, 74.0, 74.0, 74.0, 76.0, 76.0, 76.0, 76.0, 78.0, 78.0, 80.0, 80.0, 82.0,
+        82.0, 82.0, 82.0, 82.0, 84.0, 86.0, 88.0, 90.0, 90.0, 90.0, 94.0, 94.0, 94.0, 94.0, 99.0, 99.0, 99.0, 99.0, 99.0, 103.0,
+        103.0, 103.0, 103.0, 107.0, 107.0, 107.0, 107.0, 107.0
+    ]
+    # Rellenamos con 600 dias adicionales al final para blindar la funcion (total 808 items)
+    guia += [108.0] * 14 + [109.0] * 34 + [108.0] * 53 + [105.0] * 600
+    return guia
+
+def aplicar_parche_diario(id_lote):
+    """ Inyecta los valores teoricos de Gr.A.D Tab en celdas vacias """
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        guia_grad_tab = obtener_guia_grad_tab()
+        cur.execute("SELECT id_diario, dias, consumo_gr_a_tab FROM data_diario WHERE id_lote = %s ORDER BY dias ASC", (id_lote,))
+        filas = cur.fetchall()
+        valores_update = []
+        
+        for fila in filas:
+            id_diario = fila[0]
+            dia = int(fila[1]) if fila[1] else 0
+            val_actual = fila[2]
+            
+            # Aseguramos de que el dia no supere el tamano del arreglo
+            if 1 <= dia <= len(guia_grad_tab):
+                val_teorico = guia_grad_tab[dia - 1]
+                
+                # Comprobacion limpia y a prueba de fallos matematicos
+                es_vacio = False
+                if val_actual is None:
+                    es_vacio = True
+                else:
+                    try:
+                        es_vacio = (float(val_actual) == 0.0)
+                    except:
+                        es_vacio = str(val_actual).strip() in ('', 'None')
+
+                if es_vacio:
+                    valores_update.append((val_teorico, id_diario))
+                    
+        if valores_update:
+            cur.executemany("UPDATE data_diario SET consumo_gr_a_tab = %s WHERE id_diario = %s", valores_update)
+            conn.commit()
+    except Exception as e:
+        conn.rollback()
+        print(f"[ERROR PARCHE DIARIO]: {e}")
+    finally:
+        cur.close()
+        conn.close()
+
 def generar_estructura_diario(lote_nombre, id_lote, fecha_recepcion):
-    """
-    Despliega la matriz secuencial de 770 registros diarios en la base de datos para la tabla data_diario.
-    Calcula los agrupadores por semana y mes, proporcionando la base transaccional requerida
-    para la captura de información continua durante todo el ciclo productivo del lote.
-    """
+    """ Despliega la matriz secuencial de 770 registros en la base de datos para data_diario """
     if not id_lote or not lote_nombre: 
         return
     if model.count_diario_lote(id_lote) > 0: 
         return
-
-    print(f"\n[DIARIO] Generando 770 dias estandar para: {lote_nombre} (ID: {id_lote})")
 
     fecha_base = None
     if fecha_recepcion and str(fecha_recepcion).strip() != '' and str(fecha_recepcion).strip().lower() != 'none':
@@ -37,6 +88,7 @@ def generar_estructura_diario(lote_nombre, id_lote, fecha_recepcion):
     if not fecha_base:
         fecha_base = datetime.now()
 
+    guia_grad_tab = obtener_guia_grad_tab()
     valores = [] 
 
     for i in range(770):
@@ -53,7 +105,7 @@ def generar_estructura_diario(lote_nombre, id_lote, fecha_recepcion):
     
         valores.append((
             lote_nombre, id_lote, fecha_str, dia_vida, semana_str,
-            0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+            0.0, 0.0, 0.0, guia_grad_tab[i], 0.0, 0.0
         ))
     
     valores.sort(key=lambda x: x[3])
@@ -70,8 +122,6 @@ def generar_estructura_diario(lote_nombre, id_lote, fecha_recepcion):
         """, valores)
         
         conn.commit()
-        print(f"[BD DIARIO] Exito: Estructura de 770 dias generada independientemente.")
-
     except Exception as e:
         conn.rollback()
         print(f"[ERROR CRITICO GENERACION DIARIO]: {str(e)}")
@@ -80,10 +130,7 @@ def generar_estructura_diario(lote_nombre, id_lote, fecha_recepcion):
         conn.close()
 
 def get_diario_all(lote_nombre: str = ''):
-    """
-    Obtiene la totalidad de la matriz del ciclo de recolección diaria de datos.
-    Implementa el mecanismo de auto-generación de esquemas.
-    """
+    """ Obtiene la matriz completa y fuerza los parches de sincronizacion """
     if not lote_nombre or lote_nombre == 'VACIO': 
         return []
     
@@ -96,26 +143,28 @@ def get_diario_all(lote_nombre: str = ''):
     if model.count_diario_lote(id_lote) == 0:
         generar_estructura_diario(lote_nombre, id_lote, cabecera.get('fecha_recepcion'))
         
+    aplicar_parche_diario(id_lote)
+        
     return model.fetch_diario_por_lote(id_lote)
 
 def update_registro_diario_field(id_reg: int, columna: str, valor: str) -> tuple[bool, dict, str]:
+    """ Ejecuta guardados directos y recalculos matematicos en cascada """
     import psycopg2.extras 
     
     col_db = MAPA_COLUMNAS.get(columna, columna)
     if col_db not in COLUMNAS_PERMITIDAS: 
         return False, {}, f"Columna '{col_db}' no permitida en el Diario."
     
-    # Blindaje para aceptar el 0 como un dato real y biológicamente válido
     if str(valor).strip() == '0':
         valor_db = 0
     else:
         valor_db = parse_empty(valor)
+        
     campos_diarios_actualizados = {}
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     
     try:
-        # Se agrega 'consumo_agua' como columna detonante del recálculo
         if col_db in ['mortalidad', 'sel', 'consumo_kg', 'otros', 'peso_real', 'produccion', 'consumo_agua']:
             cur.execute("SELECT id_lote FROM data_diario WHERE id_diario = %s", (id_reg,))
             row_lote = cur.fetchone()
@@ -132,7 +181,6 @@ def update_registro_diario_field(id_reg: int, columna: str, valor: str) -> tuple
                 cur_update.execute(f'UPDATE data_diario SET "{col_db}" = %s WHERE id_diario = %s', (valor_db, id_reg))
                 cur_update.close()
                 
-                # Se agrega 'consumo_agua' a la extracción de datos
                 cur.execute("""
                     SELECT id_diario, mortalidad, sel, consumo_kg, otros, produccion, consumo_agua
                     FROM data_diario 
@@ -183,7 +231,6 @@ def update_registro_diario_field(id_reg: int, columna: str, valor: str) -> tuple
 
                     porc_prod_exacto = (float(prod) / float(saldo_actual)) * 100.0 if saldo_actual > 0 else 0.0
                     
-                    # FÓRMULA DE PROMEDIO DE AGUA: =(O / J) * 1000 a 1 decimal
                     prom_agua_exacto = round((float(agua) / float(saldo_actual)) * 1000.0, 1) if saldo_actual > 0 else 0.0
 
                     valores_update.append((
@@ -226,9 +273,6 @@ def update_registro_diario_field(id_reg: int, columna: str, valor: str) -> tuple
                     """, valores_update)
                     cur_update.close()
                 
-                # ---------------------------------------------------------
-                # EL DISPARADOR SEGURO (Solo se ejecuta si se tocaron números)
-                # ---------------------------------------------------------
                 try:
                     cur_sync = conn.cursor()
                     recalcular_lote_semanal_completo_directo(id_lote, cur_sync)
@@ -242,7 +286,6 @@ def update_registro_diario_field(id_reg: int, columna: str, valor: str) -> tuple
                 diario_model.guardar_dato_simple(id_reg, col_db, valor_db, cur_update)
                 cur_update.close()
         else:
-            # Si tocan columnas NO matemáticas (ej. observaciones), guarda directo y no recalcula nada
             cur_update = conn.cursor()
             import models.diario.model as diario_model
             diario_model.guardar_dato_simple(id_reg, col_db, valor_db, cur_update)

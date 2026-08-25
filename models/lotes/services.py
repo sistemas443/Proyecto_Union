@@ -15,7 +15,6 @@ from models.semanal_levante.services import generar_estructura_semanal_levante
 # 3. ¡LA NUEVA DIRECCIÓN DE PRIMERA SEMANA!
 from models.primera_semana.services import generar_estructura_primera_semana, update_dia_0_desde_formulario
 
-
 def get_lotes_distintos():
     """
     Llama al modelo para obtener una lista única de los nombres de los lotes.
@@ -120,25 +119,73 @@ def guardar_nuevo_lote(datos):
     except Exception as e:
         return False, str(e)
 
+
 def actualizar_lote(id_lote, datos):
     """
     Coordina la modificación de un lote que ya existe en el sistema.
-    Sobreescribe la cabecera y también sincroniza cualquier cambio que el usuario
-    haya hecho en los campos del "Día 0" del formulario web.
+    INCLUYE RENOMBRAMIENTO MASIVO: Si el nombre del lote cambia, actualiza todas las tablas satélite.
+    Sobreescribe la cabecera y sincroniza cambios del "Día 0".
     """
     try:
-        # 1. Actualiza la tabla principal (Cabecera)
+        # Importamos la herramienta para conectarnos directo a la base de datos
+        from models.base import get_db_connection
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        # PASO 1: Descubrimos cómo se llamaba el lote antes de que el usuario lo editara
+        cur.execute("SELECT lote FROM cabecera_lotes WHERE id = %s", (id_lote,))
+        resultado = cur.fetchone()
+        
+        if not resultado:
+            return False, "El lote que intentas editar ya no existe en la base de datos."
+            
+        lote_viejo = resultado[0] # Guardamos el nombre antiguo
+        lote_nuevo = parse_empty(datos.get('lote')) # Extraemos el nombre que viene del formulario
+        
+        # PASO 2: Verificamos si realmente hubo un cambio de nombre
+        if lote_nuevo and lote_viejo != lote_nuevo:
+            
+            # Medida de seguridad: Validar que el nuevo nombre no se lo hayan puesto ya a otro lote distinto
+            cur.execute("SELECT id FROM cabecera_lotes WHERE lote = %s", (lote_nuevo,))
+            if cur.fetchone():
+                return False, f"No puedes renombrarlo a '{lote_nuevo}' porque ya existe otro lote con ese nombre."
+            
+            # --- INICIO DEL RENOMBRAMIENTO EN CASCADA ---
+            # Le cambiamos el nombre en la tabla principal (Cabecera)
+            cur.execute("UPDATE cabecera_lotes SET lote = %s WHERE id = %s", (lote_nuevo, id_lote))
+            
+            # Actualizamos las tablas que guardan el nombre como texto para no perder el enlace de datos
+            cur.execute("UPDATE primera_semana SET lote = %s WHERE lote = %s", (lote_nuevo, lote_viejo))
+            
+            # Actualizamos las tablas asociadas (si tienen columna 'lote' además del id_lote)
+            cur.execute("UPDATE data_diario SET lote = %s WHERE id_lote = %s", (lote_nuevo, id_lote))
+            
+            # --- LÍNEA CORREGIDA CON LA TABLA CORRECTA ---
+            cur.execute("UPDATE bd_vargas SET lote = %s WHERE id_lote = %s", (lote_nuevo, id_lote))
+            
+            cur.execute("UPDATE semanal_levante SET lote = %s WHERE id_lote = %s", (lote_nuevo, id_lote))
+            cur.execute("UPDATE clasificacion_produccion SET lote = %s WHERE id_lote = %s", (lote_nuevo, id_lote))
+            # --- FIN DEL RENOMBRAMIENTO EN CASCADA ---
+            
+            # Confirmamos y guardamos permanentemente este cambio en la BD
+            conn.commit()
+            
+        # Cerramos los puentes a la base de datos por seguridad y rendimiento
+        cur.close()
+        conn.close()
+
+        # PASO 3: Ejecutamos la actualización normal de los demás campos 
+        # (Granjas, fechas, cantidades, etc.) usando el modelo habitual
         model.update_lote(id_lote, datos, parse_empty)
         
-        # 2. MAGIA: Manda los datos nuevos a la tabla Primera Semana (Día 0)
-        # Esto asegura que si editas el Día 0 en el formulario principal, se actualice en la pantalla de Primera Semana
-        lote_nombre = parse_empty(datos.get('lote'))
-        if lote_nombre:
-            update_dia_0_desde_formulario(lote_nombre, datos)
+        # PASO 4: MAGIA FINAL - Mandamos los datos nuevos a la tabla Primera Semana (Día 0)
+        if lote_nuevo:
+            update_dia_0_desde_formulario(lote_nuevo, datos)
             
         return True, "Lote actualizado exitosamente"
+        
     except Exception as e:
-        return False, str(e)
+        return False, f"Ocurrió un error al actualizar: {str(e)}"
 
 def borrar_lote(id_lote):
     """

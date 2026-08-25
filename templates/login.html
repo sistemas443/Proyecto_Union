@@ -1,0 +1,243 @@
+{% extends "layout.html" %}
+
+{% block title %}Iniciar Sesión - Avícola San Martín{% endblock %}
+
+{% block content %}
+<style>
+    /* Ocultamos la barra de navegación porque es una página de ingreso */
+    nav, .navbar { display: none !important; }
+    
+    body { 
+        background-color: #f8f9fa; 
+        display: flex; 
+        align-items: center; 
+        justify-content: center;
+        min-height: 100vh;
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    }
+    
+    main.container-fluid {
+        padding: 0 !important;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        height: 100vh;
+    }
+
+    /* 1. LOGO MÁS GRANDE */
+    .login-logo { margin-bottom: 35px; }
+    .login-logo img { max-height: 100px; width: auto; } /* Aumentamos de 65px a 100px */
+
+    /* 2. TARJETA MÁS ANCHA Y CON MÁS ESPACIO INTERNO */
+    .login-card {
+        background: #ffffff;
+        border: 1px solid #dee2e6; 
+        border-radius: 8px; 
+        width: 100%;
+        max-width: 600px; /* Aumentamos de 450px a 600px */
+        padding: 50px 60px; /* Más padding para que respire */
+    }
+
+    /* 3. TÍTULOS MÁS GRANDES */
+    .login-card h3 {
+        font-weight: 500;
+        font-size: 2.2rem; /* Aumentamos el tamaño de la fuente */
+        color: #000000;
+        margin-bottom: 5px;
+    }
+
+    .login-card .subtitle {
+        color: #6c757d;
+        font-size: 1.25rem; /* Aumentamos el tamaño de la fuente */
+        margin-bottom: 45px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    /* 4. INPUTS MÁS ALTOS Y TEXTO MÁS GRANDE */
+    .form-control {
+        border: 1px solid #ced4da;
+        border-radius: 6px;
+        padding: 16px 20px; /* Cajas más altas y con más espacio interior */
+        font-size: 1.15rem; /* Texto ingresado más grande */
+        margin-bottom: 25px; /* Más separación entre el usuario y la contraseña */
+        box-shadow: none;
+    }
+
+    .form-control:focus {
+        border-color: #97271C;
+        box-shadow: 0 0 0 0.2rem rgba(151, 39, 28, 0.25);
+    }
+
+    /* 5. BOTÓN Y ENLACE MÁS GRANDES */
+    .btn-vinotinto {
+        background-color: #97271C;
+        color: white;
+        border: none;
+        border-radius: 50px; 
+        padding: 12px 40px; /* Botón más ancho y alto */
+        font-weight: 600;
+        font-size: 1.1rem; /* Texto del botón más grande */
+        transition: background-color 0.3s;
+    }
+
+    .btn-vinotinto:hover {
+        background-color: #7a1f16;
+        color: white;
+    }
+
+    .forgot-password {
+        color: #97271C; /* Color vinotinto del sistema */
+        font-weight: 700;
+        font-size: 1rem; /* Letra del enlace más grande */
+        text-decoration: none;
+    }
+
+    .forgot-password:hover { 
+        text-decoration: underline; 
+        color: #7a1f16; /* Vinotinto un poco más oscuro al pasar el cursor */
+    }
+
+    /* Footer nativo fijado abajo */
+    .login-footer {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        padding: 25px;
+        text-align: center;
+        font-size: 0.95rem; /* Texto del footer ligeramente más grande */
+        color: #888;
+        background-color: #f8f9fa;
+    }
+</style>
+
+<!-- Logo superior -->
+<div class="login-logo">
+    <img src="{{ url_for('static', filename='img/LOGO_AVICOLA_SAN_MARTIN.png') }}" alt="Avícola San Martín">
+</div>
+
+<!-- Cuadro de Iniciar Sesión -->
+<div class="login-card text-center">
+    <h3>Iniciar sesión</h3>
+    <div class="subtitle">AVICOLA SAN MARTIN</div>
+
+    <form action="/login" method="POST">
+        <input type="text" class="form-control" id="username" name="username" placeholder="Usuario" required autocomplete="off">
+        <input type="password" class="form-control" id="password" name="password" placeholder="Contraseña" required>
+        
+        <div class="d-flex justify-content-between align-items-center mt-3">
+            <a href="#" class="forgot-password" data-bs-toggle="modal" data-bs-target="#modalRecuperar">¿Has olvidado tu contraseña?</a>
+            <button type="submit" class="btn btn-vinotinto">Iniciar sesión</button>
+        </div>
+    </form>
+</div>
+
+<!-- Footer nativo -->
+<footer class="login-footer">
+    © 2019 Avicola San Martin S.A. Todos los derechos reservados
+</footer>
+
+<!-- MODAL DE RECUPERACIÓN -->
+<div class="modal fade" id="modalRecuperar" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow" style="border-radius: 12px;">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold text-dark" id="tituloModal">Opciones de Recuperación</h5>
+                <!-- Al cerrar el modal, ejecutamos una función para que vuelva a la vista original la próxima vez -->
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" onclick="resetearModal()"></button>
+            </div>
+            
+            <div class="modal-body px-4 pb-4">
+                
+                <!-- VISTA 1: SELECCIÓN DE MÉTODO -->
+                <div id="vistaOpciones">
+                    <p class="text-muted text-center mb-4" style="font-size: 0.95rem;">Selecciona cómo deseas restablecer tu contraseña.</p>
+                    
+                    <div class="d-grid gap-3">
+                        <!-- Opción Admin -->
+                        <button type="button" class="btn btn-outline-secondary p-3 text-start d-flex align-items-center" onclick="cambiarVista('admin')" style="border-radius: 8px;">
+                            <i class='bx bx-support fs-2 me-3' style="color: #6c757d;"></i>
+                            <div>
+                                <h6 class="mb-0 fw-bold text-dark">Por medio del Administrador</h6>
+                                <small class="text-muted">Se enviará una notificación a soporte.</small>
+                            </div>
+                        </button>
+                        
+                        <!-- Opción Autónoma -->
+                        <button type="button" class="btn btn-outline-secondary p-3 text-start d-flex align-items-center" onclick="cambiarVista('correo')" style="border-radius: 8px;">
+                            <i class='bx bx-envelope fs-2 me-3' style="color: #97271C;"></i>
+                            <div>
+                                <h6 class="mb-0 fw-bold text-dark">Por mi cuenta (Vía Correo)</h6>
+                                <small class="text-muted">Recibirás un código en tu correo registrado.</small>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- VISTA 2: FORMULARIO ADMINISTRADOR -->
+                <div id="vistaAdmin" style="display: none;">
+                    <p class="text-muted text-center mb-4" style="font-size: 0.95rem;">Ingresa tu usuario y enviaremos una notificación al administrador.</p>
+                    <form action="/solicitar-recuperacion" method="POST">
+                        <div class="mb-4">
+                            <input type="text" class="form-control" name="username_recuperar" placeholder="Tu usuario (Ej: carlos123)" required autocomplete="off">
+                        </div>
+                        <button type="submit" class="btn btn-vinotinto w-100 fw-bold py-2">Enviar Solicitud a Soporte</button>
+                        <button type="button" class="btn btn-link w-100 mt-2 text-muted text-decoration-none" onclick="resetearModal()">Volver a las opciones</button>
+                    </form>
+                </div>
+
+                <!-- VISTA 3: FORMULARIO AUTÓNOMO (PIN) -->
+                <div id="vistaCorreo" style="display: none;">
+                    <p class="text-muted text-center mb-4" style="font-size: 0.95rem;">Ingresa tu usuario. Si tienes un correo registrado, te enviaremos un PIN de 6 dígitos.</p>
+                    <form action="/solicitar-pin" method="POST">
+                        <div class="mb-4">
+                            <input type="text" class="form-control" name="username_pin" placeholder="Tu usuario (Ej: carlos123)" required autocomplete="off">
+                        </div>
+                        <button type="submit" class="btn btn-vinotinto w-100 fw-bold py-2">Recibir Código por Correo</button>
+                        <button type="button" class="btn btn-link w-100 mt-2 text-muted text-decoration-none" onclick="resetearModal()">Volver a las opciones</button>
+                    </form>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Aseguramos que el body y el footer ocupen el espacio correcto
+    document.addEventListener("DOMContentLoaded", function() {
+        document.body.insertAdjacentHTML('beforeend', '<footer class="login-footer">© 2019 Avicola San Martin S.A. Todos los derechos reservados</footer>');
+    });
+
+    // Función para intercambiar entre las vistas del modal
+    function cambiarVista(vista) {
+        // Ocultamos todas las vistas
+        document.getElementById('vistaOpciones').style.display = 'none';
+        document.getElementById('vistaAdmin').style.display = 'none';
+        document.getElementById('vistaCorreo').style.display = 'none';
+        
+        // Mostramos la vista solicitada y cambiamos el título
+        if(vista === 'admin') {
+            document.getElementById('vistaAdmin').style.display = 'block';
+            document.getElementById('tituloModal').innerText = 'Recuperar con Soporte';
+        } else if (vista === 'correo') {
+            document.getElementById('vistaCorreo').style.display = 'block';
+            document.getElementById('tituloModal').innerText = 'Recuperación Autónoma';
+        }
+    }
+
+    // Función para volver al inicio del modal
+    function resetearModal() {
+        document.getElementById('vistaOpciones').style.display = 'block';
+        document.getElementById('vistaAdmin').style.display = 'none';
+        document.getElementById('vistaCorreo').style.display = 'none';
+        document.getElementById('tituloModal').innerText = 'Opciones de Recuperación';
+    }
+</script>
+{% endblock %}

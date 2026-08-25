@@ -36,7 +36,6 @@ def guardar_dato_simple(id_semanal, columna, valor, cur):
     elif columna == 'peso_ave_real': col_db = 'peso_real'
     elif columna == 'peso_ave_tab': col_db = 'peso_tab'
     elif columna == 'cons_agua_real': col_db = 'agua_real'
-    elif columna == 'cons_agua_tab': col_db = 'agua_tabla'
     elif columna == 'observaciones_lev': col_db = 'observaciones'
     
     cur.execute(f'UPDATE semanal_levante SET "{col_db}" = %s WHERE id = %s', (valor, id_semanal))
@@ -69,7 +68,7 @@ def insert_estructura_semanal(valores):
         conn.close()
 
 def fetch_semanal_levante(id_lote):
-    """ Trae los registros mapeando las columnas físicas de tu base de datos al HTML """
+    """ Trae los registros extrayendo las columnas físicas de tu base de datos para el HTML """
     import psycopg2.extras  
     conn = get_db_connection()
     
@@ -83,7 +82,7 @@ def fetch_semanal_levante(id_lote):
                 cons_tab,                            
                 cons_real,     
                 cons_kilos_real,
-                cons_kilos_ajustado,  /* 🚀 AQUÍ ESTÁ LA NUEVA COLUMNA */
+                cons_kilos_ajustado,
                 cons_k_acum,
                 cons_gr_ave_tab,
                 cons_gr_ave_ao,
@@ -95,7 +94,7 @@ def fetch_semanal_levante(id_lote):
                 porc_mort_acm AS percent_mort_acum,   
                 porc_sel_sem AS percent_select_sem,   
                 porc_ms_acu AS percent_mort_and_select_acum, 
-                porc_tab AS mort_tab,                
+                porc_tab,             
                 saldo_aves AS saldo_ave,              
                 peso_tab AS peso_ave_tab,             
                 peso_real AS peso_ave_real,           
@@ -107,7 +106,7 @@ def fetch_semanal_levante(id_lote):
                 t_tarso,
                 t_tarso_r,
                 agua_real AS cons_agua_real,          
-                agua_tabla AS cons_agua_tab,          
+                agua_tabla,         
                 observaciones AS observaciones_lev,   
                 marca_tipo_de,
                 conv_sem,

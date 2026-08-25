@@ -7,12 +7,100 @@
   <title>{% block title %}Avícola San Martín{% endblock %}</title>
 
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-
   <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
-
   <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
-
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+  <style>
+    .modal-backdrop.show {
+        backdrop-filter: blur(5px) !important;
+        -webkit-backdrop-filter: blur(5px) !important;
+        background-color: rgba(0, 0, 0, 0.6) !important;
+        opacity: 1 !important;
+    }
+
+/* ======================================================== */
+    /* BARRA LATERAL FLOTANTE COMPACTA                          */
+    /* ======================================================== */
+    .sidebar-rapido {
+        position: fixed;
+        top: 64px; /* Altura exacta para acoplarse justo debajo de la navbar */
+        left: 0;
+        width: 50px; 
+        height: auto; /* Mide exactamente lo que ocupan las 6 opciones */
+        max-height: calc(100vh - 60px);
+        background-color: #212529; 
+        border-bottom-right-radius: 10px; /* Esquina redondeada flotante */
+        box-shadow: 3px 3px 10px rgba(0,0,0,0.35);
+        z-index: 1040;
+        display: flex;
+        flex-direction: column;
+        transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s ease;
+        overflow: hidden;
+        transform: translateX(-100%); 
+    }
+
+    /* Cuando la barra entra en pantalla */
+    body.sidebar-activa .sidebar-rapido {
+        transform: translateX(0);
+    }
+
+    /* Ancho compacto al pasar el mouse */
+    .sidebar-rapido:hover {
+        width: 185px; 
+    }
+
+    .sidebar-rapido a {
+        display: flex;
+        align-items: center;
+        color: #d1d5db;
+        padding: 10px 14px;
+        text-decoration: none;
+        white-space: nowrap;
+        transition: all 0.2s ease;
+        border-left: 3px solid transparent;
+    }
+
+    .sidebar-rapido a:hover {
+        color: #ffffff;
+        background-color: #97271C; 
+        border-left: 3px solid #ffc107;
+    }
+
+    .sidebar-rapido i {
+        font-size: 1.3rem;
+        min-width: 24px;
+        text-align: center;
+    }
+    
+    .sidebar-rapido span {
+        margin-left: 10px;
+        font-size: 0.85rem;
+        font-weight: 500;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+    }
+
+    .sidebar-rapido:hover span {
+        opacity: 1;
+    }
+
+    /* ======================================================== */
+    /* CORRECCIÓN DEL HUECO BLANCO:                             */
+    /* La Navbar no se mueve, solo se desplaza el <main>        */
+    /* ======================================================== */
+    body {
+        padding-left: 0 !important; /* Garantiza que la página y el navbar no se muevan */
+    }
+
+    main.container-fluid {
+        transition: padding-left 0.25s ease;
+    }
+
+    body.sidebar-activa main.container-fluid {
+        padding-left: 65px; /* Empuja únicamente las tablas/tarjetas, no el menú superior */
+    }
+  </style>
 
   {% block head %}{% endblock %}
 </head>
@@ -20,6 +108,29 @@
 <body>
 
   {% include 'nav.html' %}
+
+  {% if session.get('user_id') %}
+  <div class="sidebar-rapido">
+      <a href="{{ url_for('main.vista_lotes') }}" title="Gestión de Lotes">
+          <i class='bx bx-list-ul'></i><span>Gestión de Lotes</span>
+      </a>
+      <a href="{{ url_for('main.primera_semana') }}" title="1era Semana">
+          <i class='bx bx-calendar-event'></i><span>1era Semana</span>
+      </a>
+      <a href="{{ url_for('main.semanal_levante') }}" title="Semanal Levante">
+          <i class='bx bx-trending-up'></i><span>Semanal Levante</span>
+      </a>
+      <a href="{{ url_for('main.diario') }}" title="Diario">
+          <i class='bx bx-sun'></i><span>Diario</span>
+      </a>
+      <a href="{{ url_for('main.semanal') }}" title="Semanal Producción">
+          <i class='bx bx-line-chart'></i><span>Semanal Prod.</span>
+      </a>
+      <a href="{{ url_for('main.clas_prod') }}" title="Clasificación Prod.">
+          <i class='bx bx-layer'></i><span>Clasificación Prod.</span>
+      </a>
+  </div>
+  {% endif %}
 
   <main class="container-fluid py-3">
     {% block content %}{% endblock %}
@@ -30,105 +141,141 @@
     crossorigin="anonymous"></script>
 
   <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
-
   <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-  <style>
-    /* Animaciones personalizadas imitando Animate.css */
-    @keyframes customFadeInUp {
-      from { opacity: 0; transform: translateY(40px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    
-    @keyframes customFadeOutDown {
-      from { opacity: 1; transform: translateY(0); }
-      to { opacity: 0; transform: translateY(40px); }
-    }
+  <!-- LÓGICA DE LA BARRA LATERAL (Memoria y Botón) -->
+  <script>
+    // Al cargar la página, revisamos si el usuario había dejado la barra abierta
+    document.addEventListener("DOMContentLoaded", function() {
+        if (localStorage.getItem('estadoSidebarLotes') === 'abierta') {
+            document.body.classList.add('sidebar-activa');
+        }
+    });
 
-    /* Fondo oscuro semitransparente */
-    .alerta-backdrop {
-      position: fixed;
-      top: 0; left: 0; width: 100%; height: 100%;
-      background-color: rgba(0, 0, 0, 0.5);
-      display: flex; align-items: center; justify-content: center;
-      z-index: 1050; /* Por encima de todo en Bootstrap */
-      opacity: 1;
-      transition: opacity 0.3s ease;
+    // Función que llamaremos desde el menú superior para mostrar/ocultar
+    function toggleSidebarLotes(event) {
+        event.preventDefault(); // Evita que la página salte
+        const body = document.body;
+        
+        // Ponemos o quitamos la clase
+        body.classList.toggle('sidebar-activa');
+        
+        // Guardamos la preferencia en la memoria del navegador
+        if (body.classList.contains('sidebar-activa')) {
+            localStorage.setItem('estadoSidebarLotes', 'abierta');
+        } else {
+            localStorage.setItem('estadoSidebarLotes', 'cerrada');
+        }
     }
-
-    /* Caja de la alerta centrada */
-    .alerta-caja {
-      background-color: #ffffff;
-      border-radius: 12px;
-      padding: 35px 25px 25px 25px;
-      text-align: center;
-      width: 90%;
-      max-width: 420px;
-      box-shadow: 0 15px 35px rgba(0,0,0,0.2);
-      animation: customFadeInUp 0.4s ease forwards; /* Animación de entrada */
-    }
-
-    /* Clase para cuando el usuario presiona "Entendido" */
-    .alerta-caja.ocultar {
-      animation: customFadeOutDown 0.3s ease forwards;
-    }
-    
-    /* Tamaño del ícono gigante */
-    .icono-gigante {
-      font-size: 85px;
-      margin-bottom: 15px;
-    }
-  </style>
+  </script>
 
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
-      <div id="alerta-fondo" class="alerta-backdrop">
-        
-        {% for category, message in messages %}
-          {% set color = '#dc3545' if category in ['error', 'danger'] else ('#198754' if category == 'success' else '#ffc107') %}
-          {% set icono = 'bx-x-circle' if category in ['error', 'danger'] else ('bx-check-circle' if category == 'success' else 'bx-info-circle') %}
-
-          <div id="alerta-tarjeta" class="alerta-caja">
-            
-            <i class='bx {{ icono }} icono-gigante' style="color: {{ color }};"></i>
-            
-            <h2 class="fw-bold mb-3" style="color: #4a4a4a; font-size: 1.8rem;">¡Atención!</h2>
-            
-            <p class="text-secondary mb-4" style="font-size: 1.1rem; line-height: 1.5;">
-              {{ message }}
-            </p>
-            
-            <button type="button" class="btn btn-lg w-100 text-white fw-bold" 
-                    style="background-color: #343a40; border-radius: 8px;" 
-                    onclick="cerrarAlerta()">
-              Entendido
-            </button>
-            
-          </div>
-        {% endfor %}
-      </div>
-
+      <script type="application/json" id="flash-messages-data">
+        {{ messages | tojson | safe }}
+      </script>
       <script>
-        function cerrarAlerta() {
-          const fondo = document.getElementById('alerta-fondo');
-          const tarjeta = document.getElementById('alerta-tarjeta');
-          
-          if (fondo && tarjeta) {
-            // Disparamos la animación de salida hacia abajo
-            tarjeta.classList.add('ocultar');
-            fondo.style.opacity = '0';
-            
-            // Destruimos el elemento después de 300ms (lo que dura la animación)
-            setTimeout(function() {
-              fondo.remove();
-            }, 300);
-          }
-        }
+        document.addEventListener("DOMContentLoaded", function() {
+          const Toast = Swal.mixin({
+            toast: true, position: "top-end", showConfirmButton: false,
+            timer: 2000, timerProgressBar: true,
+            didOpen: (toast) => { toast.onmouseenter = Swal.stopTimer; toast.onmouseleave = Swal.resumeTimer; }
+          });
+          const rawData = document.getElementById('flash-messages-data').textContent;
+          const mensajes = JSON.parse(rawData);
+          mensajes.forEach(function(msg) {
+            const categoria = msg[0]; const texto = msg[1];
+            let icono = 'info';
+            if (categoria === 'error' || categoria === 'danger') icono = 'error';
+            else if (categoria === 'success') icono = 'success';
+            else if (categoria === 'warning') icono = 'warning';
+            Toast.fire({ icon: icono, title: texto });
+          });
+        });
       </script>
     {% endif %}
   {% endwith %}
 
+  <!-- CANDADO GLOBAL: MODO LECTURA -->
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const rolUsuarioGlobal = "{{ session.get('user_rol') }}";
+      if (rolUsuarioGlobal === 'Lector') {
+        document.querySelectorAll('table input, table select, table textarea').forEach(function(elemento) {
+          elemento.disabled = true; elemento.style.cursor = 'not-allowed'; elemento.style.backgroundColor = 'transparent';
+        });
+        document.querySelectorAll('button').forEach(function(btn) {
+          const textoBoton = btn.innerText.toLowerCase();
+          if(textoBoton.includes('recalcular') || textoBoton.includes('guardar')) btn.style.display = 'none';
+        });
+        document.querySelectorAll('.bxs-chevron-down').forEach(function(icon) {
+          icon.style.display = 'none';
+        });
+      }
+    });
+  </script>
+
+<!-- CONTROL ANTI-DOBLE CLIC CON RUEDITA DE CARGA EN BOTONES -->
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll("form").forEach(function (form) {
+      form.addEventListener("submit", function (e) {
+        const btnSubmit = form.querySelector('button[type="submit"]');
+
+        if (btnSubmit) {
+          if (btnSubmit.disabled) {
+            e.preventDefault();
+            return;
+          }
+
+          // Guardar dimensiones originales
+          btnSubmit.style.width = btnSubmit.offsetWidth + "px";
+          btnSubmit.style.height = btnSubmit.offsetHeight + "px";
+
+          // Guardar los colores originales del botón
+          const estilo = window.getComputedStyle(btnSubmit);
+          const colorFondo = estilo.backgroundColor;
+          const colorTexto = estilo.color;
+          const colorBorde = estilo.borderColor;
+
+          // Deshabilitar para bloquear doble clic
+          btnSubmit.disabled = true;
+
+          // Mantener el mismo aspecto visual mientras carga
+          btnSubmit.style.setProperty(
+            "background-color",
+            colorFondo,
+            "important"
+          );
+
+          btnSubmit.style.setProperty(
+            "color",
+            colorTexto,
+            "important"
+          );
+
+          btnSubmit.style.setProperty(
+            "border-color",
+            colorBorde,
+            "important"
+          );
+
+          // Spinner usando el mismo color del texto del botón
+          btnSubmit.innerHTML = `
+            <span
+              class="spinner-border spinner-border-sm"
+              role="status"
+              aria-hidden="true"
+              style="color: ${colorTexto};"
+            ></span>
+          `;
+        }
+      });
+    });
+  });
+</script>
+
   {% block scripts %}{% endblock %}
 </body>
-
 </html>

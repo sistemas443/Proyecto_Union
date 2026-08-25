@@ -152,11 +152,12 @@ def get_primera_semana_by_lote(lote_nombre):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     
     try:
-        # Sincronización cruzada: Actualiza mortalidad y consumo basándose en los registros diarios
+        # Sincronización cruzada: Actualiza mortalidad, selección y consumo basándose en los registros diarios
         cur.execute("""
             UPDATE primera_semana ps
             SET consumo_kg = dd.consumo_kg,
-                mortalidad = dd.mortalidad
+                mortalidad = dd.mortalidad,
+                sel = dd.sel
             FROM data_diario dd
             WHERE ps.lote = dd.lote 
               AND ps.lote = %s
