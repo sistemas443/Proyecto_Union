@@ -29,7 +29,6 @@
     -webkit-overflow-scrolling: touch; 
   }
 
-  /* (Aquí mantienes el resto de tus estilos de la tabla como los thead sticky, etc.) */
   /* Animación para que la flecha gire suavemente */
   .icono-colapso {
       transition: transform 0.3s ease;
@@ -38,26 +37,40 @@
   .collapsed .icono-colapso {
       transform: rotate(-90deg);
   }
+
+  /* Resaltado corporativo para los cierres de semana operacionales (Jueves) */
+  .fila-cierre-semana td,
+  .fila-cierre-semana input {
+      background-color: rgba(151, 39, 28, 0.12) !important; /* Vinotinto pastel */
+      font-weight: 700 !important;
+  }
 </style>
 
-<!-- Encabezado de la página -->
-<div class="alert py-2 mb-3 fw-bold text-center text-uppercase fs-5 shadow-sm"
-  style="background-color: #343a40; color: #ffff; border: none;">
-  INFORME DIARIO
-</div>
+<!-- BARRA SUPERIOR OSCURA: TÍTULO Y FILTRO -->
+<div class="d-flex flex-wrap align-items-center justify-content-between mb-3 px-3 py-2 rounded shadow-sm" style="background-color: #212529;">
+  
+  <!-- Título a la izquierda en texto blanco -->
+  <h5 class="mb-0 fw-bold text-uppercase text-white" style="letter-spacing: 0.5px;">
+    INFORME DIARIO
+  </h5>
 
-<!-- Filtro de selección de lote -->
-<div class="filtro-bar mb-4 card shadow-sm p-3 bg-light border-0">
-  <form method="POST" class="d-flex align-items-center gap-3">
-    <label for="lote" class="mb-0 fw-bold text-secondary">SELECCIONE UN LOTE:</label>
-    <select name="lote" id="lote" class="form-select border-dark" style="width:300px; font-weight: bold;">
-      <option value="">-- Seleccione --</option>
-      {% for l in lotes %}
-      <option value="{{ l }}" {% if lote_seleccionado==l %}selected{% endif %}>LOTE {{ l }}</option>
-      {% endfor %}
-    </select>
-    <button type="submit" class="btn btn-naranja fw-bold px-4">Cargar Datos</button>
-  </form>
+  <!-- Filtro centrado -->
+  <div class="mx-auto">
+    <form method="POST" class="d-flex align-items-center gap-2 m-0">
+      <label for="lote" class="mb-0 fw-bold text-light text-nowrap" style="font-size: 0.9rem;">SELECCIONE UN LOTE:</label>
+      <select name="lote" id="lote" class="form-select form-select-sm border-0 fw-bold shadow-none" style="width: 220px;">
+        <option value="">-- Seleccione --</option>
+        {% for l in lotes %}
+        <option value="{{ l }}" {% if lote_seleccionado==l %}selected{% endif %}>LOTE {{ l }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="btn btn-naranja btn-sm fw-bold px-3 border-0">Cargar Datos</button>
+    </form>
+  </div>
+  
+  <!-- Espaciador invisible para forzar el centro perfecto del filtro -->
+  <div style="width: 320px;" class="d-none d-lg-block"></div>
+  
 </div>
 
 {% if lote_seleccionado %}
@@ -72,7 +85,6 @@
        title="Clic para ocultar/mostrar">
        
     <span>
-        <!-- La flecha giratoria reemplazó al icono de info -->
         <i class='bx bx-chevron-down fs-5 me-1 icono-colapso'></i> 
         Información General del Lote
     </span>
@@ -80,7 +92,6 @@
   </div>
 
   <!-- 2. CONTENEDOR COLAPSABLE -->
-  <!-- Mantiene la tabla abierta por defecto con la clase 'show' -->
   <div class="collapse show" id="collapseInfoGeneral">
       <div class="card-body p-0">
         <table class="table table-bordered table-sm mb-0">
@@ -388,6 +399,37 @@
         });
         
         fila.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    });
+  });
+
+  // DETECTOR EXACTO DE JUEVES (CIERRE DE SEMANA OPERACIONAL)
+  document.addEventListener("DOMContentLoaded", function () {
+    const filasDiario = document.querySelectorAll('tbody tr[data-id]');
+
+    filasDiario.forEach(function (fila) {
+      // Capturamos la fecha desde el atributo original para evitar errores de formato visible
+      const inputFecha = fila.querySelector('input[data-col="fecha"]');
+      
+      if (inputFecha) {
+        const fechaOriginal = inputFecha.getAttribute('data-fecha-original');
+        
+        if (fechaOriginal && fechaOriginal.trim() !== '') {
+          const partesFecha = fechaOriginal.trim().split('-'); 
+          
+          if (partesFecha.length === 3) {
+              const anio = parseInt(partesFecha[0], 10);
+              const mes = parseInt(partesFecha[1], 10) - 1; 
+              const dia = parseInt(partesFecha[2], 10);
+              
+              const fechaExacta = new Date(anio, mes, dia);
+              
+              // Validación: El número 4 representa matemáticamente al Jueves en JavaScript
+              if (fechaExacta.getDay() === 4) { 
+                  fila.classList.add('fila-cierre-semana');
+              }
+          }
+        }
       }
     });
   });

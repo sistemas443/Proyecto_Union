@@ -13,41 +13,74 @@
   main.container-fluid {
     display: flex;
     flex-direction: column;
-    height: calc(100vh - 65px); /* Ajusta si tu navbar es diferente */
+    height: calc(100vh - 65px);
+    /* Ajusta si tu navbar es diferente */
     padding-bottom: 15px;
   }
 
   /* 3. Evitamos que los elementos de arriba (Títulos, Filtros y Acordeón) se aplasten */
-  .alert, .filtro-bar, .card-info-general {
+  .alert,
+  .filtro-bar,
+  .card-info-general {
     flex-shrink: 0;
   }
 
   /* 4. La tabla toma automáticamente el espacio libre sobrante */
   .tabla-scroll {
     flex: 1 1 auto;
-    min-height: 0; 
+    min-height: 0;
     overflow-y: auto;
     overflow-x: auto;
     width: 100%;
-    -webkit-overflow-scrolling: touch; 
+    -webkit-overflow-scrolling: touch;
   }
 
-  /* 5. Congelación de encabezados (Ajusta los topes si tus th son más altos) */
-  .tabla-scroll thead tr:nth-child(1) th { position: sticky; top: 0; z-index: 110 !important; }
-  .tabla-scroll thead tr:nth-child(2) th { position: sticky; top: 36px; z-index: 109 !important; }
-  
-  /* Congelar la fecha y semana a la izquierda */
-  .tabla-scroll thead tr:nth-child(1) th:nth-child(1),
-  .tabla-scroll thead tr:nth-child(1) th:nth-child(2),
-  .tabla-scroll thead tr:nth-child(2) th:nth-child(1),
-  .tabla-scroll thead tr:nth-child(2) th:nth-child(2) {
-    z-index: 120 !important; 
+  /* 5. Congelación de encabezados superiores */
+  .tabla-scroll thead tr:nth-child(1) th {
+    position: sticky;
+    top: 0;
+    z-index: 110 !important;
+  }
+
+  .tabla-scroll thead tr:nth-child(2) th {
+    position: sticky;
+    top: 36px;
+    z-index: 109 !important;
+  }
+
+  /* ==================================================================================== */
+  /* CORRECCIÓN: Z-INDEX ABSOLUTO PARA LA ESQUINA SUPERIOR IZQUIERDA (LAS 3 COLUMNAS) */
+  /* ==================================================================================== */
+  .tabla-scroll thead tr th.sticky-col-1,
+  .tabla-scroll thead tr th.sticky-col-2,
+  .tabla-scroll thead tr th.sticky-col-3 {
+    z-index: 150 !important;
+    /* Prioridad máxima sobre cualquier otro encabezado */
+    background-color: #212529 !important;
+    /* Fondo negro sólido para ocultar el texto que pasa por debajo */
+  }
+
+  /* Delimitadores verticales sutiles para separar visualmente las columnas oscuras */
+  .tabla-scroll thead tr th.sticky-col-1,
+  .tabla-scroll thead tr th.sticky-col-2 {
+    border-right: 1px solid #454d55 !important;
+  }
+
+  /* La tercera columna proyecta la sombra para separar el bloque fijo del resto de la tabla */
+  .tabla-scroll thead tr th.sticky-col-3 {
+    border-right: 1px solid #dee2e6 !important;
+    box-shadow: 4px 0 5px -2px rgba(0, 0, 0, 0.3) !important;
   }
 
   /* 6. Animación para que la flecha del acordeón gire suavemente */
-  .icono-colapso { transition: transform 0.3s ease; }
-  .collapsed .icono-colapso { transform: rotate(-90deg); }
-  
+  .icono-colapso {
+    transition: transform 0.3s ease;
+  }
+
+  .collapsed .icono-colapso {
+    transform: rotate(-90deg);
+  }
+
   /* Contenedor principal con scroll dinamico */
   .tabla-scroll {
     max-height: calc(100vh - 240px);
@@ -70,25 +103,33 @@
   }
 
   /* Dimensionamiento y posicionamiento exacto para las tres columnas maestras */
+  /* Dimensionamiento y posicionamiento exacto para las tres columnas maestras */
   .sticky-col-1 {
     position: sticky !important;
     left: 0 !important;
-    width: 150px !important;
-    min-width: 150px !important;
+    width: 130px !important;
+    /* Achicamos la fecha que no requiere 150px */
+    min-width: 130px !important;
+    max-width: 130px !important;
   }
 
   .sticky-col-2 {
     position: sticky !important;
-    left: 150px !important;
+    left: 130px !important;
+    /* Inicia justo donde termina la 1 */
     width: 90px !important;
     min-width: 90px !important;
+    max-width: 90px !important;
   }
 
   .sticky-col-3 {
     position: sticky !important;
-    left: 240px !important;
-    width: 110px !important;
-    min-width: 110px !important;
+    left: 220px !important;
+    /* 130 + 90 = 220px */
+    width: 100px !important;
+    /* Un poco de respiro para Sem Prod */
+    min-width: 100px !important;
+    max-width: 100px !important;
   }
 
   /* Aplicacion de color y capa superior a las cabeceras sin alterar sus bordes horizontales nativos */
@@ -132,49 +173,57 @@
 
   /* Animación para que la flecha gire suavemente */
   .icono-colapso {
-      transition: transform 0.3s ease;
+    transition: transform 0.3s ease;
   }
+
   /* Cuando está cerrado, la flecha gira a la derecha */
   .collapsed .icono-colapso {
-      transform: rotate(-90deg);
+    transform: rotate(-90deg);
   }
 </style>
 
-<!-- Cabecera principal -->
-<div class="alert py-2 mb-3 fw-bold text-center text-uppercase fs-5 shadow-sm"
-  style="background-color: #343a40; color: #ffff; border: none;">
-  INFORME SEMANAL DE PRODUCCIÓN
-</div>
+<!-- BARRA SUPERIOR OSCURA: TÍTULO Y FILTRO -->
+<div class="d-flex flex-wrap align-items-center justify-content-between mb-3 px-3 py-2 rounded shadow-sm"
+  style="background-color: #212529;">
 
-<!-- Filtro para seleccion de lotes -->
-<div class="filtro-bar mb-4 card shadow-sm p-3 bg-light border-0">
-  <form method="POST" class="d-flex align-items-center gap-3">
-    <label for="lote" class="mb-0 fw-bold text-secondary">SELECCIONE UN LOTE:</label>
-    <select name="lote" id="lote" class="form-select border-dark" style="width:300px; font-weight: bold;">
-      <option value="">-- Seleccione --</option>
-      {% for l in lotes %}
-      <option value="{{ l }}" {% if lote_seleccionado==l %}selected{% endif %}>LOTE {{ l }}</option>
-      {% endfor %}
-    </select>
-    <button type="submit" class="btn btn-naranja fw-bold px-4">Cargar Datos</button>
-  </form>
+  <!-- Título a la izquierda en texto blanco -->
+  <h5 class="mb-0 fw-bold text-uppercase text-white" style="letter-spacing: 0.5px;">
+    INFORME SEMANAL DE PRODUCCIÓN
+  </h5>
+
+  <!-- Filtro centrado -->
+  <div class="mx-auto">
+    <form method="POST" class="d-flex align-items-center gap-2 m-0">
+      <label for="lote" class="mb-0 fw-bold text-light text-nowrap" style="font-size: 0.9rem;">SELECCIONE UN
+        LOTE:</label>
+      <select name="lote" id="lote" class="form-select form-select-sm border-0 fw-bold shadow-none"
+        style="width: 220px;">
+        <option value="">-- Seleccione --</option>
+        {% for l in lotes %}
+        <option value="{{ l }}" {% if lote_seleccionado==l %}selected{% endif %}>LOTE {{ l }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="btn btn-naranja btn-sm fw-bold px-3 border-0">Cargar Datos</button>
+    </form>
+  </div>
+
+  <!-- Espaciador invisible para forzar el centro perfecto del filtro -->
+  <div style="width: 320px;" class="d-none d-lg-block"></div>
+
 </div>
 
 {% if lote_seleccionado %}
 <div class="card mb-4 shadow-sm border-0">
-  
+
   <!-- 1. ENCABEZADO CLIQUEABLE -->
   <div class="card-header bg-dark text-white fw-bold py-2 d-flex justify-content-between align-items-center"
-       style="cursor: pointer;" 
-       data-bs-toggle="collapse" 
-       data-bs-target="#collapseInfoGeneral" 
-       aria-expanded="true" 
-       title="Clic para ocultar/mostrar">
-       
+    style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapseInfoGeneral" aria-expanded="true"
+    title="Clic para ocultar/mostrar">
+
     <span>
-        <!-- La flecha giratoria reemplazó al icono de info -->
-        <i class='bx bx-chevron-down fs-5 me-1 icono-colapso'></i> 
-        Información General del Lote
+      <!-- La flecha giratoria reemplazó al icono de info -->
+      <i class='bx bx-chevron-down fs-5 me-1 icono-colapso'></i>
+      Información General del Lote
     </span>
     <span class="badge bg-naranja fs-6">LOTE: {{ lote_seleccionado }}</span>
   </div>
@@ -182,38 +231,38 @@
   <!-- 2. CONTENEDOR COLAPSABLE -->
   <!-- Mantiene la tabla abierta por defecto con la clase 'show' -->
   <div class="collapse show" id="collapseInfoGeneral">
-      <div class="card-body p-0">
-        <table class="table table-bordered table-sm mb-0">
-          <tbody class="align-middle">
-            <tr>
-              <th class="bg-light text-end pe-3" style="width:20%;">Cliente:</th>
-              <td class="fw-bold text-dark" style="width:30%;">{{ cabecera.cliente or '---' }}</td>
-              <th class="bg-light text-end pe-3" style="width:20%;">Resp. Técnico:</th>
-              <td class="fw-semibold text-dark" style="width:30%;">{{ cabecera.responsable_tecnico or '---' }}</td>
-            </tr>
-            <tr>
-              <th class="bg-light text-end pe-3">Granja Levante:</th>
-              <td class="text-dark">{{ cabecera.granja_lev or '---' }}</td>
-              <th class="bg-light text-end pe-3">Ciudad:</th>
-              <td class="text-dark">{{ cabecera.ciudad or '---' }}</td>
-            </tr>
-            <tr>
-              <th class="bg-light text-end pe-3">Fecha Recepción:</th>
-              <td class="text-dark">{{ cabecera.fecha_recepcion or '---' }}</td>
-              <th class="bg-light text-end pe-3">Tipo Galpón:</th>
-              <td class="text-dark">{{ cabecera.tipo_galpon or '---' }}</td>
-            </tr>
-            <tr>
-              <th class="bg-light text-end pe-3">Nº Pollitas Recibidas:</th>
-              <td class="fw-bold text-dark">{{ cabecera.no_pollitas_recibidas or '---' }}</td>
-              <th class="bg-light text-end pe-3">Clima:</th>
-              <td class="text-dark">{{ cabecera.clima or '---' }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+    <div class="card-body p-0">
+      <table class="table table-bordered table-sm mb-0">
+        <tbody class="align-middle">
+          <tr>
+            <th class="bg-light text-end pe-3" style="width:20%;">Cliente:</th>
+            <td class="fw-bold text-dark" style="width:30%;">{{ cabecera.cliente or '---' }}</td>
+            <th class="bg-light text-end pe-3" style="width:20%;">Resp. Técnico:</th>
+            <td class="fw-semibold text-dark" style="width:30%;">{{ cabecera.responsable_tecnico or '---' }}</td>
+          </tr>
+          <tr>
+            <th class="bg-light text-end pe-3">Granja Levante:</th>
+            <td class="text-dark">{{ cabecera.granja_lev or '---' }}</td>
+            <th class="bg-light text-end pe-3">Ciudad:</th>
+            <td class="text-dark">{{ cabecera.ciudad or '---' }}</td>
+          </tr>
+          <tr>
+            <th class="bg-light text-end pe-3">Fecha Recepción:</th>
+            <td class="text-dark">{{ cabecera.fecha_recepcion or '---' }}</td>
+            <th class="bg-light text-end pe-3">Tipo Galpón:</th>
+            <td class="text-dark">{{ cabecera.tipo_galpon or '---' }}</td>
+          </tr>
+          <tr>
+            <th class="bg-light text-end pe-3">Aves Encasetadas:</th>
+            <td class="fw-bold text-dark">{{ cabecera.no_aves_encasetadas or '---' }}</td>
+            <th class="bg-light text-end pe-3">Clima:</th>
+            <td class="text-dark">{{ cabecera.clima or '---' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
-  
+
 </div>
 {% endif %}
 
@@ -221,10 +270,11 @@
 <!-- Contenedor principal de la tabla -->
 <!-- CONTROLES SUPERIORES: BOTÓN TEMPORAL Y PORCENTAJE DE VARIACIÓN -->
 <div class="d-flex justify-content-end mb-2 align-items-center pe-2 gap-4">
-  
+
   {% if session.get('user_rol') != 'Lector' %}
   <!-- BOTÓN TEMPORAL DE DESARROLLO -->
-  <button id="btnRecalcularTemp" class="btn btn-sm text-white fw-bold shadow-sm px-3" style="background-color: #97271C;">
+  <button id="btnRecalcularTemp" class="btn btn-sm text-white fw-bold shadow-sm px-3"
+    style="background-color: #97271C;">
     <i class='bx bx-refresh fs-5 align-middle me-1'></i> Recalcular Tabla
   </button>
   {% endif %}
@@ -239,7 +289,7 @@
       <span class="input-group-text border-dark bg-light fw-bold">%</span>
     </div>
   </div>
-  
+
 </div>
 <div class="tabla-scroll shadow-sm border rounded">
   <table class="table table-sm table-fixed mb-0" style="min-width: 8000px !important;">
@@ -247,51 +297,61 @@
     <!-- Anchos de columnas dimensionados en relacion a las clases sticky -->
     <colgroup>
       <!-- 1-3. Fijas -->
-      <col style="width:150px;">
+      <col style="width:130px;">
       <col style="width:90px;">
-      <col style="width:110px;">
-      
+      <col style="width:100px;">
+
       <!-- 4-6. Prod Huevo -->
       <col style="width:110px;">
       <col style="width:100px;">
       <col style="width:110px;">
-      
+
       <!-- 7-8. H.AV.ALOJ -->
       <col style="width:100px;">
       <col style="width:100px;">
-      
+
       <!-- 9-12. Consumo -->
       <col style="width:110px;">
       <col style="width:100px;">
       <col style="width:110px;">
       <col style="width:100px;">
-      
+
       <!-- 13-14. Conv T. -->
       <col style="width:100px;">
       <col style="width:100px;">
-      
+
       <!-- 15-16. Conv Real -->
       <col style="width:100px;">
       <col style="width:100px;">
-      
+
       <!-- 17-30. Aves (8), Peso Aves (4), Peso Huevo (2) -->
-      <col style="width:100px;"><col style="width:100px;"><col style="width:100px;"><col style="width:100px;">
-      <col style="width:100px;"><col style="width:100px;"><col style="width:100px;"><col style="width:100px;">
-      <col style="width:100px;"><col style="width:100px;"><col style="width:100px;"><col style="width:100px;">
-      <col style="width:100px;"><col style="width:100px;">
-      
+      <col style="width:100px;">
+      <col style="width:100px;">
+      <col style="width:100px;">
+      <col style="width:100px;">
+      <col style="width:100px;">
+      <col style="width:100px;">
+      <col style="width:100px;">
+      <col style="width:100px;">
+      <col style="width:100px;">
+      <col style="width:100px;">
+      <col style="width:100px;">
+      <col style="width:100px;">
+      <col style="width:100px;">
+      <col style="width:100px;">
+
       <!-- 31. Saldo Aves -->
       <col style="width:130px;">
-      
+
       <!-- 32. Observaciones (Ancho reducido a 250px) -->
       <col style="width:250px;">
-      
+
       <!-- 33-36. Masa Huevo -->
       <col style="width:110px;">
       <col style="width:110px;">
       <col style="width:110px;">
       <col style="width:110px;">
-      
+
       <!-- El resto de columnas ocultas/cálculos -->
       <col style="width:100px;">
       <col style="width:100px;">
@@ -357,7 +417,6 @@
         <!-- Título principal dinámico KILOS/BULTOS -->
         <th colspan="2" class="th-orange">{{ 'KILOS' if cabecera.unidad_medida|string == '1 Kg' else 'BULTOS' }}</th>
         <th rowspan="2" class="th-orange">SALIDAS ACUM</th>
-        <th rowspan="2" class="th-orange">GR x H</th>
 
         <th rowspan="2" class="th-black text-center">SEM</th>
         <th rowspan="2" class="th-black text-center">% Prod. TB</th>
@@ -465,9 +524,11 @@
             class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark">
         </td>
 
+        <!-- PRODUCCIÓN REAL (Formateado a 1 decimal) -->
         <td class="indicador-excel"
           title="Relación vs Tabla: {{ (f['prod_huevo_real']|float - f['prod_huevo_tab']|float)|round(1) if f['prod_huevo_real'] != None and f['prod_huevo_tab'] != None else '---' }}">
-          <input type="number" data-col="prod_huevo_real" value="{{ f['prod_huevo_real'] or '' }}"
+          <input type="number" step="0.1" data-col="prod_huevo_real" 
+            value="{{ '%.1f'|format(f['prod_huevo_real']|float) if f['prod_huevo_real'] is not none and f['prod_huevo_real']|string != '' else '' }}"
             class="form-control form-control-sm border-0 bg-transparent text-center fw-bold">
         </td>
 
@@ -477,14 +538,16 @@
             value="{{ '%.1f'|format(f['h_av_aloj_tab']|float) if f['h_av_aloj_tab'] is not none and f['h_av_aloj_tab']|string != '' else '' }}"
             class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark">
         </td>
+        <!-- H.AV.ALOJ REAL (Bloqueado porque se calcula en el backend) -->
         <td class="indicador-excel"
           title="Relación vs Tabla: {{ (f['h_av_aloj_real']|float - f['h_av_aloj_tab']|float)|round(1) if f['h_av_aloj_real'] != None and f['h_av_aloj_tab'] != None else '---' }}">
-          <input type="number" data-col="h_av_aloj_real" value="{{ f['h_av_aloj_real'] or '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold">
+          <input type="text" data-col="h_av_aloj_real" 
+            value="{{ '%.1f'|format(f['h_av_aloj_real']|float) if f['h_av_aloj_real'] is not none and f['h_av_aloj_real']|string != '' else '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly>
         </td>
 
         <!-- KILOS: Formato con separador de miles y 1 decimal -->
-        <td><input type="text" data-col="consumo_alim_kg" 
+        <td><input type="text" data-col="consumo_alim_kg"
             value="{{ '{:,.1f}'.format(f['consumo_alim_kg']|float) if f['consumo_alim_kg'] is not none and f['consumo_alim_kg']|string != '' else '' }}"
             class="form-control form-control-sm border-0 bg-transparent text-center text-dark"></td>
 
@@ -495,23 +558,27 @@
             class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark">
         </td>
 
-        <td><input type="number" data-col="consumo_alim_real" value="{{ f['consumo_alim_real'] or '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <!-- CONSUMO DE ALIMENTO REAL (Formateado a 1 decimal) -->
+        <td>
+          <input type="number" step="0.1" data-col="consumo_alim_real" 
+            value="{{ '%.1f'|format(f['consumo_alim_real']|float) if f['consumo_alim_real'] is not none and f['consumo_alim_real']|string != '' else '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold">
+        </td>
         <!-- K.A.A formateado a 3 decimales -->
-        <td><input type="number" step="0.001" data-col="consumo_alim_k_a_a" 
+        <td><input type="number" step="0.001" data-col="consumo_alim_k_a_a"
             value="{{ '%.3f'|format(f['consumo_alim_k_a_a']|float) if f['consumo_alim_k_a_a'] is not none and f['consumo_alim_k_a_a']|string != '' else '' }}"
             class="form-control form-control-sm border-0 bg-transparent text-center"></td>
 
-       <!-- CONVERSIÓN T. SEM (Fórmula =J*100/E*12) -->
+        <!-- CONVERSIÓN T. SEM (Fórmula =J*100/E*12) -->
         <td style="background-color: #cccccc;">
-          <input type="text" data-col="conv_sem_tab" 
+          <input type="text" data-col="conv_sem_tab"
             value="{{ '{:,.1f}'.format(f['conv_sem_tab']|float) if f['conv_sem_tab'] is not none and f['conv_sem_tab']|string != '' else '' }}"
             class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly>
         </td>
 
         <!-- CONVERSIÓN T. ACUM (Fórmula =SUMA(J)*100/SUMA(E)*12) -->
         <td style="background-color: #cccccc;">
-          <input type="text" data-col="conv_acum_tab" 
+          <input type="text" data-col="conv_acum_tab"
             value="{{ '{:,.1f}'.format(f['conv_acum_tab']|float) if f['conv_acum_tab'] is not none and f['conv_acum_tab']|string != '' else '' }}"
             class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly>
         </td>
@@ -586,11 +653,11 @@
           </div>
         </td>
 
-        <!-- MASA HUEVO REAL SEM (Número Entero) -->
+        <!-- MASA HUEVO REAL SEM (Cálculo matemático bloqueado) -->
         <td>
-          <input type="number" data-col="masa_huevo_real_sem" 
+          <input type="text" data-col="masa_huevo_real_sem"
             value="{{ f['masa_huevo_real_sem'] | int if f['masa_huevo_real_sem'] is not none and f['masa_huevo_real_sem']|string != '' else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold">
+            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly>
         </td>
 
         <!-- Formateo a numero entero y sombreado gris para MASA HUEVO TAB SEM -->
@@ -600,11 +667,11 @@
             class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark">
         </td>
 
-        <!-- MASA HUEVO REAL ACUM (Número Entero) -->
+       <!-- MASA HUEVO REAL ACUM (Cálculo matemático bloqueado) -->
         <td>
-          <input type="number" data-col="masa_huevo_real_acum" 
+          <input type="text" data-col="masa_huevo_real_acum"
             value="{{ f['masa_huevo_real_acum'] | int if f['masa_huevo_real_acum'] is not none and f['masa_huevo_real_acum']|string != '' else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold">
+            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly>
         </td>
 
         <!-- Formateo a 1 decimal y sombreado gris para MASA HUEVO TAB ACUM -->
@@ -614,8 +681,11 @@
             class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark">
         </td>
 
-        <td><input type="number" data-col="cons_agua_real" value="{{ f['cons_agua_real'] or '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <!-- CONSUMO AGUA REAL (Número Entero) -->
+        <td>
+          <input type="number" data-col="cons_agua_real" value="{{ f['cons_agua_real'] or '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold">
+        </td>
 
         <!-- Formateo a numero entero y sombreado gris para CONSUMO AGUA TAB -->
         <td style="background-color: #cccccc;">
@@ -624,19 +694,34 @@
             class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark">
         </td>
 
-        <td><input type="number" data-col="huevo_acum" value="{{ f['huevo_acum'] or '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold"></td>
-        <td><input type="number" data-col="conv_kg_doc_acum" value="{{ f['conv_kg_doc_acum'] or '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <!-- H. ACUM (Calculado en el backend) -->
+        <td style="background-color: rgba(0,0,0,0.05);">
+          <input type="text" data-col="huevo_acum"
+            value="{{ f['huevo_acum'] | int if f['huevo_acum'] is not none and f['huevo_acum']|float > 0 else '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly>
+        </td>
+        <!-- Conv Kg/Doc Acum -->
+        <td style="background-color: rgba(0,0,0,0.05);">
+          {% set val_conv = f['conv_kg_doc_acum'] | default(0) | float %}
+          <input type="text" data-col="conv_kg_doc_acum" value="{{ '%.2f'|format(val_conv) if val_conv > 0 else '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly>
+        </td>
 
-        <td><input type="number" data-col="kg_sem" value="{{ f['kg_sem'] or '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
-        <td><input type="number" data-col="kg_acum" value="{{ f['kg_acum'] or '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <!-- KILOS SEM (Calculado en el backend, visualizado sin decimales) -->
+        <td style="background-color: rgba(0,0,0,0.05);">
+          <input type="text" data-col="kg_sem"
+            value="{{ f['kg_sem'] if f['kg_sem'] is not none and f['kg_sem']|float > 0 else '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly>
+        </td>
+
+        <!-- KILOS ACUM (Calculado en el backend, visualizado sin decimales) -->
+        <td style="background-color: rgba(0,0,0,0.05);">
+          <input type="text" data-col="kg_acum"
+            value="{{ f['kg_acum'] if f['kg_acum'] is not none and f['kg_acum']|float > 0 else '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly>
+        </td>
 
         <td><input type="number" data-col="salidas_acum" value="{{ f['salidas_acum'] or '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
-        <td><input type="number" data-col="gr_x_huevo" value="{{ f['gr_x_huevo'] or '' }}"
             class="form-control form-control-sm border-0 bg-transparent text-center"></td>
 
         <td><input type="number" step="any" data-col="sem_graf"
@@ -668,68 +753,119 @@
             style="background-color: rgba(0,0,0,0.05);"></td>
         <td><input type="number" step="0.1" data-col="gr_tb_graf"
             value="{{ '%.1f'|format(f['gr_tb_graf']|float) if f['gr_tb_graf'] is not none and f['gr_tb_graf']|string != '' else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly style="background-color: rgba(0,0,0,0.05);"></td>
+            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly
+            style="background-color: rgba(0,0,0,0.05);"></td>
         <td><input type="number" step="0.1" data-col="porcentaje_prod_real"
             value="{{ '%.1f'|format(f['porcentaje_prod_real']|float) if f['porcentaje_prod_real'] is not none and f['porcentaje_prod_real']|string != '' else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly style="background-color: rgba(0,0,0,0.05);"></td>
+            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly
+            style="background-color: rgba(0,0,0,0.05);"></td>
         <td><input type="number" step="0.01" data-col="haa_real"
             value="{{ '%.2f'|format(f['haa_real']|float) if f['haa_real'] is not none and f['haa_real']|string != '' else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly style="background-color: rgba(0,0,0,0.05);"></td>
-        <td><input type="number" step="0.1" data-col="gr_ave_dia_graf"
-            value="{{ '%.1f'|format(f['gr_ave_dia_graf']|float) if f['gr_ave_dia_graf'] is not none and f['gr_ave_dia_graf']|string != '' else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly style="background-color: rgba(0,0,0,0.05);"></td>
+            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly
+            style="background-color: rgba(0,0,0,0.05);"></td>
+        <td>
+          <input type="number" step="0.1" data-col="gr_ave_dia_graf"
+            value="{{ '%.1f'|format(f['consumo_alim_real']|float) if f['consumo_alim_real'] is not none and f['consumo_alim_real']|string != '' else '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly
+            style="background-color: rgba(0,0,0,0.05);">
+        </td>
         <td><input type="number" step="0.01" data-col="porcentaje_mort_acum_graf"
             value="{{ '%.2f'|format(f['porcentaje_mort_acum_graf']|float) if f['porcentaje_mort_acum_graf'] is not none and f['porcentaje_mort_acum_graf']|string != '' else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly style="background-color: rgba(0,0,0,0.05);"></td>
+            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly
+            style="background-color: rgba(0,0,0,0.05);"></td>
         <td><input type="number" step="any" data-col="peso_huevo_real"
             value="{{ f['peso_huevo_real'] if f['peso_huevo_real'] != None else '' }}"
             class="form-control form-control-sm border-0 bg-transparent text-center"></td>
-        
+
+        <!-- Conv. Acum (Espejo visual exacto de Conv Kg/Doc Acum) -->
         <td style="background-color: rgba(0,0,0,0.05);">
-          <input type="text" data-col="conv_acum" 
-            value="{{ '{:,.1f}'.format(f['conv_acum']|float) if f['conv_acum'] is not none and f['conv_acum']|string != '' else '' }}"
+          <input type="text"
+            value="{{ '%.2f'|format(f['conv_kg_doc_acum']|float) if f['conv_kg_doc_acum'] is not none and f['conv_kg_doc_acum']|float > 0 else '' }}"
             class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly>
         </td>
-        
-        <td><input type="number" step="any" data-col="gr_por_huevo"
-            value="{{ f['gr_por_huevo'] if f['gr_por_huevo'] != None else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+
+        <!-- Gr X H (Calculado a 1 decimal) -->
+        <td style="background-color: rgba(0,0,0,0.05);">
+          {% set val_gr_x_h = f['gr_por_huevo'] | default(0) | float %}
+          <input type="text" data-col="gr_por_huevo" value="{{ '%.1f'|format(val_gr_x_h) if val_gr_x_h > 0 else '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly>
+        </td>
         <td><input type="number" step="any" data-col="precio_dieta"
             value="{{ f['precio_dieta'] if f['precio_dieta'] != None else '' }}"
             class="form-control form-control-sm border-0 bg-transparent text-center"></td>
-        <td><input type="number" step="any" data-col="costo_huevo"
-            value="{{ f['costo_huevo'] if f['costo_huevo'] != None else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
-        <td><input type="number" step="any" data-col="prod_tab_unidad_huevo"
-            value="{{ f['prod_tab_unidad_huevo'] if f['prod_tab_unidad_huevo'] != None else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
-        <td><input type="number" step="any" data-col="consumo_kg_tab_graf"
-            value="{{ f['consumo_kg_tab_graf'] if f['consumo_kg_tab_graf'] != None else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
-        <td><input type="number" step="any" data-col="huevos_acum_tab"
-            value="{{ f['huevos_acum_tab'] if f['huevos_acum_tab'] != None else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
-        <td><input type="number" step="any" data-col="consumo_acum_tab"
-            value="{{ f['consumo_acum_tab'] if f['consumo_acum_tab'] != None else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
-        <td><input type="number" step="any" data-col="conv_acum_tab_1"
-            value="{{ f['conv_acum_tab_1'] if f['conv_acum_tab_1'] != None else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
-        <td><input type="number" step="any" data-col="conv_acum_tab_2"
-            value="{{ f['conv_acum_tab_2'] if f['conv_acum_tab_2'] != None else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <!-- Costo Huevo (Condicional: Texto si no hay producción, o $ Numérico) -->
+        <td style="background-color: rgba(0,0,0,0.05);">
+          {% set huevos_sem = f['prod_huevo_sem'] | default(0) | float %}
+
+          {% if huevos_sem < 1 %} <!-- Si no hay huevos, muestra el texto estático -->
+            <input type="text" data-col="costo_huevo" value="Prod. no iniciada"
+              class="form-control form-control-sm border-0 bg-transparent text-center text-muted"
+              style="font-size: 0.85rem;" readonly title="Producción no iniciada">
+            {% else %}
+            <!-- Si hay huevos, muestra el cálculo con símbolo de dólar y 2 decimales -->
+            <input type="text" data-col="costo_huevo"
+              value="{{ '$ %.2f'|format(f['costo_huevo']|float) if f['costo_huevo'] is not none else '' }}"
+              class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly>
+            {% endif %}
+        </td>
+        <!-- Producción Tab-Unidad-Huevo (Bloqueado a > 0 y visualizado sin decimales) -->
+        <td style="background-color: rgba(0,0,0,0.05);">
+          <input type="text" data-col="prod_tab_unidad_huevo"
+            value="{{ f['prod_tab_unidad_huevo'] | int if f['prod_tab_unidad_huevo'] is not none and f['prod_tab_unidad_huevo']|float > 0 else '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly>
+        </td>
+        <!-- Consumo KG TAB (Calculado en el backend, visualizado sin decimales) -->
+        <td style="background-color: rgba(0,0,0,0.05);">
+          <input type="text" data-col="consumo_kg_tab_graf"
+            value="{{ f['consumo_kg_tab_graf'] | int if f['consumo_kg_tab_graf'] is not none and f['consumo_kg_tab_graf']|string != '' else '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly>
+        </td>
+        <!-- DATOS DE ACUMULADOS CALCULADOS DESDE EL BACKEND -->
+        <td>
+          <input type="text" data-col="huevos_acum_tab" value="{{ f['huevos_acum_tab'] }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center text-dark" readonly>
+        </td>
+
+        <td style="background-color: #cccccc;">
+          <input type="text" data-col="consumo_acum_tab" value="{{ f['consumo_acum_tab'] }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly>
+        </td>
+
+        <!-- Conversión Acom 1 -->
+        <td>
+          <input type="text" data-col="conv_acum_tab_1"
+            value="{{ '%.2f'|format(f['conv_acum_tab_1']|float) if f['conv_acum_tab_1'] else '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly>
+        </td>
+
+        <!-- Conversión Acom 2 -->
+        <td>
+          <input type="text" data-col="conv_acum_tab_2"
+            value="{{ '%.2f'|format(f['conv_acum_tab_2']|float) if f['conv_acum_tab_2'] else '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly>
+        </td>
         <td><input type="number" step="any" data-col="porcentaje_huevo_nc"
             value="{{ f['porcentaje_huevo_nc'] if f['porcentaje_huevo_nc'] != None else '' }}"
             class="form-control form-control-sm border-0 bg-transparent text-center"></td>
-        <td><input type="number" step="any" data-col="total_huevo_real"
-            value="{{ f['total_huevo_real'] if f['total_huevo_real'] != None else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
-        <td><input type="number" step="any" data-col="cant_unidades_perdida"
-            value="{{ f['cant_unidades_perdida'] if f['cant_unidades_perdida'] != None else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
-        <td><input type="number" step="any" data-col="suma_saldo_aves"
-            value="{{ f['suma_saldo_aves'] if f['suma_saldo_aves'] != None else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <!-- Total Huevo Real -->
+        <td>
+          <input type="text" data-col="total_huevo_real"
+            value="{{ '{:,.0f}'.format(f['total_huevo_real']|float) if f['total_huevo_real'] != None else '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly>
+        </td>
+
+        <!-- Cantidad Unidades perdida -->
+        <td>
+          <input type="text" data-col="cant_unidades_perdida"
+            value="{{ '{:,.0f}'.format(f['cant_unidades_perdida']|float) if f['cant_unidades_perdida'] != None else '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly>
+        </td>
+        <!-- Suma Saldo Aves (Formateado a número entero y bloqueado) -->
+        <td style="background-color: #cccccc;">
+          <input type="text" data-col="suma_saldo_aves"
+            value="{{ f['suma_saldo_aves'] | int if f['suma_saldo_aves'] is not none and f['suma_saldo_aves']|string != '' else '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly>
+        </td>
 
       </tr>
       {% else %}
@@ -815,12 +951,12 @@
       input.addEventListener('change', function () {
         const id = this.closest('tr').dataset.id;
         const columna = this.dataset.col;
-        
+
         let valor = this.value;
         if (typeof valor === 'string') {
-            valor = valor.replace(/,/g, '');
+          valor = valor.replace(/,/g, '');
         }
-        
+
         const el = this;
 
         fetch(API_URL_SEM, {
@@ -833,26 +969,30 @@
             if (data.status === 'ok') {
               el.style.backgroundColor = "rgba(40, 167, 69, 0.2)";
               setTimeout(() => el.style.backgroundColor = "transparent", 800);
-              
+
               if (columna === 'prod_huevo_real') {
-                 const celdaCopia = el.closest('tr').querySelector('input[data-col="porcentaje_prod_real"]');
-                 if (celdaCopia) celdaCopia.value = valor ? parseFloat(valor).toFixed(1) : '';
+                const celdaCopia = el.closest('tr').querySelector('input[data-col="porcentaje_prod_real"]');
+                if (celdaCopia) celdaCopia.value = valor ? parseFloat(valor).toFixed(1) : '';
               }
               if (columna === 'h_av_aloj_real') {
-                 const celdaCopiaHAA = el.closest('tr').querySelector('input[data-col="haa_real"]');
-                 if (celdaCopiaHAA) celdaCopiaHAA.value = valor ? parseFloat(valor).toFixed(2) : '';
+                const celdaCopiaHAA = el.closest('tr').querySelector('input[data-col="haa_real"]');
+                if (celdaCopiaHAA) celdaCopiaHAA.value = valor ? parseFloat(valor).toFixed(2) : '';
               }
               if (columna === 'consumo_alim_real') {
-                 const celdaCopiaGr = el.closest('tr').querySelector('input[data-col="gr_ave_dia_graf"]');
-                 if (celdaCopiaGr) celdaCopiaGr.value = valor ? parseFloat(valor).toFixed(1) : '';
+                const celdaCopiaGr = el.closest('tr').querySelector('input[data-col="gr_ave_dia_graf"]');
+                if (celdaCopiaGr) celdaCopiaGr.value = valor ? parseFloat(valor).toFixed(1) : '';
+              }
+              if (columna === 'conv_kg_doc_acum') {
+                const celdaCopiaConv = el.closest('tr').querySelector('input[data-col="conv_acum"]');
+                if (celdaCopiaConv) celdaCopiaConv.value = valor ? parseFloat(valor).toFixed(2) : '';
               }
               if (columna === 'percent_mort_acum') {
-                 const celdaCopiaMort = el.closest('tr').querySelector('input[data-col="porcentaje_mort_acum_graf"]');
-                 if (celdaCopiaMort) celdaCopiaMort.value = valor ? parseFloat(valor).toFixed(2) : '';
+                const celdaCopiaMort = el.closest('tr').querySelector('input[data-col="porcentaje_mort_acum_graf"]');
+                if (celdaCopiaMort) celdaCopiaMort.value = valor ? parseFloat(valor).toFixed(2) : '';
               }
 
               if (['porcentaje_prod_tb'].includes(columna)) {
-                 setTimeout(() => location.reload(), 800);
+                setTimeout(() => location.reload(), 800);
               }
             } else {
               alert('Error al guardar: ' + data.msg);
@@ -916,15 +1056,15 @@
   // 5. BOTÓN TEMPORAL DE RECÁLCULO (SOLO EDITORES)
   document.addEventListener("DOMContentLoaded", function () {
     const btnRecalcular = document.getElementById('btnRecalcularTemp');
-    
+
     if (btnRecalcular && userRol !== 'Lector') {
-      btnRecalcular.addEventListener('click', function() {
+      btnRecalcular.addEventListener('click', function () {
         const primeraFila = document.querySelector('tbody tr[data-id]');
         if (!primeraFila) {
-            alert("No hay datos para recalcular.");
-            return;
+          alert("No hay datos para recalcular.");
+          return;
         }
-        
+
         const textoOriginal = btnRecalcular.innerHTML;
         btnRecalcular.innerHTML = "<span class='spinner-border spinner-border-sm me-1'></span>Recalculando...";
         btnRecalcular.disabled = true;
@@ -934,25 +1074,25 @@
         const valorActual = inputMath ? inputMath.value : '';
 
         fetch(API_URL_SEM, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: idSemanal, columna: 'prod_huevo_real', valor: valorActual })
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: idSemanal, columna: 'prod_huevo_real', valor: valorActual })
         })
-        .then(r => r.json())
-        .then(data => {
-            if (data.status === 'ok') location.reload(); 
+          .then(r => r.json())
+          .then(data => {
+            if (data.status === 'ok') location.reload();
             else {
-                alert('Error al recalcular: ' + data.msg);
-                btnRecalcular.innerHTML = textoOriginal;
-                btnRecalcular.disabled = false;
+              alert('Error al recalcular: ' + data.msg);
+              btnRecalcular.innerHTML = textoOriginal;
+              btnRecalcular.disabled = false;
             }
-        })
-        .catch(err => {
+          })
+          .catch(err => {
             console.error('Error:', err);
             alert('Error de red al recalcular.');
             btnRecalcular.innerHTML = textoOriginal;
             btnRecalcular.disabled = false;
-        });
+          });
       });
     }
   });

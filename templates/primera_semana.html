@@ -14,22 +14,31 @@
   }
 </style>
 
-<div class="alert py-2 mb-3 fw-bold text-center text-uppercase fs-5 shadow-sm"
-  style="background-color: #343a40; color: #ffff; border: none;">
-  INFORME 1ERA SEMANA
-</div>
+<!-- BARRA SUPERIOR OSCURA: TÍTULO Y FILTRO -->
+<div class="d-flex flex-wrap align-items-center justify-content-between mb-3 px-3 py-2 rounded shadow-sm" style="background-color: #212529;">
+  
+  <!-- Título a la izquierda en texto blanco -->
+  <h5 class="mb-0 fw-bold text-uppercase text-white" style="letter-spacing: 0.5px;">
+    INFORME 1ERA SEMANA
+  </h5>
 
-<div class="filtro-bar mb-4 card shadow-sm p-3 bg-light border-0">
-  <form method="POST" class="d-flex align-items-center gap-3">
-    <label for="lote" class="mb-0 fw-bold text-secondary">SELECCIONE UN LOTE:</label>
-    <select name="lote" id="lote" class="form-select border-dark" style="width:300px; font-weight: bold;">
-      <option value="">-- Seleccione --</option>
-      {% for l in lotes %}
-      <option value="{{ l }}" {% if lote_seleccionado==l %}selected{% endif %}>LOTE {{ l }}</option>
-      {% endfor %}
-    </select>
-    <button type="submit" class="btn btn-naranja fw-bold px-4">Cargar Datos</button>
-  </form>
+  <!-- Filtro centrado -->
+  <div class="mx-auto">
+    <form method="POST" class="d-flex align-items-center gap-2 m-0">
+      <label for="lote" class="mb-0 fw-bold text-light text-nowrap" style="font-size: 0.9rem;">SELECCIONE UN LOTE:</label>
+      <select name="lote" id="lote" class="form-select form-select-sm border-0 fw-bold shadow-none" style="width: 220px;">
+        <option value="">-- Seleccione --</option>
+        {% for l in lotes %}
+        <option value="{{ l }}" {% if lote_seleccionado==l %}selected{% endif %}>LOTE {{ l }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="btn btn-naranja btn-sm fw-bold px-3 border-0">Cargar Datos</button>
+    </form>
+  </div>
+  
+  <!-- Espaciador invisible para forzar el centro perfecto del filtro -->
+  <div style="width: 320px;" class="d-none d-lg-block"></div>
+  
 </div>
 
 {% if lote_seleccionado %}

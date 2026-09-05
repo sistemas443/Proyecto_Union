@@ -276,6 +276,63 @@
   });
 </script>
 
+<!-- VIGILANTE DE INACTIVIDAD DE SESIÓN -->
+  {% if session.get('user_id') %}
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      let temporizadorInactividad;
+      
+      // CONFIGURACIÓN: Tiempo límite en milisegundos (15 minutos = 15 * 60 * 1000)
+      const TIEMPO_LIMITE = 15 * 60 * 1000;
+      function cerrarSesionPorInactividad() {
+        // Mostramos una alerta bonita con SweetAlert2 que ya tienes instalado
+        Swal.fire({
+          title: 'Sesión Expirada',
+          text: 'Por tu seguridad, la sesión se ha cerrado debido a inactividad.',
+          icon: 'warning',
+          timer: 3000,
+          timerProgressBar: true,
+          showConfirmButton: false,
+          allowOutsideClick: false
+        }).then(() => {
+          // Redirigimos a la ruta de logout en Python
+          window.location.href = "{{ url_for('main.logout') }}";
+        });
+      }
+
+      function reiniciarTemporizador() {
+        clearTimeout(temporizadorInactividad);
+        temporizadorInactividad = setTimeout(cerrarSesionPorInactividad, TIEMPO_LIMITE);
+      }
+
+      // Escuchamos cualquier señal de vida del usuario en la página
+      window.onload = reiniciarTemporizador;
+      document.onmousemove = reiniciarTemporizador;
+      document.onkeypress = reiniciarTemporizador;
+      document.onclick = reiniciarTemporizador;
+      document.onscroll = reiniciarTemporizador;
+    });
+  </script>
+
+  <!-- ATAJO DE TECLADO: ALT + Z PARA OCULTAR/MOSTRAR INFO GENERAL -->
+<script>
+  document.addEventListener("keydown", function (event) {
+    // Detectamos si presiona la tecla 'Alt' y la tecla 'Z' (sin importar si está en mayúscula o minúscula)
+    if (event.altKey && event.key.toLowerCase() === "z") {
+      
+      // Buscamos el botón/encabezado que controla el acordeón de la Info General
+      const btnInfoGeneral = document.querySelector('[data-bs-target="#collapseInfoGeneral"]');
+      
+      // Si la pantalla actual tiene ese encabezado, hacemos clic por el usuario
+      if (btnInfoGeneral) {
+        event.preventDefault(); // Evitamos que el navegador haga alguna acción por defecto
+        btnInfoGeneral.click(); // Simulamos el clic mágico
+      }
+    }
+  });
+</script>
+  {% endif %}
+
   {% block scripts %}{% endblock %}
 </body>
 </html>

@@ -18,7 +18,7 @@ from models.diario.services import get_diario_all, update_registro_diario_field
 from models.semanal.services import get_semanal_all, update_semanal_field as update_produccion_field
 from models.primera_semana.services import get_primera_semana_by_lote, update_primera_semana_field
 from models.semanal_levante.services import get_semanal_levante_all, update_semanal_field as update_levante_field
-from models.clasificacion.services import get_clasificacion_all, update_clasificacion_field
+from models.clasificacion.services import get_clasificacion_all, update_clasificacion_field, recalcular_lote_completo_clasificacion
 from models.lotes.services import get_lotes_distintos, get_todos_los_lotes, guardar_nuevo_lote, actualizar_lote, borrar_lote, get_opciones_dinamicas
 
 # Registramos este archivo como un componente (Blueprint) principal de Flask
@@ -789,6 +789,24 @@ def actualizar_clasificacion():
     except Exception as e: 
         print(f"[ERROR CRÍTICO EN API CLASIFICACIÓN]: {e}")
         return jsonify({'status': 'error', 'msg': 'Error interno de red.'}), 500
+    
+@bp.route('/api/clasificacion/recalcular', methods=['POST'])
+@login_requerido
+@superadmin_requerido
+def recalcular_clas_lote():
+    # Recálculo forzado de toda la tabla de clasificación. Exclusivo para administradores.
+    data = request.get_json(silent=True) or {}
+    lote = data.get('lote')
+    
+    cabecera = get_cabecera_info(lote)
+    if not cabecera:
+        return jsonify({'status': 'error', 'msg': 'Lote no encontrado'}), 404
+        
+    exito = recalcular_lote_completo_clasificacion(cabecera['id'])
+    
+    if exito:
+        return jsonify({'status': 'ok'})
+    return jsonify({'status': 'error', 'msg': 'Error en el servidor al recalcular'}), 500
 
 @bp.route('/lotes')
 @login_requerido

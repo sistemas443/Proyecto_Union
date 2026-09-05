@@ -7,11 +7,9 @@ from models.semanal import model
 from models.cabecera.model import fetch_cabecera_by_lote
 
 # Las siguientes funciones contienen las curvas estándar de la genética del ave.
-# Retornan listas con los valores ideales semana a semana (empezando desde la semana 18).
-# Se extienden artificialmente replicando el último valor para cubrir lotes muy viejos (hasta la semana 110+).
 
 def obtener_guia_prod_huevo_tab():
-    guia = [ # Guía de producción de huevo
+    guia = [
         7.7, 27.1, 57.3, 80.5, 90.6, 94.1, 95.5, 96.2, 96.4, 96.6,
         96.6, 96.6, 96.5, 96.5, 96.5, 96.3, 96.1, 96.0, 95.8, 95.7,
         95.5, 95.3, 95.0, 94.9, 94.6, 94.4, 94.1, 93.8, 93.5, 93.3,
@@ -23,12 +21,11 @@ def obtener_guia_prod_huevo_tab():
         72.5, 72.1, 71.7, 70.0, 70.0, 70.0, 69.0, 69.0, 68.0, 68.0,
         67.0, 67.0, 66.0
     ]
-    # Rellena 50 semanas extra asumiendo que la producción se estanca en 66.0%
     guia += [66.0] * 50 
     return guia
 
 def obtener_guia_h_av_aloj_tab():
-    guia = [ # Guía de alojamientos por ave
+    guia = [
         0.5, 2.4, 6.4, 12.1, 18.4, 25.0, 31.6, 38.3, 45.0, 51.8,
         58.5, 65.2, 71.9, 78.6, 85.3, 92.0, 98.7, 105.3, 111.9, 118.6,
         125.2, 131.8, 138.3, 144.9, 151.4, 157.9, 164.4, 170.9, 177.3, 183.8,
@@ -50,7 +47,7 @@ def obtener_guia_consumo_alim_tab():
     return guia
 
 def obtener_guia_mort_tab():
-    guia = [ # Guía de mortalidad acumulada
+    guia = [
         0.05, 0.08, 0.13, 0.20, 0.27, 0.34, 0.40, 0.46, 0.50, 0.55,
         0.61, 0.66, 0.71, 0.76, 0.80, 0.86, 0.92, 0.97, 1.02, 1.08,
         1.12, 1.18, 1.24, 1.30, 1.35, 1.41, 1.47, 1.52, 1.59, 1.64,
@@ -65,7 +62,7 @@ def obtener_guia_mort_tab():
     return guia
 
 def obtener_guia_peso_ave_tab():
-    guia = [ # Guía de peso del ave
+    guia = [
         1670, 1740, 1800, 1850, 1890, 1890, 1900, 1910, 1920, 1940,
         1950, 1960, 1980, 1980, 1990, 1990, 2000, 2010, 2010, 2010,
         2020, 2020, 2020, 2020, 2020
@@ -74,7 +71,7 @@ def obtener_guia_peso_ave_tab():
     return guia
 
 def obtener_guia_peso_huevo_tab():
-    guia = [ # Guía de peso del huevo
+    guia = [
         46.50, 49.30, 51.60, 53.50, 55.00, 56.40, 57.50, 58.40, 59.20, 59.90,
         60.40, 60.90, 61.30, 61.70, 62.00, 62.30, 62.50, 62.70, 62.90, 63.10,
         63.20, 63.30, 63.40, 63.50, 63.60, 63.70, 63.80, 63.90, 63.90, 64.00,
@@ -89,7 +86,7 @@ def obtener_guia_peso_huevo_tab():
     return guia
 
 def obtener_guia_masa_huevo_tab_sem():
-    guia = [ # Guía de masa de huevo por semana
+    guia = [
         50, 100, 200, 300, 400, 400, 400, 400, 300, 400,
         400, 400, 400, 400, 400, 400, 400, 400, 400, 400,
         400, 400, 400, 400, 400, 400, 400, 400, 300, 400,
@@ -103,11 +100,19 @@ def obtener_guia_masa_huevo_tab_sem():
     return guia
 
 def obtener_guia_masa_huevo_tab_acum():
-    guia = [ # Guía de masa de huevo acumulada
-        23.9, 24.2, 24.5, 24.9, 25.2, 25.5, 25.9, 26.2, 26.5, 26.8,
-        27.1, 27.4, 27.8, 28.1, 28.4, 28.7, 29.0, 29.3, 29.6, 29.9
+    guia = [
+        0.0, 0.1, 0.2, 0.5, 0.8, 1.2, 1.6, 2.0, 2.4, 2.8,
+        3.2, 3.6, 4.0, 4.4, 4.8, 5.2, 5.6, 6.0, 6.4, 6.9,
+        7.3, 7.7, 8.1, 8.5, 8.9, 9.3, 9.7, 10.1, 10.5, 10.9,
+        11.4, 11.8, 12.2, 12.6, 13.0, 13.4, 13.8, 14.2, 14.5, 14.9,
+        15.3, 15.7, 16.1, 16.5, 16.9, 17.3, 17.7, 18.1, 18.4, 18.8,
+        19.2, 19.6, 20.0, 20.3, 20.7, 21.1, 21.4, 21.8, 22.1, 22.5,
+        22.8, 23.2, 23.5, 23.9, 24.2, 24.5, 24.9, 25.2, 25.5, 25.9,
+        26.2, 26.5, 26.8, 27.1, 27.4, 27.8, 28.1, 28.4, 28.7, 29.0,
+        29.3, 29.6, 29.9
     ]
-    guia += [29.9] * 80
+    # Rellenamos las semanas restantes manteniendo el tope de 29.9 para lotes viejos
+    guia += [29.9] * 50
     return guia
 
 def obtener_guia_cons_agua_tab():
@@ -118,13 +123,9 @@ def obtener_guia_cons_agua_tab():
     guia += [210] * 50
     return guia
 
-
 def generar_estructura_semanal_unificada(lote_nombre, fecha_encasetamiento, id_lote):
-    # Crea las filas vacías en la base de datos la primera vez que se consulta un lote.
-    # Inicia en la semana 18, ya que de la 1 a la 17 corresponden al módulo de 'Levante'.
     if not id_lote or not lote_nombre:
         return
-    # Si ya existen registros, no hace nada para no duplicar datos
     if model.count_semanal(id_lote) > 0:
         return
         
@@ -141,15 +142,12 @@ def generar_estructura_semanal_unificada(lote_nombre, fecha_encasetamiento, id_l
         semana_vida = i
         fecha_str = None
         if fecha_base:
-            # Calcula el último día de esta semana en específico sumando 7 días por cada semana transcurrida
             dias_a_sumar = 6 + ((semana_vida - 18) * 7)
             fecha_str = (fecha_base + timedelta(days=dias_a_sumar)).strftime('%Y-%m-%d')
         valores.append((lote_nombre, id_lote, fecha_str, semana_vida))
     model.insert_estructura_semanal(valores)
 
 def aplicar_parche_fechas_semanal(id_lote, fecha_encasetamiento, rows):
-    # Sincronizador de fechas: Si el usuario cambia la fecha de encasetamiento en la cabecera,
-    # esta función recalcula y corrige todas las fechas de fin de semana de toda la tabla de producción.
     if not fecha_encasetamiento or str(fecha_encasetamiento).strip() == '':
         return False
         
@@ -165,7 +163,6 @@ def aplicar_parche_fechas_semanal(id_lote, fecha_encasetamiento, rows):
             fecha_correcta = (fecha_base + timedelta(days=dias_a_sumar)).strftime('%Y-%m-%d')
             fecha_actual = f['fecha_fin_sem']
             
-            # Solo actualiza si detecta una inconsistencia, ahorrando recursos del servidor
             if fecha_actual != fecha_correcta:
                 cur.execute("UPDATE bd_vargas SET fecha_fin_sem = %s WHERE id_sem_prod = %s", (fecha_correcta, id_sem_prod))
                 actualizado = True
@@ -181,11 +178,10 @@ def aplicar_parche_fechas_semanal(id_lote, fecha_encasetamiento, rows):
         if 'conn' in locals(): conn.close()
 
 def aplicar_parche_guias_semanal(id_lote):
-    # Inyector de tablas guía: Recorre la base de datos y si encuentra una celda 'Tabla' (esperada por genética)
-    # vacía o en cero, le inyecta el valor correspondiente sacado de las funciones de arriba.
+    # Inyecta valores guía de genética en celdas vacías y fuerza la actualización de masa_huevo_tab_acum
     conn = get_db_connection()
     cur = conn.cursor()
-    try: # Obtiene las guías de producción y las filas de la base de datos
+    try:
         guia_prod = obtener_guia_prod_huevo_tab()
         guia_aloj = obtener_guia_h_av_aloj_tab()
         guia_cons = obtener_guia_consumo_alim_tab()
@@ -213,7 +209,6 @@ def aplicar_parche_guias_semanal(id_lote):
             val_masa_acum = fila[9]
             val_agua = fila[10]
             
-            # El índice 0 de la lista guía corresponde a la semana 18
             idx = sem_prod - 18
             
             upd_prod, upd_aloj, upd_cons = val_prod, val_aloj, val_cons
@@ -221,7 +216,6 @@ def aplicar_parche_guias_semanal(id_lote):
             upd_masa_sem, upd_masa_acum, upd_agua = val_masa_sem, val_masa_acum, val_agua
             necesita_update = False
             
-            # Comprueba una a una si las celdas están vacías y las llena con la guía
             if 0 <= idx < len(guia_prod):
                 if val_prod is None or str(val_prod).strip() in ('', '0', '0.0', 'None'):
                     upd_prod = guia_prod[idx]
@@ -258,7 +252,8 @@ def aplicar_parche_guias_semanal(id_lote):
                     necesita_update = True
                     
             if 0 <= idx < len(guia_masa_acum):
-                if val_masa_acum is None or str(val_masa_acum).strip() in ('', '0', '0.0', 'None'):
+                # Parche forzado sin restricción de celda vacía para corregir lotes viejos
+                if to_float_safe(val_masa_acum) != guia_masa_acum[idx]:
                     upd_masa_acum = guia_masa_acum[idx]
                     necesita_update = True
                     
@@ -267,11 +262,9 @@ def aplicar_parche_guias_semanal(id_lote):
                     upd_agua = guia_agua[idx]
                     necesita_update = True
                     
-            # Si al menos un valor estaba vacío, agrega la fila a la cola de actualización masiva
             if necesita_update:
                 valores_update.append((upd_prod, upd_aloj, upd_cons, upd_mort, upd_peso, upd_peso_huevo, upd_masa_sem, upd_masa_acum, upd_agua, id_sem_prod))
                 
-        # Ejecuta la inyección en la base de datos de una sola vez
         if valores_update:
             cur.executemany("UPDATE bd_vargas SET prod_huevo_tab = %s, h_av_aloj_tab = %s, consumo_alim_tab = %s, mort_tab = %s, peso_ave_tab = %s, peso_huevo_tab = %s, masa_huevo_tab_sem = %s, masa_huevo_tab_acum = %s, cons_agua_tab = %s WHERE id_sem_prod = %s", valores_update)
             conn.commit()
@@ -283,7 +276,7 @@ def aplicar_parche_guias_semanal(id_lote):
         conn.close()
 
 def get_semanal_all(lote_nombre: str = ''):
-    # Función orquestadora que se llama al abrir la pantalla de Producción Semanal.
+    # Orquestador inicial
     if not lote_nombre or lote_nombre == 'VACIO':
         return []
     cabecera = fetch_cabecera_by_lote(lote_nombre)
@@ -292,21 +285,57 @@ def get_semanal_all(lote_nombre: str = ''):
     id_lote = cabecera['id']
     rows = model.fetch_semanal_produccion(id_lote)
     
-    # Si no hay datos, crea la estructura en blanco
     if len(rows) == 0:
         generar_estructura_semanal_unificada(lote_nombre, cabecera.get('fecha_encasetamiento'), id_lote)
         rows = model.fetch_semanal_produccion(id_lote)
         
-    # Corrección automática de inconsistencias antes de enviarle los datos al usuario
     aplicar_parche_fechas_semanal(id_lote, cabecera.get('fecha_encasetamiento'), rows)
     aplicar_parche_guias_semanal(id_lote)
         
-    return model.fetch_semanal_produccion(id_lote)
+    filas_db = model.fetch_semanal_produccion(id_lote)
+    
+    # CÁLCULO DE ACUMULADOS Y CONVERSIONES EN EL BACKEND
+    filas_procesadas = []
+    acumulado_huevos = 0
+    acumulado_consumo = 0
+    
+    for f in filas_db:
+        # Convertimos la fila de la BD a un diccionario manipulable
+        try:
+            fila_dict = dict(f)
+        except Exception:
+            fila_dict = f
+            
+        base_huevos = float(fila_dict.get('prod_tab_unidad_huevo') or 0)
+        base_consumo = float(fila_dict.get('consumo_kg_tab_graf') or 0)
+        
+        # Rompemos la cascada: Solo suma si hay datos reales en esta semana
+        if base_huevos > 0 or base_consumo > 0:
+            if base_huevos > 0: acumulado_huevos += base_huevos
+            if base_consumo > 0: acumulado_consumo += base_consumo
+            
+            fila_dict['huevos_acum_tab'] = int(round(acumulado_huevos))
+            fila_dict['consumo_acum_tab'] = int(round(acumulado_consumo))
+            
+            if acumulado_huevos > 0:
+                conversion = round((acumulado_consumo / acumulado_huevos) * 1200, 2)
+                fila_dict['conv_acum_tab_1'] = conversion
+                fila_dict['conv_acum_tab_2'] = conversion
+            else:
+                fila_dict['conv_acum_tab_1'] = ''
+                fila_dict['conv_acum_tab_2'] = ''
+        else:
+            fila_dict['huevos_acum_tab'] = ''
+            fila_dict['consumo_acum_tab'] = ''
+            fila_dict['conv_acum_tab_1'] = ''
+            fila_dict['conv_acum_tab_2'] = ''
+            
+        filas_procesadas.append(fila_dict)
+        
+    return filas_procesadas
 
 # FUNCIÓN CENTRAL DE MATEMÁTICA Y LÓGICA DE NEGOCIO
 def update_semanal_field(id_semanal: int, columna: str, valor: str) -> tuple[bool, dict, str]:
-    # Esta función se dispara cuando el usuario edita una celda en la tabla.
-    # No solo guarda ese dato, sino que recalcula el efecto dominó en las semanas siguientes.
     if columna not in COLUMNAS_PERMITIDAS:
         return False, {}, f"Columna '{columna}' no permitida"
 
@@ -320,7 +349,6 @@ def update_semanal_field(id_semanal: int, columna: str, valor: str) -> tuple[boo
         if not id_lote:
             return False, {}, "No se encontró el ID del lote"
 
-        # Define qué columnas alteran los acumulados (si se edita 'observaciones', no se recalcula nada)
         columnas_matematicas = [
             'cons_tab', 'gr_tb', 'consumo_alim_tab',
             'cons_kilos_real', 'consumo_alim_kg', 
@@ -335,23 +363,22 @@ def update_semanal_field(id_semanal: int, columna: str, valor: str) -> tuple[boo
         ]
 
         if id_lote and (columna in columnas_matematicas):
-            # Trae la cantidad de aves con la que arrancó el lote para poder restar la mortalidad
-            cur.execute("SELECT no_aves_encasetadas, peso FROM cabecera_lotes WHERE id = %s", (id_lote,))
+            cur.execute("SELECT no_aves_encasetadas, peso, unidad_peso FROM cabecera_lotes WHERE id = %s", (id_lote,))
             cab_info = cur.fetchone()
+            
             aves_iniciales = to_float_safe(cab_info[0]) if cab_info and cab_info[0] else 1.0
             if aves_iniciales <= 0: aves_iniciales = 1.0
             peso_recep = to_float_safe(cab_info[1]) if cab_info and cab_info[1] else 0.0
+            
+            multiplicador_unidad = to_float_safe(cab_info[2]) if cab_info and len(cab_info) > 2 and cab_info[2] else 1.0
 
-            # Normalización de nombres de columnas (Frontend vs Base de datos)
             col_db = columna
             if columna in ['cons_tab', 'gr_tb']: col_db = 'consumo_alim_tab'
             elif columna in ['cons_kilos_real']: col_db = 'consumo_alim_kg'
             elif columna in ['peso_real']: col_db = 'peso_ave_real'
 
-            # Paso 1: Guarda el dato individual que originó todo
             cur.execute(f"UPDATE bd_vargas SET {col_db} = %s WHERE id_sem_prod = %s", (valor_db, id_semanal))
             
-            # Paso 2: Si hay columnas que visualmente son copias de otras, las actualiza también
             if columna == 'prod_huevo_real':
                 cur.execute("UPDATE bd_vargas SET porcentaje_prod_real = %s WHERE id_sem_prod = %s", (valor_db, id_semanal))
             if columna == 'h_av_aloj_real':
@@ -361,7 +388,6 @@ def update_semanal_field(id_semanal: int, columna: str, valor: str) -> tuple[boo
             if columna == 'percent_mort_acum':
                 cur.execute("UPDATE bd_vargas SET porcentaje_mort_acum_graf = %s WHERE id_sem_prod = %s", (valor_db, id_semanal))
 
-            # Paso 3: Trae TODO el historial de semanas de ese lote para recalcular la cascada de acumulados
             cur.execute("""
                 SELECT id_sem_prod, consumo_alim_tab, consumo_alim_kg, mort_sem, mort_select_sem, mort_venta, 
                        peso_ave_real, sem_prod, porcentaje_prod_tb, precio_dieta, porcentaje_huevo_nc,
@@ -374,7 +400,6 @@ def update_semanal_field(id_semanal: int, columna: str, valor: str) -> tuple[boo
             """, (id_lote,))
             filas = cur.fetchall()
 
-            # Variables para llevar las sumas continuas semana tras semana
             acum_kilos, acum_gr_ave_tab, acum_mort, acum_sel, acum_otros = 0.0, 0.0, 0.0, 0.0, 0.0
             acum_huevos_tab = 0.0
             acum_consumo_tab = 0.0
@@ -386,14 +411,12 @@ def update_semanal_field(id_semanal: int, columna: str, valor: str) -> tuple[boo
             acum_masa_huevo_real = 0.0
             valores_update = []
 
-            # Inicia el motor de recálculo secuencial (Semana 18, luego 19, luego 20...)
             for idx, f in enumerate(filas):
                 f_id = f[0]
                 num_semana = int(f[7]) if f[7] is not None else (idx + 1)
                 dia_inicio = ((num_semana - 1) * 7) + 1
                 dia_fin = num_semana * 7
 
-                # Si estamos procesando la semana que el usuario modificó, usa el valor nuevo, si no, usa el que ya estaba
                 c_tab = to_float_safe(valor_db) if (f_id == id_semanal and columna in ['cons_tab', 'gr_tb', 'consumo_alim_tab']) else to_float_safe(f[1])
                 c_k_real = to_float_safe(valor_db) if (f_id == id_semanal and columna in ['cons_kilos_real', 'consumo_alim_kg']) else to_float_safe(f[2])
                 m_sem = to_float_safe(valor_db) if (f_id == id_semanal and columna == 'mort_sem') else to_float_safe(f[3])
@@ -404,7 +427,6 @@ def update_semanal_field(id_semanal: int, columna: str, valor: str) -> tuple[boo
                 precio_dieta = to_float_safe(valor_db) if (f_id == id_semanal and columna == 'precio_dieta') else to_float_safe(f[9])
                 porc_huevo_nc = to_float_safe(valor_db) if (f_id == id_semanal and columna == 'porcentaje_huevo_nc') else to_float_safe(f[10])
                 
-                # Para las columnas de tabla, si el usuario editó alguna, se toma ese valor, si no, se toma el que ya estaba en la base de datos
                 h_av_aloj_tab_val = to_float_safe(valor_db) if (f_id == id_semanal and columna == 'h_av_aloj_tab') else to_float_safe(f[11])
                 prod_huevo_tab_val = to_float_safe(valor_db) if (f_id == id_semanal and columna == 'prod_huevo_tab') else to_float_safe(f[15])
                 mort_tab_val = to_float_safe(valor_db) if (f_id == id_semanal and columna == 'mort_tab') else to_float_safe(f[16])
@@ -414,30 +436,24 @@ def update_semanal_field(id_semanal: int, columna: str, valor: str) -> tuple[boo
                 masa_huevo_tab_acum_val = to_float_safe(valor_db) if (f_id == id_semanal and columna == 'masa_huevo_tab_acum') else to_float_safe(f[20])
                 cons_agua_tab_val = to_float_safe(valor_db) if (f_id == id_semanal and columna == 'cons_agua_tab') else to_float_safe(f[21])
 
-                # Para las columnas de valor real, si el usuario editó alguna, se toma ese valor, si no, se toma el que ya estaba en la base de datos
                 prod_huevo_real_val = to_float_safe(valor_db) if (f_id == id_semanal and columna == 'prod_huevo_real') else to_float_safe(f[22])
                 h_av_aloj_real = to_float_safe(valor_db) if (f_id == id_semanal and columna == 'h_av_aloj_real') else to_float_safe(f[12])
                 p_mort_acum = to_float_safe(valor_db) if (f_id == id_semanal and columna == 'percent_mort_acum') else to_float_safe(f[23])
                 ganancia_ave_val = to_float_safe(valor_db) if (f_id == id_semanal and columna == 'ganancia_ave_dia') else to_float_safe(f[24])
                 peso_huevo_real_val = to_float_safe(valor_db) if (f_id == id_semanal and columna == 'peso_huevo_real') else to_float_safe(f[13])
-                cons_agua_real_val = to_float_safe(valor_db) if (f_id == id_semanal and columna == 'cons_agua_real') else to_float_safe(f[28])
 
-                # Verifica si este lote usa el "Módulo Diario" para sus registros
                 cur.execute("SELECT COUNT(*) FROM data_diario WHERE id_lote = %s", (id_lote,))
                 usa_diario = cur.fetchone()[0] > 0
 
                 cur.execute("SELECT COALESCE(SUM(consumo_kg), 0), COALESCE(SUM(mortalidad), 0), COALESCE(SUM(sel), 0), COALESCE(SUM(otros), 0) FROM data_diario WHERE id_lote = %s AND dias BETWEEN %s AND %s", (id_lote, dia_inicio, dia_fin))
                 res_estricto = cur.fetchone()
                 
-                # Si usa el módulo diario, la información de mortalidad y consumo se extrae obligatoriamente de allí
                 if usa_diario:
                     c_k_real = to_float_safe(res_estricto[0]) if res_estricto else 0.0
                     m_sem = to_float_safe(res_estricto[1]) if res_estricto else 0.0
                     s_sem = to_float_safe(res_estricto[2]) if res_estricto else 0.0
                     o_sem = to_float_safe(res_estricto[3]) if res_estricto else 0.0
                 else:
-                    # Si no usa módulo diario, respeta lo que el usuario ingresó manualmente en el semanal,
-                    # a menos que haya un dato parcial diario que tenga prioridad
                     if res_estricto:
                         if res_estricto[0] > 0: c_k_real = to_float_safe(res_estricto[0])
                         if res_estricto[1] > 0: m_sem = to_float_safe(res_estricto[1])
@@ -446,8 +462,6 @@ def update_semanal_field(id_semanal: int, columna: str, valor: str) -> tuple[boo
 
                 db_prod_sem = to_float_safe(f[25])
                 
-                # Para calcular la producción de huevos se toma el total diario.
-                # Si es la primera semana (18), se toma todo lo de atrás también, porque a veces ponen huevos antes.
                 if num_semana <= 18:
                     cur.execute("SELECT COALESCE(SUM(produccion), 0) FROM data_diario WHERE id_lote = %s AND dias <= %s", (id_lote, dia_fin))
                 else:
@@ -456,46 +470,46 @@ def update_semanal_field(id_semanal: int, columna: str, valor: str) -> tuple[boo
                 res_huevos = cur.fetchone()
                 diarios_huevos = to_float_safe(res_huevos[0]) if res_huevos else 0.0
 
-                # Si el usuario editó la celda de producción de huevos, se respeta ese valor, si no, se toma el valor diario o el que ya estaba en la base de datos
                 val_ingresado = to_float_safe(valor_db) if (f_id == id_semanal and columna == 'prod_huevo_sem') else db_prod_sem
                 huevos_semana = diarios_huevos if usa_diario else val_ingresado
                 tiene_datos = (c_k_real > 0 or m_sem > 0 or s_sem > 0 or o_sem > 0 or peso_real_val > 0 or huevos_semana > 0)
                 prod_huevo_sem_val = int(round(huevos_semana)) if huevos_semana > 0 else None
 
-                # Sumatorias acumulativas que arrastran historial
                 acum_kilos += c_k_real
                 acum_gr_ave_tab += (c_tab * 7)
                 acum_mort += m_sem
                 acum_sel += s_sem
                 acum_otros += o_sem
 
-                # Cálculo de saldo de aves actual (Inventario vivo)
                 acu_val = acum_mort + acum_sel + acum_otros
                 acu_out = int(round(acu_val)) if tiene_datos else None
                 saldo_val = int(round(aves_iniciales - acu_val)) if (aves_iniciales > 0 and tiene_datos) else 0
 
-                # Cálculo de porcentajes de mortalidad
-                if p_mort_acum is None:
-                    p_mort_acum = round((acum_mort / aves_iniciales) * 100, 2) if (aves_iniciales > 0 and acum_mort > 0 and tiene_datos) else None
+                # FRENO DE CASCADA: %M Ac
+                if tiene_datos:
+                    calculo_p_mort_acum = round((acum_mort / aves_iniciales) * 100, 2) if aves_iniciales > 0 else 0.0
+                    p_mort_acum = to_float_safe(valor_db) if (f_id == id_semanal and columna == 'percent_mort_acum') else calculo_p_mort_acum
+                else:
+                    p_mort_acum = None
                 porcentaje_mort_acum_graf = p_mort_acum
 
-                # Cálculo de porcentajes de mortalidad semanal y selectiva
                 p_mort_sem = round((m_sem / aves_iniciales) * 100, 2) if (aves_iniciales > 0 and m_sem > 0) else None
                 p_sel_sem = round((s_sem / aves_iniciales) * 100, 2) if (aves_iniciales > 0 and s_sem > 0) else None
+                
+                # Freno de cascada para %M Ac- AVES
                 p_ms_acu = round(((acum_mort + acum_sel) / aves_iniciales) * 100, 2) if (aves_iniciales > 0 and (acum_mort + acum_sel) > 0 and tiene_datos) else None
 
-                # Conversión Kilogramo Alimento / Ave Alojada
                 if saldo_val > 0 and c_k_real > 0:
                     acum_kaa += (c_k_real / float(saldo_val))
-                c_kaa_val = round(acum_kaa, 3) if (acum_kaa > 0 or tiene_datos) else None
+                
+                # Freno de cascada para K.A.A
+                c_kaa_val = round(acum_kaa, 3) if (acum_kaa > 0 and tiene_datos) else None
 
-                # Cálculo de conversiones tabla (ideal vs real)
                 if c_tab and porc_prod_tb and porc_prod_tb > 0:
                     conversion_sem_val = round((c_tab * 100 / porc_prod_tb) * 12, 2)
                 else: 
                     conversion_sem_val = 0.0
 
-                # Cálculo de conversiones acumuladas (ideal vs real)
                 if c_tab: acum_c_tab_sum += float(c_tab)
                 if porc_prod_tb: acum_porc_prod_tb_sum += float(porc_prod_tb)
 
@@ -505,35 +519,60 @@ def update_semanal_field(id_semanal: int, columna: str, valor: str) -> tuple[boo
                     conv_acum = 0.0
                 
                 if tiene_datos and c_k_real > 0 and saldo_val > 0:
-                    calculo_c_real = round((c_k_real / float(saldo_val) / 7.0) * 1000.0, 2)
+                    calculo_c_real = round((c_k_real / float(saldo_val) / 7.0) * 1000.0, 1)
                     c_real_val = to_float_safe(valor_db) if (f_id == id_semanal and columna == 'consumo_alim_real') else calculo_c_real
                 else:
                     c_real_val = 0.0 if tiene_datos else None
                 
                 gr_ave_ac_val = int(round((acum_kilos / float(saldo_val)) * 1000.0)) if (acum_kilos > 0 and saldo_val > 0) else 0
 
-                # Ganancia de peso en aves
                 if ganancia_ave_val is None:
                     ganancia_ave_val = round(peso_real_val - peso_recep, 2) if (peso_real_val > 0 and peso_recep > 0) else 0.0
                 gr_ave_dia_graf = ganancia_ave_val
                 
                 salidas_semana = m_sem + s_sem + o_sem
                 
-                # Porcentaje de producción semanal Real (Aves vs Huevos)
+                # Freno de cascada y 1 decimal para % Prod Real
                 if tiene_datos and prod_huevo_sem_val is not None and saldo_val > 0:
-                    calculo_real = round((prod_huevo_sem_val / 7.0 / saldo_val) * 100, 2)
+                    calculo_real = round((prod_huevo_sem_val / 7.0 / saldo_val) * 100, 1)
                     prod_huevo_real_val = to_float_safe(valor_db) if (f_id == id_semanal and columna == 'prod_huevo_real') else calculo_real
+                else:
+                    prod_huevo_real_val = None
                 porcentaje_prod_real = prod_huevo_real_val
 
                 # Huevos acumulados por Ave Alojada
                 if prod_huevo_sem_val:
                     acum_huevos_real += float(prod_huevo_sem_val)
-                if aves_iniciales > 0:
-                    calculo_haa = round(acum_huevos_real / aves_iniciales, 2)
+                    
+                # Freno de cascada y 1 decimal para H.AV.ALOJ
+                if aves_iniciales > 0 and tiene_datos:
+                    calculo_haa = round(acum_huevos_real / aves_iniciales, 1)
                     h_av_aloj_real = to_float_safe(valor_db) if (f_id == id_semanal and columna == 'h_av_aloj_real') else calculo_haa
+                else:
+                    h_av_aloj_real = None
                 haa_real = h_av_aloj_real
 
-                # FÓRMULAS DE CONVERSIÓN REAL (Alimento vs Docenas de Huevo)
+                # FRENO ESTRICTO: Solo calcula H. Acum si hay producción de huevos esta semana
+                if prod_huevo_sem_val is not None and prod_huevo_sem_val > 0:
+                    huevo_acum_val = int(round(acum_huevos_real))
+                else:
+                    huevo_acum_val = None
+                    
+                # FRENO ESTRICTO: Solo calcula Kilos si hay consumo registrado esta semana
+                if c_k_real > 0:
+                    kg_acum_val = round(acum_kilos, 2)
+                    kg_sem_val = round(c_k_real * multiplicador_unidad, 2)
+                else:
+                    kg_acum_val = None
+                    kg_sem_val = None
+
+                # FÓRMULA DE CONVERSIÓN KG/DOC ACUM
+                if acum_huevos_real > 0 and ((prod_huevo_sem_val and prod_huevo_sem_val > 0) or c_k_real > 0 or m_sem > 0 or s_sem > 0 or o_sem > 0):
+                    conv_kg_doc_acum_val = round((acum_kilos / acum_huevos_real) * 12, 2)
+                else:
+                    conv_kg_doc_acum_val = 0.0
+
+                # FÓRMULAS DE CONVERSIÓN REAL
                 if tiene_datos and prod_huevo_sem_val and float(prod_huevo_sem_val) > 0:
                     calculo_conv_sem = round((c_k_real / float(prod_huevo_sem_val)) * 12, 3)
                     conv_sem_real_val = to_float_safe(valor_db) if (f_id == id_semanal and columna == 'conv_sem_real') else calculo_conv_sem
@@ -561,86 +600,97 @@ def update_semanal_field(id_semanal: int, columna: str, valor: str) -> tuple[boo
                 else:
                     masa_huevo_real_acum_val = 0 if tiene_datos else None
 
-                # CONSUMO DE AGUA
-                if num_semana <= 18:
-                    cons_agua_real_val = masa_huevo_real_acum_val
+                # FRENO DE CASCADA: Consumo de Agua Real
+                if tiene_datos:
+                    if num_semana <= 18:
+                        cons_agua_real_val = masa_huevo_real_acum_val
+                    else:
+                        cons_agua_real_val = to_float_safe(valor_db) if (f_id == id_semanal and columna == 'cons_agua_real') else to_float_safe(f[28])
+                else:
+                    cons_agua_real_val = None
 
                 prev_haa_real = haa_real if haa_real is not None else 0.0
 
-                # LÍMITES DE TOLERANCIA DE PRODUCCIÓN (El famoso "Margen del 4%")
+                # LÍMITES DE TOLERANCIA DE PRODUCCIÓN
                 porc_prod_tb = prod_huevo_tab_val
                 margen_tolerancia = 0.04 
                 if porc_prod_tb:
                     porcentaje_tb = round(porc_prod_tb * (1 - margen_tolerancia), 2)
                     porcentaje_tx = round(porc_prod_tb * (1 + margen_tolerancia), 2)
                     porcentaje_rx = round(porcentaje_tx - porcentaje_tb, 2)
-                    prod_tab_unidad_huevo = round((porc_prod_tb / 100.0) * saldo_val * 7, 2)
+                    
+                    # FRENO DE CASCADA: Producción Tab-Unidad-Huevo
+                    if tiene_datos and saldo_val > 0:
+                        prod_tab_unidad_huevo = round((porc_prod_tb / 100.0) * saldo_val * 7, 2)
+                    else:
+                        prod_tab_unidad_huevo = None
                 else:
                     porcentaje_tb = porcentaje_tx = porcentaje_rx = prod_tab_unidad_huevo = None
 
-                consumo_kg_tab_graf = round((c_tab / 1000.0) * saldo_val * 7, 2) if (c_tab and saldo_val > 0) else None # Consumo de alimento en kg según tabla, para mostrar en gráfico
+                if c_tab and saldo_val > 0 and c_real_val is not None:
+                    consumo_kg_tab_graf = (float(c_tab) / 100.0) * float(saldo_val) * 7.0 * (float(c_real_val) / 1000.0)
+                else:
+                    consumo_kg_tab_graf = None
 
                 if prod_tab_unidad_huevo: acum_huevos_tab += prod_tab_unidad_huevo
                 if consumo_kg_tab_graf: acum_consumo_tab += consumo_kg_tab_graf
                 
-                acum_huevos_tab_val = round(acum_huevos_tab, 2) if acum_huevos_tab > 0 else None
+                acum_huevos_tab_val = int(round(acum_huevos_tab)) if acum_huevos_tab > 0 else None
                 acum_consumo_tab_val = round(acum_consumo_tab, 2) if acum_consumo_tab > 0 else None
 
-                # Merma / Huevos no conformes (Rotos, Sucios, etc)
                 if tiene_datos and prod_huevo_sem_val is not None:
                     cant_unidades_perdida = round((porc_huevo_nc / 100.0) * prod_huevo_sem_val, 2)
                     total_huevo_real = round(float(prod_huevo_sem_val) - cant_unidades_perdida, 2)
                 else:
                     cant_unidades_perdida = total_huevo_real = None
 
-                # Costos y balances finales
-                gr_por_huevo = round((c_k_real * 1000.0) / prod_huevo_sem_val, 2) if (tiene_datos and prod_huevo_sem_val and prod_huevo_sem_val > 0) else None
+                gr_por_huevo = round((c_k_real * 1000.0) / prod_huevo_sem_val, 1) if (tiene_datos and prod_huevo_sem_val and prod_huevo_sem_val > 0) else None
                 costo_huevo = round((c_k_real * 1000.0 / total_huevo_real) * (precio_dieta / 1000.0), 2) if (tiene_datos and total_huevo_real and total_huevo_real > 0 and precio_dieta) else None
-                suma_saldo_aves = round((saldo_val * 7) + (salidas_semana * 3.5), 2) if tiene_datos else None
+                
+                # Suma Saldo Aves entero redondeado
+                suma_saldo_aves = int(round((saldo_val * 7) + (salidas_semana * 3.5))) if tiene_datos else None
 
-                # Apendizamos toda la matemática de esta semana en una lista para inyectarla de un solo golpe
                 valores_update.append((
-                    c_k_real, m_sem, s_sem, o_sem, 
-                    c_real_val, c_kaa_val, c_tab, gr_ave_ac_val, acu_out, p_mort_sem, p_mort_acum,
+                    c_k_real, m_sem, s_sem, o_sem,
+                    c_real_val, c_kaa_val, c_tab, acu_out, p_mort_sem, p_mort_acum,
                     p_sel_sem, p_ms_acu, saldo_val, conversion_sem_val, ganancia_ave_val, prod_huevo_sem_val,
-                    prod_huevo_real_val,
+                    prod_huevo_real_val, 
                     
                     num_semana, porc_prod_tb, porcentaje_tb, porcentaje_tx, porcentaje_rx,
-                    h_av_aloj_tab_val, c_tab, porcentaje_prod_real, haa_real, gr_ave_dia_graf,
+                    h_av_aloj_tab_val, c_tab, porcentaje_prod_real, haa_real, h_av_aloj_real, gr_ave_dia_graf,
                     porcentaje_mort_acum_graf, conv_acum, gr_por_huevo, precio_dieta, costo_huevo,
                     prod_tab_unidad_huevo, consumo_kg_tab_graf, acum_huevos_tab_val, acum_consumo_tab_val,
                     porc_huevo_nc, total_huevo_real, cant_unidades_perdida, suma_saldo_aves, prod_huevo_tab_val,
                     mort_tab_val, peso_ave_tab_val, peso_huevo_tab_val, masa_huevo_tab_sem_val, masa_huevo_tab_acum_val, 
-                    cons_agua_tab_val, conv_sem_real_val, conv_acum_real_val, masa_huevo_real_sem_val, masa_huevo_real_acum_val, cons_agua_real_val, f_id
+                    cons_agua_tab_val, conv_sem_real_val, conv_acum_real_val, masa_huevo_real_sem_val, masa_huevo_real_acum_val, 
+                    cons_agua_real_val, conv_kg_doc_acum_val, huevo_acum_val, kg_acum_val, kg_sem_val, f_id
                 ))
 
-            # Disparo masivo a la base de datos (Optimizado para no ralentizar el servidor)
             if valores_update:
                 cur.executemany("""
                     UPDATE bd_vargas 
                     SET consumo_alim_kg = %s, mort_sem = %s, mort_select_sem = %s, mort_venta = %s,
-                        consumo_alim_real = %s, consumo_alim_k_a_a = %s, consumo_alim_tab = %s, cons_gr_ave_ao = %s,
+                        consumo_alim_real = %s, consumo_alim_k_a_a = %s, consumo_alim_tab = %s,
                         salidas_acum = %s, percent_mort_sem = %s, percent_mort_acum = %s, percent_select_sem = %s,
                         percent_mort_and_select_acum = %s, saldo_ave = %s, conv_sem_tab = %s, ganancia_ave_dia = %s,
                         prod_huevo_sem = %s, prod_huevo_real = %s,
                         sem_graf = %s, porcentaje_prod_tb = %s, porcentaje_tb = %s, porcentaje_tx = %s, porcentaje_rx = %s,
-                        haa_tab = %s, gr_tb_graf = %s, porcentaje_prod_real = %s, haa_real = %s, gr_ave_dia_graf = %s,
+                        haa_tab = %s, gr_tb_graf = %s, porcentaje_prod_real = %s, haa_real = %s, h_av_aloj_real = %s, gr_ave_dia_graf = %s,
                         porcentaje_mort_acum_graf = %s, conv_acum_tab = %s, gr_por_huevo = %s, precio_dieta = %s, costo_huevo = %s,
                         prod_tab_unidad_huevo = %s, consumo_kg_tab_graf = %s, huevos_acum_tab = %s, consumo_acum_tab = %s,
                         porcentaje_huevo_nc = %s, total_huevo_real = %s, cant_unidades_perdida = %s, suma_saldo_aves = %s,
-                        prod_huevo_tab = %s, mort_tab = %s, peso_ave_tab = %s, peso_huevo_tab = %s, masa_huevo_tab_sem = %s, 
+                        prod_huevo_tab = %s, mort_tab = %s, peso_ave_tab = %s, peso_huevo_tab = %s, masa_huevo_tab_sem = %s,
                         masa_huevo_tab_acum = %s, cons_agua_tab = %s, conv_sem_real = %s, conv_acum_real = %s,
-                        masa_huevo_real_sem = %s, masa_huevo_real_acum = %s, cons_agua_real = %s
+                        masa_huevo_real_sem = %s, masa_huevo_real_acum = %s, cons_agua_real = %s,
+                        conv_kg_doc_acum = %s, huevo_acum = %s, kg_acum = %s, kg_sem = %s
                     WHERE id_sem_prod = %s
                 """, valores_update)
-        else:
-            # Si se edita una columna de texto u otra no matemática, la guarda sola.
-            model.guardar_dato_simple(id_semanal, columna, valor_db, cur)
+            else:
+                model.guardar_dato_simple(id_semanal, columna, valor_db, cur)
 
         conn.commit()
         return True, campos_actualizados, "Ok"
     
-    # Si ocurre un error, hace rollback y devuelve el mensaje de error
     except Exception as e:
         conn.rollback()
         return False, {}, str(e)
@@ -650,15 +700,13 @@ def update_semanal_field(id_semanal: int, columna: str, valor: str) -> tuple[boo
 
 # 2. FUNCIÓN DE RECÁLCULO MASIVO (Botón "Recalcular Tabla")
 def recalcular_lote_semanal_completo_directo(id_lote, cur):
-    # Idéntica lógica matemática a la de arriba, pero en lugar de actualizar partiendo de una celda específica editada,
-    # reconstruye el lote entero desde la semana 18 leyendo exclusivamente los acumulados y la tabla de consumo diario.
-    cur.execute("SELECT no_aves_encasetadas, peso FROM cabecera_lotes WHERE id = %s", (id_lote,))
+    cur.execute("SELECT no_aves_encasetadas, peso, unidad_peso FROM cabecera_lotes WHERE id = %s", (id_lote,))
     cab_info = cur.fetchone()
     aves_iniciales = to_float_safe(cab_info[0]) if cab_info and cab_info[0] else 1.0
     if aves_iniciales <= 0: aves_iniciales = 1.0
     peso_recep = to_float_safe(cab_info[1]) if cab_info and cab_info[1] else 0.0
+    multiplicador_unidad = to_float_safe(cab_info[2]) if cab_info and len(cab_info) > 2 and cab_info[2] else 1.0
 
-    # Paso 1: Trae todo el historial de semanas de ese lote para recalcular la cascada de acumulados
     cur.execute("""
         SELECT id_sem_prod, consumo_alim_tab, consumo_alim_kg, mort_sem, mort_select_sem, mort_venta, 
                peso_ave_real, sem_prod, porcentaje_prod_tb, precio_dieta, porcentaje_huevo_nc,
@@ -670,7 +718,6 @@ def recalcular_lote_semanal_completo_directo(id_lote, cur):
     """, (id_lote,))
     filas = cur.fetchall()
 
-    # Variables para llevar las sumas continuas semana tras semana
     acum_kilos, acum_gr_ave_tab, acum_mort, acum_sel, acum_otros = 0.0, 0.0, 0.0, 0.0, 0.0
     acum_huevos_tab = 0.0
     acum_consumo_tab = 0.0
@@ -682,7 +729,6 @@ def recalcular_lote_semanal_completo_directo(id_lote, cur):
     acum_masa_huevo_real = 0.0
     valores_update = []
 
-    # Inicia el motor de recálculo secuencial (Semana 18, luego 19, luego 20...)
     for idx, f in enumerate(filas):
         f_id = f[0]
         num_semana = int(f[7]) if f[7] is not None else (idx + 1)
@@ -703,27 +749,20 @@ def recalcular_lote_semanal_completo_directo(id_lote, cur):
         masa_huevo_tab_acum_val = to_float_safe(f[20])
         cons_agua_tab_val = to_float_safe(f[21])
 
-        prod_huevo_real_val = to_float_safe(f[22])
-        h_av_aloj_real = to_float_safe(f[12])
         p_mort_acum = to_float_safe(f[23])
         ganancia_ave_val = to_float_safe(f[24])
 
-        conv_sem_real_val = to_float_safe(f[26])
-        conv_acum_real_val = to_float_safe(f[27])
-        cons_agua_real_val = to_float_safe(f[28])
         peso_huevo_real_val = to_float_safe(f[13])
 
         cur.execute("SELECT COUNT(*) FROM data_diario WHERE id_lote = %s", (id_lote,))
         usa_diario = cur.fetchone()[0] > 0
 
-        # Paso 2: Trae los datos diarios de consumo y mortalidad para la semana actual
         cur.execute("""
             SELECT COALESCE(SUM(consumo_kg), 0), COALESCE(SUM(mortalidad), 0), COALESCE(SUM(sel), 0), COALESCE(SUM(otros), 0)
             FROM data_diario WHERE id_lote = %s AND dias BETWEEN %s AND %s
         """, (id_lote, dia_inicio, dia_fin))
         res_sem = cur.fetchone()
         
-        # Si usa el módulo diario, la información de mortalidad y consumo se extrae obligatoriamente de allí
         if usa_diario:
             c_k_real = to_float_safe(res_sem[0]) if res_sem else 0.0
             m_sem = to_float_safe(res_sem[1]) if res_sem else 0.0
@@ -740,7 +779,6 @@ def recalcular_lote_semanal_completo_directo(id_lote, cur):
         else:
             cur.execute("SELECT COALESCE(SUM(produccion), 0) FROM data_diario WHERE id_lote = %s AND dias BETWEEN %s AND %s", (id_lote, dia_inicio, dia_fin))
         
-        # Si el usuario editó la celda de producción de huevos, se respeta ese valor, si no, se toma el valor diario o el que ya estaba en la base de datos
         res_huevos = cur.fetchone()
         diarios_huevos = to_float_safe(res_huevos[0]) if res_huevos else 0.0
 
@@ -749,7 +787,6 @@ def recalcular_lote_semanal_completo_directo(id_lote, cur):
         tiene_datos = (c_k_real > 0 or m_sem > 0 or s_sem > 0 or o_sem > 0 or peso_real_val > 0 or huevos_semana > 0)
         prod_huevo_sem_val = int(round(huevos_semana)) if huevos_semana > 0 else None
 
-        # Sumatorias acumulativas que arrastran historial
         acum_kilos += c_k_real
         acum_gr_ave_tab += (c_tab * 7)
         acum_mort += m_sem
@@ -760,20 +797,24 @@ def recalcular_lote_semanal_completo_directo(id_lote, cur):
         acu_out = int(round(acu_val)) if tiene_datos else None
         saldo_val = int(round(aves_iniciales - acu_val)) if (aves_iniciales > 0 and tiene_datos) else 0
 
-        # Cálculo de porcentajes de mortalidad
-        if p_mort_acum is None:
-            p_mort_acum = round((acum_mort / aves_iniciales) * 100, 2) if (aves_iniciales > 0 and acum_mort > 0 and tiene_datos) else None
+        # FRENO DE CASCADA: %M Ac
+        if tiene_datos:
+            p_mort_acum = round((acum_mort / aves_iniciales) * 100, 2) if aves_iniciales > 0 else 0.0
+        else:
+            p_mort_acum = None
         porcentaje_mort_acum_graf = p_mort_acum
 
-        # Cálculo de porcentajes de mortalidad semanal y selectiva
         p_mort_sem = round((m_sem / aves_iniciales) * 100, 2) if (aves_iniciales > 0 and m_sem > 0) else None
         p_sel_sem = round((s_sem / aves_iniciales) * 100, 2) if (aves_iniciales > 0 and s_sem > 0) else None
+        
+        # Freno de cascada %M Ac
         p_ms_acu = round(((acum_mort + acum_sel) / aves_iniciales) * 100, 2) if (aves_iniciales > 0 and (acum_mort + acum_sel) > 0 and tiene_datos) else None
 
         if saldo_val > 0 and c_k_real > 0:
             acum_kaa += (c_k_real / float(saldo_val))
             
-        c_kaa_val = round(acum_kaa, 3) if (acum_kaa > 0 or tiene_datos) else None
+        # Freno de cascada K.A.A
+        c_kaa_val = round(acum_kaa, 3) if (acum_kaa > 0 and tiene_datos) else None
 
         if c_tab and porc_prod_tb and porc_prod_tb > 0:
             conversion_sem_val = round((c_tab * 100 / porc_prod_tb) * 12, 2)
@@ -790,8 +831,9 @@ def recalcular_lote_semanal_completo_directo(id_lote, cur):
         else:
             conv_acum = 0.0
         
+        # 1 decimal Consumo Alimento Real
         if tiene_datos and c_k_real > 0 and saldo_val > 0:
-            c_real_val = round((c_k_real / float(saldo_val) / 7.0) * 1000.0, 2)
+            c_real_val = round((c_k_real / float(saldo_val) / 7.0) * 1000.0, 1)
         else:
             c_real_val = 0.0 if tiene_datos else None
             
@@ -802,15 +844,41 @@ def recalcular_lote_semanal_completo_directo(id_lote, cur):
         gr_ave_dia_graf = ganancia_ave_val
         salidas_semana = m_sem + s_sem + o_sem
         
+        # Freno y 1 decimal % Prod Real
         if tiene_datos and prod_huevo_sem_val is not None and saldo_val > 0:
-            prod_huevo_real_val = round((prod_huevo_sem_val / 7.0 / saldo_val) * 100, 2)
+            prod_huevo_real_val = round((prod_huevo_sem_val / 7.0 / saldo_val) * 100, 1)
+        else:
+            prod_huevo_real_val = None
         porcentaje_prod_real = prod_huevo_real_val
 
         if prod_huevo_sem_val:
             acum_huevos_real += float(prod_huevo_sem_val)
-        if aves_iniciales > 0:
-            h_av_aloj_real = round(acum_huevos_real / aves_iniciales, 2)
+            
+        # Freno de cascada H.AV.ALOJ
+        if aves_iniciales > 0 and tiene_datos:
+            h_av_aloj_real = round(acum_huevos_real / aves_iniciales, 1)
+        else:
+            h_av_aloj_real = None
         haa_real = h_av_aloj_real
+        
+        # FRENO ESTRICTO: Solo calcula H. Acum si hay producción de huevos esta semana
+        if prod_huevo_sem_val is not None and prod_huevo_sem_val > 0:
+            huevo_acum_val = int(round(acum_huevos_real))
+        else:
+            huevo_acum_val = None
+            
+        # FRENO ESTRICTO: Solo calcula Kilos si hay consumo registrado esta semana
+        if c_k_real > 0:
+            kg_acum_val = round(acum_kilos, 2)
+            kg_sem_val = round(c_k_real * multiplicador_unidad, 2)
+        else:
+            kg_acum_val = None
+            kg_sem_val = None
+
+        if acum_huevos_real > 0 and ((prod_huevo_sem_val and prod_huevo_sem_val > 0) or c_k_real > 0 or m_sem > 0 or s_sem > 0 or o_sem > 0):
+            conv_kg_doc_acum_val = round((acum_kilos / acum_huevos_real) * 12, 2)
+        else:
+            conv_kg_doc_acum_val = 0.0
 
         if tiene_datos and prod_huevo_sem_val and float(prod_huevo_sem_val) > 0:
             conv_sem_real_val = round((c_k_real / float(prod_huevo_sem_val)) * 12, 3)
@@ -836,8 +904,14 @@ def recalcular_lote_semanal_completo_directo(id_lote, cur):
         else:
             masa_huevo_real_acum_val = 0 if tiene_datos else None
 
-        if num_semana <= 18:
-            cons_agua_real_val = masa_huevo_real_acum_val
+        # FRENO DE CASCADA: Consumo Agua Real
+        if tiene_datos:
+            if num_semana <= 18:
+                cons_agua_real_val = masa_huevo_real_acum_val
+            else:
+                cons_agua_real_val = to_float_safe(f[28])
+        else:
+            cons_agua_real_val = None
 
         prev_haa_real = haa_real if haa_real is not None else 0.0
 
@@ -851,12 +925,15 @@ def recalcular_lote_semanal_completo_directo(id_lote, cur):
         else:
             porcentaje_tb = porcentaje_tx = porcentaje_rx = prod_tab_unidad_huevo = None
 
-        consumo_kg_tab_graf = round((c_tab / 1000.0) * saldo_val * 7, 2) if (c_tab and saldo_val > 0) else None
+        if c_tab and saldo_val > 0 and c_real_val is not None:
+            consumo_kg_tab_graf = (float(c_tab) / 100.0) * float(saldo_val) * 7.0 * (float(c_real_val) / 1000.0)
+        else:
+            consumo_kg_tab_graf = None
 
         if prod_tab_unidad_huevo: acum_huevos_tab += prod_tab_unidad_huevo
         if consumo_kg_tab_graf: acum_consumo_tab += consumo_kg_tab_graf
         
-        acum_huevos_tab_val = round(acum_huevos_tab, 2) if acum_huevos_tab > 0 else None
+        acum_huevos_tab_val = int(round(acum_huevos_tab)) if acum_huevos_tab > 0 else None
         acum_consumo_tab_val = round(acum_consumo_tab, 2) if acum_consumo_tab > 0 else None
 
         if tiene_datos and prod_huevo_sem_val is not None:
@@ -865,47 +942,49 @@ def recalcular_lote_semanal_completo_directo(id_lote, cur):
         else:
             cant_unidades_perdida = total_huevo_real = None
 
-        gr_por_huevo = round((c_k_real * 1000.0) / prod_huevo_sem_val, 2) if (tiene_datos and prod_huevo_sem_val and prod_huevo_sem_val > 0) else None
+        gr_por_huevo = round((c_k_real * 1000.0) / prod_huevo_sem_val, 1) if (tiene_datos and prod_huevo_sem_val and prod_huevo_sem_val > 0) else None
         costo_huevo = round((c_k_real * 1000.0 / total_huevo_real) * (precio_dieta / 1000.0), 2) if (tiene_datos and total_huevo_real and total_huevo_real > 0 and precio_dieta) else None
-        suma_saldo_aves = round((saldo_val * 7) + (salidas_semana * 3.5), 2) if tiene_datos else None
+        
+        # Suma Saldo Aves entero redondeado
+        suma_saldo_aves = int(round((saldo_val * 7) + (salidas_semana * 3.5))) if tiene_datos else None
 
         valores_update.append((
             c_k_real, m_sem, s_sem, o_sem,
-            c_real_val, c_kaa_val, c_tab, gr_ave_ac_val, acu_out, p_mort_sem, p_mort_acum,
+            c_real_val, c_kaa_val, c_tab, acu_out, p_mort_sem, p_mort_acum,
             p_sel_sem, p_ms_acu, saldo_val, conversion_sem_val, ganancia_ave_val, prod_huevo_sem_val,
             prod_huevo_real_val, 
             
             num_semana, porc_prod_tb, porcentaje_tb, porcentaje_tx, porcentaje_rx,
-            h_av_aloj_tab_val, c_tab, porcentaje_prod_real, haa_real, gr_ave_dia_graf,
+            h_av_aloj_tab_val, c_tab, porcentaje_prod_real, haa_real, h_av_aloj_real, gr_ave_dia_graf,
             porcentaje_mort_acum_graf, conv_acum, gr_por_huevo, precio_dieta, costo_huevo,
             prod_tab_unidad_huevo, consumo_kg_tab_graf, acum_huevos_tab_val, acum_consumo_tab_val,
             porc_huevo_nc, total_huevo_real, cant_unidades_perdida, suma_saldo_aves, prod_huevo_tab_val,
             mort_tab_val, peso_ave_tab_val, peso_huevo_tab_val, masa_huevo_tab_sem_val, masa_huevo_tab_acum_val, 
-            cons_agua_tab_val, conv_sem_real_val, conv_acum_real_val, masa_huevo_real_sem_val, masa_huevo_real_acum_val, cons_agua_real_val, f_id
+            cons_agua_tab_val, conv_sem_real_val, conv_acum_real_val, masa_huevo_real_sem_val, masa_huevo_real_acum_val, 
+            cons_agua_real_val, conv_kg_doc_acum_val, huevo_acum_val, kg_acum_val, kg_sem_val, f_id
         ))
 
-    # Paso 3: Disparo masivo a la base de datos (Optimizado para no ralentizar el servidor)
     if valores_update:
         cur.executemany("""
             UPDATE bd_vargas 
             SET consumo_alim_kg = %s, mort_sem = %s, mort_select_sem = %s, mort_venta = %s,
-                consumo_alim_real = %s, consumo_alim_k_a_a = %s, consumo_alim_tab = %s, cons_gr_ave_ao = %s,
+                consumo_alim_real = %s, consumo_alim_k_a_a = %s, consumo_alim_tab = %s,
                 salidas_acum = %s, percent_mort_sem = %s, percent_mort_acum = %s, percent_select_sem = %s,
                 percent_mort_and_select_acum = %s, saldo_ave = %s, conv_sem_tab = %s, ganancia_ave_dia = %s,
                 prod_huevo_sem = %s, prod_huevo_real = %s,
                 sem_graf = %s, porcentaje_prod_tb = %s, porcentaje_tb = %s, porcentaje_tx = %s, porcentaje_rx = %s,
-                haa_tab = %s, gr_tb_graf = %s, porcentaje_prod_real = %s, haa_real = %s, gr_ave_dia_graf = %s,
+                haa_tab = %s, gr_tb_graf = %s, porcentaje_prod_real = %s, haa_real = %s, h_av_aloj_real = %s, gr_ave_dia_graf = %s,
                 porcentaje_mort_acum_graf = %s, conv_acum_tab = %s, gr_por_huevo = %s, precio_dieta = %s, costo_huevo = %s,
                 prod_tab_unidad_huevo = %s, consumo_kg_tab_graf = %s, huevos_acum_tab = %s, consumo_acum_tab = %s,
                 porcentaje_huevo_nc = %s, total_huevo_real = %s, cant_unidades_perdida = %s, suma_saldo_aves = %s,
                 prod_huevo_tab = %s, mort_tab = %s, peso_ave_tab = %s, peso_huevo_tab = %s, masa_huevo_tab_sem = %s,
                 masa_huevo_tab_acum = %s, cons_agua_tab = %s, conv_sem_real = %s, conv_acum_real = %s,
-                masa_huevo_real_sem = %s, masa_huevo_real_acum = %s, cons_agua_real = %s
+                masa_huevo_real_sem = %s, masa_huevo_real_acum = %s, cons_agua_real = %s,
+                conv_kg_doc_acum = %s, huevo_acum = %s, kg_acum = %s, kg_sem = %s
             WHERE id_sem_prod = %s
         """, valores_update)
         
 def recalcular_todos_los_lotes_historicos():
-    # Iterador maestro: Llama a la función de recálculo masivo por cada uno de los lotes guardados en la BD
     conn = get_db_connection()
     cur = conn.cursor()
     try:
