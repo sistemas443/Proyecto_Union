@@ -1,0 +1,66 @@
+{% extends 'layout.html' %}
+{% block title %}Carga Masiva de Datos{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow border-0">
+                <div class="card-header bg-dark text-white py-3">
+                    <h5 class="mb-0 fw-bold"><i class='bx bx-upload me-2'></i>Central de Carga Masiva</h5>
+                </div>
+                <div class="card-body p-4">
+                    <!-- Bloque de Alertas Flash -->
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show fw-bold shadow-sm" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    {% endfor %}
+                    {% endif %}
+                    {% endwith %}
+                    <form action="{{ url_for('main.carga_datos') }}" method="POST" enctype="multipart/form-data">
+
+                        <div class="mb-4">
+                            <label for="modulo" class="form-label fw-bold text-secondary">1. Selecciona el Tipo de
+                                Informe</label>
+                            <select name="modulo" id="modulo" class="form-select shadow-sm" required>
+                                <option value="">-- Elige el módulo --</option>
+                                <option value="diario">Informe Diario</option>
+                                <option value="primera_semana">1era Semana</option>
+                                <option value="semanal_levante">Semanal Levante</option>
+                                <option value="semanal_prod">Semanal de Producción</option>
+                                <option value="clasificacion">Clasificación de Producción</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="lote" class="form-label fw-bold text-secondary">2. Selecciona el Lote de
+                                Destino</label>
+                            <select name="lote" id="lote" class="form-select shadow-sm" required>
+                                <option value="">-- Elige un lote --</option>
+                                {% for l in lotes %}
+                                <option value="{{ l }}">{{ l }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="archivo_excel" class="form-label fw-bold text-secondary">3. Sube el archivo
+                                Excel (.xlsx)</label>
+                            <input class="form-control shadow-sm" type="file" id="archivo_excel" name="archivo_excel"
+                                accept=".xlsx, .xls" required>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100 fw-bold shadow-sm py-2">
+                            <i class='bx bx-check-circle me-1'></i> Procesar y Guardar Datos
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

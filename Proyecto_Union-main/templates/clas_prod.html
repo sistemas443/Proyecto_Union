@@ -1,0 +1,243 @@
+{% extends 'layout.html' %}
+{% block title %}Clasificación Producción – Avícola San Martín{% endblock %}
+
+{% block content %}
+<div class="alert py-2 mb-3 fw-bold text-center text-uppercase fs-5 shadow-sm" style="background-color: #343a40; color: #fd7e14; border: none;">
+  CLASIFICACIÓN PRODUCCIÓN
+</div>
+
+<div class="filtro-bar mb-4 card shadow-sm p-3 bg-light border-0">
+  <form method="POST" class="d-flex align-items-center gap-3">
+    <label for="lote" class="mb-0 fw-bold text-secondary">SELECCIONE UN LOTE:</label>
+    <select name="lote" id="lote" class="form-select border-dark" style="width:300px; font-weight: bold;">
+      <option value="">-- Seleccione --</option>
+      {% for l in lotes %}
+      <option value="{{ l }}" {% if lote_seleccionado == l %}selected{% endif %}>LOTE {{ l }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-naranja fw-bold px-4">Cargar Datos</button>
+  </form>
+</div>
+
+{% if lote_seleccionado %}
+<div class="card mb-4 shadow-sm border-0">
+  <div class="card-header bg-dark text-white fw-bold py-2 d-flex justify-content-between align-items-center">
+    <span><i class='bx bx-info-circle me-1'></i> Información General del Lote</span>
+    <span class="badge bg-naranja fs-6">LOTE: {{ lote_seleccionado }}</span>
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-bordered table-sm mb-0">
+      <tbody class="align-middle">
+        <tr>
+          <th class="bg-light text-end pe-3" style="width:20%;">Cliente:</th>
+          <td class="fw-bold text-naranja" style="width:30%;">{{ cabecera.cliente or '---' }}</td>
+          <th class="bg-light text-end pe-3" style="width:20%;">Línea genética:</th>
+          <td class="fw-semibold" style="width:30%;">{{ cabecera.variedad or '---' }}</td>
+        </tr>
+        <tr>
+          <th class="bg-light text-end pe-3">Granja Levante:</th>
+          <td>{{ cabecera.granja_lev or '---' }}</td>
+          <th class="bg-light text-end pe-3">Nº Pollitas Recibidas:</th>
+          <td class="fw-bold">{{ cabecera.no_pollitas_recibidas or '---' }}</td>
+        </tr>
+        <tr>
+          <th class="bg-light text-end pe-3">Fecha Recepción:</th>
+          <td>{{ cabecera.fecha_recepcion or '---' }}</td>
+          <th class="bg-light text-end pe-3">Fecha Encasetamiento:</th>
+          <td>{{ cabecera.fecha_encasetamiento or '---' }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="alert alert-info text-center shadow-sm">
+  <i class='bx bx-up-arrow-alt fs-4 align-middle'></i> Seleccione un lote en la barra superior para ver su información y registros de clasificación.
+</div>
+{% endif %}
+
+{% if lote_seleccionado %}
+<div class="tabla-scroll shadow-sm border rounded">
+  <table class="table table-sm table-fixed mb-0" style="min-width: 4800px !important;">
+    
+    <colgroup>
+      <col style="width:70px;">   {# SV #}
+      
+      {# CLASIFICADOS (12) #}
+      <col style="width:75px;"> <col style="width:75px;"> <col style="width:75px;"> <col style="width:75px;">
+      <col style="width:75px;"> <col style="width:75px;"> <col style="width:75px;"> <col style="width:75px;">
+      <col style="width:95px;"> <col style="width:75px;"> <col style="width:110px;"><col style="width:90px;">
+      
+      {# ACUMULADOS (12) #}
+      <col style="width:75px;"> <col style="width:75px;"> <col style="width:75px;"> <col style="width:75px;">
+      <col style="width:75px;"> <col style="width:75px;"> <col style="width:75px;"> <col style="width:75px;">
+      <col style="width:95px;"> <col style="width:75px;"> <col style="width:110px;"><col style="width:95px;">
+      
+      {# % SEMANAL (12) #}
+      <col style="width:75px;"> <col style="width:75px;"> <col style="width:75px;"> <col style="width:75px;">
+      <col style="width:75px;"> <col style="width:75px;"> <col style="width:75px;"> <col style="width:75px;">
+      <col style="width:95px;"> <col style="width:75px;"> <col style="width:110px;"><col style="width:95px;">
+      
+      {# INTERMEDIOS (2) #}
+      <col style="width:90px;">  {# Peso P #}
+      <col style="width:130px;"> {# % H Grande #}
+
+      {# % ACUMULADO (11) #}
+      <col style="width:75px;"> <col style="width:75px;"> <col style="width:75px;"> <col style="width:75px;">
+      <col style="width:75px;"> <col style="width:75px;"> <col style="width:75px;"> <col style="width:75px;">
+      <col style="width:95px;"> <col style="width:75px;"> <col style="width:110px;">
+
+      {# FINALES (3) #}
+      <col style="width:80px;">  {# Roto #}
+      <col style="width:130px;"> {# Peso H. Prom #}
+      <col style="width:130px;"> {# Peso H. Tabla #}
+    </colgroup>
+
+   <thead>
+      <tr>
+        <th rowspan="2" class="th-black">SV</th>
+        
+        <th colspan="12" class="th-orange">NÚMERO DE HUEVOS CLASIFICADOS</th>
+        <th colspan="12" class="th-orange">NÚMERO DE HUEVOS ACUMULADOS</th>
+        <th colspan="12" class="th-orange">% DE HUEVO SEMANAL</th>
+        
+        <th rowspan="2" class="th-black">Peso P</th>
+        <th rowspan="2" class="th-black">% H Grande</th>
+        
+        <th colspan="11" class="th-orange">% DE HUEVO ACUMULADO</th>
+        
+        <th rowspan="2" class="th-black">Roto</th>
+        <th rowspan="2" class="th-black">Peso H. Prom</th>
+        <th rowspan="2" class="th-black">Peso H. Tabla</th>
+      </tr>
+      
+      <tr>
+        <th class="th-black">JUM</th><th class="th-black">Extra</th><th class="th-black">A A</th><th class="th-black">A</th><th class="th-black">B</th><th class="th-black">C</th>
+        <th class="th-black">Pipo</th><th class="th-black">Sucio</th><th class="th-black">Totia'o</th><th class="th-black">Yema</th><th class="th-black">Segundas</th><th class="th-black">TTL</th>
+        
+        <th class="th-black">JUM</th><th class="th-black">Extra</th><th class="th-black">A A</th><th class="th-black">A</th><th class="th-black">B</th><th class="th-black">C</th>
+        <th class="th-black">Pipo</th><th class="th-black">Sucio</th><th class="th-black">Totia'o</th><th class="th-black">Yema</th><th class="th-black">Segundas</th><th class="th-black">TOTAL</th>
+        
+        <th class="th-black">JUM</th><th class="th-black">Extra</th><th class="th-black">A A</th><th class="th-black">A</th><th class="th-black">B</th><th class="th-black">C</th>
+        <th class="th-black">Pipo</th><th class="th-black">Sucio</th><th class="th-black">Totia'o</th><th class="th-black">Yema</th><th class="th-black">Segundas</th><th class="th-black">TOTAL</th>
+
+        <th class="th-black">JUM</th><th class="th-black">Extra</th><th class="th-black">A A</th><th class="th-black">A</th><th class="th-black">B</th><th class="th-black">C</th>
+        <th class="th-black">Pipo</th><th class="th-black">Sucio</th><th class="th-black">Totia'o</th><th class="th-black">Yema</th><th class="th-black">Segundas</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for f in filas %}
+      <tr data-id="{{ f['id'] }}">
+        
+        <td><input type="number" data-col="sv" value="{{ f['sv'] }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-secondary" readonly></td>
+
+        <td><input type="number" data-col="clas_jum"       value="{{ f['clas_jum'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="clas_extra"     value="{{ f['clas_extra'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="clas_aa"        value="{{ f['clas_aa'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="clas_a"         value="{{ f['clas_a'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="clas_b"         value="{{ f['clas_b'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="clas_c"         value="{{ f['clas_c'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="clas_pipo"      value="{{ f['clas_pipo'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="clas_sucio"     value="{{ f['clas_sucio'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="clas_totiao"    value="{{ f['clas_totiao'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="clas_yema"      value="{{ f['clas_yema'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="clas_segundas"  value="{{ f['clas_segundas'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="clas_ttl"       value="{{ f['clas_ttl'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold"></td>
+
+        <td><input type="number" data-col="acum_jum"       value="{{ f['acum_jum'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="acum_extra"     value="{{ f['acum_extra'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="acum_aa"        value="{{ f['acum_aa'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="acum_a"         value="{{ f['acum_a'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="acum_b"         value="{{ f['acum_b'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="acum_c"         value="{{ f['acum_c'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="acum_pipo"      value="{{ f['acum_pipo'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="acum_sucio"     value="{{ f['acum_sucio'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="acum_totiao"    value="{{ f['acum_totiao'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="acum_yema"      value="{{ f['acum_yema'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="acum_segundas"  value="{{ f['acum_segundas'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="acum_total"     value="{{ f['acum_total'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold"></td>
+
+        <td><input type="number" data-col="porc_sem_jum"      value="{{ f['porc_sem_jum'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="porc_sem_extra"    value="{{ f['porc_sem_extra'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="porc_sem_aa"       value="{{ f['porc_sem_aa'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="porc_sem_a"        value="{{ f['porc_sem_a'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="porc_sem_b"        value="{{ f['porc_sem_b'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="porc_sem_c"        value="{{ f['porc_sem_c'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="porc_sem_pipo"     value="{{ f['porc_sem_pipo'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="porc_sem_sucio"    value="{{ f['porc_sem_sucio'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="porc_sem_totiao"   value="{{ f['porc_sem_totiao'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="porc_sem_yema"     value="{{ f['porc_sem_yema'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="porc_sem_segundas" value="{{ f['porc_sem_segundas'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="porc_sem_total"    value="{{ f['porc_sem_total'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold"></td>
+
+        <td><input type="number" data-col="peso_p"         value="{{ f['peso_p'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="porc_h_grande"  value="{{ f['porc_h_grande'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+
+        <td><input type="number" data-col="porc_acu_jum"      value="{{ f['porc_acu_jum'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="porc_acu_extra"    value="{{ f['porc_acu_extra'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="porc_acu_aa"       value="{{ f['porc_acu_aa'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="porc_acu_a"        value="{{ f['porc_acu_a'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="porc_acu_b"        value="{{ f['porc_acu_b'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="porc_acu_c"        value="{{ f['porc_acu_c'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="porc_acu_pipo"     value="{{ f['porc_acu_pipo'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="porc_acu_sucio"    value="{{ f['porc_acu_sucio'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="porc_acu_totiao"   value="{{ f['porc_acu_totiao'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="porc_acu_yema"     value="{{ f['porc_acu_yema'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="porc_acu_segundas" value="{{ f['porc_acu_segundas'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+
+        <td><input type="number" data-col="roto"          value="{{ f['roto'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold"></td>
+        <td><input type="number" data-col="peso_h_prom"   value="{{ f['peso_h_prom'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="peso_h_tabla"  value="{{ f['peso_h_tabla'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="53" class="text-center text-muted py-5">
+          <h5>No hay registros para este lote</h5>
+          <p>La estructura se generará automáticamente en el futuro.</p>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Guardado automático real para Clasificación Producción
+const API_URL_CLAS = "{{ url_for('main.actualizar_clasificacion') }}";
+
+document.querySelectorAll('.table-fixed input:not([readonly])').forEach(function (input) {
+  input.addEventListener('change', function () {
+    const fila    = this.closest('tr');
+    const id      = fila.dataset.id;
+    const columna = this.dataset.col;
+    const valor   = this.value;
+    const el      = this;
+
+    fetch(API_URL_CLAS, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: id, columna: columna, valor: valor })
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.status === 'ok') {
+        el.style.backgroundColor = "rgba(40, 167, 69, 0.2)";
+        setTimeout(() => el.style.backgroundColor = "transparent", 800);
+      } else {
+        alert('Error al guardar: ' + data.msg);
+        el.style.backgroundColor = "rgba(220, 53, 69, 0.2)";
+      }
+    })
+    .catch(err => {
+      console.error('Error de red:', err);
+      el.style.backgroundColor = "rgba(220, 53, 69, 0.2)";
+    });
+  });
+});
+</script>
+{% endblock %}
