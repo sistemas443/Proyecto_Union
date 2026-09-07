@@ -302,3 +302,63 @@ def update_registro_diario_field(id_reg: int, columna: str, valor: str) -> tuple
     finally:
         cur.close()
         conn.close()
+        
+import pandas as pd
+import psycopg2.extras
+import numpy as np
+from models.base import get_db_connection
+
+def procesar_excel_diario(archivo, lote_nombre):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    try:
+        # Manejo de variaciones en el nombre del lote
+        lote_variante = f"LOTE {lote_nombre}" if not lote_nombre.upper().startswith("LOTE") else lote_nombre.replace("LOTE ", "")
+        cur.execute("SELECT id FROM cabecera_lotes WHERE lote = %s OR lote = %s", (lote_nombre, lote_variante))
+        lote_row = cur.fetchone()
+        
+        if not lote_row:
+            return False, f"No se encontró el lote '{lote_nombre}' en la base de datos."
+        id_lote = lote_row['id']
+
+        # Lectura del Excel
+        df = pd.read_excel(archivo, sheet_name='DIARIO', skiprows=7, header=None)
+        df = df[df[0].notnull()] # Filtra filas sin fecha
+        df = df.replace({np.nan: None}) # Convierte nulos para PostgreSQL
+
+        # Preparación de datos masivos
+        valores_a_insertar = []
+        for index, fila in df.iterrows():
+            valores = (
+                lote_nombre,                
+                str(fila[0].date()) if hasattr(fila[0], 'date') else str(fila[0]),
+                fila[1], fila[2], fila[3], fila[4], fila[5], fila[6], 
+                fila[7], fila[8], fila[9], fila[10], fila[11], fila[12], 
+                fila[13], fila[14], id_lote
+            )
+            valores_a_insertar.append(valores)
+
+        if not valores_a_insertar:
+            return False, "El archivo está vacío o no tiene datos válidos."
+
+        # Inserción masiva optimizada
+        query_insert = """
+            INSERT INTO data_diario (
+                lote, fecha_dia, dias, sem, produccion, consumo_kg, 
+                mortalidad, sel, otros, observaciones, saldo_aves, 
+                consumo_gr_a_d, consumo_gr_a_tab, percent_diario_prod, 
+                prom_ave_dia_cc, consumo_agua, id_lote
+            ) VALUES %s
+        """
+        psycopg2.extras.execute_values(cur, query_insert, valores_a_insertar)
+        conn.commit()
+        return True, f"Se insertaron {len(valores_a_insertar)} registros diarios correctamente."
+
+    except Exception as e:
+        conn.rollback()
+        return False, f"Error al procesar el archivo: {str(e)}"
+    
+    finally:
+        cur.close()
+        conn.close()

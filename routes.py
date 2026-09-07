@@ -999,3 +999,59 @@ def grafico_conversion():
         lote_seleccionado=lote_seleccionado,
         datos_grafico=datos_grafico
     )
+    
+    
+from flask import render_template, request, session, redirect, url_for, flash
+import pandas as pd
+
+# 1. Ruta SOLAMENTE para mostrar el formulario (GET)
+@bp.route('/carga-datos', methods=['GET'])
+@login_requerido
+def carga_datos_vista():
+    if session.get('user_rol') != 'Superadmin':
+        return "Acceso denegado. Solo Superadmin.", 403
+
+    return render_template(
+        'carga_datos.html',
+        lotes=get_lotes_distintos() # Asegúrate de tener esta función importada
+    )
+
+@bp.route('/api-subir-excel', methods=['POST'])
+@login_requerido
+def procesar_carga():
+    if session.get('user_rol') != 'Superadmin':
+        return "Acceso denegado. Solo Superadmin.", 403
+
+    modulo_seleccionado = request.form.get('modulo')
+    archivo = request.files.get('archivo_excel')
+    lote_seleccionado = request.form.get('lote')
+
+    # Validación 1: Módulo
+    if not modulo_seleccionado:
+        flash("Por favor, selecciona el tipo de informe.", "danger")
+        return redirect(url_for('main.carga_datos_vista'), code=303)
+
+    # Validación 2: Archivo
+    if not archivo or archivo.filename == '':
+        flash("Por favor, selecciona un archivo Excel válido.", "danger")
+        return redirect(url_for('main.carga_datos_vista'), code=303)
+
+    # Procesamiento del Módulo Diario
+    if modulo_seleccionado == 'diario':
+        try:
+            from models.diario.services import procesar_excel_diario
+            exito, msj_resultado = procesar_excel_diario(archivo, lote_seleccionado)
+            
+            if exito:
+                flash(msj_resultado, "success")
+            else:
+                flash(msj_resultado, "danger")
+        except Exception as e:
+            print(f"Error procesando diario: {e}")
+            flash(f"Error procesando el archivo: {e}", "danger")
+            
+    else:
+        flash(f"La carga para '{modulo_seleccionado}' aún no está programada.", "warning")
+
+    # Redirección final segura si todo termina bien (usando código 303)
+    return redirect(url_for('main.carga_datos_vista'), code=303)
