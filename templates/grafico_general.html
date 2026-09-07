@@ -18,8 +18,8 @@
                         <option value="{{ l }}" {% if l == lote_seleccionado %}selected{% endif %}>{{ l }}</option>
                     {% endfor %}
                 </select>
-               <button type="submit" class="btn btn-sm btn-primary shadow-sm fw-bold px-3 d-flex align-items-center justify-content-center" style="height: 31px;">
-                 <i class='bx bx-search-alt-2 me-1'></i> Generar
+                <button type="submit" class="btn btn-sm btn-primary shadow-sm fw-bold px-3 d-flex align-items-center justify-content-center" style="height: 31px;">
+                    <i class='bx bx-search-alt-2 me-1'></i> Generar
                 </button>
             </form>
         </div>
@@ -41,6 +41,7 @@
     {% endif %}
 </div>
 {% endblock %}
+
 {% block scripts %}
 <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
 
@@ -58,19 +59,51 @@
         if (datos && datos.semanas && datos.semanas.length > 0) {
             const ejeX = datos.semanas;
 
-            // 1. Eje Izquierdo (0 - 120) -> Agrupamos Producción, Consumo y Peso de Huevo
-            const prodReal = { x: ejeX, y: datos.prod_real, name: '% Prod. Real', type: 'scatter', mode: 'lines', line: {color: 'blue', width: 3}, yaxis: 'y' };
-            const prodTabla = { x: ejeX, y: datos.prod_tabla, name: '% Prod. TB', type: 'scatter', mode: 'lines', line: {color: 'grey', width: 2}, yaxis: 'y' };
+            // 1. Eje Izquierdo (0 - 120) -> Producción, Consumo y Peso de Huevo
+            const prodReal = { 
+                x: ejeX, y: datos.prod_real, name: '% Prod. Real', 
+                type: 'scatter', mode: 'lines', line: {color: 'blue', width: 3}, 
+                yaxis: 'y', connectgaps: true 
+            };
+            const prodTabla = { 
+                x: ejeX, y: datos.prod_tabla, name: '% Prod. TB', 
+                type: 'scatter', mode: 'lines', line: {color: 'grey', width: 2}, 
+                yaxis: 'y', connectgaps: true 
+            };
             
-            const consReal = { x: ejeX, y: datos.consumo_real, name: 'Gr. Ave Día', type: 'scatter', mode: 'lines', line: {color: 'green', width: 2}, yaxis: 'y' };
-            const consTabla = { x: ejeX, y: datos.consumo_tabla, name: 'GR/TB', type: 'scatter', mode: 'lines+markers', line: {color: 'red', width: 1}, marker: {symbol: 'x', size: 4}, yaxis: 'y' };
+            const consReal = { 
+                x: ejeX, y: datos.consumo_real, name: 'Gr. Ave Día', 
+                type: 'scatter', mode: 'lines', line: {color: 'green', width: 2}, 
+                yaxis: 'y', connectgaps: true 
+            };
+            const consTabla = { 
+                x: ejeX, y: datos.consumo_tabla, name: 'GR/TB', 
+                type: 'scatter', mode: 'lines+markers', line: {color: 'red', width: 1}, 
+                marker: {symbol: 'x', size: 4}, yaxis: 'y', connectgaps: true 
+            };
             
-            const pesoHuevoReal = { x: ejeX, y: datos.peso_huevo_real, name: 'Peso H Real', type: 'scatter', mode: 'lines+markers', line: {color: '#808000', width: 2}, marker: {size: 4}, yaxis: 'y' };
-            const pesoHuevoTabla = { x: ejeX, y: datos.peso_huevo_tabla, name: 'Peso H. Tab', type: 'scatter', mode: 'lines', line: {color: 'cyan', width: 2}, yaxis: 'y' };
+            const pesoHuevoReal = { 
+                x: ejeX, y: datos.peso_huevo_real, name: 'Peso H Real', 
+                type: 'scatter', mode: 'lines+markers', line: {color: '#808000', width: 2}, 
+                marker: {size: 4}, yaxis: 'y', connectgaps: true 
+            };
+            const pesoHuevoTabla = { 
+                x: ejeX, y: datos.peso_huevo_tabla, name: 'Peso H. Tab', 
+                type: 'scatter', mode: 'lines', line: {color: 'cyan', width: 2}, 
+                yaxis: 'y', connectgaps: true 
+            };
 
-            // 2. Eje Derecho (1500 - 3150) -> Exclusivo para el Peso del Ave
-            const pesoAveReal = { x: ejeX, y: datos.peso_ave_real, name: 'Peso Ave Real', type: 'scatter', mode: 'lines', line: {color: 'green', width: 4}, yaxis: 'y2' };
-            const pesoAveTabla = { x: ejeX, y: datos.peso_ave_tabla, name: 'Peso Ave Tab', type: 'scatter', mode: 'lines', line: {color: 'red', width: 2, dash: 'dash'}, yaxis: 'y2' };
+            // 2. Eje Derecho (1500 - 3150) -> Peso del Ave
+            const pesoAveReal = { 
+                x: ejeX, y: datos.peso_ave_real, name: 'Peso Ave Real', 
+                type: 'scatter', mode: 'lines', line: {color: 'green', width: 4}, 
+                yaxis: 'y2', connectgaps: true 
+            };
+            const pesoAveTabla = { 
+                x: ejeX, y: datos.peso_ave_tabla, name: 'Peso Ave Tab', 
+                type: 'scatter', mode: 'lines', line: {color: 'red', width: 2, dash: 'dash'}, 
+                yaxis: 'y2', connectgaps: true 
+            };
 
             const trazos = [prodReal, prodTabla, consReal, consTabla, pesoHuevoReal, pesoHuevoTabla, pesoAveReal, pesoAveTabla];
 
@@ -83,17 +116,17 @@
                 // Configuración Eje Izquierdo (0 a 120)
                 yaxis: { 
                     range: [0, 120], 
-                    dtick: 10, // Saltos de 10 en 10
+                    dtick: 10, 
                     titlefont: {color: 'black'}, 
                     tickfont: {color: 'black'},
                     gridcolor: '#e9ecef'
                 },
                 
-                // Configuración Eje Derecho (Idéntico a tu imagen)
+                // Configuración Eje Derecho
                 yaxis2: { 
                     title: '<b>Pesaje de las Aves</b>', 
                     range: [1500, 3150], 
-                    dtick: 150, // Saltos de 150 en 150
+                    dtick: 150, 
                     overlaying: 'y', 
                     side: 'right', 
                     titlefont: {color: 'black'}, 
@@ -104,7 +137,37 @@
                 margin: { l: 60, r: 60, t: 60, b: 100 }
             };
 
-            Plotly.newPlot('graficoPlotly', trazos, layout, { responsive: true, displayModeBar: true, displaylogo: false });
+            // Configuración de la barra de herramientas de Plotly con Pantalla Completa habilitada
+            const config = {
+                responsive: true,
+                displayModeBar: true,
+                displaylogo: false,
+                modeBarButtonsToAdd: [{
+                    name: 'Pantalla Completa',
+                    icon: {
+                        'width': 500,
+                        'height': 500,
+                        'path': 'M80,80 H180 V120 H120 V180 H80 Z M320,80 H420 V180 H380 V120 H320 Z M80,320 H120 V380 H180 V420 H80 Z M380,320 H420 V420 H320 V380 H380 Z'
+                    },
+                    click: function(gd) {
+                        if (!document.fullscreenElement) {
+                            if (gd.requestFullscreen) {
+                                gd.requestFullscreen();
+                            } else if (gd.webkitRequestFullscreen) {
+                                gd.webkitRequestFullscreen();
+                            } else if (gd.msRequestFullscreen) {
+                                gd.msRequestFullscreen();
+                            }
+                        } else {
+                            if (document.exitFullscreen) {
+                                document.exitFullscreen();
+                            }
+                        }
+                    }
+                }]
+            };
+
+            Plotly.newPlot('graficoPlotly', trazos, layout, config);
         }
     });
 </script>

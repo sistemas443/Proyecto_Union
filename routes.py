@@ -1036,7 +1036,9 @@ def procesar_carga():
         flash("Por favor, selecciona un archivo Excel válido.", "danger")
         return redirect(url_for('main.carga_datos_vista'), code=303)
 
-    # Procesamiento del Módulo Diario
+    # ---------------------------------------------------------
+    # 1. Procesamiento del Módulo Diario
+    # ---------------------------------------------------------
     if modulo_seleccionado == 'diario':
         try:
             from models.diario.services import procesar_excel_diario
@@ -1048,8 +1050,27 @@ def procesar_carga():
                 flash(msj_resultado, "danger")
         except Exception as e:
             print(f"Error procesando diario: {e}")
-            flash(f"Error procesando el archivo: {e}", "danger")
+            flash(f"Error procesando el archivo diario: {e}", "danger")
             
+    # ---------------------------------------------------------
+    # 2. Procesamiento del Módulo Semanal de Producción
+    # ---------------------------------------------------------
+    elif modulo_seleccionado == 'semanal_prod':
+        try:
+            from models.semanal.services import procesar_excel_semanal_produccion
+            exito, msj_resultado = procesar_excel_semanal_produccion(archivo, lote_seleccionado)
+            
+            if exito:
+                flash(msj_resultado, "success")
+            else:
+                flash(msj_resultado, "danger")
+        except Exception as e:
+            print(f"Error procesando semanal producción: {e}")
+            flash(f"Error procesando el archivo semanal: {e}", "danger")
+
+    # ---------------------------------------------------------
+    # 3. Otros módulos no programados aún
+    # ---------------------------------------------------------
     else:
         flash(f"La carga para '{modulo_seleccionado}' aún no está programada.", "warning")
 

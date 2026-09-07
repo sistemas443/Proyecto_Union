@@ -313,7 +313,7 @@ def procesar_excel_diario(archivo, lote_nombre):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     try:
-        # Manejo de variaciones en el nombre del lote
+        # 1. Obtener ID del lote
         lote_variante = f"LOTE {lote_nombre}" if not lote_nombre.upper().startswith("LOTE") else lote_nombre.replace("LOTE ", "")
         cur.execute("SELECT id FROM cabecera_lotes WHERE lote = %s OR lote = %s", (lote_nombre, lote_variante))
         lote_row = cur.fetchone()
@@ -322,41 +322,79 @@ def procesar_excel_diario(archivo, lote_nombre):
             return False, f"No se encontró el lote '{lote_nombre}' en la base de datos."
         id_lote = lote_row['id']
 
-        # Lectura del Excel
+        # 2. Leer el Excel
         df = pd.read_excel(archivo, sheet_name='DIARIO', skiprows=7, header=None)
-        df = df[df[0].notnull()] # Filtra filas sin fecha
-        df = df.replace({np.nan: None}) # Convierte nulos para PostgreSQL
+        
+        df = df[df[0].notnull()] 
+        df = df.replace(r'^\s*$', np.nan, regex=True)
+        df = df.replace({np.nan: None})
 
-        # Preparación de datos masivos
+        # 3. Preparar los datos
         valores_a_insertar = []
+        fechas_a_cargar = [] 
+
         for index, fila in df.iterrows():
+            fecha_str = str(fila[0].date()) if hasattr(fila[0], 'date') else str(fila[0])
+            fechas_a_cargar.append(fecha_str)
+            
+            # --- CÁLCULO PERFECTO DE LA SEMANA ---
+            dias_valor = fila[1]
+            semana_calculada = None
+            
+            if dias_valor is not None:
+                try:
+                    d = int(dias_valor)
+                    semanas_completas = d // 7
+                    dias_resto = d % 7
+                    if dias_resto == 0:
+                        semana_calculada = str(semanas_completas)
+                    else:
+                        semana_calculada = f"{semanas_completas} + {dias_resto}/7"
+                except:
+                    semana_calculada = str(fila[2]) # Respaldo en caso de error
+            
             valores = (
-                lote_nombre,                
-                str(fila[0].date()) if hasattr(fila[0], 'date') else str(fila[0]),
-                fila[1], fila[2], fila[3], fila[4], fila[5], fila[6], 
-                fila[7], fila[8], fila[9], fila[10], fila[11], fila[12], 
-                fila[13], fila[14], id_lote
+                lote_nombre,                                                       
+                fecha_str, 
+                dias_valor,                                                           
+                semana_calculada, # Usamos el cálculo en lugar de leer el Excel directamente           
+                fila[3], fila[4], fila[5], fila[6], fila[7], fila[8], 
+                fila[9], fila[10], fila[11], fila[12], fila[13], fila[14], 
+                id_lote,
+                None, None, None, None, None, None, None, None, None, None, None
             )
             valores_a_insertar.append(valores)
 
         if not valores_a_insertar:
             return False, "El archivo está vacío o no tiene datos válidos."
 
-        # Inserción masiva optimizada
+        # Prevención de duplicados
+        if fechas_a_cargar:
+            cur.execute(
+                "DELETE FROM data_diario WHERE lote = %s AND fecha_dia = ANY(%s)", 
+                (lote_nombre, fechas_a_cargar)
+            )
+
+        # 4. Inserción Masiva
         query_insert = """
             INSERT INTO data_diario (
                 lote, fecha_dia, dias, sem, produccion, consumo_kg, 
                 mortalidad, sel, otros, observaciones, saldo_aves, 
                 consumo_gr_a_d, consumo_gr_a_tab, percent_diario_prod, 
-                prom_ave_dia_cc, consumo_agua, id_lote
+                prom_ave_dia_cc, consumo_agua, id_lote,
+                peso_tabla, peso_real, unif_10_menos, porc_uniformidad, 
+                unif_10_mas, coef_variacion, porc_mort_sem, porc_mort_acum, 
+                cons_k_acum, cons_gr_ave_tab_acum, cons_gr_ave_ac
             ) VALUES %s
         """
+        
         psycopg2.extras.execute_values(cur, query_insert, valores_a_insertar)
         conn.commit()
-        return True, f"Se insertaron {len(valores_a_insertar)} registros diarios correctamente."
+        return True, f"Se actualizaron {len(valores_a_insertar)} registros diarios correctamente."
 
     except Exception as e:
         conn.rollback()
+        print(f"[ERROR CARGA MASIVA DIARIO]: {str(e)}")
         return False, f"Error al procesar el archivo: {str(e)}"
     
     finally:

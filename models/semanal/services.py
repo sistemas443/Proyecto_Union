@@ -1155,3 +1155,152 @@ def get_data_grafico_conversion(lote_nombre):
     finally:
         cur.close()
         conn.close()
+        
+import pandas as pd
+import psycopg2.extras
+import numpy as np
+from models.base import get_db_connection
+
+def clean_num(val):
+    """ Convierte texto a float/int o devuelve None si no es numérico """
+    if val is None or pd.isna(val):
+        return None
+    try:
+        # Si es un número o un string convertible a float
+        return float(val)
+    except (ValueError, TypeError):
+        # Si es un texto tipo "Producción no iniciada", "-", "N/A", etc.
+        return None
+
+def procesar_excel_semanal_produccion(archivo, lote_nombre):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    try:
+        # 1. Validar y obtener Lote
+        lote_variante = f"LOTE {lote_nombre}" if not lote_nombre.upper().startswith("LOTE") else lote_nombre.replace("LOTE ", "")
+        cur.execute("SELECT id FROM cabecera_lotes WHERE lote = %s OR lote = %s", (lote_nombre, lote_variante))
+        lote_row = cur.fetchone()
+        
+        if not lote_row:
+            return False, f"No se encontró el lote '{lote_nombre}' en la base de datos."
+        id_lote = lote_row['id']
+
+        # 2. Leer Excel (Hoja 'Sem-Prod', saltando 10 filas)
+        df = pd.read_excel(archivo, sheet_name='Sem-Prod', skiprows=10, header=None, usecols=range(72))
+        
+        # Filtro: Sólo filas donde la Semana (Columna C / índice 2) tenga datos
+        df = df[df[2].notnull()] 
+        
+        # Limpieza extrema de espacios en blanco
+        df = df.replace(r'^\s*$', np.nan, regex=True)
+        df = df.replace({np.nan: None})
+
+        valores_a_insertar = []
+        semanas_a_cargar = []
+
+        # 3. Mapeo de Columnas Limpiando Numéricos
+        for index, fila in df.iterrows():
+            
+            # Fecha (Columna A = 0)
+            fecha_str = str(fila[0].date()) if hasattr(fila[0], 'date') else str(fila[0]) if fila[0] else None
+            
+            # Semana (Columna C = 2)
+            semana = clean_num(fila[2])
+            semana = int(semana) if semana is not None else None
+            if semana is not None:
+                semanas_a_cargar.append(semana)
+            
+            valores = (
+                lote_nombre,                # lote
+                id_lote,                    # id_lote
+                fecha_str,                  # fecha_fin_sem
+                semana,                     # sem_prod
+                semana,                     # sem_graf (Igual a sem_prod)
+                clean_num(fila[3]), clean_num(fila[4]), clean_num(fila[5]),  # prod_huevo_sem, tab, real (D,E,F)
+                clean_num(fila[6]), clean_num(fila[7]),                       # h_av_aloj_tab, real (G,H)
+                clean_num(fila[8]), clean_num(fila[9]), clean_num(fila[10]), clean_num(fila[11]), # consumo alim (I,J,K,L)
+                clean_num(fila[12]), clean_num(fila[13]), clean_num(fila[14]), clean_num(fila[15]), # conversiones (M,N,O,P)
+                clean_num(fila[16]), clean_num(fila[17]), clean_num(fila[18]), # mortalidad y select (Q,R,S)
+                clean_num(fila[19]), clean_num(fila[20]), clean_num(fila[21]), clean_num(fila[22]), # porcentajes mort (T,U,V,W)
+                clean_num(fila[23]),                   # mort_tab (X)
+                clean_num(fila[24]), clean_num(fila[25]),         # peso_ave_real, tab (Y,Z)
+                clean_num(fila[26]), clean_num(fila[27]),         # unif, cv (AA, AB)
+                clean_num(fila[30]), clean_num(fila[31]),         # peso_huevo_real, tab (AE, AF)
+                clean_num(fila[32]),                   # saldo_ave (AG)
+                str(fila[33]) if fila[33] else None,   # observaciones (AH) - Mantiene texto
+                clean_num(fila[34]), clean_num(fila[35]), clean_num(fila[36]), clean_num(fila[37]), # masa huevo (AI, AJ, AK, AL)
+                clean_num(fila[38]), clean_num(fila[39]),         # cons_agua real, tab (AM, AN)
+                clean_num(fila[40]),                   # huevo_acum (AO)
+                clean_num(fila[41]),                   # conv_kg_doc_acum (AP)
+                clean_num(fila[42]), clean_num(fila[43]),         # kg_sem, kg_acum (AQ, AR)
+                clean_num(fila[44]),                   # salidas_acum (AS)
+                clean_num(fila[46]), clean_num(fila[47]),         # porcentaje_prod_tb, porcentaje_tb (AU, AV)
+                clean_num(fila[49]), clean_num(fila[50]),         # porcentaje_tx, porcentaje_rx (AX, AY)
+                clean_num(fila[51]),                   # haa_tab (AZ)
+                clean_num(fila[52]),                   # gr_tb_graf (BA)
+                clean_num(fila[53]),                   # porcentaje_prod_real (BB)
+                clean_num(fila[54]),                   # haa_real (BC)
+                clean_num(fila[55]),                   # gr_ave_dia_graf (BD)
+                clean_num(fila[56]),                   # porcentaje_mort_acum_graf (BE)
+                clean_num(fila[59]),                   # gr_por_huevo (BH)
+                clean_num(fila[60]),                   # precio_dieta (BI)
+                clean_num(fila[61]),                   # costo_huevo (BJ)
+                clean_num(fila[62]),                   # prod_tab_unidad_huevo (BK)
+                clean_num(fila[63]),                   # consumo_kg_tab_graf (BL)
+                clean_num(fila[64]),                   # huevos_acum_tab (BM)
+                clean_num(fila[65]),                   # consumo_acum_tab (BN)
+                clean_num(fila[66]), clean_num(fila[67]),         # conv_acum_tab_1, 2 (BO, BP)
+                clean_num(fila[68]),                   # porcentaje_huevo_nc (BQ)
+                clean_num(fila[69]),                   # total_huevo_real (BR)
+                clean_num(fila[70]),                   # cant_unidades_perdida (BS)
+                clean_num(fila[71])                    # suma_saldo_aves (BT)
+            )
+            valores_a_insertar.append(valores)
+
+        if not valores_a_insertar:
+            return False, "El archivo está vacío o no contiene semanas válidas."
+
+        # 4. Prevención de duplicados
+        semanas_unicas = list(set(semanas_a_cargar))
+        if semanas_unicas:
+            cur.execute(
+                "DELETE FROM bd_vargas WHERE lote = %s AND sem_prod = ANY(%s)", 
+                (lote_nombre, semanas_unicas)
+            )
+
+        # 5. Inserción Masiva
+        query_insert = """
+            INSERT INTO bd_vargas (
+                lote, id_lote, fecha_fin_sem, sem_prod, sem_graf, 
+                prod_huevo_sem, prod_huevo_tab, prod_huevo_real, 
+                h_av_aloj_tab, h_av_aloj_real, 
+                consumo_alim_kg, consumo_alim_tab, consumo_alim_real, consumo_alim_k_a_a, 
+                conv_sem_tab, conv_acum_tab, conv_sem_real, conv_acum_real, 
+                mort_sem, mort_select_sem, mort_venta, 
+                percent_mort_sem, percent_mort_acum, percent_select_sem, percent_mort_and_select_acum, 
+                mort_tab, peso_ave_real, peso_ave_tab, unif, cv, 
+                peso_huevo_real, peso_huevo_tab, saldo_ave, observaciones, 
+                masa_huevo_real_sem, masa_huevo_tab_sem, masa_huevo_real_acum, masa_huevo_tab_acum, 
+                cons_agua_real, cons_agua_tab, huevo_acum, conv_kg_doc_acum, 
+                kg_sem, kg_acum, salidas_acum, 
+                porcentaje_prod_tb, porcentaje_tb, porcentaje_tx, porcentaje_rx, 
+                haa_tab, gr_tb_graf, porcentaje_prod_real, haa_real, gr_ave_dia_graf, porcentaje_mort_acum_graf, 
+                gr_por_huevo, precio_dieta, costo_huevo, prod_tab_unidad_huevo, consumo_kg_tab_graf, 
+                huevos_acum_tab, consumo_acum_tab, conv_acum_tab_1, conv_acum_tab_2, 
+                porcentaje_huevo_nc, total_huevo_real, cant_unidades_perdida, suma_saldo_aves
+            ) VALUES %s
+        """
+        
+        psycopg2.extras.execute_values(cur, query_insert, valores_a_insertar)
+        conn.commit()
+        return True, f"Se actualizaron {len(valores_a_insertar)} registros semanales correctamente."
+
+    except Exception as e:
+        conn.rollback()
+        print(f"[ERROR CARGA MASIVA SEMANAL PROD]: {str(e)}")
+        return False, f"Error al procesar el archivo semanal: {str(e)}"
+    
+    finally:
+        cur.close()
+        conn.close()
