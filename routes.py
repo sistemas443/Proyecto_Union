@@ -955,3 +955,47 @@ def agregar_columna_foto():
     finally:
         cur.close()
         conn.close()
+        
+@bp.route('/grafico-general', methods=['GET', 'POST'])
+@login_requerido
+def grafico_general():
+    if request.method == 'POST':
+        lote_seleccionado = request.form.get('lote', '')
+        session['lote_seleccionado'] = lote_seleccionado
+    else:
+        lote_seleccionado = session.get('lote_seleccionado', '')
+
+    datos_grafico = None
+    if lote_seleccionado and lote_seleccionado != 'VACIO':
+        # Reutilizamos tu función para obtener las métricas generales del lote
+        from models.semanal.services import get_data_grafico_general
+        datos_grafico = get_data_grafico_general(lote_seleccionado)
+
+    return render_template(
+        'grafico_general.html',
+        lotes=get_lotes_distintos(),
+        lote_seleccionado=lote_seleccionado,
+        datos_grafico=datos_grafico
+    )
+
+
+@bp.route('/grafico-conversion', methods=['GET', 'POST'])
+@login_requerido
+def grafico_conversion():
+    if request.method == 'POST':
+        lote_seleccionado = request.form.get('lote', '')
+        session['lote_seleccionado'] = lote_seleccionado
+    else:
+        lote_seleccionado = session.get('lote_seleccionado', '')
+
+    datos_grafico = None
+    if lote_seleccionado and lote_seleccionado != 'VACIO':
+        from models.semanal.services import get_data_grafico_conversion
+        datos_grafico = get_data_grafico_conversion(lote_seleccionado)
+
+    return render_template(
+        'grafico_conversion.html',
+        lotes=get_lotes_distintos(),
+        lote_seleccionado=lote_seleccionado,
+        datos_grafico=datos_grafico
+    )

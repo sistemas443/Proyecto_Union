@@ -1004,3 +1004,154 @@ def recalcular_todos_los_lotes_historicos():
     finally:
         cur.close()
         conn.close()
+        
+def get_data_grafico_general(lote_nombre):
+    import psycopg2.extras
+    from models.base import get_db_connection
+    
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    
+    try:
+        # 1. Búsqueda flexible: Cubre tanto "69-10" como "LOTE 69-10"
+        lote_variante = f"LOTE {lote_nombre}" if not lote_nombre.upper().startswith("LOTE") else lote_nombre.replace("LOTE ", "")
+        
+        cur.execute("SELECT id FROM cabecera_lotes WHERE lote = %s OR lote = %s", (lote_nombre, lote_variante))
+        lote_row = cur.fetchone()
+        
+        if not lote_row: 
+            return {}
+            
+        id_lote = lote_row['id']
+
+        # Convertimos la columna de texto a entero (::integer) para poder comparar y ordenar
+        query = """
+            SELECT 
+                s.sem_prod AS semana,
+                s.prod_huevo_real AS prod_real, 
+                s.prod_huevo_tab AS prod_tabla,
+                s.consumo_alim_real AS consumo_real,
+                s.consumo_alim_tab AS consumo_tabla,
+                s.peso_huevo_real AS peso_huevo_real,
+                s.peso_huevo_tab AS peso_huevo_tabla,
+                s.peso_ave_real AS peso_ave_real,
+                s.peso_ave_tab AS peso_ave_tabla
+            FROM bd_vargas s
+            WHERE s.id_lote = %s AND s.sem_prod::integer >= 18
+            ORDER BY s.sem_prod::integer ASC
+        """
+        cur.execute(query, (id_lote,))
+        filas = cur.fetchall()
+
+        data = { "semanas": [], "prod_real": [], "prod_tabla": [], "consumo_real": [], "consumo_tabla": [], "peso_huevo_real": [], "peso_huevo_tabla": [], "peso_ave_real": [], "peso_ave_tabla": [] }
+
+        # Función auxiliar que inyectamos para limpiar los ceros
+        def format_val(val, is_real=False):
+            if val is None or val == '':
+                return None
+            try:
+                v = float(val)
+                # Si es un dato real y viene en cero, lo anulamos para cortar la gráfica
+                if is_real and v == 0:
+                    return None
+                return round(v, 1)
+            except (ValueError, TypeError):
+                return None
+
+        for f in filas:
+            data["semanas"].append(f"Sem {f['semana']}")
+            
+            # Al pasar 'True', los datos reales se cortarán cuando estén en cero
+            data["prod_real"].append(format_val(f['prod_real'], True))
+            data["consumo_real"].append(format_val(f['consumo_real'], True))
+            data["peso_huevo_real"].append(format_val(f['peso_huevo_real'], True))
+            data["peso_ave_real"].append(format_val(f['peso_ave_real'], True))
+            
+            # Al pasar 'False', los datos de tabla se grafican normales así sean cero
+            data["prod_tabla"].append(format_val(f['prod_tabla'], False))
+            data["consumo_tabla"].append(format_val(f['consumo_tabla'], False))
+            data["peso_huevo_tabla"].append(format_val(f['peso_huevo_tabla'], False))
+            data["peso_ave_tabla"].append(format_val(f['peso_ave_tabla'], False))
+
+        return data
+    except Exception as e:
+        print(f"[ERROR GRAFICO GENERAL SEMANAL]: {str(e)}")
+        return {}
+    finally:
+        cur.close()
+        conn.close()
+
+
+def get_data_grafico_conversion(lote_nombre):
+    import psycopg2.extras
+    from models.base import get_db_connection
+    
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    
+    try:
+        lote_variante = f"LOTE {lote_nombre}" if not lote_nombre.upper().startswith("LOTE") else lote_nombre.replace("LOTE ", "")
+        cur.execute("SELECT id FROM cabecera_lotes WHERE lote = %s OR lote = %s", (lote_nombre, lote_variante))
+        lote_row = cur.fetchone()
+        
+        if not lote_row: return {}
+        id_lote = lote_row['id']
+
+        # Asegúrate de que los nombres de las columnas coincidan con tu bd_vargas
+        query = """
+            SELECT 
+                s.sem_prod AS semana,
+                s.prod_huevo_real AS prod_real,
+                s.prod_huevo_tab AS prod_tabla,
+                s.percent_mort_acum AS mort_acum_real,
+                s.mort_tab AS mort_acum_tabla,
+                s.h_av_aloj_real AS haa_real,
+                s.h_av_aloj_tab AS haa_tabla,
+                s.conv_acum_real AS conv_acum_real,
+                s.conv_acum_tab AS conv_acum_tabla
+            FROM bd_vargas s
+            WHERE s.id_lote = %s AND s.sem_prod::integer >= 18
+            ORDER BY s.sem_prod::integer ASC
+        """
+        cur.execute(query, (id_lote,))
+        filas = cur.fetchall()
+
+        data = { "semanas": [], "prod_real": [], "prod_tabla": [], "mort_acum_real": [], "mort_acum_tabla": [], "haa_real": [], "haa_tabla": [], "conv_acum_real": [], "conv_acum_tabla": [] }
+
+        # Función mejorada para limpiar datos y ajustar la conversión (Gramos a Kg)
+        def format_val(val, is_real=False, is_conversion=False):
+            if val is None or val == '': return None
+            try:
+                v = float(val)
+                if is_real and v == 0: return None
+                
+                # Si es conversión y viene en miles (ej. 1443), lo pasamos a 1.44
+                if is_conversion and v > 50:
+                    v = v / 1000.0
+                    
+                return round(v, 2)
+            except (ValueError, TypeError):
+                return None
+
+        for f in filas:
+            data["semanas"].append(f"SEM {f['semana']}")
+            
+            # Reales (Se cortan en 0)
+            data["prod_real"].append(format_val(f['prod_real'], True))
+            data["mort_acum_real"].append(format_val(f['mort_acum_real'], True))
+            data["haa_real"].append(format_val(f['haa_real'], True))
+            data["conv_acum_real"].append(format_val(f['conv_acum_real'], True, True)) # is_conversion=True
+            
+            # Tabla / Estándar (No se cortan)
+            data["prod_tabla"].append(format_val(f['prod_tabla'], False))
+            data["mort_acum_tabla"].append(format_val(f['mort_acum_tabla'], False))
+            data["haa_tabla"].append(format_val(f['haa_tabla'], False))
+            data["conv_acum_tabla"].append(format_val(f['conv_acum_tabla'], False, True)) # is_conversion=True
+
+        return data
+    except Exception as e:
+        print(f"[ERROR GRAFICO CONVERSION]: {str(e)}")
+        return {}
+    finally:
+        cur.close()
+        conn.close()
