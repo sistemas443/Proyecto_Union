@@ -6,155 +6,208 @@
 
 <!-- INICIO DEL BLOQUE DE CONTENIDO PRINCIPAL -->
 {% block content %}
-<div class="container mt-4">
+<style>
+/* 1. Zoom global del 80% para estandarizar diseño */
+    body {
+        zoom: 0.8;
+        overflow-y: hidden !important; /* <--- Esta es la línea que elimina el scroll exterior */
+    }
+
+    /* 2. Contenedor principal sin paddings inferiores para maximizar la pantalla */
+    main.container-fluid {
+        display: flex;
+        flex-direction: column;
+        padding-bottom: 0px !important;
+        height: calc(125vh - 65px); /* Compensamos el zoom de 0.8 */
+    }
+
+    /* 3. Aseguramos que la cabecera no se encoja */
+    .header-usuarios {
+        flex-shrink: 0;
+    }
+
+    /* 4. Contenedor de la tabla, con scroll interno */
+    .card-tabla-usuarios {
+        flex: 1 1 auto;
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 25px;
+    }
+
+    .table-responsive {
+        flex: 1 1 auto;
+        overflow-y: auto;
+        overflow-x: auto;
+        border-bottom: 1px solid #dee2e6;
+    }
+
+    /* Encabezados de la tabla congelados */
+    .table-responsive thead th {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        box-shadow: 0 2px 2px -1px rgba(0,0,0,0.1);
+    }
+
+    /* 5. Corrección matemática para modales y fondos bajo zoom de 0.8 */
+    .modal, .modal-backdrop {
+        width: 125vw !important;
+        height: 125vh !important;
+    }
+
+    /* 6. CSS PARA LA BARRA ESTILO PÍLDORA PERFECTA */
+    .buscador-contenedor {
+        border-radius: 50px;
+    }
+
+    .buscador-input {
+        border-radius: 50px 0 0 50px !important;
+        padding-left: 22px;
+    }
+
+    .buscador-icono {
+        border-radius: 0 50px 50px 0 !important;
+        padding-right: 20px;
+    }
+
+    .buscador-input:focus {
+        box-shadow: none !important;
+        border-color: #86b7fe !important;
+    }
+
+    .buscador-contenedor:focus-within {
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important;
+    }
+
+    .buscador-contenedor:focus-within .buscador-icono {
+        border-color: #86b7fe !important;
+    }
+</style>
+
+<div class="container-fluid mt-4 h-100 d-flex flex-column">
 
     <!-- CABECERA DE LA PANTALLA -->
-    <div class="d-flex justify-content-between align-items-end mb-4 flex-wrap gap-3">
+    <div class="d-flex justify-content-between align-items-end mb-4 flex-wrap gap-3 header-usuarios px-2">
         <div>
             <h3 class="fw-bold mb-0 text-dark">Panel de Usuarios</h3>
         </div>
-        
+
         <!-- BOTONERA: Buscador y Boton de Nuevo Usuario -->
         <div class="d-flex gap-3 align-items-center">
-            
+
             <!-- BARRA DE BÚSQUEDA ESTILO PÍLDORA -->
             <div class="input-group shadow-sm buscador-contenedor" style="width: 280px;">
-                <input type="text" class="form-control border-end-0 buscador-input" id="buscadorUsuarios" placeholder="Search...">
+                <input type="text" class="form-control border-end-0 buscador-input" id="buscadorUsuarios"
+                    placeholder="Search...">
                 <span class="input-group-text bg-white border-start-0 buscador-icono">
                     <i class='bx bx-search text-muted fs-5'></i>
                 </span>
             </div>
 
             <!-- Botón para abrir el modal -->
-            <button class="btn fw-bold px-4 shadow-sm text-white text-nowrap" 
-                style="background-color: #97271C; border: none; border-radius: 50px;"
-                onclick="abrirModalNuevo()">
+            <button class="btn fw-bold px-4 shadow-sm text-white text-nowrap"
+                style="background-color: #97271C; border: none; border-radius: 50px;" onclick="abrirModalNuevo()">
                 <i class='bx bx-user-plus'></i> Nuevo Usuario
             </button>
         </div>
     </div>
 
-    <!-- CSS PARA LA BARRA ESTILO PÍLDORA PERFECTA -->
-    <style>
-        /* 1. Redondeamos el contenedor principal para eliminar las esquinas blancas/sombra cuadrada */
-        .buscador-contenedor {
-            border-radius: 50px;
-        }
-        
-        /* 2. Redondeamos las esquinas de los elementos internos */
-        .buscador-input {
-            border-radius: 50px 0 0 50px !important;
-            padding-left: 22px;
-        }
-        .buscador-icono {
-            border-radius: 0 50px 50px 0 !important;
-            padding-right: 20px;
-        }
-
-        /* 3. Apagamos el brillo cortado por defecto del input... */
-        .buscador-input:focus {
-            box-shadow: none !important;
-            border-color: #86b7fe !important; /* Color azul de Bootstrap */
-        }
-
-        /* 4. ...y encendemos un brillo azul global para TODO el contenedor al hacer clic */
-        .buscador-contenedor:focus-within {
-            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important;
-        }
-        
-        /* 5. Aseguramos que la lupa también cambie su borde a azul para que parezca una sola pieza */
-        .buscador-contenedor:focus-within .buscador-icono {
-            border-color: #86b7fe !important;
-        }
-    </style>
-
     <!-- TARJETA CON LA TABLA DE USUARIOS -->
-    <div class="card shadow-sm border-0">
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <!-- Estructura basica de tabla con estilos Hover (sombreado al pasar el mouse) -->
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-dark">
-                        <tr>
-                            <th class="ps-4">Foto</th>
-                            <th>Nombre Completo</th>
-                            <th>Usuario (Login)</th>
-                            <th>Rol</th>
-                            <th>Estado</th>
-                            <th class="text-center pe-4">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
+    <div class="card shadow-sm border-0 card-tabla-usuarios" id="contenedorTablaUsuarios">
+        <div class="card-body p-0 table-responsive" id="scrollTablaUsuarios">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th class="ps-4">Foto</th>
+                        <th>Nombre Completo</th>
+                        <th>Usuario (Login)</th>
+                        <th>Rol</th>
+                        <th>Estado</th>
+                        <th class="text-center pe-4">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
 
-                        <!-- BUCLE JINJA: Recorre la lista de 'usuarios' que Python nos envia desde la BD -->
-                        {% for u in usuarios %}
-                        <tr>
-                            <!-- Avatar en la tabla -->
-                            <td class="ps-4">
-                                <div class="rounded-circle overflow-hidden bg-light d-flex align-items-center justify-content-center shadow-sm"
-                                    style="width: 40px; height: 40px; border: 1px solid #dee2e6;">
-                                    {% if u[6] %}
-                                    <img src="{{ url_for('static', filename='uploads/usuarios/' + u[6]) }}"
-                                        style="width: 100%; height: 100%; object-fit: cover;">
-                                    {% else %}
-                                    <i class='bx bxs-user text-secondary fs-4'></i>
-                                    {% endif %}
-                                </div>
-                            </td>
-
-                            <!-- Nombre completo del usuario -->
-                            <td class="fw-bold">{{ u[1] }}</td>
-
-                            <!-- Nombre de usuario (Login) con un '@' decorativo -->
-                            <td><span class="text-secondary">@{{ u[2] }}</span></td>
-
-                            <!-- Insignia del Rol (Todos Vinotinto) -->
-                            <td>
-                                <span class="badge" style="background-color: #97271C;">
-                                    {{ u[4] }}
-                                </span>
-                            </td>
-
-                            <!-- Columna Estado -->
-                            <td>
-                                {% if u[3] %}
-                                <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1"><i class='bx bx-check-circle'></i> Activo</span>
+                    <!-- BUCLE JINJA: Recorre la lista de 'usuarios' que Python nos envia desde la BD -->
+                    {% for u in usuarios %}
+                    <tr>
+                        <!-- Avatar en la tabla -->
+                        <td class="ps-4">
+                            <div class="rounded-circle overflow-hidden bg-light d-flex align-items-center justify-content-center shadow-sm"
+                                style="width: 40px; height: 40px; border: 1px solid #dee2e6;">
+                                {% if u[6] %}
+                                <img src="{{ url_for('static', filename='uploads/usuarios/' + u[6]) }}"
+                                    style="width: 100%; height: 100%; object-fit: cover;">
                                 {% else %}
-                                <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 px-2 py-1"><i class='bx bx-block'></i> Inactivo</span>
+                                <i class='bx bxs-user text-secondary fs-4'></i>
                                 {% endif %}
-                            </td>
+                            </div>
+                        </td>
 
-                            <!-- Columna de Botones de Accion -->
-                            <td class="text-center pe-4">
-                                <!-- BOTON EDITAR -->
-                                <button class="btn btn-sm btn-outline-primary btn-editar-usuario" data-id="{{ u[0] }}"
-                                    data-nombre="{{ u[1] }}" data-user="{{ u[2] }}" data-rol="{{ u[5] }}"
-                                    data-foto="{{ u[6] if u[6] else '' }}" data-correo="{{ u[7] if u[7] else '' }}" title="Editar Usuario">
-                                    <i class='bx bx-edit-alt'></i>
-                                </button>
+                        <!-- Nombre completo del usuario -->
+                        <td class="fw-bold">{{ u[1] }}</td>
 
-                                <!-- BOTON BLOQUEAR/DESBLOQUEAR -->
-                                {% if session.get('user_id') != u[0] %}
-                                <button class="btn btn-sm {% if u[3] %}btn-outline-danger{% else %}btn-outline-success{% endif %}"
-                                    onclick="toggleUsuario('{{ u[0] }}')"
-                                    title="{% if u[3] %}Desactivar Acceso{% else %}Reactivar Acceso{% endif %}">
-                                    <i class='bx {% if u[3] %}bx-user-x{% else %}bx-user-check{% endif %}'></i>
-                                </button>
-                                {% else %}
-                                <button class="btn btn-sm btn-outline-secondary disabled" title="No puedes desactivarte a ti mismo">
-                                    <i class='bx bx-shield-quarter'></i>
-                                </button>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr>
-                            <td colspan="6" class="text-center py-4 text-muted">No hay usuarios registrados.</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+                        <!-- Nombre de usuario (Login) con un '@' decorativo -->
+                        <td><span class="text-secondary">@{{ u[2] }}</span></td>
+
+                        <!-- Insignia del Rol (Todos Vinotinto) -->
+                        <td>
+                            <span class="badge" style="background-color: #97271C;">
+                                {{ u[4] }}
+                            </span>
+                        </td>
+
+                        <!-- Columna Estado -->
+                        <td>
+                            {% if u[3] %}
+                            <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1">
+                                <i class='bx bx-check-circle'></i> Activo
+                            </span>
+                            {% else %}
+                            <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 px-2 py-1">
+                                <i class='bx bx-block'></i> Inactivo
+                            </span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Columna de Botones de Accion -->
+                        <td class="text-center pe-4">
+                            <!-- BOTON EDITAR -->
+                            <button class="btn btn-sm btn-outline-secondary shadow-sm btn-editar-usuario" data-id="{{ u[0] }}"
+                                data-nombre="{{ u[1] }}" data-user="{{ u[2] }}" data-rol="{{ u[5] }}"
+                                data-foto="{{ u[6] if u[6] else '' }}" data-correo="{{ u[7] if u[7] else '' }}"
+                                title="Editar Usuario">
+                                <i class='bx bx-edit-alt'></i>
+                            </button>
+
+                            <!-- BOTON BLOQUEAR/DESBLOQUEAR -->
+                            {% if session.get('user_id') != u[0] %}
+                            <button class="btn btn-sm shadow-sm {% if u[3] %}btn-outline-danger{% else %}btn-outline-success{% endif %}"
+                                onclick="toggleUsuario('{{ u[0] }}')"
+                                title="{% if u[3] %}Desactivar Acceso{% else %}Reactivar Acceso{% endif %}">
+                                <i class='bx {% if u[3] %}bx-user-x{% else %}bx-user-check{% endif %}'></i>
+                            </button>
+                            {% else %}
+                            <button class="btn btn-sm btn-outline-secondary disabled shadow-sm"
+                                title="No puedes desactivarte a ti mismo">
+                                <i class='bx bx-shield-quarter'></i>
+                            </button>
+                            {% endif %}
+                            
+                            <!-- BOTON LOGIN AS (SUPLANTAR) -->
+                            <button class="btn btn-sm btn-outline-dark shadow-sm" title="Ingresar como este usuario"
+                                onclick="suplantarUsuario('{{ u[0] }}', '{{ u[1] }}')">
+                                <i class='bx bx-user-circle'></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center py-4 text-muted">No hay usuarios registrados.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
@@ -170,15 +223,10 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
 
-            <!-- El formulario enviara los datos por POST hacia nuestra ruta de Python 'main.guardar_usuario' -->
             <form action="{{ url_for('main.guardar_usuario') }}" method="POST" enctype="multipart/form-data">
-
-                <!-- ID OCULTO: Vital para Python. -->
                 <input type="hidden" name="id" id="form_id">
-
                 <div class="modal-body p-4 bg-light">
 
-                    <!-- SECCIÓN DE FOTO DE PERFIL CON PREVISUALIZADOR -->
                     <div class="d-flex align-items-center gap-3 mb-4 p-3 bg-white rounded shadow-sm">
                         <div class="rounded-circle overflow-hidden bg-light d-flex align-items-center justify-content-center shadow-sm flex-shrink-0"
                             style="width: 75px; height: 75px; border: 2px dashed #97271C;">
@@ -193,31 +241,25 @@
                         </div>
                     </div>
 
-                    <!-- Campo: Nombre Completo -->
                     <div class="mb-3">
                         <label class="form-label fw-bold text-secondary">Nombre Completo</label>
                         <input type="text" class="form-control shadow-sm" name="nombre_completo" id="form_nombre" required>
                     </div>
-                    
-                    <!-- Campo: Correo Electrónico (Para recuperación de contraseña) -->
+
                     <div class="mb-3">
                         <label class="form-label fw-bold text-secondary">Correo Electrónico (Para recuperar clave)</label>
                         <input type="email" class="form-control shadow-sm" name="correo" id="form_correo" placeholder="ejemplo@gmail.com">
                     </div>
 
                     <div class="row">
-                        <!-- Campo: Username (Login) CON VALIDACIÓN VISUAL -->
                         <div class="col-md-6 mb-3">
                             <label for="form_username" class="form-label fw-bold text-secondary">Usuario (Login):</label>
-                            <!-- Agregué la clase shadow-sm para mantener tu diseño -->
                             <input type="text" class="form-control shadow-sm" name="username" id="form_username" required>
-                            <!-- Este es el mensaje de error oculto que Bootstrap mostrará cuando la caja se ponga roja -->
                             <div class="invalid-feedback fw-bold">
                                 <i class='bx bx-error-circle'></i> Sin espacios ni mayúsculas.
                             </div>
                         </div>
 
-                        <!-- Campo: Selector de Rol -->
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-bold text-secondary">Rol del Sistema</label>
                             <div class="input-group shadow-sm">
@@ -235,7 +277,6 @@
                         </div>
                     </div>
 
-                    <!-- Campo: Contraseña (Se encriptara en Python) -->
                     <div class="mb-3">
                         <label class="form-label fw-bold text-secondary">Contraseña <small class="text-muted fw-normal"
                                 id="pass_hint"></small></label>
@@ -243,10 +284,8 @@
                     </div>
                 </div>
 
-                <!-- Pie del formulario -->
                 <div class="modal-footer bg-white border-0">
                     <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">Cancelar</button>
-                    <!-- Boton de enviar formulario -->
                     <button type="submit" class="btn fw-bold px-4 text-white shadow-sm"
                         style="background-color: #97271C;">Guardar Usuario</button>
                 </div>
@@ -265,19 +304,14 @@
             </div>
 
             <div class="modal-body p-4 bg-light">
-                <!-- Nombre oficial del Rol (Ej: Lector, Supervisor) -->
                 <div class="mb-3">
                     <label class="form-label fw-bold text-secondary">Nombre del Rol</label>
-                    <input type="text" class="form-control shadow-sm" id="nuevo_rol_nombre" placeholder="Ej: Supervisor"
-                        required>
+                    <input type="text" class="form-control shadow-sm" id="nuevo_rol_nombre" placeholder="Ej: Supervisor" required>
                 </div>
-                <!-- Descripcion interna de lo que podra hacer ese rol -->
                 <div class="mb-4">
                     <label class="form-label fw-bold text-secondary">Descripción</label>
-                    <textarea class="form-control shadow-sm" id="nuevo_rol_desc" rows="2"
-                        placeholder="Ej: Solo lectura de reportes"></textarea>
+                    <textarea class="form-control shadow-sm" id="nuevo_rol_desc" rows="2" placeholder="Ej: Solo lectura de reportes"></textarea>
                 </div>
-                <!-- Boton que ejecuta la funcion JavaScript para guardar asincronamente -->
                 <button type="button" class="btn w-100 fw-bold text-white shadow-sm" style="background-color: #97271C;"
                     onclick="guardarRolNuevo()">Crear Rol</button>
             </div>
@@ -286,14 +320,33 @@
 </div>
 {% endblock %}
 
-<!-- BLOQUE DE SCRIPTS (AQUI VA TODA LA LÓGICA DE JAVASCRIPT) -->
+<!-- BLOQUE DE SCRIPTS -->
 {% block scripts %}
 <script>
-    // Variables globales para guardar las instancias de los Modales de Bootstrap
+    // --- MOTOR INTELIGENTE DE ALTURA PERFECTA PARA LA TABLA DE USUARIOS ---
+    document.addEventListener("DOMContentLoaded", function() {
+        const divCard = document.getElementById('contenedorTablaUsuarios');
+        const scrollDiv = document.getElementById('scrollTablaUsuarios');
+        
+        if (divCard && scrollDiv) {
+            const observer = new ResizeObserver(() => {
+                const rect = divCard.getBoundingClientRect();
+                const pixelesLibres = window.innerHeight - rect.top;
+                
+                // Compensamos el zoom del 80% (0.8) y ajustamos un margen inferior de seguridad
+                const alturaPerfecta = (pixelesLibres / 0.8) - 15;
+                
+                divCard.style.height = alturaPerfecta + "px";
+                scrollDiv.style.maxHeight = alturaPerfecta + "px";
+            });
+
+            observer.observe(document.body);
+        }
+    });
+
     let modalUser;
     let modalRolUI;
 
-    // EVENTO PRINCIPAL: Se ejecuta cuando toda la pagina web termina de cargar.
     document.addEventListener("DOMContentLoaded", function () {
         modalUser = new bootstrap.Modal(document.getElementById('modalUsuario'));
         modalRolUI = new bootstrap.Modal(document.getElementById('modalRol'));
@@ -301,25 +354,18 @@
         // BUSCADOR EN TIEMPO REAL DE USUARIOS
         const buscador = document.getElementById('buscadorUsuarios');
         if (buscador) {
-            buscador.addEventListener('input', function() {
-                // Capturamos lo que el usuario escribe y lo pasamos a minúsculas
+            buscador.addEventListener('input', function () {
                 const textoFiltro = this.value.toLowerCase();
-                
-                // Seleccionamos todas las filas de la tabla de usuarios
                 const filas = document.querySelectorAll('table tbody tr');
 
                 filas.forEach(fila => {
-                    // Evitamos ocultar el mensaje de "No hay usuarios" si la tabla está vacía
                     if (fila.querySelector('td') && fila.querySelector('td').colSpan === 6) return;
-
-                    // Extraemos todo el texto de la fila (nombre, usuario, rol, etc)
                     const textoFila = fila.textContent.toLowerCase();
 
-                    // Si el texto de la fila contiene lo que escribimos, la mostramos, sino la ocultamos
                     if (textoFila.includes(textoFiltro)) {
-                        fila.style.display = ''; 
+                        fila.style.display = '';
                     } else {
-                        fila.style.display = 'none'; 
+                        fila.style.display = 'none';
                     }
                 });
             });
@@ -344,19 +390,12 @@
         if (inputUsername) {
             inputUsername.addEventListener('input', function (e) {
                 let valorActual = e.target.value;
-                // Verificamos si tiene espacios o letras mayúsculas
                 let tieneErrores = /[A-Z\s]/.test(valorActual);
-                
+
                 if (tieneErrores) {
-                    e.target.classList.add('is-invalid'); // Pone la caja roja y muestra el mensaje
-                    
-                    // Corrección automática instantánea
+                    e.target.classList.add('is-invalid'); 
                     e.target.value = valorActual.toLowerCase().replace(/\s/g, '');
-                    
-                    // Quitamos el aviso rojo después de 1.5 segundos
-                    setTimeout(() => {
-                        e.target.classList.remove('is-invalid');
-                    }, 1500);
+                    setTimeout(() => { e.target.classList.remove('is-invalid'); }, 1500);
                 } else {
                     e.target.classList.remove('is-invalid');
                 }
@@ -364,7 +403,6 @@
         }
     });
 
-    // FUNCION: Muestra la vista previa instantánea al seleccionar un archivo de foto
     function previsualizarFoto(input) {
         const previewImg = document.getElementById('preview_foto');
         const previewIcon = document.getElementById('preview_icon');
@@ -380,7 +418,6 @@
         }
     }
 
-    // FUNCION: Limpia todo el formulario y lo prepara para crear una persona nueva.
     function abrirModalNuevo() {
         document.getElementById('form_id').value = '';
         document.getElementById('form_nombre').value = '';
@@ -390,7 +427,6 @@
         document.getElementById('form_correo').value = '';
         document.getElementById('form_username').classList.remove('is-invalid');
 
-        // Reset previsualizador de foto
         document.getElementById('preview_foto').style.display = 'none';
         document.getElementById('preview_icon').style.display = 'block';
 
@@ -401,7 +437,6 @@
         modalUser.show();
     }
 
-    // FUNCION: Recibe los datos capturados y rellena el formulario para edicion.
     function editarUsuario(id, nombre, user, rol, foto, correo) {
         document.getElementById('form_id').value = id;
         document.getElementById('form_nombre').value = nombre;
@@ -411,7 +446,6 @@
         document.getElementById('form_correo').value = correo;
         document.getElementById('form_username').classList.remove('is-invalid');
 
-        // Si ya tiene foto guardada, la previsualizamos
         const previewImg = document.getElementById('preview_foto');
         const previewIcon = document.getElementById('preview_icon');
         if (foto && foto.trim() !== '') {
@@ -431,7 +465,6 @@
         modalUser.show();
     }
 
-    // FUNCION: Cambia el estado de Activo a Inactivo.
     function toggleUsuario(id) {
         if (confirm("¿Estás seguro de cambiar el estado de acceso de este usuario?")) {
             fetch(`/api/usuarios/toggle/${id}`, { method: 'POST' })
@@ -446,14 +479,12 @@
         }
     }
 
-    // FUNCION: Abre el modal pequeñito para escribir el nombre de un Rol.
     function abrirModalRol() {
         document.getElementById('nuevo_rol_nombre').value = '';
         document.getElementById('nuevo_rol_desc').value = '';
         modalRolUI.show();
     }
 
-    // FUNCION: Envia el nuevo rol a Python asíncronamente.
     function guardarRolNuevo() {
         const nombreRol = document.getElementById('nuevo_rol_nombre').value.trim();
         const descRol = document.getElementById('nuevo_rol_desc').value.trim();
@@ -485,6 +516,40 @@
                 console.error(err);
                 alert("Error de conexión al crear el rol.");
             });
+    }
+
+    // --- SISTEMA DE SUPLANTACIÓN (LOGIN AS) ---
+    function suplantarUsuario(id, nombre) {
+        Swal.fire({
+            title: '¿Supervisar a ' + nombre + '?',
+            text: "Ingresarás a su cuenta en modo 'Solo Lectura' para proteger los datos.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#212529',
+            cancelButtonColor: '#97271C',
+            confirmButtonText: 'Sí, ingresar',
+            cancelButtonText: 'Cancelar',
+            reverseButtons: true
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch(`/api/usuarios/suplantar/${id}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.status === 'ok') {
+                            window.location.href = "{{ url_for('main.index') }}";
+                        } else {
+                            Swal.fire('Atención', data.msg, 'error');
+                        }
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        Swal.fire('Error', 'Error de conexión al intentar suplantar la identidad.', 'error');
+                    });
+            }
+        });
     }
 </script>
 {% endblock %}

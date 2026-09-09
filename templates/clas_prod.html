@@ -4,47 +4,51 @@
 {% block content %}
 <!-- Estilos CSS centralizados para el layout fijo y tabla scrolleable -->
 <style>
-  /* 1. Bloqueamos el scroll de la página web completa */
+  /* 1. Bloqueamos el scroll de la página y aplicamos zoom global del 80% */
   body {
     overflow-y: hidden !important;
+    zoom: 0.8; 
   }
 
-  /* 2. El contenedor principal se vuelve flexible para ocupar el 100% del alto */
+  /* 2. El contenedor principal base */
   main.container-fluid {
-    display: flex;
-    flex-direction: column;
-    height: calc(100vh - 65px);
-    padding-bottom: 15px;
+    padding-bottom: 0px; /* Quitamos el padding para ganar más espacio */
   }
 
   /* 3. Evitamos que los elementos superiores se aplasten */
-  .alert,
-  .filtro-bar,
-  .card {
+  .alert, .filtro-bar, .card, .d-flex {
     flex-shrink: 0;
   }
 
-  /* 4. La tabla toma automáticamente el espacio libre sobrante */
+  /* 4. La tabla (su altura será controlada milimétricamente por JavaScript) */
   .tabla-scroll {
-    flex: 1 1 auto;
-    min-height: 0;
     overflow-y: auto;
     overflow-x: auto;
     width: 100%;
     -webkit-overflow-scrolling: touch;
+    border-bottom: 1px solid #dee2e6;
   }
 
-  /* 5. Congelación de encabezados superiores */
+  /* 5. Congelación de encabezados con alturas matemáticamente fijas para evitar solapamientos */
   .tabla-scroll thead tr:nth-child(1) th {
     position: sticky;
     top: 0;
     z-index: 110 !important;
+    height: 30px !important;
   }
 
   .tabla-scroll thead tr:nth-child(2) th {
     position: sticky;
-    top: 36px;
+    top: 30px; /* Empieza exactamente donde termina el Piso 1 */
     z-index: 109 !important;
+    height: 36px !important; /* Más alto para acomodar los inputs de Peso P */
+  }
+
+  .tabla-scroll thead tr:nth-child(3) th {
+    position: sticky;
+    top: 66px; /* Empieza exactamente donde termina el Piso 2 (30 + 36 = 66) */
+    z-index: 108 !important;
+    height: 30px !important;
   }
 
   /* 6. Congelación de la primera columna (SV) */
@@ -78,18 +82,31 @@
   .collapsed .icono-colapso {
     transform: rotate(-90deg);
   }
+
+  /* 8. Compactar la altura de los encabezados de la tabla */
+  .tabla-scroll thead th {
+    padding: 4px 2px !important; 
+    line-height: 1.2 !important;
+  }
+  
+  /* 9. Ocultar flechas de inputs numéricos en el encabezado */
+  .input-peso::-webkit-outer-spin-button,
+  .input-peso::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  .input-peso {
+    -moz-appearance: textfield;
+  }
 </style>
 
 <!-- BARRA SUPERIOR OSCURA: TÍTULO Y FILTRO -->
-<div class="d-flex flex-wrap align-items-center justify-content-between mb-3 px-3 py-2 rounded shadow-sm"
-  style="background-color: #212529;">
+<div class="d-flex flex-wrap align-items-center justify-content-between mb-3 px-3 py-2 rounded shadow-sm" style="background-color: #212529;">
   <h5 class="mb-0 fw-bold text-uppercase text-white" style="letter-spacing: 0.5px;">CLASIFICACIÓN PRODUCCIÓN</h5>
   <div class="mx-auto">
     <form method="POST" class="d-flex align-items-center gap-2 m-0">
-      <label for="lote" class="mb-0 fw-bold text-light text-nowrap" style="font-size: 0.9rem;">SELECCIONE UN
-        LOTE:</label>
-      <select name="lote" id="lote" class="form-select form-select-sm border-0 fw-bold shadow-none"
-        style="width: 220px;">
+      <label for="lote" class="mb-0 fw-bold text-light text-nowrap" style="font-size: 0.9rem;">SELECCIONE UN LOTE:</label>
+      <select name="lote" id="lote" class="form-select form-select-sm border-0 fw-bold shadow-none" style="width: 220px;">
         <option value="">-- Seleccione --</option>
         {% for l in lotes %}
         <option value="{{ l }}" {% if lote_seleccionado==l %}selected{% endif %}>LOTE {{ l }}</option>
@@ -103,9 +120,7 @@
 
 {% if lote_seleccionado %}
 <div class="card mb-4 shadow-sm border-0">
-  <div class="card-header bg-dark text-white fw-bold py-2 d-flex justify-content-between align-items-center"
-    style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapseInfoGeneral" aria-expanded="true"
-    title="Clic para ocultar/mostrar">
+  <div class="card-header bg-dark text-white fw-bold py-2 d-flex justify-content-between align-items-center" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapseInfoGeneral" aria-expanded="true" title="Clic para ocultar/mostrar">
     <span><i class='bx bx-chevron-down fs-5 me-1 icono-colapso'></i> Información General del Lote</span>
     <span class="badge bg-naranja fs-6">LOTE: {{ lote_seleccionado }}</span>
   </div>
@@ -146,9 +161,6 @@
 {% endif %}
 
 <div class="tabla-scroll shadow-sm border rounded">
-  
-<div class="tabla-scroll shadow-sm border rounded">
-  <!-- Quitamos los 4800px para que las columnas no se estiren -->
   <table class="table table-sm table-fixed mb-0" style="width: max-content;">
     <colgroup>
       <col style="width:70px;">
@@ -209,245 +221,140 @@
       <col style="width:130px;">
     </colgroup>
     <thead>
-      <tr>
-        <th rowspan="2" class="th-black sticky-col-1 text-center align-middle">SV</th>
-        <th colspan="12" class="th-orange">NÚMERO DE HUEVOS CLASIFICADOS</th>
-        <th colspan="12" class="th-orange">NÚMERO DE HUEVOS ACUMULADOS</th>
-        <th rowspan="2" class="th-black align-middle">SV</th>
-        <th colspan="11" class="th-orange">% DE HUEVO SEMANAL</th>
+      <!-- PISO 1: Fila flotante (Solo % DE HUEVO ACUMULADO) -->
+      <tr style="height: 30px;">
+        <th class="sticky-col-1" style="background-color: #ffffff !important; border-top: none !important; border-bottom: none !important; box-shadow: none !important;"></th>
+        <th colspan="37" style="background-color: #ffffff; border-top: none; border-bottom: none;"></th>
+        <th colspan="11" class="th-orange text-center align-middle" style="height: 30px; border: 1px solid #adb5bd; font-size: 0.95rem;">% DE HUEVO ACUMULADO</th>
+        <th colspan="3" style="background-color: #ffffff; border: none;"></th>
+      </tr>
 
-        <!-- Fila combinada con un simple salto de línea -->
-        <th rowspan="2" class="th-black text-center align-middle"
-          style="min-width: 90px; width: 90px; line-height: 1.2;">
-          Peso P<br><span style="font-size: 0.8rem;">% H Grande</span>
+      <!-- PISO 2: Encabezados Rojos y Peso P alineados en la misma altura -->
+      <tr style="height: 36px;">
+        <th rowspan="2" class="th-black sticky-col-1 text-center align-middle">SV</th>
+        <th colspan="12" class="th-orange align-middle text-center">NÚMERO DE HUEVOS CLASIFICADOS</th>
+        <th colspan="12" class="th-orange align-middle text-center">NÚMERO DE HUEVOS ACUMULADOS</th>
+        <th rowspan="2" class="th-black align-middle text-center">SV</th>
+        <th colspan="11" class="th-orange align-middle text-center">% DE HUEVO SEMANAL</th>
+        
+        <!-- Etiqueta Peso P -->
+        <th class="th-black text-center align-middle border-bottom-0" style="font-size: 0.85rem;">Peso P</th>
+        
+        <!-- Números Estáticos Convertidos en Inputs (Rellenan toda la celda) -->
+        <th class="text-center align-middle p-0" style="background-color: #d9d9d9; border: 1px solid #adb5bd;">
+          <input type="number" step="0.1" value="78.0" class="form-control form-control-sm border-0 bg-transparent text-center text-dark fw-bold p-0 shadow-none input-peso" style="font-size: 0.85rem; height: 100%; width: 100%;">
+        </th>
+        <th class="text-center align-middle p-0" style="background-color: #d9d9d9; border: 1px solid #adb5bd;">
+          <input type="number" step="0.1" value="72.5" class="form-control form-control-sm border-0 bg-transparent text-center text-dark fw-bold p-0 shadow-none input-peso" style="font-size: 0.85rem; height: 100%; width: 100%;">
+        </th>
+        <th class="text-center align-middle p-0" style="background-color: #d9d9d9; border: 1px solid #adb5bd;">
+          <input type="number" step="0.1" value="63.5" class="form-control form-control-sm border-0 bg-transparent text-center text-dark fw-bold p-0 shadow-none input-peso" style="font-size: 0.85rem; height: 100%; width: 100%;">
+        </th>
+        <th class="text-center align-middle p-0" style="background-color: #d9d9d9; border: 1px solid #adb5bd;">
+          <input type="number" step="0.1" value="56.5" class="form-control form-control-sm border-0 bg-transparent text-center text-dark fw-bold p-0 shadow-none input-peso" style="font-size: 0.85rem; height: 100%; width: 100%;">
+        </th>
+        <th class="text-center align-middle p-0" style="background-color: #d9d9d9; border: 1px solid #adb5bd;">
+          <input type="number" step="0.1" value="49.5" class="form-control form-control-sm border-0 bg-transparent text-center text-dark fw-bold p-0 shadow-none input-peso" style="font-size: 0.85rem; height: 100%; width: 100%;">
+        </th>
+        <th class="text-center align-middle p-0" style="background-color: #d9d9d9; border: 1px solid #adb5bd;">
+          <input type="number" step="0.1" value="46.0" class="form-control form-control-sm border-0 bg-transparent text-center text-dark fw-bold p-0 shadow-none input-peso" style="font-size: 0.85rem; height: 100%; width: 100%;">
+        </th>
+        <th class="text-center align-middle p-0" style="background-color: #d9d9d9; border: 1px solid #adb5bd;">
+          <input type="number" step="0.1" value="45.0" class="form-control form-control-sm border-0 bg-transparent text-center text-dark fw-bold p-0 shadow-none input-peso" style="font-size: 0.85rem; height: 100%; width: 100%;">
+        </th>
+        
+        <th colspan="4" class="text-center align-middle p-0" style="background-color: #d9d9d9; border: 1px solid #adb5bd;">
+          <input type="number" step="0.1" value="60.0" class="form-control form-control-sm border-0 bg-transparent text-center text-dark fw-bold p-0 shadow-none input-peso" style="font-size: 0.85rem; height: 100%; width: 100%;">
         </th>
 
-        <th colspan="11" class="th-orange">% DE HUEVO ACUMULADO</th>
-        <th rowspan="2" class="th-black align-middle">Roto</th>
-        <th rowspan="2" class="th-black align-middle">Peso H. Prom</th>
-        <th rowspan="2" class="th-black align-middle">Peso H. Tabla</th>
+        <th rowspan="2" class="th-black align-middle text-center">Roto</th>
+        <th rowspan="2" class="th-black align-middle text-center">Peso H. Prom</th>
+        <th rowspan="2" class="th-black align-middle text-center">Peso H. Tabla</th>
       </tr>
-      <tr>
-        <!-- 1. NÚMERO DE HUEVOS CLASIFICADOS (12) -->
-        <th class="th-black">JUM</th>
-        <th class="th-black">Extra</th>
-        <th class="th-black">A A</th>
-        <th class="th-black">A</th>
-        <th class="th-black">B</th>
-        <th class="th-black">C</th>
-        <th class="th-black">Pipo</th>
-        <th class="th-black">Sucio</th>
-        <th class="th-black">Totia'o</th>
-        <th class="th-black">Yema</th>
-        <th class="th-black">Segundas</th>
-        <th class="th-black">TTL</th>
 
-        <!-- 2. NÚMERO DE HUEVOS ACUMULADOS (12) -->
-        <th class="th-black">JUM</th>
-        <th class="th-black">Extra</th>
-        <th class="th-black">A A</th>
-        <th class="th-black">A</th>
-        <th class="th-black">B</th>
-        <th class="th-black">C</th>
-        <th class="th-black">Pipo</th>
-        <th class="th-black">Sucio</th>
-        <th class="th-black">Totia'o</th>
-        <th class="th-black">Yema</th>
-        <th class="th-black">Segundas</th>
-        <th class="th-black">TOTAL</th>
-
-        <!-- 3. % DE HUEVO SEMANAL (11) -->
-        <th class="th-black">JUM</th>
-        <th class="th-black">Extra</th>
-        <th class="th-black">A A</th>
-        <th class="th-black">A</th>
-        <th class="th-black">B</th>
-        <th class="th-black">C</th>
-        <th class="th-black">Pipo</th>
-        <th class="th-black">Sucio</th>
-        <th class="th-black">Totia'o</th>
-        <th class="th-black">Yema</th>
-        <th class="th-black">Segundas</th>
-
-        <!-- 4. % DE HUEVO ACUMULADO (11) -->
-        <th class="th-black">JUM</th>
-        <th class="th-black">Extra</th>
-        <th class="th-black">A A</th>
-        <th class="th-black">A</th>
-        <th class="th-black">B</th>
-        <th class="th-black">C</th>
-        <th class="th-black">Pipo</th>
-        <th class="th-black">Sucio</th>
-        <th class="th-black">Totia'o</th>
-        <th class="th-black">Yema</th>
-        <th class="th-black">Segundas</th>
+      <!-- PISO 3: Sub-columnas -->
+      <tr style="height: 30px;">
+        <th class="th-black text-center">JUM</th><th class="th-black text-center">Extra</th><th class="th-black text-center">A A</th><th class="th-black text-center">A</th><th class="th-black text-center">B</th><th class="th-black text-center">C</th><th class="th-black text-center">Pipo</th><th class="th-black text-center">Sucio</th><th class="th-black text-center">Totia'o</th><th class="th-black text-center">Yema</th><th class="th-black text-center">Segundas</th><th class="th-black text-center">TTL</th>
+        
+        <th class="th-black text-center">JUM</th><th class="th-black text-center">Extra</th><th class="th-black text-center">A A</th><th class="th-black text-center">A</th><th class="th-black text-center">B</th><th class="th-black text-center">C</th><th class="th-black text-center">Pipo</th><th class="th-black text-center">Sucio</th><th class="th-black text-center">Totia'o</th><th class="th-black text-center">Yema</th><th class="th-black text-center">Segundas</th><th class="th-black text-center">TOTAL</th>
+        
+        <th class="th-black text-center">JUM</th><th class="th-black text-center">Extra</th><th class="th-black text-center">A A</th><th class="th-black text-center">A</th><th class="th-black text-center">B</th><th class="th-black text-center">C</th><th class="th-black text-center">Pipo</th><th class="th-black text-center">Sucio</th><th class="th-black text-center">Totia'o</th><th class="th-black text-center">Yema</th><th class="th-black text-center">Segundas</th>
+        
+        <th class="th-black text-center align-middle" style="font-size: 0.85rem;">% H Grande</th>
+        
+        <th class="th-black text-center">JUM</th><th class="th-black text-center">Extra</th><th class="th-black text-center">A A</th><th class="th-black text-center">A</th><th class="th-black text-center">B</th><th class="th-black text-center">C</th><th class="th-black text-center">Pipo</th><th class="th-black text-center">Sucio</th><th class="th-black text-center">Totia'o</th><th class="th-black text-center">Yema</th><th class="th-black text-center">Segundas</th>
       </tr>
     </thead>
     <tbody>
       {% for f in filas %}
       <tr data-id="{{ f['id'] }}">
-
-        <td class="sticky-col-1"><input type="number" data-col="sv" value="{{ f['sv'] }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
-
-        <td><input type="number" data-col="clas_jum" value="{{ f['clas_jum'] if f['clas_jum'] is not none else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
-        <td><input type="number" data-col="clas_extra"
-            value="{{ f['clas_extra'] if f['clas_extra'] is not none else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
-        <td><input type="number" data-col="clas_aa" value="{{ f['clas_aa'] if f['clas_aa'] is not none else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
-        <td><input type="number" data-col="clas_a" value="{{ f['clas_a'] if f['clas_a'] is not none else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
-        <td><input type="number" data-col="clas_b" value="{{ f['clas_b'] if f['clas_b'] is not none else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
-        <td><input type="number" data-col="clas_c" value="{{ f['clas_c'] if f['clas_c'] is not none else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
-        <td><input type="number" data-col="clas_pipo" value="{{ f['clas_pipo'] if f['clas_pipo'] is not none else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
-        <td><input type="number" data-col="clas_sucio"
-            value="{{ f['clas_sucio'] if f['clas_sucio'] is not none else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
-        <td><input type="number" data-col="clas_totiao"
-            value="{{ f['clas_totiao'] if f['clas_totiao'] is not none else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
-        <td><input type="number" data-col="clas_yema" value="{{ f['clas_yema'] if f['clas_yema'] is not none else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
-        <td style="background-color: rgba(0,0,0,0.05);"><input type="number" data-col="clas_segundas"
-            value="{{ f['clas_segundas'] if f['clas_segundas'] is not none else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
-        <td style="background-color: rgba(0,0,0,0.05);"><input type="number" data-col="clas_ttl"
-            value="{{ f['clas_ttl'] if f['clas_ttl'] is not none else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
-
-        <td style="background-color: rgba(0,0,0,0.05);"><input type="text" data-col="acum_jum"
-            value="{{ f['acum_jum'] | int if f['acum_jum'] is not none else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
-        <td style="background-color: rgba(0,0,0,0.05);"><input type="text" data-col="acum_extra"
-            value="{{ f['acum_extra'] | int if f['acum_extra'] is not none else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
-        <td style="background-color: rgba(0,0,0,0.05);"><input type="text" data-col="acum_aa"
-            value="{{ f['acum_aa'] | int if f['acum_aa'] is not none else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
-        <td style="background-color: rgba(0,0,0,0.05);"><input type="text" data-col="acum_a"
-            value="{{ f['acum_a'] | int if f['acum_a'] is not none else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
-        <td style="background-color: rgba(0,0,0,0.05);"><input type="text" data-col="acum_b"
-            value="{{ f['acum_b'] | int if f['acum_b'] is not none else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
-        <td style="background-color: rgba(0,0,0,0.05);"><input type="text" data-col="acum_c"
-            value="{{ f['acum_c'] | int if f['acum_c'] is not none else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
-        <td style="background-color: rgba(0,0,0,0.05);"><input type="text" data-col="acum_pipo"
-            value="{{ f['acum_pipo'] | int if f['acum_pipo'] is not none else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
-        <td style="background-color: rgba(0,0,0,0.05);"><input type="text" data-col="acum_sucio"
-            value="{{ f['acum_sucio'] | int if f['acum_sucio'] is not none else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
-        <td style="background-color: rgba(0,0,0,0.05);"><input type="text" data-col="acum_totiao"
-            value="{{ f['acum_totiao'] | int if f['acum_totiao'] is not none else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
-        <td style="background-color: rgba(0,0,0,0.05);"><input type="text" data-col="acum_yema"
-            value="{{ f['acum_yema'] | int if f['acum_yema'] is not none else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
-        <td style="background-color: rgba(0,0,0,0.05);"><input type="text" data-col="acum_segundas"
-            value="{{ f['acum_segundas'] | int if f['acum_segundas'] is not none else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
-        <td style="background-color: rgba(0,0,0,0.05);"><input type="text" data-col="acum_total"
-            value="{{ f['acum_total'] | int if f['acum_total'] is not none else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
-
-        <td style="background-color: rgba(0,0,0,0.05);"><input type="text" value="{{ f['sv'] }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
-
-        <td style="background-color: rgba(0,0,0,0.05);"><input type="text" data-col="porc_sem_jum"
-            value="{{ '%.2f'|format(f['porc_sem_jum']|float) if f['porc_sem_jum'] is not none else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
-        <td style="background-color: rgba(0,0,0,0.05);"><input type="text" data-col="porc_sem_extra"
-            value="{{ '%.2f'|format(f['porc_sem_extra']|float) if f['porc_sem_extra'] is not none else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
-        <td style="background-color: rgba(0,0,0,0.05);"><input type="text" data-col="porc_sem_aa"
-            value="{{ '%.2f'|format(f['porc_sem_aa']|float) if f['porc_sem_aa'] is not none else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
-        <td style="background-color: rgba(0,0,0,0.05);"><input type="text" data-col="porc_sem_a"
-            value="{{ '%.2f'|format(f['porc_sem_a']|float) if f['porc_sem_a'] is not none else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
-        <td style="background-color: rgba(0,0,0,0.05);"><input type="text" data-col="porc_sem_b"
-            value="{{ '%.2f'|format(f['porc_sem_b']|float) if f['porc_sem_b'] is not none else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
-        <td style="background-color: rgba(0,0,0,0.05);"><input type="text" data-col="porc_sem_c"
-            value="{{ '%.2f'|format(f['porc_sem_c']|float) if f['porc_sem_c'] is not none else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
-        <td style="background-color: rgba(0,0,0,0.05);"><input type="text" data-col="porc_sem_pipo"
-            value="{{ '%.2f'|format(f['porc_sem_pipo']|float) if f['porc_sem_pipo'] is not none else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
-        <td style="background-color: rgba(0,0,0,0.05);"><input type="text" data-col="porc_sem_sucio"
-            value="{{ '%.2f'|format(f['porc_sem_sucio']|float) if f['porc_sem_sucio'] is not none else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
-        <td style="background-color: rgba(0,0,0,0.05);"><input type="text" data-col="porc_sem_totiao"
-            value="{{ '%.2f'|format(f['porc_sem_totiao']|float) if f['porc_sem_totiao'] is not none else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
-        <td style="background-color: rgba(0,0,0,0.05);"><input type="text" data-col="porc_sem_yema"
-            value="{{ '%.2f'|format(f['porc_sem_yema']|float) if f['porc_sem_yema'] is not none else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
-        <td style="background-color: rgba(0,0,0,0.05);"><input type="text" data-col="porc_sem_segundas"
-            value="{{ '%.2f'|format(f['porc_sem_segundas']|float) if f['porc_sem_segundas'] is not none else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
-
-        <td style="background-color: rgba(0,0,0,0.05);">
-          <input type="text" data-col="porc_h_grande" 
-            value="{{ '%.2f'|format(f['porc_h_grande']|float) if f['porc_h_grande'] is not none else '' }}" 
-            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" 
-            readonly title="Peso P / % H Grande">
+        <td class="sticky-col-1">
+          <input type="number" data-col="sv" value="{{ f['sv'] }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly>
         </td>
 
-        <td><input type="number" data-col="porc_acu_jum"
-            value="{{ f['porc_acu_jum'] if f['porc_acu_jum'] is not none else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
-        <td><input type="number" data-col="porc_acu_extra"
-            value="{{ f['porc_acu_extra'] if f['porc_acu_extra'] is not none else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
-        <td><input type="number" data-col="porc_acu_aa"
-            value="{{ f['porc_acu_aa'] if f['porc_acu_aa'] is not none else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
-        <td><input type="number" data-col="porc_acu_a"
-            value="{{ f['porc_acu_a'] if f['porc_acu_a'] is not none else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
-        <td><input type="number" data-col="porc_acu_b"
-            value="{{ f['porc_acu_b'] if f['porc_acu_b'] is not none else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
-        <td><input type="number" data-col="porc_acu_c"
-            value="{{ f['porc_acu_c'] if f['porc_acu_c'] is not none else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
-        <td><input type="number" data-col="porc_acu_pipo"
-            value="{{ f['porc_acu_pipo'] if f['porc_acu_pipo'] is not none else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
-        <td><input type="number" data-col="porc_acu_sucio"
-            value="{{ f['porc_acu_sucio'] if f['porc_acu_sucio'] is not none else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
-        <td><input type="number" data-col="porc_acu_totiao"
-            value="{{ f['porc_acu_totiao'] if f['porc_acu_totiao'] is not none else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
-        <td><input type="number" data-col="porc_acu_yema"
-            value="{{ f['porc_acu_yema'] if f['porc_acu_yema'] is not none else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
-        <td><input type="number" data-col="porc_acu_segundas"
-            value="{{ f['porc_acu_segundas'] if f['porc_acu_segundas'] is not none else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="clas_jum" value="{{ f['clas_jum'] if f['clas_jum'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="clas_extra" value="{{ f['clas_extra'] if f['clas_extra'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="clas_aa" value="{{ f['clas_aa'] if f['clas_aa'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="clas_a" value="{{ f['clas_a'] if f['clas_a'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="clas_b" value="{{ f['clas_b'] if f['clas_b'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="clas_c" value="{{ f['clas_c'] if f['clas_c'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="clas_pipo" value="{{ f['clas_pipo'] if f['clas_pipo'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="clas_sucio" value="{{ f['clas_sucio'] if f['clas_sucio'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="clas_totiao" value="{{ f['clas_totiao'] if f['clas_totiao'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="clas_yema" value="{{ f['clas_yema'] if f['clas_yema'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="number" data-col="clas_segundas" value="{{ f['clas_segundas'] if f['clas_segundas'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
+        <td><input type="number" data-col="clas_ttl" value="{{ f['clas_ttl'] if f['clas_ttl'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
 
-        <td><input type="number" data-col="roto" value="{{ f['roto'] if f['roto'] is not none else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center fw-bold"></td>
-        <td><input type="number" data-col="peso_h_prom"
-            value="{{ f['peso_h_prom'] if f['peso_h_prom'] is not none else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
-        <td><input type="number" data-col="peso_h_tabla"
-            value="{{ f['peso_h_tabla'] if f['peso_h_tabla'] is not none else '' }}"
-            class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="text" data-col="acum_jum" value="{{ f['acum_jum'] | int if f['acum_jum'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
+        <td><input type="text" data-col="acum_extra" value="{{ f['acum_extra'] | int if f['acum_extra'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
+        <td><input type="text" data-col="acum_aa" value="{{ f['acum_aa'] | int if f['acum_aa'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
+        <td><input type="text" data-col="acum_a" value="{{ f['acum_a'] | int if f['acum_a'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
+        <td><input type="text" data-col="acum_b" value="{{ f['acum_b'] | int if f['acum_b'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
+        <td><input type="text" data-col="acum_c" value="{{ f['acum_c'] | int if f['acum_c'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
+        <td><input type="text" data-col="acum_pipo" value="{{ f['acum_pipo'] | int if f['acum_pipo'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
+        <td><input type="text" data-col="acum_sucio" value="{{ f['acum_sucio'] | int if f['acum_sucio'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
+        <td><input type="text" data-col="acum_totiao" value="{{ f['acum_totiao'] | int if f['acum_totiao'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
+        <td><input type="text" data-col="acum_yema" value="{{ f['acum_yema'] | int if f['acum_yema'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
+        <td><input type="text" data-col="acum_segundas" value="{{ f['acum_segundas'] | int if f['acum_segundas'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
+        <td><input type="text" data-col="acum_total" value="{{ f['acum_total'] | int if f['acum_total'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
 
+        <td style="background-color: rgba(0,0,0,0.05);">
+          <input type="text" value="{{ f['sv'] }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly>
+        </td>
+
+        <td><input type="text" data-col="porc_sem_jum" value="{{ '%.2f'|format(f['porc_sem_jum']|float) if f['porc_sem_jum'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
+        <td><input type="text" data-col="porc_sem_extra" value="{{ '%.2f'|format(f['porc_sem_extra']|float) if f['porc_sem_extra'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
+        <td><input type="text" data-col="porc_sem_aa" value="{{ '%.2f'|format(f['porc_sem_aa']|float) if f['porc_sem_aa'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
+        <td><input type="text" data-col="porc_sem_a" value="{{ '%.2f'|format(f['porc_sem_a']|float) if f['porc_sem_a'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
+        <td><input type="text" data-col="porc_sem_b" value="{{ '%.2f'|format(f['porc_sem_b']|float) if f['porc_sem_b'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
+        <td><input type="text" data-col="porc_sem_c" value="{{ '%.2f'|format(f['porc_sem_c']|float) if f['porc_sem_c'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
+        <td><input type="text" data-col="porc_sem_pipo" value="{{ '%.2f'|format(f['porc_sem_pipo']|float) if f['porc_sem_pipo'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
+        <td><input type="text" data-col="porc_sem_sucio" value="{{ '%.2f'|format(f['porc_sem_sucio']|float) if f['porc_sem_sucio'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
+        <td><input type="text" data-col="porc_sem_totiao" value="{{ '%.2f'|format(f['porc_sem_totiao']|float) if f['porc_sem_totiao'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
+        <td><input type="text" data-col="porc_sem_yema" value="{{ '%.2f'|format(f['porc_sem_yema']|float) if f['porc_sem_yema'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
+        <td><input type="text" data-col="porc_sem_segundas" value="{{ '%.2f'|format(f['porc_sem_segundas']|float) if f['porc_sem_segundas'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
+        
+        <td><input type="text" data-col="porc_h_grande" value="{{ '%.2f'|format(f['porc_h_grande']|float) if f['porc_h_grande'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly title="Peso P / % H Grande"></td>
+        
+        <td><input type="text" data-col="porc_acu_jum" value="{{ '%.2f'|format(f['porc_acu_jum']|float) if f['porc_acu_jum'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
+        <td><input type="text" data-col="porc_acu_extra" value="{{ '%.2f'|format(f['porc_acu_extra']|float) if f['porc_acu_extra'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
+        <td><input type="text" data-col="porc_acu_aa" value="{{ '%.2f'|format(f['porc_acu_aa']|float) if f['porc_acu_aa'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
+        <td><input type="text" data-col="porc_acu_a" value="{{ '%.2f'|format(f['porc_acu_a']|float) if f['porc_acu_a'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
+        <td><input type="text" data-col="porc_acu_b" value="{{ '%.2f'|format(f['porc_acu_b']|float) if f['porc_acu_b'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
+        <td><input type="text" data-col="porc_acu_c" value="{{ '%.2f'|format(f['porc_acu_c']|float) if f['porc_acu_c'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
+        <td><input type="text" data-col="porc_acu_pipo" value="{{ '%.2f'|format(f['porc_acu_pipo']|float) if f['porc_acu_pipo'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
+        <td><input type="text" data-col="porc_acu_sucio" value="{{ '%.2f'|format(f['porc_acu_sucio']|float) if f['porc_acu_sucio'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
+        <td><input type="text" data-col="porc_acu_totiao" value="{{ '%.2f'|format(f['porc_acu_totiao']|float) if f['porc_acu_totiao'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
+        <td><input type="text" data-col="porc_acu_yema" value="{{ '%.2f'|format(f['porc_acu_yema']|float) if f['porc_acu_yema'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
+        <td><input type="text" data-col="porc_acu_segundas" value="{{ '%.2f'|format(f['porc_acu_segundas']|float) if f['porc_acu_segundas'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
+        
+        <td><input type="text" data-col="roto" value="{{ '%.2f'|format(f['roto']|float) if f['roto'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
+        <td><input type="text" data-col="peso_h_prom" value="{{ '%.2f'|format(f['peso_h_prom']|float) if f['peso_h_prom'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
+        <td><input type="text" data-col="peso_h_tabla" value="{{ '%.2f'|format(f['peso_h_tabla']|float) if f['peso_h_tabla'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
       </tr>
       {% else %}
       <tr>
-        <td colspan="53" class="text-center text-muted py-5">
+        <td colspan="52" class="text-center text-muted py-5">
           <h5>No hay registros para este lote</h5>
           <p>La estructura se generará automáticamente en el futuro.</p>
         </td>
@@ -462,9 +369,8 @@
 {% block scripts %}
 <script>
   const API_URL_CLAS = "{{ url_for('main.actualizar_clasificacion') }}";
-  const API_RECALCULAR = "{{ url_for('main.recalcular_clas_lote') }}"; // Asegúrate de que este nombre coincida con tu ruta en Python
+  const API_RECALCULAR = "{{ url_for('main.recalcular_clas_lote') }}";
 
-  // Función reutilizable para actualizar la pantalla sin recargar
   function actualizarPantallaSilenciosa() {
     const formData = new FormData();
     const loteSeleccionado = document.getElementById('lote').value;
@@ -476,36 +382,36 @@
       method: 'POST',
       body: formData
     })
-    .then(res => res.text())
-    .then(html => {
-      const doc = new DOMParser().parseFromString(html, 'text/html');
-      
-      document.querySelectorAll('input[readonly]').forEach(inputActual => {
-        const filaActual = inputActual.closest('tr');
-        if (!filaActual || !filaActual.dataset.id) return;
-        
-        const idFila = filaActual.dataset.id;
-        const colCalculada = inputActual.dataset.col;
-        if (!colCalculada) return;
+      .then(res => res.text())
+      .then(html => {
+        const doc = new DOMParser().parseFromString(html, 'text/html');
 
-        const inputNuevo = doc.querySelector(`tr[data-id="${idFila}"] input[data-col="${colCalculada}"]`);
-        
-        if (inputNuevo) {
-          const nuevoValor = inputNuevo.getAttribute('value') || '';
-          if (inputActual.value !== nuevoValor) {
-            inputActual.style.transition = "background-color 0.4s";
-            inputActual.style.backgroundColor = "rgba(255, 193, 7, 0.4)"; // Parpadeo amarillo
-            inputActual.value = nuevoValor;
-            setTimeout(() => inputActual.style.backgroundColor = "transparent", 800);
+        document.querySelectorAll('input[readonly]').forEach(inputActual => {
+          const filaActual = inputActual.closest('tr');
+          if (!filaActual || !filaActual.dataset.id) return;
+
+          const idFila = filaActual.dataset.id;
+          const colCalculada = inputActual.dataset.col;
+          if (!colCalculada) return;
+
+          const inputNuevo = doc.querySelector(`tr[data-id="${idFila}"] input[data-col="${colCalculada}"]`);
+
+          if (inputNuevo) {
+            const nuevoValor = inputNuevo.getAttribute('value') || '';
+            if (inputActual.value !== nuevoValor) {
+              inputActual.style.transition = "background-color 0.4s";
+              inputActual.style.backgroundColor = "rgba(255, 193, 7, 0.4)"; 
+              inputActual.value = nuevoValor;
+              setTimeout(() => inputActual.style.backgroundColor = "transparent", 800);
+            }
           }
-        }
-      });
-    })
-    .catch(err => console.error("Error en la actualización silenciosa:", err));
+        });
+      })
+      .catch(err => console.error("Error en la actualización silenciosa:", err));
   }
 
-  // Evento para guardar datos al escribir
-  document.querySelectorAll('.table-fixed input:not([readonly])').forEach(function (input) {
+  // Filtrado para ignorar los inputs del encabezado
+  document.querySelectorAll('.table-fixed tbody input:not([readonly])').forEach(function (input) {
     input.addEventListener('change', function () {
       const fila = this.closest('tr');
       const id = fila.dataset.id;
@@ -518,34 +424,31 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: id, columna: columna, valor: valor })
       })
-      .then(r => r.json())
-      .then(data => {
-        if (data.status === 'ok') {
-          el.style.backgroundColor = "rgba(40, 167, 69, 0.2)";
-          setTimeout(() => el.style.backgroundColor = "transparent", 800);
-          
-          actualizarPantallaSilenciosa();
-        } else {
-          alert('Error al guardar: ' + data.msg);
+        .then(r => r.json())
+        .then(data => {
+          if (data.status === 'ok') {
+            el.style.backgroundColor = "rgba(40, 167, 69, 0.2)";
+            setTimeout(() => el.style.backgroundColor = "transparent", 800);
+            actualizarPantallaSilenciosa();
+          } else {
+            alert('Error al guardar: ' + data.msg);
+            el.style.backgroundColor = "rgba(220, 53, 69, 0.2)";
+          }
+        })
+        .catch(err => {
+          console.error('Error de red:', err);
           el.style.backgroundColor = "rgba(220, 53, 69, 0.2)";
-        }
-      })
-      .catch(err => {
-        console.error('Error de red:', err);
-        el.style.backgroundColor = "rgba(220, 53, 69, 0.2)";
-      });
+        });
     });
   });
 
-  // Evento del botón Recalcular (Sin recargar página)
   function recalcularTabla() {
     const lote = document.getElementById('lote').value;
     if (!lote) return alert("Seleccione un lote primero");
 
     const btn = document.getElementById('btn-recalcular');
     const textoOriginal = btn.innerHTML;
-    
-    // Feedback visual en el botón
+
     btn.innerHTML = "<i class='bx bx-loader-alt bx-spin'></i> Calculando...";
     btn.disabled = true;
 
@@ -554,20 +457,45 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ lote: lote })
     })
-    .then(r => r.json())
-    .then(data => {
-      if (data.status === 'ok') {
-        // En lugar de recargar, llamamos a la actualización silenciosa
-        actualizarPantallaSilenciosa();
-      } else {
-        alert("Error al recalcular: " + data.msg);
-      }
-    })
-    .catch(err => console.error('Error de red:', err))
-    .finally(() => {
-      btn.innerHTML = textoOriginal;
-      btn.disabled = false;
-    });
+      .then(r => r.json())
+      .then(data => {
+        if (data.status === 'ok') {
+          actualizarPantallaSilenciosa();
+        } else {
+          alert("Error al recalcular: " + data.msg);
+        }
+      })
+      .catch(err => console.error('Error de red:', err))
+      .finally(() => {
+        btn.innerHTML = textoOriginal;
+        btn.disabled = false;
+      });
   }
+
+// --- SISTEMA INTELIGENTE DE ALTURA PERFECTA (RESIZE OBSERVER) ---
+  document.addEventListener("DOMContentLoaded", function() {
+    const tabla = document.querySelector('.tabla-scroll');
+    
+    if (tabla) {
+      // Creamos un observador que vigila cualquier cambio en la pantalla
+      const observer = new ResizeObserver(() => {
+        // Obtenemos a qué distancia está la tabla desde el techo de la pantalla
+        const rect = tabla.getBoundingClientRect();
+        
+        // Píxeles físicos que quedan libres hasta el fondo del monitor
+        const pixelesLibres = window.innerHeight - rect.top;
+        
+        // Compensamos el zoom del 80% (0.8) y dejamos 10px de margen estético abajo
+        const alturaPerfecta = (pixelesLibres / 0.8) - 10;
+        
+        // Inyectamos la altura exacta a la tabla
+        tabla.style.height = alturaPerfecta + "px";
+        tabla.style.maxHeight = alturaPerfecta + "px";
+      });
+
+      // Le decimos que vigile todo el cuerpo de la página (incluyendo el acordeón)
+      observer.observe(document.body);
+    }
+  });
 </script>
 {% endblock %}

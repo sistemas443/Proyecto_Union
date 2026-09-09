@@ -1,24 +1,80 @@
 {% extends 'layout.html' %}
 
 {% block content %}
-<div class="container-fluid mt-2">
-    <!-- Encabezado principal de la vista -->
-    <div class="alert py-2 mb-3 fw-bold text-center text-uppercase fs-5 shadow-sm"
-        style="background-color: #343a40; color: #ffff; border: none;">
+<style>
+    /* 1. Zoom global del 80% y bloqueo del scroll de toda la ventana (el scroll lo hará la tabla internamente) */
+    body {
+        zoom: 0.8;
+        overflow-y: hidden !important;
+    }
+
+    /* 2. Contenedor principal sin paddings inferiores para maximizar la pantalla */
+    main.container-fluid {
+        display: flex;
+        flex-direction: column;
+        padding-bottom: 0px !important;
+        height: calc(125vh - 65px);
+        /* Compensamos el zoom de 0.8 */
+    }
+
+    /* 3. Aseguramos que la cabecera y el botón no se encojan */
+    .header-lotes,
+    .d-flex.justify-content-end {
+        flex-shrink: 0;
+    }
+
+    /* 4. Contenedor de la tabla, con scroll interno y altura controlada por JS */
+    .card-tabla-lotes {
+        flex: 1 1 auto;
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 15px;
+        /* Pequeño margen estético inferior */
+    }
+
+    .table-responsive {
+        flex: 1 1 auto;
+        overflow-y: auto;
+        overflow-x: auto;
+        border-bottom: 1px solid #dee2e6;
+    }
+
+    /* Encabezados de la tabla congelados */
+    .table-responsive thead th {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    /* 5. Corrección matemática para que los modales y el fondo borroso cubran el 100% de la pantalla bajo zoom */
+    .modal,
+    .modal-backdrop {
+        width: 125vw !important;
+        height: 125vh !important;
+    }
+</style>
+
+<div class="container-fluid mt-2 h-100 d-flex flex-column">
+<!-- Encabezado principal de la vista -->
+    <div class="alert py-2 mb-3 fw-bold text-center text-uppercase fs-5 shadow-sm header-lotes bg-dark text-white"
+        style="border: none;">
         GESTIÓN MAESTRA DE LOTES
     </div>
 
     <!-- Botón para crear un nuevo lote -->
     <div class="d-flex justify-content-end mb-3">
+        {% if session.get('user_rol') != 'Lector' %}
         <button type="button" class="btn btn-naranja shadow-sm fw-bold px-4" data-bs-toggle="modal"
             data-bs-target="#modalLote" onclick="configurarModal('crear')">
             <i class='bx bx-plus'></i> Nuevo Lote
         </button>
+        {% endif %}
     </div>
 
     <!-- Tabla que muestra la lista de lotes existentes -->
-    <div class="card shadow border-0">
-        <div class="card-body table-responsive p-0">
+    <div class="card shadow border-0 card-tabla-lotes" id="contenedorTablaLotes">
+        <div class="card-body table-responsive p-0" id="scrollTablaLotes">
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-dark">
                     <tr>
@@ -40,14 +96,19 @@
                         <td>{{ lote.granja_prod or '-' }}</td>
                         <td>{{ lote.no_aves_encasetadas or '-' }}</td>
                         <td class="text-center pe-3">
+                            <!-- El ojito siempre se ve -->
                             <button class="btn btn-sm btn-dark btn-ver text-white"
                                 data-lote="{{ lote | tojson | forceescape }}" title="Ver detalles"><i
                                     class='bx bx-show'></i></button>
+                            
+                            <!-- Editar y Borrar solo para Editores y Superadmins -->
+                            {% if session.get('user_rol') != 'Lector' %}
                             <button class="btn btn-sm btn-naranja btn-editar text-white"
                                 data-lote="{{ lote | tojson | forceescape }}" title="Editar lote"><i
                                     class='bx bx-edit'></i></button>
                             <button class="btn btn-sm btn-danger btn-borrar" data-id="{{ lote.id }}"
                                 title="Borrar lote"><i class='bx bx-trash'></i></button>
+                            {% endif %}
                         </td>
                     </tr>
                     {% endfor %}
@@ -253,23 +314,26 @@
                     </div>
 
                     <!-- SECCIÓN: Datos de Encasetamiento / Producción -->
-                    <h6 class="text-secondary fw-bold border-bottom pb-2 mb-3 mt-4">Datos de Encasetamiento / Producción</h6>
-                    
+                    <h6 class="text-secondary fw-bold border-bottom pb-2 mb-3 mt-4">Datos de Encasetamiento / Producción
+                    </h6>
+
                     <div class="row mb-3">
-                        <!-- Nutricionista de Producción (Corregido con botón) -->
                         <div class="col-md-4 mb-2">
                             <label class="form-label fw-semibold">Nutricionista (Producción)</label>
                             <div class="input-group shadow-sm">
-                                <select name="nutricionista_prod" id="f_nutricionista_prod" class="form-select creatable-select">
+                                <select name="nutricionista_prod" id="f_nutricionista_prod"
+                                    class="form-select creatable-select">
                                     <option value="">Seleccione...</option>
                                     {% for item in cat_nutricionistas %}
                                     <option value="{{ item }}">{{ item }}</option>
                                     {% endfor %}
                                 </select>
-                                <button type="button" class="btn fw-bold text-white shadow-sm" style="background-color: #97271C;" onclick="abrirModalCatalogo('nutricionista')" title="Nuevo Nutricionista"><i class='bx bx-plus'></i></button>
+                                <button type="button" class="btn fw-bold text-white shadow-sm"
+                                    style="background-color: #97271C;" onclick="abrirModalCatalogo('nutricionista')"
+                                    title="Nuevo Nutricionista"><i class='bx bx-plus'></i></button>
                             </div>
                         </div>
-                        
+
                         <div class="col-md-4 mb-2">
                             <label class="form-label fw-semibold">Granja Producción</label>
                             <select name="granja_prod" id="f_granja_prod" class="form-select creatable-select"
@@ -358,10 +422,29 @@
 </div>
 
 <script>
+    // --- SISTEMA INTELIGENTE DE ALTURA PERFECTA PARA LA TABLA DE LOTES ---
+    document.addEventListener("DOMContentLoaded", function () {
+        const divCard = document.getElementById('contenedorTablaLotes');
+        const scrollDiv = document.getElementById('scrollTablaLotes');
+
+        if (divCard && scrollDiv) {
+            const observer = new ResizeObserver(() => {
+                const rect = divCard.getBoundingClientRect();
+                const pixelesLibres = window.innerHeight - rect.top;
+
+                // Compensamos el zoom del 80% (0.8) y ajustamos un margen inferior de seguridad
+                const alturaPerfecta = (pixelesLibres / 0.8) - 15;
+
+                divCard.style.height = alturaPerfecta + "px";
+                scrollDiv.style.maxHeight = alturaPerfecta + "px";
+            });
+
+            observer.observe(document.body);
+        }
+    });
+
     // 1. Lógica Matemática: Sumar 119 días automáticamente a Fecha Recepción
     document.getElementById('f_fecha_rec').addEventListener('change', function (e) {
-        // IMPORTANTÍSIMO: Solo hacer el cálculo si el cambio lo hizo un humano tipeando (e.isTrusted)
-        // Evita que se sobreescriba la Fecha Encasetamiento guardada al abrir el modal.
         if (!e.isTrusted) return;
 
         if (this.value) {
@@ -376,13 +459,17 @@
         }
     });
 
-    // 2. Función para limpiar el modal al crear
+    // 2. Función para limpiar el modal al crear y resetear bloqueos
     function configurarModal(accion) {
         const form = document.getElementById('formLote');
         const titulo = document.getElementById('modalLoteLabel');
         const btnGuardar = document.getElementById('btnGuardar');
 
         form.reset();
+
+        // Desbloquear todos los campos por si venimos del botón "Ver detalles"
+        document.querySelectorAll('#formLote input, #formLote select').forEach(el => el.disabled = false);
+        btnGuardar.style.display = 'block'; // Mostrar botón guardar
 
         if (accion === 'crear') {
             titulo.textContent = 'Crear Nuevo Lote';
@@ -399,11 +486,11 @@
         }
     }
 
-    // 3. Capturador de clics en Editar con "Inyección Inteligente"
+    // 3. Capturador de clics en Editar y Ver
     document.addEventListener('DOMContentLoaded', function () {
         const botonesEditar = document.querySelectorAll('.btn-editar');
+        const botonesVer = document.querySelectorAll('.btn-ver'); // Activamos el botón del ojito
 
-        // Función auxiliar: Asigna valores y avisa a los plugins visuales
         function setFormValue(id, value, isDate = false) {
             const el = document.getElementById(id);
             if (!el) return;
@@ -411,7 +498,6 @@
             let finalValue = (value !== null && value !== undefined) ? value : '';
 
             if (isDate && value) {
-                // Traductor de fechas: de Python a YYYY-MM-DD
                 let d = new Date(value);
                 if (!isNaN(d.getTime())) {
                     let year = d.getUTCFullYear();
@@ -423,26 +509,19 @@
                 }
             }
 
-            // 1. Asignamos el valor al elemento HTML nativo
             el.value = finalValue;
 
-            // 2. MAGIA PARA LOS MENÚS DESPLEGABLES (Forzamos a los plugins a actualizarse)
             if (el.tomselect) {
-                // Si usas TomSelect
                 el.tomselect.setValue(finalValue);
             } else if (el.selectize) {
-                // Si usas Selectize
                 el.selectize.setValue(finalValue);
             } else if (typeof $ !== 'undefined' && $(el).hasClass('creatable-select')) {
-                // Si usas jQuery Select2
                 $(el).val(finalValue).trigger('change');
             } else {
-                // Listas normales o HTML estándar
                 el.dispatchEvent(new Event('change', { bubbles: true }));
             }
         }
 
-        // Función auxiliar para los campos que no tienen ID (como Día 0)
         function setFormValueByName(name, value) {
             const el = document.querySelector(`[name="${name}"]`);
             if (el) {
@@ -451,60 +530,76 @@
             }
         }
 
+        // --- LÓGICA CENTRALIZADA PARA LLENAR DATOS ---
+        function cargarDatosModal(loteData) {
+            document.getElementById('lote_id').value = loteData.id || '';
+
+            setFormValue('f_lote_nuevo', loteData.lote);
+            setFormValue('f_cliente', loteData.cliente);
+            setFormValue('f_ciudad', loteData.ciudad);
+            setFormValue('f_clima', loteData.clima);
+            setFormValue('f_responsable', loteData.responsable_tecnico);
+            setFormValue('f_nutricionista', loteData.nutricionista);
+            setFormValue('f_nutricionista_prod', loteData.nutricionista_prod);
+            setFormValue('f_granja_lev', loteData.granja_lev);
+            setFormValue('f_fecha_rec', loteData.fecha_recepcion, true);
+            setFormValue('f_fecha_enc', loteData.fecha_encasetamiento, true);
+            setFormValue('f_pollitas', loteData.no_pollitas_recibidas);
+            setFormValue('f_variedad', loteData.variedad);
+            setFormValue('f_peso', loteData.peso);
+            setFormValue('f_unidad_peso', loteData.unidad_peso);
+            setFormValue('f_uniformidad', loteData.uniformidad);
+            setFormValue('f_coef', loteData.coeficiente_variacion);
+            setFormValue('f_granja_prod', loteData.granja_prod);
+            setFormValue('f_aves_enc', loteData.no_aves_encasetadas);
+            setFormValue('f_tipo_galpon', loteData.tipo_galpon);
+            setFormValue('f_marca_galpon', loteData.marca_galpon);
+            setFormValue('f_unidad_med', loteData.unidad_medida);
+
+            setFormValueByName('dia0_consumo_kg', loteData.dia0_consumo_kg);
+            setFormValueByName('dia0_cons_k_acum', loteData.dia0_cons_k_acum);
+            setFormValueByName('dia0_mortalidad', loteData.dia0_mortalidad);
+            setFormValueByName('dia0_sel', loteData.dia0_sel);
+            setFormValueByName('dia0_peso_real', loteData.dia0_peso_real);
+            setFormValueByName('dia0_unif_10_menos', loteData.dia0_unif_10_menos);
+            setFormValueByName('dia0_porc_uniformidad', loteData.dia0_porc_uniformidad);
+            setFormValueByName('dia0_unif_10_mas', loteData.dia0_unif_10_mas);
+            setFormValueByName('dia0_coef_variacion', loteData.dia0_coef_variacion);
+        }
+
+        // EVENTO: BOTÓN EDITAR
         botonesEditar.forEach(boton => {
             boton.addEventListener('click', function () {
                 const loteData = JSON.parse(this.getAttribute('data-lote'));
 
                 document.getElementById('modalLoteLabel').textContent = 'Editar Lote: ' + (loteData.lote || '');
-                document.getElementById('btnGuardar').textContent = 'Actualizar Lote';
+                const btnGuardar = document.getElementById('btnGuardar');
+                btnGuardar.textContent = 'Actualizar Lote';
+                btnGuardar.style.display = 'block';
 
-                // DESTRUCCIÓN DEL CANDADO
-                const inputLote = document.getElementById('f_lote_nuevo');
-                inputLote.readOnly = false;
-                inputLote.disabled = false;
-                inputLote.removeAttribute('readonly');
-                inputLote.removeAttribute('disabled');
+                // Desbloqueamos todos los campos por si antes se abrió "Ver Detalles"
+                document.querySelectorAll('#formLote input, #formLote select').forEach(el => el.disabled = false);
 
-                document.getElementById('lote_id').value = loteData.id || '';
+                cargarDatosModal(loteData);
 
-                // --- INYECCIÓN DE DATOS INTELIGENTE ---
-                setFormValue('f_lote_nuevo', loteData.lote);
-                setFormValue('f_cliente', loteData.cliente);
-                setFormValue('f_ciudad', loteData.ciudad);
-                setFormValue('f_clima', loteData.clima);
-                setFormValue('f_responsable', loteData.responsable_tecnico);
-                setFormValue('f_nutricionista', loteData.nutricionista);
-                setFormValue('f_nutricionista_prod', loteData.nutricionista_prod);
-                setFormValue('f_granja_lev', loteData.granja_lev);
+                var modal = new bootstrap.Modal(document.getElementById('modalLote'));
+                modal.show();
+            });
+        });
 
-                // Fechas (pasamos parámetro 'true' para forzar formato)
-                setFormValue('f_fecha_rec', loteData.fecha_recepcion, true);
-                setFormValue('f_fecha_enc', loteData.fecha_encasetamiento, true);
+        // EVENTO: BOTÓN VER (SOLO LECTURA)
+        botonesVer.forEach(boton => {
+            boton.addEventListener('click', function () {
+                const loteData = JSON.parse(this.getAttribute('data-lote'));
 
-                setFormValue('f_pollitas', loteData.no_pollitas_recibidas);
-                setFormValue('f_variedad', loteData.variedad);
-                setFormValue('f_peso', loteData.peso);
-                setFormValue('f_unidad_peso', loteData.unidad_peso);
-                setFormValue('f_uniformidad', loteData.uniformidad);
-                setFormValue('f_coef', loteData.coeficiente_variacion);
-                setFormValue('f_granja_prod', loteData.granja_prod);
-                setFormValue('f_aves_enc', loteData.no_aves_encasetadas);
-                setFormValue('f_tipo_galpon', loteData.tipo_galpon);
-                setFormValue('f_marca_galpon', loteData.marca_galpon);
-                setFormValue('f_unidad_med', loteData.unidad_medida);
+                document.getElementById('modalLoteLabel').textContent = 'Detalles del Lote: ' + (loteData.lote || '');
+                document.getElementById('btnGuardar').style.display = 'none'; // Ocultamos Guardar
 
-                // DÍA 0
-                setFormValueByName('dia0_consumo_kg', loteData.dia0_consumo_kg);
-                setFormValueByName('dia0_cons_k_acum', loteData.dia0_cons_k_acum);
-                setFormValueByName('dia0_mortalidad', loteData.dia0_mortalidad);
-                setFormValueByName('dia0_sel', loteData.dia0_sel);
-                setFormValueByName('dia0_peso_real', loteData.dia0_peso_real);
-                setFormValueByName('dia0_unif_10_menos', loteData.dia0_unif_10_menos);
-                setFormValueByName('dia0_porc_uniformidad', loteData.dia0_porc_uniformidad);
-                setFormValueByName('dia0_unif_10_mas', loteData.dia0_unif_10_mas);
-                setFormValueByName('dia0_coef_variacion', loteData.dia0_coef_variacion);
+                cargarDatosModal(loteData);
 
-                // Abre el Modal
+                // Bloqueamos todos los campos para evitar ediciones (Solo Lectura)
+                document.querySelectorAll('#formLote input, #formLote select').forEach(el => el.disabled = true);
+
                 var modal = new bootstrap.Modal(document.getElementById('modalLote'));
                 modal.show();
             });
@@ -517,7 +612,6 @@
         modalCatalogoUI = new bootstrap.Modal(document.getElementById('modalCatalogo'));
     });
 
-    // Función que abre el modal dependiendo del botón presionado
     function abrirModalCatalogo(tipo) {
         document.getElementById('tipo_catalogo').value = tipo;
         document.getElementById('nuevo_nombre_catalogo').value = '';
@@ -525,7 +619,6 @@
         modalCatalogoUI.show();
     }
 
-    // Función que envía el dato a Python y actualiza los selectores en tiempo real
     function guardarCatalogoNuevo() {
         const tipo = document.getElementById('tipo_catalogo').value;
         const nombre = document.getElementById('nuevo_nombre_catalogo').value.trim();
@@ -540,7 +633,6 @@
             .then(res => res.json())
             .then(data => {
                 if (data.status === 'ok') {
-                    // Si es nutricionista, actualizamos ambos campos (Levante y Producción)
                     if (tipo === 'nutricionista') {
                         actualizarSelect('f_nutricionista', data.nombre);
                         actualizarSelect('f_nutricionista_prod', data.nombre);
@@ -555,7 +647,6 @@
             }).catch(err => { console.error(err); alert("Error de conexión."); });
     }
 
-    // Función auxiliar para inyectar la nueva opción en el menú visual
     function actualizarSelect(idSelect, nuevoValor) {
         const select = document.getElementById(idSelect);
         if (!select) return;
@@ -563,7 +654,6 @@
         const nuevaOpcion = new Option(nuevoValor, nuevoValor, true, true);
         select.add(nuevaOpcion);
 
-        // Si tienes librerías como Selectize o jQuery Select2 activadas, esto las sincroniza
         if (select.tomselect) select.tomselect.addOption({ value: nuevoValor, text: nuevoValor });
         if (select.selectize) select.selectize.addOption({ value: nuevoValor, text: nuevoValor });
         if (typeof $ !== 'undefined' && $(select).hasClass('creatable-select')) $(select).val(nuevoValor).trigger('change');

@@ -3,16 +3,32 @@
 
 {% block content %}
 <!-- Estilos CSS para optimización visual y scroll -->
-<!-- Estilos CSS para optimización visual y scroll -->
 <style>
-  /* Contenedor principal de la tabla con altura dinámica expandida */
+  /* 1. Bloqueamos el scroll general y aplicamos zoom global del 80% */
+  body {
+    overflow-y: hidden !important;
+    zoom: 0.8;
+  }
+
+  /* 2. El contenedor principal base */
+  main.container-fluid {
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 0px; /* Quitamos el padding para ganar más espacio */
+  }
+
+  /* 3. Evitamos que los elementos de arriba se aplasten */
+  .alert, .filtro-bar, .card, .d-flex {
+    flex-shrink: 0;
+  }
+
+  /* 4. La tabla (su altura será controlada milimétricamente por JavaScript) */
   .tabla-scroll {
-    max-height: calc(100vh - 240px); 
     overflow-y: auto;
     overflow-x: auto;
     width: 100%;
-    /* Mágia para que el scroll táctil en celulares (iOS/Android) sea rápido y fluido */
     -webkit-overflow-scrolling: touch; 
+    border-bottom: 1px solid #dee2e6;
   }
 
   /* Congelar la primera fila del encabezado */
@@ -45,11 +61,6 @@
   /* ADAPTACIÓN PARA CELULARES Y TABLETS        */
   /* ========================================== */
   @media (max-width: 768px) {
-    .tabla-scroll {
-      /* Le damos más altura a la tabla en celulares para aprovechar la pantalla */
-      max-height: calc(100vh - 150px);
-    }
-    
     /* Hacemos que el filtro de buscar lote se apile bonito hacia abajo */
     .filtro-bar form {
       flex-direction: column;
@@ -439,6 +450,32 @@
             input.value = `${dia}-${mes}-${anio}`;
         }
     });
+  });
+
+  // --- SISTEMA INTELIGENTE DE ALTURA PERFECTA (RESIZE OBSERVER) ---
+  document.addEventListener("DOMContentLoaded", function() {
+    const tabla = document.querySelector('.tabla-scroll');
+    
+    if (tabla) {
+      // Creamos un observador que vigila cualquier cambio en la pantalla
+      const observer = new ResizeObserver(() => {
+        // Obtenemos a qué distancia está la tabla desde el techo de la pantalla
+        const rect = tabla.getBoundingClientRect();
+        
+        // Píxeles físicos que quedan libres hasta el fondo del monitor
+        const pixelesLibres = window.innerHeight - rect.top;
+        
+        // Compensamos el zoom del 80% (0.8) y dejamos 10px de margen estético abajo
+        const alturaPerfecta = (pixelesLibres / 0.8) - 10;
+        
+        // Inyectamos la altura exacta a la tabla
+        tabla.style.height = alturaPerfecta + "px";
+        tabla.style.maxHeight = alturaPerfecta + "px";
+      });
+
+      // Le decimos que vigile todo el cuerpo de la página (incluyendo el acordeón)
+      observer.observe(document.body);
+    }
   });
 </script>
 {% endblock %}

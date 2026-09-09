@@ -4,19 +4,25 @@
 
 {% block content %}
 <style>
-    /* Ocultamos la barra de navegación porque es una página de ingreso */
-    nav, .navbar { display: none !important; }
-    
-    body { 
-        background-color: #f8f9fa; 
-        display: flex; 
-        align-items: center; 
+    /* Ocultamos la barra de navegación en el login */
+    nav,
+    .navbar {
+        display: none !important;
+    }
+
+    /* Fondo limpio que cubre el 100% de la pantalla incluyendo la zona del footer */
+    body {
+        background: url("{{ url_for('static', filename='img/FONDO_LOGIN.JPG') }}") no-repeat center center fixed;
+        background-size: cover;
+        display: flex;
+        align-items: center;
         justify-content: center;
         min-height: 100vh;
         margin: 0;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+        overflow: hidden; /* Evita scrolls dobles innecesarios */
     }
-    
+
     main.container-fluid {
         padding: 0 !important;
         display: flex;
@@ -27,61 +33,110 @@
         height: 100vh;
     }
 
-    /* 1. LOGO MÁS GRANDE */
-    .login-logo { margin-bottom: 35px; }
-    .login-logo img { max-height: 100px; width: auto; } /* Aumentamos de 65px a 100px */
-
-    /* 2. TARJETA MÁS ANCHA Y CON MÁS ESPACIO INTERNO */
-    .login-card {
-        background: #ffffff;
-        border: 1px solid #dee2e6; 
-        border-radius: 8px; 
-        width: 100%;
-        max-width: 600px; /* Aumentamos de 450px a 600px */
-        padding: 50px 60px; /* Más padding para que respire */
+    /* 1. TAMAÑO Y ESTILO DEL GIF */
+    .login-logo {
+        margin-bottom: 15px;
     }
 
-    /* 3. TÍTULOS MÁS GRANDES */
+    .login-logo img {
+        max-height: 180px;
+        width: auto;
+        transition: max-height 0.3s ease;
+    }
+
+    /* 2. TARJETA BLANCA CON CONTROL DE ESCALA DINÁMICA */
+    .login-card {
+        background: #ffffff;
+        border: 1px solid #dee2e6;
+        border-radius: 16px;
+        width: 90%;
+        max-width: 500px;
+        padding: 40px 45px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+        transition: transform 0.2s ease, padding 0.3s ease;
+        transform-origin: center center;
+    }
+
+    /* 3. TÍTULOS */
     .login-card h3 {
-        font-weight: 500;
-        font-size: 2.2rem; /* Aumentamos el tamaño de la fuente */
-        color: #000000;
-        margin-bottom: 5px;
+        font-weight: 700;
+        font-size: 2rem;
+        color: #212529;
+        margin-bottom: 2px;
     }
 
     .login-card .subtitle {
         color: #6c757d;
-        font-size: 1.25rem; /* Aumentamos el tamaño de la fuente */
-        margin-bottom: 45px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 30px;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.8px;
     }
 
-    /* 4. INPUTS MÁS ALTOS Y TEXTO MÁS GRANDE */
+    /* 4. INPUTS Y CONTENEDOR DE CONTRASEÑA */
     .form-control {
         border: 1px solid #ced4da;
-        border-radius: 6px;
-        padding: 16px 20px; /* Cajas más altas y con más espacio interior */
-        font-size: 1.15rem; /* Texto ingresado más grande */
-        margin-bottom: 25px; /* Más separación entre el usuario y la contraseña */
+        border-radius: 8px;
+        padding: 12px 18px;
+        font-size: 1.05rem;
         box-shadow: none;
+        background-color: #ffffff;
     }
 
     .form-control:focus {
         border-color: #97271C;
-        box-shadow: 0 0 0 0.2rem rgba(151, 39, 28, 0.25);
+        box-shadow: 0 0 0 0.25rem rgba(151, 39, 28, 0.2);
     }
 
-    /* 5. BOTÓN Y ENLACE MÁS GRANDES */
+    .campo-password-wrapper {
+        position: relative;
+        margin-bottom: 20px;
+    }
+
+    .campo-password-wrapper .form-control {
+        padding-right: 48px; /* Espacio para que el texto no toque el icono */
+        margin-bottom: 0;
+    }
+
+    /* Botón / Icono interactivo */
+    .btn-toggle-password {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        padding: 0;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 5;
+    }
+
+    .btn-toggle-password img {
+        width: 24px;
+        height: 24px;
+        object-fit: contain;
+        opacity: 0.7;
+        transition: opacity 0.2s ease;
+    }
+
+    .btn-toggle-password img:hover {
+        opacity: 1;
+    }
+
+    /* 5. BOTÓN Y ENLACE */
     .btn-vinotinto {
         background-color: #97271C;
         color: white;
         border: none;
-        border-radius: 50px; 
-        padding: 12px 40px; /* Botón más ancho y alto */
+        border-radius: 50px;
+        padding: 10px 30px;
         font-weight: 600;
-        font-size: 1.1rem; /* Texto del botón más grande */
-        transition: background-color 0.3s;
+        font-size: 1rem;
+        transition: all 0.3s ease;
     }
 
     .btn-vinotinto:hover {
@@ -90,45 +145,56 @@
     }
 
     .forgot-password {
-        color: #97271C; /* Color vinotinto del sistema */
+        color: #97271C;
         font-weight: 700;
-        font-size: 1rem; /* Letra del enlace más grande */
+        font-size: 0.95rem;
         text-decoration: none;
     }
 
-    .forgot-password:hover { 
-        text-decoration: underline; 
-        color: #7a1f16; /* Vinotinto un poco más oscuro al pasar el cursor */
+    .forgot-password:hover {
+        text-decoration: underline;
+        color: #7a1f16;
     }
 
-    /* Footer nativo fijado abajo */
+    /* Footer flotante sobre la imagen de fondo */
     .login-footer {
         position: fixed;
         bottom: 0;
         left: 0;
         width: 100%;
-        padding: 25px;
+        padding: 12px;
         text-align: center;
-        font-size: 0.95rem; /* Texto del footer ligeramente más grande */
-        color: #888;
-        background-color: #f8f9fa;
+        font-size: 0.85rem;
+        color: #ffffff;
+        background: rgba(0, 0, 0, 0.5);
     }
 </style>
 
-<!-- Logo superior -->
-<div class="login-logo">
-    <img src="{{ url_for('static', filename='img/LOGO_AVICOLA_SAN_MARTIN.png') }}" alt="Avícola San Martín">
-</div>
-
 <!-- Cuadro de Iniciar Sesión -->
-<div class="login-card text-center">
+<div class="login-card text-center" id="tarjetaLogin">
+    <!-- Logo GIF superior -->
+    <div class="login-logo">
+        <img src="{{ url_for('static', filename='img/LOGO_AVICOLA_SAN_MARTIN_LOGIN.gif') }}" alt="Avícola San Martín" id="logoGif">
+    </div>
     <h3>Iniciar sesión</h3>
     <div class="subtitle">AVICOLA SAN MARTIN</div>
 
     <form action="/login" method="POST">
-        <input type="text" class="form-control" id="username" name="username" placeholder="Usuario" required autocomplete="off">
-        <input type="password" class="form-control" id="password" name="password" placeholder="Contraseña" required>
+        <input type="text" class="form-control mb-3" id="username" name="username" placeholder="Usuario" required autocomplete="off">
         
+        <!-- Campo con opción de ver/ocultar contraseña e imagen personalizada -->
+        <div class="campo-password-wrapper">
+            <input type="password" class="form-control" id="password" name="password" placeholder="Contraseña" required>
+            <button type="button" class="btn-toggle-password" id="btnTogglePassword" title="Mostrar u ocultar contraseña">
+                <!-- Cambia estas rutas por las imágenes de tu preferencia -->
+                <img id="imgIconoEye" 
+                     src="{{ url_for('static', filename='img/Martina con los ojos cerrados.svg') }}" 
+                     data-src-oculto="{{ url_for('static', filename='img/Martina con los ojos cerrados.svg') }}" 
+                     data-src-visible="{{ url_for('static', filename='img/Martina con los ojos abiertos opcion 2.svg') }}" 
+                     alt="Ver contraseña">
+            </button>
+        </div>
+
         <div class="d-flex justify-content-between align-items-center mt-3">
             <a href="#" class="forgot-password" data-bs-toggle="modal" data-bs-target="#modalRecuperar">¿Has olvidado tu contraseña?</a>
             <button type="submit" class="btn btn-vinotinto">Iniciar sesión</button>
@@ -144,31 +210,30 @@
 <!-- MODAL DE RECUPERACIÓN -->
 <div class="modal fade" id="modalRecuperar" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow" style="border-radius: 12px;">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
             <div class="modal-header border-0 pb-0">
                 <h5 class="modal-title fw-bold text-dark" id="tituloModal">Opciones de Recuperación</h5>
-                <!-- Al cerrar el modal, ejecutamos una función para que vuelva a la vista original la próxima vez -->
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" onclick="resetearModal()"></button>
             </div>
-            
+
             <div class="modal-body px-4 pb-4">
-                
+
                 <!-- VISTA 1: SELECCIÓN DE MÉTODO -->
                 <div id="vistaOpciones">
                     <p class="text-muted text-center mb-4" style="font-size: 0.95rem;">Selecciona cómo deseas restablecer tu contraseña.</p>
-                    
+
                     <div class="d-grid gap-3">
-                        <!-- Opción Admin -->
-                        <button type="button" class="btn btn-outline-secondary p-3 text-start d-flex align-items-center" onclick="cambiarVista('admin')" style="border-radius: 8px;">
+                        <button type="button" class="btn btn-outline-secondary p-3 text-start d-flex align-items-center"
+                            onclick="cambiarVista('admin')" style="border-radius: 8px;">
                             <i class='bx bx-support fs-2 me-3' style="color: #6c757d;"></i>
                             <div>
                                 <h6 class="mb-0 fw-bold text-dark">Por medio del Administrador</h6>
                                 <small class="text-muted">Se enviará una notificación a soporte.</small>
                             </div>
                         </button>
-                        
-                        <!-- Opción Autónoma -->
-                        <button type="button" class="btn btn-outline-secondary p-3 text-start d-flex align-items-center" onclick="cambiarVista('correo')" style="border-radius: 8px;">
+
+                        <button type="button" class="btn btn-outline-secondary p-3 text-start d-flex align-items-center"
+                            onclick="cambiarVista('correo')" style="border-radius: 8px;">
                             <i class='bx bx-envelope fs-2 me-3' style="color: #97271C;"></i>
                             <div>
                                 <h6 class="mb-0 fw-bold text-dark">Por mi cuenta (Vía Correo)</h6>
@@ -210,20 +275,12 @@
 
 {% block scripts %}
 <script>
-    // Aseguramos que el body y el footer ocupen el espacio correcto
-    document.addEventListener("DOMContentLoaded", function() {
-        document.body.insertAdjacentHTML('beforeend', '<footer class="login-footer">© 2019 Avicola San Martin S.A. Todos los derechos reservados</footer>');
-    });
-
-    // Función para intercambiar entre las vistas del modal
     function cambiarVista(vista) {
-        // Ocultamos todas las vistas
         document.getElementById('vistaOpciones').style.display = 'none';
         document.getElementById('vistaAdmin').style.display = 'none';
         document.getElementById('vistaCorreo').style.display = 'none';
-        
-        // Mostramos la vista solicitada y cambiamos el título
-        if(vista === 'admin') {
+
+        if (vista === 'admin') {
             document.getElementById('vistaAdmin').style.display = 'block';
             document.getElementById('tituloModal').innerText = 'Recuperar con Soporte';
         } else if (vista === 'correo') {
@@ -232,12 +289,66 @@
         }
     }
 
-    // Función para volver al inicio del modal
     function resetearModal() {
         document.getElementById('vistaOpciones').style.display = 'block';
         document.getElementById('vistaAdmin').style.display = 'none';
         document.getElementById('vistaCorreo').style.display = 'none';
         document.getElementById('tituloModal').innerText = 'Opciones de Recuperación';
     }
+
+    // --- FUNCIÓN MOSTRAR / OCULTAR CONTRASEÑA ---
+    document.addEventListener("DOMContentLoaded", function () {
+        const inputPassword = document.getElementById('password');
+        const btnToggle = document.getElementById('btnTogglePassword');
+        const imgIcono = document.getElementById('imgIconoEye');
+
+        if (btnToggle && inputPassword && imgIcono) {
+            btnToggle.addEventListener('click', function () {
+                const esPassword = inputPassword.getAttribute('type') === 'password';
+                
+                // Cambiar el tipo de input
+                inputPassword.setAttribute('type', esPassword ? 'text' : 'password');
+                
+                // Alternar la imagen según el estado
+                const srcOculto = imgIcono.getAttribute('data-src-oculto');
+                const srcVisible = imgIcono.getAttribute('data-src-visible');
+                
+                imgIcono.setAttribute('src', esPassword ? srcVisible : srcOculto);
+            });
+        }
+    });
+
+    // --- MOTOR INTELIGENTE DE ESCALADO DINÁMICO DE LA TARJETA (RESIZE OBSERVER) ---
+    document.addEventListener("DOMContentLoaded", function() {
+        const tarjeta = document.getElementById('tarjetaLogin');
+        const logo = document.getElementById('logoGif');
+
+        if (tarjeta) {
+            const observer = new ResizeObserver(() => {
+                const altoVentana = window.innerHeight;
+
+                let escala = 1;
+                let maxLogoHeight = 180;
+
+                if (altoVentana < 650) {
+                    escala = 0.8;
+                    maxLogoHeight = 120;
+                } else if (altoVentana < 750) {
+                    escala = 0.9;
+                    maxLogoHeight = 150;
+                } else if (altoVentana > 1000) {
+                    escala = 1.1;
+                    maxLogoHeight = 210;
+                }
+
+                tarjeta.style.transform = `scale(${escala})`;
+                if (logo) {
+                    logo.style.maxHeight = `${maxLogoHeight}px`;
+                }
+            });
+
+            observer.observe(document.body);
+        }
+    });
 </script>
 {% endblock %}
