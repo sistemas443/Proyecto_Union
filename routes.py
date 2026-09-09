@@ -7,7 +7,7 @@ from functools import wraps
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash, session, current_app
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
-
+import psycopg2.extras
 # Importaciones para procesar imágenes de perfil (recortar a cuadrado y comprimir sin perder calidad)
 from PIL import Image, ImageOps
 
@@ -669,7 +669,13 @@ def actualizar_cabecera():
 @login_requerido
 def diario():
     # Reconstruye el esquema del control de mortalidad y consumo para el día a día
-    lote_seleccionado = request.form.get('lote', '') if request.method == 'POST' else ''
+    if request.method == 'POST':
+        lote_seleccionado = request.form.get('lote', '')
+        if lote_seleccionado and lote_seleccionado != 'VACIO':
+            session['ultimo_lote'] = lote_seleccionado
+    else:
+        lote_seleccionado = session.get('ultimo_lote', '')
+
     filas = []
     cabecera = None
     if lote_seleccionado and lote_seleccionado != 'VACIO':
@@ -678,20 +684,40 @@ def diario():
             from models.diario.services import generar_estructura_diario
             generar_estructura_diario(lote_seleccionado, cabecera.get('id'), cabecera.get('fecha_recepcion'))
         filas = get_diario_all(lote_seleccionado)
-    return render_template('diario.html', filas=filas, lotes=get_lotes_distintos(), lote_seleccionado=lote_seleccionado, cabecera=cabecera)
+
+    return render_template(
+        'diario.html', 
+        filas=filas, 
+        lotes=get_lotes_distintos(), 
+        lote_seleccionado=lote_seleccionado, 
+        cabecera=cabecera
+    )
     
+
 @bp.route('/primera-semana', methods=['GET', 'POST'])
 @login_requerido
 def primera_semana():
     # Tabla exclusiva para seguimiento estricto del arranque en granja de los primeros 7 días
-    lote_seleccionado = request.form.get('lote', '') if request.method == 'POST' else ''
+    if request.method == 'POST':
+        lote_seleccionado = request.form.get('lote', '')
+        if lote_seleccionado and lote_seleccionado != 'VACIO':
+            session['ultimo_lote'] = lote_seleccionado
+    else:
+        lote_seleccionado = session.get('ultimo_lote', '')
+
     filas = []
     cabecera = None
     if lote_seleccionado and lote_seleccionado != 'VACIO':
         cabecera = get_cabecera_info(lote_seleccionado)
         filas = get_primera_semana_by_lote(lote_seleccionado)
-    return render_template('primera_semana.html', filas=filas, lotes=get_lotes_distintos(), lote_seleccionado=lote_seleccionado, cabecera=cabecera)
-    
+
+    return render_template(
+        'primera_semana.html', 
+        filas=filas, 
+        lotes=get_lotes_distintos(), 
+        lote_seleccionado=lote_seleccionado, 
+        cabecera=cabecera
+    )
 @bp.route('/api/primera-semana/actualizar', methods=['POST'])
 @login_requerido
 @editor_requerido
@@ -737,19 +763,45 @@ def actualizar_diario():
 @login_requerido
 def semanal():
     # Recupera y ejecuta los balances matemáticos para la etapa de Producción Pura (de 18 semanas en adelante)
-    lote_seleccionado = request.form.get('lote', '') if request.method == 'POST' else ''
-    return render_template('semanal.html', filas=get_semanal_all(lote_seleccionado), lotes=get_lotes_distintos(), lote_seleccionado=lote_seleccionado, cabecera=get_cabecera_info(lote_seleccionado))
+    if request.method == 'POST':
+        lote_seleccionado = request.form.get('lote', '')
+        if lote_seleccionado and lote_seleccionado != '':
+            session['ultimo_lote'] = lote_seleccionado
+    else:
+        lote_seleccionado = session.get('ultimo_lote', '')
+
+    return render_template(
+        'semanal.html', 
+        filas=get_semanal_all(lote_seleccionado), 
+        lotes=get_lotes_distintos(), 
+        lote_seleccionado=lote_seleccionado, 
+        cabecera=get_cabecera_info(lote_seleccionado)
+    )
 
 @bp.route('/semanal-levante', methods=['GET', 'POST'])
 @login_requerido
 def semanal_levante():
-    # Extrae el compendio matemático de Crianza y Levante (Etapa inicial de 0 a 18 semanas)
-    lote_seleccionado = request.form.get('lote', '') if request.method == 'POST' else ''
-    return render_template('sem_lev.html', filas=get_semanal_levante_all(lote_seleccionado), lotes=get_lotes_distintos(), lote_seleccionado=lote_seleccionado, cabecera=get_cabecera_info(lote_seleccionado))
+    # 1. Si el usuario envía el formulario, guardamos en la sesión
+    if request.method == 'POST':
+        lote_seleccionado = request.form.get('lote', '')
+        if lote_seleccionado and lote_seleccionado != '':
+            session['ultimo_lote'] = lote_seleccionado
+    else:
+        # 2. Si navega desde otro módulo, recuperamos el último lote activo
+        lote_seleccionado = session.get('ultimo_lote', '')
 
+    # 3. Renderizamos la plantilla pasando el lote sincronizado
+    return render_template(
+        'sem_lev.html', 
+        filas=get_semanal_levante_all(lote_seleccionado), 
+        lotes=get_lotes_distintos(), 
+        lote_seleccionado=lote_seleccionado, 
+        cabecera=get_cabecera_info(lote_seleccionado)
+    )
 @bp.route('/api/semanal/actualizar', methods=['POST'])
 @login_requerido
 @editor_requerido
+
 def actualizar_semanal():
     # End-point compartido. Usa una bandera ('pantalla') en el JSON para desviar el dato al servicio correspondiente
     data = request.get_json(silent=True) or {}
@@ -772,10 +824,22 @@ def actualizar_semanal():
 @login_requerido
 def clas_prod():
     # Despliegue del seguimiento cualitativo y desperdicios para huevo tipo extra, jumbo, sucio, fisurado.
-    lote_seleccionado = request.form.get('lote', '') if request.method == 'POST' else ''
-    return render_template('clas_prod.html', filas=get_clasificacion_all(lote_seleccionado), lotes=get_lotes_distintos(), lote_seleccionado=lote_seleccionado, cabecera=get_cabecera_info(lote_seleccionado))
+    if request.method == 'POST':
+        lote_seleccionado = request.form.get('lote', '')
+        if lote_seleccionado and lote_seleccionado != '':
+            session['ultimo_lote'] = lote_seleccionado
+    else:
+        lote_seleccionado = session.get('ultimo_lote', '')
 
-@bp.route('/api/clasificacion/actualizar', methods=['POST'])
+    return render_template(
+        'clas_prod.html', 
+        filas=get_clasificacion_all(lote_seleccionado), 
+        lotes=get_lotes_distintos(), 
+        lote_seleccionado=lote_seleccionado, 
+        cabecera=get_cabecera_info(lote_seleccionado)
+    )
+    
+@bp.route('/api/clasificacion/actualizar', methods=['POST'])    
 @login_requerido
 @editor_requerido
 def actualizar_clasificacion():

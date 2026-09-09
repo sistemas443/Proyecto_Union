@@ -65,12 +65,12 @@
             const mortTab = { x: ejeX, y: datos.mort_acum_tabla, name: 'M. Tab.', type: 'scatter', mode: 'lines', line: {color: 'yellow', width: 2}, yaxis: 'y' };
             
             // Variables Eje Derecho (y2)
-            const haaReal = { x: ejeX, y: datos.haa_real, name: 'H.A.A. Real', type: 'scatter', mode: 'lines', line: {color: 'lime', width: 2}, yaxis: 'y2' };
-            const haaTab = { x: ejeX, y: datos.haa_tabla, name: 'H.A.A. TAB', type: 'scatter', mode: 'lines', line: {color: '#ffb6c1', width: 2}, yaxis: 'y2' };
+            const haaReal = { x: ejeX, y: datos.haa_real, name: 'H.A.A. Real', type: 'scatter', mode: 'lines', line: {color: 'lime', width: 2}, yaxis: 'y2', connectgaps: true };
+            const haaTab = { x: ejeX, y: datos.haa_tabla, name: 'H.A.A. TAB', type: 'scatter', mode: 'lines', line: {color: '#ffb6c1', width: 2}, yaxis: 'y2', connectgaps: true };
 
             // Variables Tercer Eje (y3) - Exclusivo Conversión
-            const convAcum = { x: ejeX, y: datos.conv_acum_real, name: 'Conv. Acum.', type: 'scatter', mode: 'lines', line: {color: 'maroon', width: 3}, yaxis: 'y3' };
-            const convTab = { x: ejeX, y: datos.conv_acum_tabla, name: 'CONVERSION TAB', type: 'scatter', mode: 'lines', line: {color: '#d2b48c', width: 3}, yaxis: 'y3' };
+            const convAcum = { x: ejeX, y: datos.conv_acum_real, name: 'Conv. Acum.', type: 'scatter', mode: 'lines', line: {color: 'maroon', width: 3}, yaxis: 'y3', connectgaps: true };
+            const convTab = { x: ejeX, y: datos.conv_acum_tabla, name: 'CONVERSION TAB', type: 'scatter', mode: 'lines', line: {color: '#d2b48c', width: 3}, yaxis: 'y3', connectgaps: true };
 
             const trazos = [prodReal, prodTabla, mortAcum, haaReal, haaTab, convAcum, mortTab, convTab];
 
@@ -106,7 +106,28 @@
             margin: { l: 60, r: 80, t: 60, b: 100 }
             };
 
-            Plotly.newPlot('graficoPlotly', trazos, layout, { responsive: true, displayModeBar: true, displaylogo: false });
+            const config = {
+                responsive: true,
+                displayModeBar: true,
+                displaylogo: false,
+                modeBarButtonsToAdd: [{
+                    name: 'Pantalla Completa',
+                    icon: {
+                        'width': 500, 'height': 500,
+                        'path': 'M80,80 H180 V120 H120 V180 H80 Z M320,80 H420 V180 H380 V120 H320 Z M80,320 H120 V380 H180 V420 H80 Z M380,320 H420 V420 H320 V380 H380 Z'
+                    },
+                    click: function(gd) {
+                        if (!document.fullscreenElement) {
+                            if (gd.requestFullscreen) gd.requestFullscreen();
+                            else if (gd.webkitRequestFullscreen) gd.webkitRequestFullscreen();
+                        } else {
+                            if (document.exitFullscreen) document.exitFullscreen();
+                        }
+                    }
+                }]
+            };
+
+            Plotly.newPlot('graficoPlotly', trazos, layout, config);
         }
     });
 </script>
