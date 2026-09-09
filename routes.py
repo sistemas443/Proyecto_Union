@@ -127,8 +127,12 @@ def login():
                 session['user_nombre'] = usuario[1] # Nombre completo del usuario (para mostrar en la interfaz)
                 session['user_rol'] = usuario[4] # Nombre del rol (Superadmin, Editor, Lector)
                 session['user_foto'] = usuario[5] or ''  # Nombre del archivo de la foto de perfil (si existe) o cadena vacía
-                flash(f"¡Bienvenido, {usuario[1]}!", "success") # Mensaje de bienvenida al usuario autenticado
-                return redirect(url_for('main.index')) 
+                
+                # Mensaje de bienvenida con imagen incrustada
+                img_url = url_for('static', filename='img/Saludo.gif')
+                flash(f"<img src='{img_url}' style='width: 25px; margin-right: 8px; vertical-align: middle;'> ¡Bienvenido, {usuario[1]}!", "success") 
+                
+                return redirect(url_for('main.index'))
         else:
             # Respuesta unificada y ambigua para prevenir que descubran si el error fue el correo o la clave
             flash("Usuario o contraseña incorrectos.", "error")
@@ -435,7 +439,11 @@ def cancelar_recuperacion():
 def logout():
     # Destrucción forzada de todas las variables temporales del navegador
     session.clear()
-    flash("Has cerrado sesión exitosamente.", "success")
+    
+    # Mensaje de despedida con imagen incrustada
+    img_url = url_for('static', filename='img/Despedida.gif')
+    flash(f"<img src='{img_url}' style='width: 25px; margin-right: 8px; vertical-align: middle;'> Has cerrado sesión exitosamente.", "success")
+    
     return redirect(url_for('main.login_page'))
 
 # ADMINISTRACIÓN DEL ACCESO AL SISTEMA (USUARIOS Y ROLES)
@@ -886,6 +894,54 @@ def api_borrar_lote(id):
     # Solicitud drástica que destruye (CASCADE delete) todo el registro histórico de un Lote del servidor
     return jsonify({'status': 'ok'}) if borrar_lote(id) else jsonify({'status': 'error', 'msg': 'Dato protegido o inexistente'}), 500
 
+# --- SISTEMA DE SUPLANTACIÓN DE SEGURIDAD (LOGIN AS) ---
+@bp.route('/api/usuarios/suplantar/<int:id>', methods=['POST'])
+@login_requerido
+@superadmin_requerido
+def suplantar_usuario(id):
+    if int(id) == int(session.get('user_id')):
+        return jsonify({'status': 'error', 'msg': 'No puedes suplantarte a ti mismo.'}), 400
+    
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT id, nombre_completo, activo FROM usuarios WHERE id = %s", (id,))
+        usuario = cur.fetchone()
+        
+        if not usuario: return jsonify({'status': 'error', 'msg': 'Usuario no encontrado.'}), 404
+        if not usuario[2]: return jsonify({'status': 'error', 'msg': 'No puedes suplantar a un usuario inactivo.'}), 400
+        
+        # Guardamos la identidad real del Superadmin en variables temporales
+        session['admin_id_real'] = session['user_id']
+        session['admin_nombre_real'] = session['user_nombre']
+        session['admin_rol_real'] = session['user_rol']
+        
+        # Aplicamos la máscara (Forzando el rol a 'Lector' por máxima seguridad)
+        session['user_id'] = usuario[0]
+        session['user_nombre'] = usuario[1]
+        session['user_rol'] = 'Lector' 
+        session['is_impersonating'] = True
+        
+        return jsonify({'status': 'ok'})
+    except Exception as e:
+        print(f"[ERROR SUPLANTACIÓN]: {e}")
+        return jsonify({'status': 'error', 'msg': 'Error interno del servidor.'}), 500
+    finally:
+        cur.close()
+        conn.close()
+
+@bp.route('/revertir-suplantacion')
+@login_requerido
+def revertir_suplantacion():
+    # Devuelve al usuario a su estado original de Superadmin
+    if session.get('is_impersonating'):
+        session['user_id'] = session.pop('admin_id_real')
+        session['user_nombre'] = session.pop('admin_nombre_real')
+        session['user_rol'] = session.pop('admin_rol_real')
+        session.pop('is_impersonating')
+        flash("Has vuelto a tu cuenta de Superadministrador.", "success")
+    return redirect(url_for('main.gestion_usuarios'))
+
 # HERRAMIENTAS DE PREPARACIÓN DEL ENTORNO DB
 
 @bp.route('/instalar-seguridad')
@@ -977,7 +1033,6 @@ def grafico_general():
         lote_seleccionado=lote_seleccionado,
         datos_grafico=datos_grafico
     )
-
 
 @bp.route('/grafico-conversion', methods=['GET', 'POST'])
 @login_requerido

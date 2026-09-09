@@ -3,30 +3,31 @@
 
 {% block content %}
 <style>
-  /* 1. Bloqueamos el scroll general de toda la página web */
+  /* 1. Bloqueamos el scroll general y aplicamos zoom global del 80% */
   body {
     overflow-y: hidden !important;
+    zoom: 0.8;
   }
 
-  /* 2. Convertimos el contenedor principal en una columna flexible 
-        que ocupa el 100% de la altura de la pantalla (restándole el menú superior) */
+  /* 2. El contenedor principal base */
   main.container-fluid {
     display: flex;
     flex-direction: column;
-    height: calc(100vh - 65px); /* Ajusta este 65px si tu barra negra de navegación es más gruesa */
-    padding-bottom: 15px;
+    padding-bottom: 0px; /* Quitamos el padding para ganar más espacio */
   }
 
-  /* 3. La tabla tomará automáticamente todo el alto restante. 
-        Si abres el acordeón, la tabla se encoge sola; si lo cierras, se estira. */
+  /* 3. Evitamos que los elementos de arriba se aplasten */
+  .alert, .filtro-bar, .card, .d-flex {
+    flex-shrink: 0;
+  }
+
+  /* 4. La tabla (su altura será controlada milimétricamente por JavaScript) */
   .tabla-scroll {
-    flex: 1 1 auto;
-    min-height: 0; /* Regla de oro: Obliga a la tabla a comprimirse sin desbordar la pantalla */
     overflow-y: auto;
     overflow-x: auto;
     width: 100%;
-    /* Mantenemos el scroll suave para móviles */
     -webkit-overflow-scrolling: touch; 
+    border-bottom: 1px solid #dee2e6;
   }
 
   /* Animación para que la flecha gire suavemente */
@@ -74,7 +75,7 @@
 </div>
 
 {% if lote_seleccionado %}
-<div class="card mb-4 shadow-sm border-0">
+<div class="card mb-4 shadow-sm border-0 card-info-general">
   
   <!-- 1. ENCABEZADO CLIQUEABLE -->
   <div class="card-header bg-dark text-white fw-bold py-2 d-flex justify-content-between align-items-center"
@@ -135,7 +136,7 @@
 
 {% if lote_seleccionado %}
 <!-- Contenedor principal de la tabla con scroll integrado -->
-<div class="tabla-scroll shadow-sm border rounded" style="max-height: calc(100vh - 240px); overflow-y: auto; overflow-x: auto;">
+<div class="tabla-scroll shadow-sm border rounded">
   <table class="table table-sm table-fixed mb-0" style="width: 100% !important; min-width: 1900px;">
 
     <!-- Configuracion estricta de anchos por columna -->
@@ -432,6 +433,32 @@
         }
       }
     });
+  });
+
+  // --- SISTEMA INTELIGENTE DE ALTURA PERFECTA (RESIZE OBSERVER) ---
+  document.addEventListener("DOMContentLoaded", function() {
+    const tabla = document.querySelector('.tabla-scroll');
+    
+    if (tabla) {
+      // Creamos un observador que vigila cualquier cambio en la pantalla
+      const observer = new ResizeObserver(() => {
+        // Obtenemos a qué distancia está la tabla desde el techo de la pantalla
+        const rect = tabla.getBoundingClientRect();
+        
+        // Píxeles físicos que quedan libres hasta el fondo del monitor
+        const pixelesLibres = window.innerHeight - rect.top;
+        
+        // Compensamos el zoom del 80% (0.8) y dejamos 10px de margen estético abajo
+        const alturaPerfecta = (pixelesLibres / 0.8) - 10;
+        
+        // Inyectamos la altura exacta a la tabla
+        tabla.style.height = alturaPerfecta + "px";
+        tabla.style.maxHeight = alturaPerfecta + "px";
+      });
+
+      // Le decimos que vigile todo el cuerpo de la página (incluyendo el acordeón)
+      observer.observe(document.body);
+    }
   });
 </script>
 {% endblock %}

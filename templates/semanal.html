@@ -4,35 +4,34 @@
 {% block content %}
 <!-- Estilos CSS centralizados para garantizar anchos estrictos y evitar solapamientos -->
 <style>
-  /* 1. Bloqueamos el scroll de la página web completa */
+  /* 1. Bloqueamos el scroll de la página web completa y aplicamos el zoom global */
   body {
     overflow-y: hidden !important;
+    zoom: 0.8;
   }
 
-  /* 2. El contenedor principal se vuelve flexible para ocupar el 100% del alto */
+  /* 2. El contenedor principal base */
   main.container-fluid {
     display: flex;
     flex-direction: column;
-    height: calc(100vh - 65px);
-    /* Ajusta si tu navbar es diferente */
-    padding-bottom: 15px;
+    padding-bottom: 0px; /* Quitamos el padding para ganar más espacio */
   }
 
   /* 3. Evitamos que los elementos de arriba (Títulos, Filtros y Acordeón) se aplasten */
   .alert,
   .filtro-bar,
-  .card-info-general {
+  .card-info-general,
+  .d-flex {
     flex-shrink: 0;
   }
 
-  /* 4. La tabla toma automáticamente el espacio libre sobrante */
+  /* 4. La tabla (su altura será controlada milimétricamente por JavaScript) */
   .tabla-scroll {
-    flex: 1 1 auto;
-    min-height: 0;
     overflow-y: auto;
     overflow-x: auto;
     width: 100%;
     -webkit-overflow-scrolling: touch;
+    border-bottom: 1px solid #dee2e6;
   }
 
   /* 5. Congelación de encabezados superiores */
@@ -81,28 +80,6 @@
     transform: rotate(-90deg);
   }
 
-  /* Contenedor principal con scroll dinamico */
-  .tabla-scroll {
-    max-height: calc(100vh - 240px);
-    overflow-y: auto;
-    overflow-x: auto;
-  }
-
-  /* Congelacion vertical del primer nivel de encabezados */
-  .tabla-scroll thead tr:nth-child(1) th {
-    position: sticky;
-    top: 0;
-    z-index: 110;
-  }
-
-  /* Congelacion vertical del segundo nivel de encabezados */
-  .tabla-scroll thead tr:nth-child(2) th {
-    position: sticky;
-    top: 36px;
-    z-index: 109;
-  }
-
-  /* Dimensionamiento y posicionamiento exacto para las tres columnas maestras */
   /* Dimensionamiento y posicionamiento exacto para las tres columnas maestras */
   .sticky-col-1 {
     position: sticky !important;
@@ -170,16 +147,6 @@
     border-right: 1px solid #dee2e6 !important;
     box-shadow: 4px 0 5px -2px rgba(0, 0, 0, 0.1) !important;
   }
-
-  /* Animación para que la flecha gire suavemente */
-  .icono-colapso {
-    transition: transform 0.3s ease;
-  }
-
-  /* Cuando está cerrado, la flecha gira a la derecha */
-  .collapsed .icono-colapso {
-    transform: rotate(-90deg);
-  }
 </style>
 
 <!-- BARRA SUPERIOR OSCURA: TÍTULO Y FILTRO -->
@@ -213,7 +180,7 @@
 </div>
 
 {% if lote_seleccionado %}
-<div class="card mb-4 shadow-sm border-0">
+<div class="card mb-4 shadow-sm border-0 card-info-general">
 
   <!-- 1. ENCABEZADO CLIQUEABLE -->
   <div class="card-header bg-dark text-white fw-bold py-2 d-flex justify-content-between align-items-center"
@@ -1094,6 +1061,32 @@
             btnRecalcular.disabled = false;
           });
       });
+    }
+  });
+
+  // --- SISTEMA INTELIGENTE DE ALTURA PERFECTA (RESIZE OBSERVER) ---
+  document.addEventListener("DOMContentLoaded", function() {
+    const tabla = document.querySelector('.tabla-scroll');
+    
+    if (tabla) {
+      // Creamos un observador que vigila cualquier cambio en la pantalla
+      const observer = new ResizeObserver(() => {
+        // Obtenemos a qué distancia está la tabla desde el techo de la pantalla
+        const rect = tabla.getBoundingClientRect();
+        
+        // Píxeles físicos que quedan libres hasta el fondo del monitor
+        const pixelesLibres = window.innerHeight - rect.top;
+        
+        // Compensamos el zoom del 80% (0.8) y dejamos 10px de margen estético abajo
+        const alturaPerfecta = (pixelesLibres / 0.8) - 10;
+        
+        // Inyectamos la altura exacta a la tabla
+        tabla.style.height = alturaPerfecta + "px";
+        tabla.style.maxHeight = alturaPerfecta + "px";
+      });
+
+      // Le decimos que vigile todo el cuerpo de la página (incluyendo el acordeón)
+      observer.observe(document.body);
     }
   });
 </script>

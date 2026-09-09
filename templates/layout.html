@@ -114,6 +114,23 @@
 
   {% include 'nav.html' %}
 
+<!-- BANNER DE SUPLANTACIÓN FLOTANTE (PÍLDORA INFERIOR) -->
+  {% if session.get('is_impersonating') %}
+  <div class="shadow-lg rounded-pill px-4 py-2 d-flex align-items-center justify-content-between" 
+       style="position: fixed; bottom: 25px; left: 50%; transform: translateX(-50%); z-index: 1050; background-color: #212529; border: 2px solid #97271C;">
+      
+      <div class="text-white fw-bold d-flex align-items-center" style="font-size: 0.95rem;">
+          <i class='bx bx-show fs-4 me-2 text-warning'></i>
+          <span class="me-3">Navegando como <span class="text-warning">{{ session.get('user_nombre') }}</span> (Solo Lectura)</span>
+      </div>
+      
+      <a href="{{ url_for('main.revertir_suplantacion') }}" class="btn btn-sm rounded-pill fw-bold px-3 shadow-sm border-0" 
+         style="background-color: #97271C; color: white;">
+          Salir
+      </a>
+  </div>
+  {% endif %}
+
   {% if session.get('user_id') %}
   <div class="sidebar-rapido">
     <a href="{{ url_for('main.vista_lotes') }}" title="Gestión de Lotes">
@@ -201,10 +218,18 @@
       mensajes.forEach(function (msg) {
         const categoria = msg[0]; const texto = msg[1];
         let icono = 'info';
+
         if (categoria === 'error' || categoria === 'danger') icono = 'error';
         else if (categoria === 'success') icono = 'success';
         else if (categoria === 'warning') icono = 'warning';
-        Toast.fire({ icon: icono, title: texto });
+
+        // Si el texto del mensaje incluye una imagen, anulamos el icono por defecto
+        if (texto.includes('<img')) {
+          icono = false;
+        }
+
+        // Cambiamos "title" por "html" para que el navegador lea la etiqueta de la imagen
+        Toast.fire({ icon: icono, html: texto });
       });
     });
   </script>

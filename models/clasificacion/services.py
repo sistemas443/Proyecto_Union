@@ -43,6 +43,25 @@ def update_clasificacion_field(id_reg: int, columna: str, valor: str) -> bool:
         ]
         
         if columna in columnas_fila:
+            # 1. OBTENER PESO H. TABLA BUSCANDO POR sem_prod
+            val_peso_h_tabla = None
+            try:
+                cur.execute("SELECT sv, id_lote, lote FROM clasificacion_produccion WHERE id = %s", (id_reg,))
+                r_info = cur.fetchone()
+                if r_info:
+                    r_sv, r_id_lote, r_lote = r_info
+                    try:
+                        cur.execute("SELECT peso_huevo_tab FROM bd_vargas WHERE id_lote = %s AND sem_prod = %s", (r_id_lote, r_sv))
+                        res_w = cur.fetchone()
+                        if res_w: val_peso_h_tabla = res_w[0]
+                    except:
+                        conn.rollback()
+                        cur.execute("SELECT peso_huevo_tab FROM bd_vargas WHERE lote = %s AND sem_prod = %s", (r_lote, r_sv))
+                        res_w = cur.fetchone()
+                        if res_w: val_peso_h_tabla = res_w[0]
+            except:
+                conn.rollback()
+
             # 2. RECALCULAR FILA ACTUAL
             cur.execute("""
                 SELECT clas_jum, clas_extra, clas_aa, clas_a, clas_b, clas_c,
@@ -52,7 +71,6 @@ def update_clasificacion_field(id_reg: int, columna: str, valor: str) -> bool:
             row = cur.fetchone()
             
             if row:
-                # Determinamos si la fila tiene al menos un dato (aunque sea 0)
                 tiene_datos = any(x is not None for x in row)
                 
                 if tiene_datos:
@@ -62,8 +80,18 @@ def update_clasificacion_field(id_reg: int, columna: str, valor: str) -> bool:
                     val_segundas = int(sucio + totiao + yema)
                     val_ttl = int(sum(vals))
                     
-                    def calc_porc(valor, total):
-                        if total > 0: return round((valor / total) * 100, 2)
+                    if val_ttl > 0:
+                        suma_pesos = (
+                            vals[0] * 78.0 + vals[1] * 72.5 + vals[2] * 63.5 +
+                            vals[3] * 56.5 + vals[4] * 49.5 + vals[5] * 46.0 +
+                            vals[6] * 45.0 + val_segundas * 60.0
+                        )
+                        val_peso_h_prom = round(suma_pesos / val_ttl, 2)
+                    else:
+                        val_peso_h_prom = 0.00
+                    
+                    def calc_porc(v, t):
+                        if t > 0: return round((v / t) * 100, 2)
                         return 0.00
 
                     p_jum = calc_porc(vals[0], val_ttl)
@@ -78,11 +106,11 @@ def update_clasificacion_field(id_reg: int, columna: str, valor: str) -> bool:
                     p_yema = calc_porc(yema, val_ttl)
                     p_seg = calc_porc(val_segundas, val_ttl)
                     
-                    # NUEVO CÁLCULO: Suma de JUM, Extra y AA
                     p_h_grande = round(p_jum + p_extra + p_aa, 2)
                 else:
                     val_segundas = val_ttl = None
                     p_jum = p_extra = p_aa = p_a = p_b = p_c = p_pipo = p_sucio = p_totiao = p_yema = p_seg = p_h_grande = None
+                    val_peso_h_prom = None
                 
                 cur.execute("""
                     UPDATE clasificacion_produccion 
@@ -90,22 +118,34 @@ def update_clasificacion_field(id_reg: int, columna: str, valor: str) -> bool:
                         porc_sem_jum = %s, porc_sem_extra = %s, porc_sem_aa = %s, porc_sem_a = %s, 
                         porc_sem_b = %s, porc_sem_c = %s, porc_sem_pipo = %s, porc_sem_sucio = %s, 
                         porc_sem_totiao = %s, porc_sem_yema = %s, porc_sem_segundas = %s,
-                        porc_h_grande = %s
+                        porc_h_grande = %s, peso_h_prom = %s, peso_h_tabla = %s
                     WHERE id = %s
                 """, (
                     val_segundas, val_ttl,
                     p_jum, p_extra, p_aa, p_a, p_b, p_c, p_pipo, p_sucio, p_totiao, p_yema, p_seg,
-                    p_h_grande,
-                    id_reg
+                    p_h_grande, val_peso_h_prom, val_peso_h_tabla, id_reg
                 ))
                 
             # 3. RECALCULAR TODOS LOS ACUMULADOS EN CASCADA
             cur.execute("SELECT id_lote FROM clasificacion_produccion WHERE id = %s", (id_reg,))
             id_lote = cur.fetchone()[0]
             
+            # PRE-CARGAR PESOS TABLA DE FORMA SEGURA (BUSCANDO sem_prod)
+            pesos_vargas = {}
+            try:
+                cur.execute("SELECT sem_prod, peso_huevo_tab FROM bd_vargas WHERE id_lote = %s", (id_lote,))
+                for r in cur.fetchall(): pesos_vargas[r[0]] = r[1]
+            except:
+                conn.rollback()
+                try:
+                    cur.execute("SELECT v.sem_prod, v.peso_huevo_tab FROM bd_vargas v JOIN clasificacion_produccion c ON c.lote = v.lote WHERE c.id_lote = %s", (id_lote,))
+                    for r in cur.fetchall(): pesos_vargas[r[0]] = r[1]
+                except:
+                    conn.rollback()
+
             cur.execute("""
                 SELECT id, clas_ttl, clas_jum, clas_extra, clas_aa, clas_a, clas_b, clas_c, 
-                       clas_pipo, clas_sucio, clas_totiao, clas_yema, clas_segundas
+                       clas_pipo, clas_sucio, clas_totiao, clas_yema, clas_segundas, sv
                 FROM clasificacion_produccion 
                 WHERE id_lote = %s ORDER BY sv ASC
             """, (id_lote,))
@@ -118,7 +158,9 @@ def update_clasificacion_field(id_reg: int, columna: str, valor: str) -> bool:
             
             for f in filas_lote:
                 f_id = f[0]
-                c_ttl = f[1] # Mantenemos el valor original para validar si es None
+                c_ttl = f[1]
+                val_sv = f[13]
+                val_peso_h_tabla = pesos_vargas.get(val_sv)
                 
                 acum['jum'] += float(f[2] or 0)
                 acum['extra'] += float(f[3] or 0)
@@ -133,7 +175,6 @@ def update_clasificacion_field(id_reg: int, columna: str, valor: str) -> bool:
                 acum['segundas'] += float(f[12] or 0)
                 acum['total'] += float(c_ttl or 0)
                 
-                # Nuevo freno: Guardar el acumulado si la semana tiene datos (aunque sea 0)
                 if c_ttl is not None:
                     v_jum = int(acum['jum'])
                     v_extra = int(acum['extra'])
@@ -162,14 +203,16 @@ def update_clasificacion_field(id_reg: int, columna: str, valor: str) -> bool:
                     pa_totiao = calc_p_acu(v_totiao)
                     pa_yema = calc_p_acu(v_yema)
                     pa_segundas = calc_p_acu(v_segundas)
+                    val_roto = round(pa_totiao + pa_yema, 2)
                 else:
                     v_jum = v_extra = v_aa = v_a = v_b = v_c = v_pipo = v_sucio = v_totiao = v_yema = v_segundas = v_total = None
                     pa_jum = pa_extra = pa_aa = pa_a = pa_b = pa_c = pa_pipo = pa_sucio = pa_totiao = pa_yema = pa_segundas = None
+                    val_roto = None
                 
                 valores_update.append((
                     v_jum, v_extra, v_aa, v_a, v_b, v_c, v_pipo, v_sucio, v_totiao, v_yema, v_segundas, v_total,
                     pa_jum, pa_extra, pa_aa, pa_a, pa_b, pa_c, pa_pipo, pa_sucio, pa_totiao, pa_yema, pa_segundas,
-                    f_id
+                    val_roto, val_peso_h_tabla, f_id
                 ))
             
             if valores_update:
@@ -178,14 +221,16 @@ def update_clasificacion_field(id_reg: int, columna: str, valor: str) -> bool:
                         acum_jum = %s, acum_extra = %s, acum_aa = %s, acum_a = %s, acum_b = %s, acum_c = %s, 
                         acum_pipo = %s, acum_sucio = %s, acum_totiao = %s, acum_yema = %s, acum_segundas = %s, acum_total = %s,
                         porc_acu_jum = %s, porc_acu_extra = %s, porc_acu_aa = %s, porc_acu_a = %s, porc_acu_b = %s, porc_acu_c = %s, 
-                        porc_acu_pipo = %s, porc_acu_sucio = %s, porc_acu_totiao = %s, porc_acu_yema = %s, porc_acu_segundas = %s
+                        porc_acu_pipo = %s, porc_acu_sucio = %s, porc_acu_totiao = %s, porc_acu_yema = %s, porc_acu_segundas = %s,
+                        roto = %s, peso_h_tabla = %s
                     WHERE id = %s
                 """, valores_update)
                 
         conn.commit()
     except Exception as e:
-        print(f"[ERROR CÁLCULO CLASIFICACIÓN]: {e}")
+        print(f"Error recalculando celda: {e}", flush=True)
         conn.rollback()
+        return False
     finally:
         cur.close()
         conn.close()
@@ -197,9 +242,23 @@ def recalcular_lote_completo_clasificacion(id_lote):
     conn = get_db_connection()
     cur = conn.cursor()
     try:
+        # PRE-CARGAR PESOS TABLA DE FORMA SEGURA (BUSCANDO sem_prod)
+        pesos_vargas = {}
+        try:
+            cur.execute("SELECT sem_prod, peso_huevo_tab FROM bd_vargas WHERE id_lote = %s", (id_lote,))
+            for r in cur.fetchall(): pesos_vargas[r[0]] = r[1]
+        except:
+            conn.rollback()
+            try:
+                cur.execute("SELECT v.sem_prod, v.peso_huevo_tab FROM bd_vargas v JOIN clasificacion_produccion c ON c.lote = v.lote WHERE c.id_lote = %s", (id_lote,))
+                for r in cur.fetchall(): pesos_vargas[r[0]] = r[1]
+            except:
+                conn.rollback()
+
+        # CONSULTA PRINCIPAL INTACTA (Segura)
         cur.execute("""
             SELECT id, clas_jum, clas_extra, clas_aa, clas_a, clas_b, clas_c,
-                   clas_pipo, clas_sucio, clas_totiao, clas_yema
+                   clas_pipo, clas_sucio, clas_totiao, clas_yema, sv
             FROM clasificacion_produccion 
             WHERE id_lote = %s ORDER BY sv ASC
         """, (id_lote,))
@@ -210,15 +269,28 @@ def recalcular_lote_completo_clasificacion(id_lote):
         
         for f in filas:
             id_reg = f[0]
-            row = f[1:11]
-            tiene_datos = any(x is not None for x in row)
+            row_vals = f[1:11]
+            val_sv = f[11]
+            val_peso_h_tabla = pesos_vargas.get(val_sv)
+            
+            tiene_datos = any(x is not None for x in row_vals)
             
             if tiene_datos:
-                vals = [float(x) if x is not None else 0.0 for x in row]
+                vals = [float(x) if x is not None else 0.0 for x in row_vals]
                 sucio, totiao, yema = vals[7], vals[8], vals[9]
                 
                 val_segundas = int(sucio + totiao + yema)
                 val_ttl = int(sum(vals))
+                
+                if val_ttl > 0:
+                    suma_pesos = (
+                        vals[0] * 78.0 + vals[1] * 72.5 + vals[2] * 63.5 +
+                        vals[3] * 56.5 + vals[4] * 49.5 + vals[5] * 46.0 +
+                        vals[6] * 45.0 + val_segundas * 60.0
+                    )
+                    val_peso_h_prom = round(suma_pesos / val_ttl, 2)
+                else:
+                    val_peso_h_prom = 0.00
                 
                 def calc_porc(v, t):
                     return round((v / t) * 100, 2) if t > 0 else 0.00
@@ -253,10 +325,29 @@ def recalcular_lote_completo_clasificacion(id_lote):
                 v_jum, v_extra, v_aa = int(acum['jum']), int(acum['extra']), int(acum['aa'])
                 v_a, v_b, v_c = int(acum['a']), int(acum['b']), int(acum['c'])
                 v_pipo, v_sucio, v_totiao = int(acum['pipo']), int(acum['sucio']), int(acum['totiao'])
-                v_yema, v_seg, v_tot = int(acum['yema']), int(acum['segundas']), int(acum['total'])
+                v_yema, v_segundas, v_total = int(acum['yema']), int(acum['segundas']), int(acum['total'])
+
+                def calc_p_acu(val_acu):
+                    return round((val_acu / v_total) * 100, 2) if val_ttl > 0 and v_total > 0 else 0.00
+                    
+                pa_jum = calc_p_acu(v_jum)
+                pa_extra = calc_p_acu(v_extra)
+                pa_aa = calc_p_acu(v_aa)
+                pa_a = calc_p_acu(v_a)
+                pa_b = calc_p_acu(v_b)
+                pa_c = calc_p_acu(v_c)
+                pa_pipo = calc_p_acu(v_pipo)
+                pa_sucio = calc_p_acu(v_sucio)
+                pa_totiao = calc_p_acu(v_totiao)
+                pa_yema = calc_p_acu(v_yema)
+                pa_segundas = calc_p_acu(v_segundas)
+                val_roto = round(pa_totiao + pa_yema, 2)
             else:
                 val_segundas = val_ttl = p_jum = p_extra = p_aa = p_a = p_b = p_c = p_pipo = p_sucio = p_totiao = p_yema = p_seg = p_h_grande = None
-                v_jum = v_extra = v_aa = v_a = v_b = v_c = v_pipo = v_sucio = v_totiao = v_yema = v_seg = v_tot = None
+                v_jum = v_extra = v_aa = v_a = v_b = v_c = v_pipo = v_sucio = v_totiao = v_yema = v_segundas = v_total = None
+                val_roto = None
+                val_peso_h_prom = None
+                pa_jum = pa_extra = pa_aa = pa_a = pa_b = pa_c = pa_pipo = pa_sucio = pa_totiao = pa_yema = pa_segundas = None
             
             cur.execute("""
                 UPDATE clasificacion_produccion 
@@ -265,18 +356,24 @@ def recalcular_lote_completo_clasificacion(id_lote):
                     porc_sem_b = %s, porc_sem_c = %s, porc_sem_pipo = %s, porc_sem_sucio = %s, 
                     porc_sem_totiao = %s, porc_sem_yema = %s, porc_sem_segundas = %s,
                     acum_jum = %s, acum_extra = %s, acum_aa = %s, acum_a = %s, acum_b = %s, acum_c = %s, 
-                    acum_pipo = %s, acum_sucio = %s, acum_totiao = %s, acum_yema = %s, acum_segundas = %s, acum_total = %s
+                    acum_pipo = %s, acum_sucio = %s, acum_totiao = %s, acum_yema = %s, acum_segundas = %s, acum_total = %s,
+                    porc_acu_jum = %s, porc_acu_extra = %s, porc_acu_aa = %s, porc_acu_a = %s, porc_acu_b = %s, porc_acu_c = %s, 
+                    porc_acu_pipo = %s, porc_acu_sucio = %s, porc_acu_totiao = %s, porc_acu_yema = %s, porc_acu_segundas = %s,
+                    roto = %s, peso_h_prom = %s, peso_h_tabla = %s
                 WHERE id = %s
             """, (
                 val_segundas, val_ttl, p_h_grande,
                 p_jum, p_extra, p_aa, p_a, p_b, p_c, p_pipo, p_sucio, p_totiao, p_yema, p_seg,
-                v_jum, v_extra, v_aa, v_a, v_b, v_c, v_pipo, v_sucio, v_totiao, v_yema, v_seg, v_tot,
+                v_jum, v_extra, v_aa, v_a, v_b, v_c, v_pipo, v_sucio, v_totiao, v_yema, v_segundas, v_total,
+                pa_jum, pa_extra, pa_aa, pa_a, pa_b, pa_c, pa_pipo, pa_sucio, pa_totiao, pa_yema, pa_segundas,
+                val_roto, val_peso_h_prom, val_peso_h_tabla,
                 id_reg
             ))
         conn.commit()
         return True
     except Exception as e:
-        print(f"Error recalculando tabla: {e}")
+        import traceback
+        print(f"\n=== ERROR SQL ===\n{e}\n{traceback.format_exc()}\n=================", flush=True)
         conn.rollback()
         return False
     finally:
