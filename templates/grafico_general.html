@@ -3,81 +3,50 @@
 {% block title %}Gráfico General – Avícola San Martín{% endblock %}
 
 {% block content %}
-<<<<<<< Updated upstream
-<div class="container-fluid px-4 py-3">
-    <!-- Encabezado y Filtro -->
-    <div class="card shadow-sm mb-4 border-0">
-        <div class="card-body d-flex flex-column flex-md-row justify-content-between align-items-center gap-3">
-            <h4 class="mb-0 fw-bold text-secondary text-uppercase">
-                <i class='bx bx-line-chart-down me-2'></i>Gráfico General de Producción
-            </h4>
-            <form method="POST" action="{{ url_for('main.grafico_general') }}" class="d-flex gap-2 align-items-center">
-                <label for="lote" class="fw-bold text-muted mb-0">Lote:</label>
-                <select name="lote" id="lote" class="form-select form-select-sm shadow-sm" style="min-width: 200px;" required>
-                    <option value="VACIO">-- Seleccionar Lote --</option>
-                    {% for l in lotes %}
-                        <option value="{{ l }}" {% if l == lote_seleccionado %}selected{% endif %}>{{ l }}</option>
-                    {% endfor %}
-                </select>
-               <button type="submit" class="btn btn-sm btn-primary shadow-sm fw-bold px-3 d-flex align-items-center justify-content-center" style="height: 31px;">
-                 <i class='bx bx-search-alt-2 me-1'></i> Generar
-                </button>
-            </form>
-        </div>
-    </div>
-
-    <!-- Contenedor del Gráfico -->
-    {% if lote_seleccionado and lote_seleccionado != 'VACIO' %}
-        <div class="card shadow border-0">
-            <div class="card-body">
-                {% if datos_grafico and datos_grafico.semanas|length > 0 %}
-                    <div id="graficoPlotly" style="width: 100%; height: 75vh;"></div>
-                {% else %}
-                    <div class="alert alert-warning text-center fw-bold mb-0">
-                        <i class='bx bx-info-circle me-1'></i> No hay datos registrados en etapa de producción (Semana >= 18) para este lote.
-=======
 <style>
-  /* 1. Bloqueamos el scroll general y aplicamos zoom global del 80% */
-  body {
+  html, body {
+    height: 100% !important;
     overflow-y: hidden !important;
     zoom: 0.8;
   }
 
-  /* 2. El contenedor principal base */
   main.container-fluid {
     display: flex;
     flex-direction: column;
-    padding-bottom: 0px; /* Quitamos el padding para ganar más espacio */
+    height: calc(100vh - 60px) !important;
+    padding-bottom: 0px !important;
   }
 
-  /* 3. Evitamos que la tarjeta superior de selección de lote se aplaste */
   .card-filtro {
     flex-shrink: 0;
   }
 
-  /* 4. La tarjeta del gráfico se expandirá para tomar el espacio restante */
   .card-grafico {
-    flex: 1 1 auto;
-    display: flex;
-    flex-direction: column;
+    flex: 1 1 auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    margin-bottom: 0px !important;
   }
 
   .card-grafico .card-body {
-    flex: 1 1 auto;
-    padding: 10px;
+    flex: 1 1 auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    padding: 5px !important;
+  }
+
+  #graficoPlotly {
+    flex: 1 1 auto !important;
+    width: 100% !important;
   }
 </style>
 
 <div class="container-fluid px-4 py-3 h-100 d-flex flex-column">
-    <!-- BARRA SUPERIOR OSCURA: TÍTULO Y FILTRO (IDÉNTICO A DIARIO) -->
     <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 px-3 py-2 rounded shadow-sm card-filtro" style="background-color: #212529;">
-      
-      <!-- Título a la izquierda -->
       <h5 class="mb-0 fw-bold text-uppercase text-white" style="letter-spacing: 0.5px;">
         <i class='bx bx-line-chart-down me-2'></i>GRÁFICO GENERAL DE PRODUCCIÓN
       </h5>
 
-      <!-- Filtro centrado -->
       <div class="mx-auto">
         <form method="POST" action="{{ url_for('main.grafico_general') }}" class="d-flex align-items-center gap-2 m-0">
           <label for="lote" class="mb-0 fw-bold text-light text-nowrap" style="font-size: 0.9rem;">SELECCIONE UN LOTE:</label>
@@ -91,12 +60,9 @@
         </form>
       </div>
       
-      <!-- Espaciador invisible para forzar el centro perfecto del filtro -->
       <div style="width: 320px;" class="d-none d-lg-block"></div>
-      
     </div>
 
-    <!-- CONTENEDOR DEL GRÁFICO -->
     {% if lote_seleccionado %}
         <div class="card shadow border-0 card-grafico">
             <div class="card-body d-flex flex-column p-2">
@@ -105,7 +71,6 @@
                 {% else %}
                     <div class="alert alert-warning text-center fw-bold mb-0 my-auto py-4">
                         <i class='bx bx-info-circle me-1 fs-4 align-middle'></i> No hay datos registrados en etapa de producción para el LOTE {{ lote_seleccionado }}.
->>>>>>> Stashed changes
                     </div>
                 {% endif %}
             </div>
@@ -117,6 +82,7 @@
     {% endif %}
 </div>
 {% endblock %}
+
 {% block scripts %}
 <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
 
@@ -130,47 +96,28 @@
         const datos = JSON.parse(datosRaw);
         
         if (datos && datos.semanas && datos.semanas.length > 0) {
-            const ejeX = datos.semanas;
-
-<<<<<<< Updated upstream
-            // 1. Eje Izquierdo (0 - 120) -> Agrupamos Producción, Consumo y Peso de Huevo
-            const prodReal = { x: ejeX, y: datos.prod_real, name: '% Prod. Real', type: 'scatter', mode: 'lines', line: {color: 'blue', width: 3}, yaxis: 'y' };
-            const prodTabla = { x: ejeX, y: datos.prod_tabla, name: '% Prod. TB', type: 'scatter', mode: 'lines', line: {color: 'grey', width: 2}, yaxis: 'y' };
-=======
-            const prodReal = { 
-                x: ejeX, y: datos.prod_real, name: '% Prod. Real', 
-                type: 'scatter', mode: 'lines', line: {color: 'blue', width: 3}, 
-                yaxis: 'y', connectgaps: true 
-            };
-            const prodTabla = { 
-                x: ejeX, y: datos.prod_tabla, name: '% Prod. TB', 
-                type: 'scatter', mode: 'lines', line: {color: 'grey', width: 2}, 
-                yaxis: 'y', connectgaps: true 
-            };
->>>>>>> Stashed changes
+            const indicesValidos = [];
+            const ejeX = [];
             
-            const consReal = { x: ejeX, y: datos.consumo_real, name: 'Gr. Ave Día', type: 'scatter', mode: 'lines', line: {color: 'green', width: 2}, yaxis: 'y' };
-            const consTabla = { x: ejeX, y: datos.consumo_tabla, name: 'GR/TB', type: 'scatter', mode: 'lines+markers', line: {color: 'red', width: 1}, marker: {symbol: 'x', size: 4}, yaxis: 'y' };
-            
-            const pesoHuevoReal = { x: ejeX, y: datos.peso_huevo_real, name: 'Peso H Real', type: 'scatter', mode: 'lines+markers', line: {color: '#808000', width: 2}, marker: {size: 4}, yaxis: 'y' };
-            const pesoHuevoTabla = { x: ejeX, y: datos.peso_huevo_tabla, name: 'Peso H. Tab', type: 'scatter', mode: 'lines', line: {color: 'cyan', width: 2}, yaxis: 'y' };
+            // Filtro estricto hasta semana 110
+            datos.semanas.forEach((sem, idx) => {
+                const numSem = typeof sem === 'string' ? parseInt(sem.replace(/\D/g, ''), 10) : parseInt(sem, 10);
+                if (numSem <= 110) {
+                    indicesValidos.push(idx);
+                    ejeX.push(sem);
+                }
+            });
 
-<<<<<<< Updated upstream
-            // 2. Eje Derecho (1500 - 3150) -> Exclusivo para el Peso del Ave
-            const pesoAveReal = { x: ejeX, y: datos.peso_ave_real, name: 'Peso Ave Real', type: 'scatter', mode: 'lines', line: {color: 'green', width: 4}, yaxis: 'y2' };
-            const pesoAveTabla = { x: ejeX, y: datos.peso_ave_tabla, name: 'Peso Ave Tab', type: 'scatter', mode: 'lines', line: {color: 'red', width: 2, dash: 'dash'}, yaxis: 'y2' };
-=======
-            const pesoAveReal = { 
-                x: ejeX, y: datos.peso_ave_real, name: 'Peso Ave Real', 
-                type: 'scatter', mode: 'lines', line: {color: 'green', width: 4}, 
-                yaxis: 'y2', connectgaps: true 
-            };
-            const pesoAveTabla = { 
-                x: ejeX, y: datos.peso_ave_tabla, name: 'Peso Ave Tab', 
-                type: 'scatter', mode: 'lines', line: {color: 'red', width: 2, dash: 'dash'}, 
-                yaxis: 'y2', connectgaps: true 
-            };
->>>>>>> Stashed changes
+            const recortar = (arr) => arr ? indicesValidos.map(i => arr[i]) : [];
+
+            const prodReal = { x: ejeX, y: recortar(datos.prod_real), name: '% Prod. Real', type: 'scatter', mode: 'lines', line: {color: 'blue', width: 3}, yaxis: 'y', connectgaps: true };
+            const prodTabla = { x: ejeX, y: recortar(datos.prod_tabla), name: '% Prod. TB', type: 'scatter', mode: 'lines', line: {color: 'grey', width: 2}, yaxis: 'y', connectgaps: true };
+            const consReal = { x: ejeX, y: recortar(datos.consumo_real), name: 'Gr. Ave Día', type: 'scatter', mode: 'lines', line: {color: 'green', width: 2}, yaxis: 'y', connectgaps: true };
+            const consTabla = { x: ejeX, y: recortar(datos.consumo_tabla), name: 'GR/TB', type: 'scatter', mode: 'lines+markers', line: {color: 'red', width: 1}, marker: {symbol: 'x', size: 4}, yaxis: 'y', connectgaps: true };
+            const pesoHuevoReal = { x: ejeX, y: recortar(datos.peso_huevo_real), name: 'Peso H Real', type: 'scatter', mode: 'lines+markers', line: {color: '#808000', width: 2}, marker: {size: 4}, yaxis: 'y', connectgaps: true };
+            const pesoHuevoTabla = { x: ejeX, y: recortar(datos.peso_huevo_tabla), name: 'Peso H. Tab', type: 'scatter', mode: 'lines', line: {color: 'cyan', width: 2}, yaxis: 'y', connectgaps: true };
+            const pesoAveReal = { x: ejeX, y: recortar(datos.peso_ave_real), name: 'Peso Ave Real', type: 'scatter', mode: 'lines', line: {color: 'green', width: 4}, yaxis: 'y2', connectgaps: true };
+            const pesoAveTabla = { x: ejeX, y: recortar(datos.peso_ave_tabla), name: 'Peso Ave Tab', type: 'scatter', mode: 'lines', line: {color: 'red', width: 2, dash: 'dash'}, yaxis: 'y2', connectgaps: true };
 
             const trazos = [prodReal, prodTabla, consReal, consTabla, pesoHuevoReal, pesoHuevoTabla, pesoAveReal, pesoAveTabla];
 
@@ -179,52 +126,17 @@
                 hovermode: 'x unified',
                 plot_bgcolor: '#f8f9fa',
                 xaxis: { title: '<b>Semanas</b>', tickangle: -45, gridcolor: '#e9ecef' },
-                yaxis: { 
-<<<<<<< Updated upstream
-                    range: [0, 120], 
-                    dtick: 10, // Saltos de 10 en 10
-                    titlefont: {color: 'black'}, 
-                    tickfont: {color: 'black'},
-                    gridcolor: '#e9ecef'
-                },
-                
-                // Configuración Eje Derecho (Idéntico a tu imagen)
-                yaxis2: { 
-                    title: '<b>Pesaje de las Aves</b>', 
-                    range: [1500, 3150], 
-                    dtick: 150, // Saltos de 150 en 150
-                    overlaying: 'y', 
-                    side: 'right', 
-                    titlefont: {color: 'black'}, 
-                    tickfont: {color: 'black'},
-                    showgrid: false 
-=======
-                    range: [0, 120], dtick: 10, 
-                    titlefont: {color: 'black'}, tickfont: {color: 'black'}, gridcolor: '#e9ecef'
-                },
-                yaxis2: { 
-                    title: '<b>Pesaje de las Aves</b>', range: [1500, 3150], dtick: 150, 
-                    overlaying: 'y', side: 'right', 
-                    titlefont: {color: 'black'}, tickfont: {color: 'black'}, showgrid: false 
->>>>>>> Stashed changes
-                },
+                yaxis: { range: [0, 120], dtick: 10, titlefont: {color: 'black'}, tickfont: {color: 'black'}, gridcolor: '#e9ecef' },
+                yaxis2: { title: '<b>Pesaje de las Aves</b>', range: [1500, 3150], dtick: 150, overlaying: 'y', side: 'right', titlefont: {color: 'black'}, tickfont: {color: 'black'}, showgrid: false },
                 legend: { orientation: 'h', y: -0.2, x: 0.5, xanchor: 'center' },
                 margin: { l: 60, r: 60, t: 60, b: 100 }
             };
 
-<<<<<<< Updated upstream
-            Plotly.newPlot('graficoPlotly', trazos, layout, { responsive: true, displayModeBar: true, displaylogo: false });
-=======
             const config = {
-                responsive: true,
-                displayModeBar: true,
-                displaylogo: false,
+                responsive: true, displayModeBar: true, displaylogo: false,
                 modeBarButtonsToAdd: [{
                     name: 'Pantalla Completa',
-                    icon: {
-                        'width': 500, 'height': 500,
-                        'path': 'M80,80 H180 V120 H120 V180 H80 Z M320,80 H420 V180 H380 V120 H320 Z M80,320 H120 V380 H180 V420 H80 Z M380,320 H420 V420 H320 V380 H380 Z'
-                    },
+                    icon: { 'width': 500, 'height': 500, 'path': 'M80,80 H180 V120 H120 V180 H80 Z M320,80 H420 V180 H380 V120 H320 Z M80,320 H120 V380 H180 V420 H80 Z M380,320 H420 V420 H320 V380 H380 Z' },
                     click: function(gd) {
                         if (!document.fullscreenElement) {
                             if (gd.requestFullscreen) gd.requestFullscreen();
@@ -240,28 +152,19 @@
         }
     });
 
-    // --- SISTEMA INTELIGENTE DE ALTURA PERFECTA PARA EL GRÁFICO (RESIZE OBSERVER) ---
     document.addEventListener("DOMContentLoaded", function() {
         const graficoDiv = document.getElementById('graficoPlotly');
-        
         if (graficoDiv) {
             const observer = new ResizeObserver(() => {
                 const rect = graficoDiv.getBoundingClientRect();
                 const pixelesLibres = window.innerHeight - rect.top;
-                
-                // Compensamos el zoom del 80% (0.8) y ajustamos el margen
-                const alturaPerfecta = (pixelesLibres / 0.8) - 15;
-                
-                graficoDiv.style.height = alturaPerfecta + "px";
-                
-                // Forzar redimensionamiento de Plotly
-                if (window.Plotly) {
-                    Plotly.Plots.resize(graficoDiv);
+                const alturaPerfecta = (pixelesLibres / 0.8) - 5;
+                if (alturaPerfecta > 200) {
+                    graficoDiv.style.height = alturaPerfecta + "px";
+                    if (window.Plotly) Plotly.Plots.resize(graficoDiv);
                 }
             });
-
             observer.observe(document.body);
->>>>>>> Stashed changes
         }
     });
 </script>

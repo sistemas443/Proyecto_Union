@@ -1019,3 +1019,137 @@ def agregar_columna_foto():
     finally:
         cur.close()
         conn.close()
+        
+@bp.route('/grafico-general', methods=['GET', 'POST'])
+@login_requerido
+def grafico_general():
+    if request.method == 'POST':
+        lote_seleccionado = request.form.get('lote')
+        if lote_seleccionado and lote_seleccionado != '':
+            session['ultimo_lote'] = lote_seleccionado
+    else:
+        lote_seleccionado = session.get('ultimo_lote', '')
+
+    # Obtener la lista de lotes desde la base de datos (igual que en las otras vistas)
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("SELECT DISTINCT lote FROM cabecera_lotes ORDER BY lote ASC")
+    lotes_rows = cur.fetchall()
+    lotes = [r['lote'] for r in lotes_rows]
+    cur.close()
+    conn.close()
+
+    datos_grafico = None
+    if lote_seleccionado and lote_seleccionado != '':
+        from models.semanal.services import get_data_grafico_general
+        datos_grafico = get_data_grafico_general(lote_seleccionado)
+
+    return render_template('grafico_general.html', 
+                           lotes=lotes, 
+                           lote_seleccionado=lote_seleccionado, 
+                           datos_grafico=datos_grafico)
+
+
+@bp.route('/grafico-conversion', methods=['GET', 'POST'])
+@login_requerido
+def grafico_conversion():
+    if request.method == 'POST':
+        lote_seleccionado = request.form.get('lote')
+        if lote_seleccionado and lote_seleccionado != '':
+            session['ultimo_lote'] = lote_seleccionado
+    else:
+        lote_seleccionado = session.get('ultimo_lote', '')
+
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("SELECT DISTINCT lote FROM cabecera_lotes ORDER BY lote ASC")
+    lotes_rows = cur.fetchall()
+    lotes = [r['lote'] for r in lotes_rows]
+    cur.close()
+    conn.close()
+
+    datos_grafico = None
+    if lote_seleccionado and lote_seleccionado != '':
+        from models.semanal.services import get_data_grafico_conversion
+        datos_grafico = get_data_grafico_conversion(lote_seleccionado)
+
+    return render_template('grafico_conversion.html', 
+                           lotes=lotes, 
+                           lote_seleccionado=lote_seleccionado, 
+                           datos_grafico=datos_grafico)
+    
+from flask import render_template, request, session, redirect, url_for, flash
+import pandas as pd
+
+# 1. Ruta SOLAMENTE para mostrar el formulario (GET)
+@bp.route('/carga-datos', methods=['GET'])
+@login_requerido
+def carga_datos_vista():
+    if session.get('user_rol') != 'Superadmin':
+        return "Acceso denegado. Solo Superadmin.", 403
+
+    return render_template(
+        'carga_datos.html',
+        lotes=get_lotes_distintos() # Asegúrate de tener esta función importada
+    )
+
+@bp.route('/api-subir-excel', methods=['POST'])
+@login_requerido
+def procesar_carga():
+    if session.get('user_rol') != 'Superadmin':
+        return "Acceso denegado. Solo Superadmin.", 403
+
+    modulo_seleccionado = request.form.get('modulo')
+    archivo = request.files.get('archivo_excel')
+    lote_seleccionado = request.form.get('lote')
+
+    # Validación 1: Módulo
+    if not modulo_seleccionado:
+        flash("Por favor, selecciona el tipo de informe.", "danger")
+        return redirect(url_for('main.carga_datos_vista'), code=303)
+
+    # Validación 2: Archivo
+    if not archivo or archivo.filename == '':
+        flash("Por favor, selecciona un archivo Excel válido.", "danger")
+        return redirect(url_for('main.carga_datos_vista'), code=303)
+
+    # ---------------------------------------------------------
+    # 1. Procesamiento del Módulo Diario
+    # ---------------------------------------------------------
+    if modulo_seleccionado == 'diario':
+        try:
+            from models.diario.services import procesar_excel_diario
+            exito, msj_resultado = procesar_excel_diario(archivo, lote_seleccionado)
+            
+            if exito:
+                flash(msj_resultado, "success")
+            else:
+                flash(msj_resultado, "danger")
+        except Exception as e:
+            print(f"Error procesando diario: {e}")
+            flash(f"Error procesando el archivo diario: {e}", "danger")
+            
+    # ---------------------------------------------------------
+    # 2. Procesamiento del Módulo Semanal de Producción
+    # ---------------------------------------------------------
+    elif modulo_seleccionado == 'semanal_prod':
+        try:
+            from models.semanal.services import procesar_excel_semanal_produccion
+            exito, msj_resultado = procesar_excel_semanal_produccion(archivo, lote_seleccionado)
+            
+            if exito:
+                flash(msj_resultado, "success")
+            else:
+                flash(msj_resultado, "danger")
+        except Exception as e:
+            print(f"Error procesando semanal producción: {e}")
+            flash(f"Error procesando el archivo semanal: {e}", "danger")
+
+    # ---------------------------------------------------------
+    # 3. Otros módulos no programados aún
+    # ---------------------------------------------------------
+    else:
+        flash(f"La carga para '{modulo_seleccionado}' aún no está programada.", "warning")
+
+    # Redirección final segura si todo termina bien (usando código 303)
+    return redirect(url_for('main.carga_datos_vista'), code=303)
