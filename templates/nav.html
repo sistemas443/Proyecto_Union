@@ -35,23 +35,82 @@
           </ul>
         </li>
 
-        <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-            Planta de Alimentos
+        <li class="nav-item dropdown px-2">
+          <a class="nav-link dropdown-toggle text-white d-flex align-items-center" href="#" id="plantaDropdown"
+            role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="fas fa-industry me-2"></i> Planta de Alimentos
           </a>
-          <ul class="dropdown-menu dropdown-menu-dark">
-            <li class="dropdown-submenu">
-              <a class="dropdown-item dropdown-toggle" href="#">Lotes</a>
-              <ul class="dropdown-menu dropdown-menu-dark">
-                <li><a class="dropdown-item disabled" href="#">Diario</a></li>
-                <li><a class="dropdown-item disabled" href="#">Semanal</a></li>
-                <li><a class="dropdown-item disabled" href="#">Mensual</a></li>
-              </ul>
+          <ul class="dropdown-menu dropdown-menu-dark shadow-sm border-0" aria-labelledby="plantaDropdown">
+
+            <!-- Configuración / Maestros -->
+            <li>
+              <h6 class="dropdown-header text-uppercase text-muted fw-bold">Configuración</h6>
             </li>
-            <li><a class="dropdown-item disabled" href="#">Reportes</a></li>
+            <li>
+              <a class="dropdown-item d-flex align-items-center" href="{{ url_for('main.materias_primas') }}">
+                <i class="fas fa-seedling fa-fw me-2"></i> Materias Primas
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item d-flex align-items-center" href="{{ url_for('main.catalogo_alimentos') }}">
+                <i class="fas fa-list-ol fa-fw me-2"></i> Catálogo de Alimentos
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item d-flex align-items-center" href="{{ url_for('main.empresas_maquila') }}">
+                <i class="fas fa-building fa-fw me-2"></i> Clientes / Maquilas
+              </a>
+            </li>
+
+            <li>
+              <hr class="dropdown-divider border-secondary">
+            </li>
+
+            <!-- Operación Diaria -->
+            <li>
+              <h6 class="dropdown-header text-uppercase text-muted fw-bold">Operación</h6>
+            </li>
+            <li>
+              <a class="dropdown-item d-flex align-items-center" href="{{ url_for('main.recetario_formulas') }}">
+                <i class="fas fa-flask fa-fw me-2"></i> Fórmulas Nutricionales
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item d-flex align-items-center" href="{{ url_for('main.registro_baches') }}">
+                <i class="fas fa-clipboard-list fa-fw me-2"></i> Registro de Producción (Baches)
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item d-flex align-items-center" href="{{ url_for('main.recepcion_compras') }}">
+                <i class="fas fa-truck-loading fa-fw me-2"></i> Recepción (Compras)
+              </a>
+            </li>
+
+            <li>
+              <hr class="dropdown-divider border-secondary">
+            </li>
+
+            <!-- Inventario y Control -->
+            <li>
+              <h6 class="dropdown-header text-uppercase text-muted fw-bold">Control e Inventario</h6>
+            </li>
+            <li>
+              <a class="dropdown-item d-flex align-items-center" href="{{ url_for('main.kardex_inventario') }}">
+                <i class="fas fa-boxes fa-fw me-2"></i> Kardex Materias Primas
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item d-flex align-items-center" href="{{ url_for('main.control_silos') }}">
+                <i class="fas fa-database fa-fw me-2"></i> Control de Silos (Alimento)
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item d-flex align-items-center" href="{{ url_for('main.proyeccion_costos') }}">
+                <i class="fas fa-chart-line fa-fw me-2"></i> Proyección y Costos
+              </a>
+            </li>
           </ul>
         </li>
-
         <li class="nav-item dropdown">
           <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
             Clasificación

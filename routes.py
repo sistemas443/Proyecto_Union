@@ -1185,3 +1185,169 @@ def procesar_carga():
 
     # Redirección final segura si todo termina bien (usando código 303)
     return redirect(url_for('main.carga_datos_vista'), code=303)
+
+
+
+# ==============================================================================
+# MÓDULOS PROVISIONALES - PLANTA DE ALIMENTOS
+# ==============================================================================
+
+from models.planta_alimentos.maestros import MateriaPrima
+
+@bp.route('/materias-primas', methods=['GET', 'POST'])
+@login_requerido
+def materias_primas():
+    if request.method == 'POST':
+        nombre = request.form.get('nombre').strip().upper()
+        precio = request.form.get('precio_actual_kg', 0)
+        
+        try:
+            MateriaPrima.create(nombre, precio)
+        except Exception as e:
+            # Aquí podrías manejar el error si intentan guardar un insumo duplicado
+            print(f"Error al guardar: {e}") 
+            
+        return redirect(url_for('main.materias_primas'))
+        
+    lista_mp = MateriaPrima.get_all()
+    return render_template('materias_primas.html', materias_primas=lista_mp)
+# Modifica la importación en la parte superior
+from models.planta_alimentos.maestros import MateriaPrima, CatalogoAlimento
+
+# ... más abajo en tus rutas ...
+
+@bp.route('/catalogo-alimentos', methods=['GET', 'POST'])
+@login_requerido
+def catalogo_alimentos():
+    if request.method == 'POST':
+        item_id = request.form.get('item_id')
+        nombre = request.form.get('nombre').strip().upper()
+        rango_semanas = request.form.get('rango_semanas').strip()
+        
+        try:
+            CatalogoAlimento.create(item_id, nombre, rango_semanas)
+        except Exception as e:
+            print(f"Error al guardar dieta: {e}") 
+            
+        return redirect(url_for('main.catalogo_alimentos'))
+        
+    lista_alimentos = CatalogoAlimento.get_all()
+    return render_template('catalogo_alimentos.html', alimentos=lista_alimentos)
+
+# Actualiza la importación
+from models.planta_alimentos.maestros import MateriaPrima, CatalogoAlimento, Empresa
+
+# ...
+
+@bp.route('/empresas-maquila', methods=['GET', 'POST'])
+@login_requerido
+def empresas_maquila():
+    if request.method == 'POST':
+        nombre = request.form.get('nombre').strip().upper()
+        costo_maquila = request.form.get('costo_maquila', 0)
+        
+        try:
+            Empresa.create(nombre, costo_maquila)
+        except Exception as e:
+            print(f"Error al guardar empresa: {e}") 
+            
+        return redirect(url_for('main.empresas_maquila'))
+        
+    lista_empresas = Empresa.get_all()
+    return render_template('empresas_maquila.html', empresas=lista_empresas)
+
+from models.planta_alimentos.formulas import FormulaDetalle
+# Asegúrate de que MateriaPrima y CatalogoAlimento estén importados arriba
+
+@bp.route('/receta/<int:item_id>', methods=['GET', 'POST'])
+@login_requerido
+def editar_receta(item_id):
+    if request.method == 'POST':
+        materia_prima_id = request.form.get('materia_prima_id')
+        cantidad = request.form.get('cantidad_kg')
+        
+        try:
+            FormulaDetalle.agregar_insumo(item_id, materia_prima_id, cantidad)
+        except Exception as e:
+            print(f"Error al agregar insumo a la fórmula: {e}")
+            
+        return redirect(url_for('main.editar_receta', item_id=item_id))
+        
+    # Obtener los datos para renderizar la vista
+    insumos_receta = FormulaDetalle.obtener_receta(item_id)
+    materias_primas = MateriaPrima.get_all()
+    
+    # Calcular totales de la fórmula (Kilos y Costo)
+    total_kg = sum(item['cantidad_kg'] for item in insumos_receta) if insumos_receta else 0
+    costo_total = sum(item['costo_total_insumo'] for item in insumos_receta) if insumos_receta else 0
+    
+    return render_template('editar_receta.html', 
+                           item_id=item_id, 
+                           insumos_receta=insumos_receta, 
+                           materias_primas=materias_primas,
+                           total_kg=total_kg,
+                           costo_total=costo_total)
+
+from models.planta_alimentos.transacciones import RegistroProduccion
+# Asegúrate de tener Empresa y CatalogoAlimento importados arriba
+
+@bp.route('/registro-baches', methods=['GET', 'POST'])
+@login_requerido
+def registro_baches():
+    if request.method == 'POST':
+        fecha = request.form.get('fecha')
+        lote_id = request.form.get('lote_id')
+        empresa_id = request.form.get('empresa_id')
+        item_id = request.form.get('item_id')
+        cantidad_baches = request.form.get('cantidad_baches', 0)
+        toneladas = request.form.get('toneladas_producidas', 0)
+        
+        try:
+            RegistroProduccion.create(fecha, lote_id, empresa_id, item_id, cantidad_baches, toneladas)
+        except Exception as e:
+            print(f"Error al guardar producción: {e}")
+            
+        return redirect(url_for('main.registro_baches'))
+        
+    historial = RegistroProduccion.get_all()
+    empresas = Empresa.get_all()
+    alimentos = CatalogoAlimento.get_all()
+    
+    # Consulta rápida para obtener los lotes registrados en el sistema
+    conn = get_db_connection()
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
+            cur.execute("SELECT DISTINCT lote FROM cabecera_lotes ORDER BY lote DESC;")
+            lotes = cur.fetchall()
+    finally:
+        conn.close()
+    
+    return render_template('registro_baches.html', 
+                           historial=historial, 
+                           empresas=empresas, 
+                           alimentos=alimentos,
+                           lotes=lotes)
+@bp.route('/recepcion-compras')
+@login_requerido
+def recepcion_compras():
+    return "Módulo de Recepción (Compras) en construcción"
+
+@bp.route('/kardex-inventario')
+@login_requerido
+def kardex_inventario():
+    return "Módulo de Kardex en construcción"
+
+@bp.route('/control-silos')
+@login_requerido
+def control_silos():
+    return "Módulo de Control de Silos en construcción"
+
+@bp.route('/proyeccion-costos')
+@login_requerido
+def proyeccion_costos():
+    return "Módulo de Proyección y Costos en construcción"
+@bp.route('/recetario-formulas')
+@login_requerido
+def recetario_formulas():
+    # Redirige directamente al catálogo, que es donde ahora gestionamos las recetas
+    return redirect(url_for('main.catalogo_alimentos'))

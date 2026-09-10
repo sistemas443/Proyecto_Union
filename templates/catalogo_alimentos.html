@@ -1,0 +1,87 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="h4 text-primary fw-bold mb-0">
+                <i class="fas fa-list-ol me-2"></i> Catálogo de Alimentos
+            </h2>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Formulario de Registro -->
+        <div class="col-md-4 mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
+                    <h6 class="fw-bold text-secondary">Nueva Dieta</h6>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('main.catalogo_alimentos') }}">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-muted small">Código ITEM</label>
+                            <input type="number" name="item_id" class="form-control form-control-sm"
+                                placeholder="Ej. 218" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-muted small">Nombre de la Dieta</label>
+                            <input type="text" name="nombre" class="form-control form-control-sm"
+                                placeholder="Ej. ARRANQUE SAN MARTIN" required autocomplete="off">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-muted small">Rango de Semanas</label>
+                            <input type="text" name="rango_semanas" class="form-control form-control-sm"
+                                placeholder="Ej. 1-4" required autocomplete="off">
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-sm w-100 fw-bold">
+                            <i class="fas fa-save me-1"></i> Guardar Dieta
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabla de Catálogo -->
+        <div class="col-md-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th class="text-secondary small fw-bold text-uppercase px-4">ITEM</th>
+                                    <th class="text-secondary small fw-bold text-uppercase">Nombre de Dieta</th>
+                                    <th class="text-secondary small fw-bold text-uppercase text-center">Rango Semanas
+                                    </th>
+                                    <th class="text-secondary small fw-bold text-uppercase text-center px-4">Acciones
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for alimento in alimentos %}
+                                <tr>
+                                    <td class="px-4 fw-bold text-primary">{{ alimento['item_id'] }}</td>
+                                    <td class="fw-bold text-dark">{{ alimento['nombre'] }}</td>
+                                    <td class="text-center text-muted">{{ alimento['rango_semanas'] }}</td>
+                                    <td class="text-center px-4">
+                                        <a href="{{ url_for('main.editar_receta', item_id=alimento['item_id']) }}"
+                                            class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-edit me-1"></i> Ver Fórmula
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="4" class="text-center py-4 text-muted">No hay dietas registradas.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
