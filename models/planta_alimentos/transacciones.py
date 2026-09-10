@@ -34,3 +34,17 @@ class RegistroProduccion:
                 conn.commit()
         finally:
             conn.close()
+
+    @staticmethod
+    def get_lotes():
+        conn = get_db_connection()
+        try:
+            with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
+                cur.execute("""
+                    SELECT DISTINCT lote, COALESCE(tipo_lote, 'PROPIO') AS tipo_lote 
+                    FROM cabecera_lotes 
+                    ORDER BY tipo_lote ASC, lote DESC;
+                """)
+                return cur.fetchall()
+        finally:
+            conn.close()

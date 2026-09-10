@@ -1262,27 +1262,37 @@ from models.planta_alimentos.formulas import FormulaDetalle
 @bp.route('/receta/<int:item_id>', methods=['GET', 'POST'])
 @login_requerido
 def editar_receta(item_id):
+    # Captura el lote desde el formulario (POST) o desde la URL (GET)
+    lote_id = request.form.get('lote_id') or request.args.get('lote_id')
+    
+    lotes = RegistroProduccion.get_lotes()
+    
+    # Asigna el primer lote disponible solo si no viene ninguno en la petición
+    if not lote_id and lotes:
+        lote_id = lotes[0]['lote']
+
     if request.method == 'POST':
         materia_prima_id = request.form.get('materia_prima_id')
         cantidad = request.form.get('cantidad_kg')
         
         try:
-            FormulaDetalle.agregar_insumo(item_id, materia_prima_id, cantidad)
+            FormulaDetalle.agregar_insumo(item_id, lote_id, materia_prima_id, cantidad)
         except Exception as e:
             print(f"Error al agregar insumo a la fórmula: {e}")
             
-        return redirect(url_for('main.editar_receta', item_id=item_id))
+        return redirect(url_for('main.editar_receta', item_id=item_id, lote_id=lote_id))
         
-    # Obtener los datos para renderizar la vista
-    insumos_receta = FormulaDetalle.obtener_receta(item_id)
+    # --- ESTE BLOQUE DEBE ESTAR FUERA DEL IF METHOD == 'POST' ---
+    insumos_receta = FormulaDetalle.obtener_receta(item_id, lote_id) if lote_id else []
     materias_primas = MateriaPrima.get_all()
     
-    # Calcular totales de la fórmula (Kilos y Costo)
     total_kg = sum(item['cantidad_kg'] for item in insumos_receta) if insumos_receta else 0
     costo_total = sum(item['costo_total_insumo'] for item in insumos_receta) if insumos_receta else 0
     
     return render_template('editar_receta.html', 
                            item_id=item_id, 
+                           lote_id=lote_id,
+                           lotes=lotes,
                            insumos_receta=insumos_receta, 
                            materias_primas=materias_primas,
                            total_kg=total_kg,
@@ -1312,15 +1322,13 @@ def registro_baches():
     historial = RegistroProduccion.get_all()
     empresas = Empresa.get_all()
     alimentos = CatalogoAlimento.get_all()
+    lotes = RegistroProduccion.get_lotes() # Llana al modelo limpiamente
     
-    # Consulta rápida para obtener los lotes registrados en el sistema
-    conn = get_db_connection()
-    try:
-        with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
-            cur.execute("SELECT DISTINCT lote FROM cabecera_lotes ORDER BY lote DESC;")
-            lotes = cur.fetchall()
-    finally:
-        conn.close()
+    return render_template('registro_baches.html', 
+                           historial=historial, 
+                           empresas=empresas, 
+                           alimentos=alimentos,
+                           lotes=lotes)
     
     return render_template('registro_baches.html', 
                            historial=historial, 

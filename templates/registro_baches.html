@@ -24,12 +24,21 @@
                             <input type="date" name="fecha" class="form-control form-control-sm" required>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label fw-bold text-muted small">Lote de Aves</label>
+                            <label class="form-label fw-bold text-muted small">Lote Destino</label>
                             <select name="lote_id" class="form-select form-select-sm" required>
                                 <option value="" disabled selected>Seleccione Lote...</option>
-                                {% for l in lotes %}
-                                <option value="{{ l['lote'] }}">{{ l['lote'] }}</option>
-                                {% endfor %}
+
+                                <optgroup label="--- LOTES PROPIOS (SAN MARTÍN) ---">
+                                    {% for l in lotes if l['tipo_lote'] == 'PROPIO' %}
+                                    <option value="{{ l['lote'] }}">{{ l['lote'] }}</option>
+                                    {% endfor %}
+                                </optgroup>
+
+                                <optgroup label="--- MAQUILAS / EXTERNOS ---">
+                                    {% for l in lotes if l['tipo_lote'] == 'EXTERNO' %}
+                                    <option value="{{ l['lote'] }}">{{ l['lote'] }} (Externo)</option>
+                                    {% endfor %}
+                                </optgroup>
                             </select>
                         </div>
                         <div class="mb-3">
