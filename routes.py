@@ -677,7 +677,13 @@ def actualizar_cabecera():
 @login_requerido
 def diario():
     # Reconstruye el esquema del control de mortalidad y consumo para el día a día
-    lote_seleccionado = request.form.get('lote', '') if request.method == 'POST' else ''
+    if request.method == 'POST':
+        lote_seleccionado = request.form.get('lote', '')
+        if lote_seleccionado and lote_seleccionado != 'VACIO':
+            session['ultimo_lote'] = lote_seleccionado
+    else:
+        lote_seleccionado = session.get('ultimo_lote', '')
+
     filas = []
     cabecera = None
     if lote_seleccionado and lote_seleccionado != 'VACIO':
@@ -686,19 +692,39 @@ def diario():
             from models.diario.services import generar_estructura_diario
             generar_estructura_diario(lote_seleccionado, cabecera.get('id'), cabecera.get('fecha_recepcion'))
         filas = get_diario_all(lote_seleccionado)
-    return render_template('diario.html', filas=filas, lotes=get_lotes_distintos(), lote_seleccionado=lote_seleccionado, cabecera=cabecera)
+
+    return render_template(
+        'diario.html', 
+        filas=filas, 
+        lotes=get_lotes_distintos(), 
+        lote_seleccionado=lote_seleccionado, 
+        cabecera=cabecera
+    )
     
 @bp.route('/primera-semana', methods=['GET', 'POST'])
 @login_requerido
 def primera_semana():
     # Tabla exclusiva para seguimiento estricto del arranque en granja de los primeros 7 días
-    lote_seleccionado = request.form.get('lote', '') if request.method == 'POST' else ''
+    if request.method == 'POST':
+        lote_seleccionado = request.form.get('lote', '')
+        if lote_seleccionado and lote_seleccionado != 'VACIO':
+            session['ultimo_lote'] = lote_seleccionado
+    else:
+        lote_seleccionado = session.get('ultimo_lote', '')
+
     filas = []
     cabecera = None
     if lote_seleccionado and lote_seleccionado != 'VACIO':
         cabecera = get_cabecera_info(lote_seleccionado)
         filas = get_primera_semana_by_lote(lote_seleccionado)
-    return render_template('primera_semana.html', filas=filas, lotes=get_lotes_distintos(), lote_seleccionado=lote_seleccionado, cabecera=cabecera)
+
+    return render_template(
+        'primera_semana.html', 
+        filas=filas, 
+        lotes=get_lotes_distintos(), 
+        lote_seleccionado=lote_seleccionado, 
+        cabecera=cabecera
+    )
     
 @bp.route('/api/primera-semana/actualizar', methods=['POST'])
 @login_requerido
@@ -751,10 +777,24 @@ def semanal():
 @bp.route('/semanal-levante', methods=['GET', 'POST'])
 @login_requerido
 def semanal_levante():
-    # Extrae el compendio matemático de Crianza y Levante (Etapa inicial de 0 a 18 semanas)
-    lote_seleccionado = request.form.get('lote', '') if request.method == 'POST' else ''
-    return render_template('sem_lev.html', filas=get_semanal_levante_all(lote_seleccionado), lotes=get_lotes_distintos(), lote_seleccionado=lote_seleccionado, cabecera=get_cabecera_info(lote_seleccionado))
+    # 1. Si el usuario envía el formulario, guardamos en la sesión
+    if request.method == 'POST':
+        lote_seleccionado = request.form.get('lote', '')
+        if lote_seleccionado and lote_seleccionado != '':
+            session['ultimo_lote'] = lote_seleccionado
+    else:
+        # 2. Si navega desde otro módulo, recuperamos el último lote activo
+        lote_seleccionado = session.get('ultimo_lote', '')
 
+    # 3. Renderizamos la plantilla pasando el lote sincronizado
+    return render_template(
+        'sem_lev.html', 
+        filas=get_semanal_levante_all(lote_seleccionado), 
+        lotes=get_lotes_distintos(), 
+        lote_seleccionado=lote_seleccionado, 
+        cabecera=get_cabecera_info(lote_seleccionado)
+    )
+    
 @bp.route('/api/semanal/actualizar', methods=['POST'])
 @login_requerido
 @editor_requerido
@@ -780,9 +820,20 @@ def actualizar_semanal():
 @login_requerido
 def clas_prod():
     # Despliegue del seguimiento cualitativo y desperdicios para huevo tipo extra, jumbo, sucio, fisurado.
-    lote_seleccionado = request.form.get('lote', '') if request.method == 'POST' else ''
-    return render_template('clas_prod.html', filas=get_clasificacion_all(lote_seleccionado), lotes=get_lotes_distintos(), lote_seleccionado=lote_seleccionado, cabecera=get_cabecera_info(lote_seleccionado))
+    if request.method == 'POST':
+        lote_seleccionado = request.form.get('lote', '')
+        if lote_seleccionado and lote_seleccionado != '':
+            session['ultimo_lote'] = lote_seleccionado
+    else:
+        lote_seleccionado = session.get('ultimo_lote', '')
 
+    return render_template(
+        'clas_prod.html', 
+        filas=get_clasificacion_all(lote_seleccionado), 
+        lotes=get_lotes_distintos(), 
+        lote_seleccionado=lote_seleccionado, 
+        cabecera=get_cabecera_info(lote_seleccionado)
+    )
 @bp.route('/api/clasificacion/actualizar', methods=['POST'])
 @login_requerido
 @editor_requerido
@@ -1012,18 +1063,19 @@ def agregar_columna_foto():
         cur.close()
         conn.close()
         
+# --- GRÁFICO GENERAL ---
 @bp.route('/grafico-general', methods=['GET', 'POST'])
 @login_requerido
 def grafico_general():
     if request.method == 'POST':
         lote_seleccionado = request.form.get('lote', '')
-        session['lote_seleccionado'] = lote_seleccionado
+        if lote_seleccionado and lote_seleccionado != 'VACIO':
+            session['ultimo_lote'] = lote_seleccionado
     else:
-        lote_seleccionado = session.get('lote_seleccionado', '')
+        lote_seleccionado = session.get('ultimo_lote', '')
 
     datos_grafico = None
     if lote_seleccionado and lote_seleccionado != 'VACIO':
-        # Reutilizamos tu función para obtener las métricas generales del lote
         from models.semanal.services import get_data_grafico_general
         datos_grafico = get_data_grafico_general(lote_seleccionado)
 
@@ -1034,14 +1086,17 @@ def grafico_general():
         datos_grafico=datos_grafico
     )
 
+
+# --- GRÁFICO DE CONVERSIÓN ---
 @bp.route('/grafico-conversion', methods=['GET', 'POST'])
 @login_requerido
 def grafico_conversion():
     if request.method == 'POST':
         lote_seleccionado = request.form.get('lote', '')
-        session['lote_seleccionado'] = lote_seleccionado
+        if lote_seleccionado and lote_seleccionado != 'VACIO':
+            session['ultimo_lote'] = lote_seleccionado
     else:
-        lote_seleccionado = session.get('lote_seleccionado', '')
+        lote_seleccionado = session.get('ultimo_lote', '')
 
     datos_grafico = None
     if lote_seleccionado and lote_seleccionado != 'VACIO':
@@ -1054,7 +1109,6 @@ def grafico_conversion():
         lote_seleccionado=lote_seleccionado,
         datos_grafico=datos_grafico
     )
-    
     
 from flask import render_template, request, session, redirect, url_for, flash
 import pandas as pd

@@ -36,25 +36,31 @@
 </style>
 
 <div class="container-fluid px-4 py-3 h-100 d-flex flex-column">
-    <!-- Encabezado y Filtro -->
-    <div class="card shadow-sm mb-3 border-0 card-filtro">
-        <div class="card-body d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 py-2">
-            <h4 class="mb-0 fw-bold text-secondary text-uppercase">
-                <i class='bx bx-line-chart me-2'></i>Gráfico de Conversión
-            </h4>
-            <form method="POST" action="{{ url_for('main.grafico_conversion') }}" class="d-flex gap-2 align-items-center">
-                <label for="lote" class="fw-bold text-muted mb-0">Lote:</label>
-                <select name="lote" id="lote" class="form-select form-select-sm shadow-sm" style="min-width: 200px;" required>
-                    <option value="VACIO">-- Seleccionar Lote --</option>
-                    {% for l in lotes %}
-                        <option value="{{ l }}" {% if l == lote_seleccionado %}selected{% endif %}>{{ l }}</option>
-                    {% endfor %}
-                </select>
-            <button type="submit" class="btn btn-sm btn-primary shadow-sm fw-bold px-3 d-flex align-items-center justify-content-center" style="height: 31px;">
-            <i class='bx bx-search-alt-2 me-1'></i> Generar
-            </button>
-            </form>
-        </div>
+    <!-- Encabezado y Filtro Unificado con estilo corporativo -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 px-3 py-2 rounded shadow-sm card-filtro" style="background-color: #212529;">
+      
+      <!-- Título a la izquierda -->
+      <h5 class="mb-0 fw-bold text-uppercase text-white" style="letter-spacing: 0.5px;">
+        <i class='bx bx-line-chart me-2'></i>GRÁFICO DE CONVERSIÓN
+      </h5>
+
+      <!-- Filtro centrado -->
+      <div class="mx-auto">
+        <form method="POST" action="{{ url_for('main.grafico_conversion') }}" class="d-flex align-items-center gap-2 m-0">
+          <label for="lote" class="mb-0 fw-bold text-light text-nowrap" style="font-size: 0.9rem;">SELECCIONE UN LOTE:</label>
+          <select name="lote" id="lote" class="form-select form-select-sm border-0 fw-bold shadow-none" style="width: 220px;" onchange="this.form.submit()">
+            <option value="VACIO">-- Seleccione --</option>
+            {% for l in lotes %}
+            <option value="{{ l }}" {% if l == lote_seleccionado %}selected{% endif %}>LOTE {{ l }}</option>
+            {% endfor %}
+          </select>
+          <button type="submit" class="btn btn-naranja btn-sm fw-bold px-3 border-0">Generar</button>
+        </form>
+      </div>
+      
+      <!-- Espaciador invisible para forzar el centro perfecto del filtro -->
+      <div style="width: 320px;" class="d-none d-lg-block"></div>
+      
     </div>
 
     <!-- Contenedor del Gráfico -->
@@ -93,18 +99,18 @@
             const ejeX = datos.semanas;
 
             // Variables Eje Izquierdo (y)
-            const prodReal = { x: ejeX, y: datos.prod_real, name: '% Prod. Real', type: 'scatter', mode: 'lines+markers', line: {color: 'blue', width: 3}, marker: {color: 'red', size: 4}, yaxis: 'y' };
-            const prodTabla = { x: ejeX, y: datos.prod_tabla, name: '% Prod. TB', type: 'scatter', mode: 'lines', line: {color: 'grey', width: 2}, yaxis: 'y' };
-            const mortAcum = { x: ejeX, y: datos.mort_acum_real, name: '% Mort. Acum.', type: 'scatter', mode: 'lines', line: {color: 'teal', width: 2}, yaxis: 'y' };
-            const mortTab = { x: ejeX, y: datos.mort_acum_tabla, name: 'M. Tab.', type: 'scatter', mode: 'lines', line: {color: 'yellow', width: 2}, yaxis: 'y' };
+            const prodReal = { x: ejeX, y: datos.prod_real, name: '% Prod. Real', type: 'scatter', mode: 'lines+markers', line: {color: 'blue', width: 3}, marker: {color: 'red', size: 4}, yaxis: 'y', connectgaps: true };
+            const prodTabla = { x: ejeX, y: datos.prod_tabla, name: '% Prod. TB', type: 'scatter', mode: 'lines', line: {color: 'grey', width: 2}, yaxis: 'y', connectgaps: true };
+            const mortAcum = { x: ejeX, y: datos.mort_acum_real, name: '% Mort. Acum.', type: 'scatter', mode: 'lines', line: {color: 'teal', width: 2}, yaxis: 'y', connectgaps: true };
+            const mortTab = { x: ejeX, y: datos.mort_acum_tabla, name: 'M. Tab.', type: 'scatter', mode: 'lines', line: {color: 'yellow', width: 2}, yaxis: 'y', connectgaps: true };
             
             // Variables Eje Derecho (y2)
-            const haaReal = { x: ejeX, y: datos.haa_real, name: 'H.A.A. Real', type: 'scatter', mode: 'lines', line: {color: 'lime', width: 2}, yaxis: 'y2' };
-            const haaTab = { x: ejeX, y: datos.haa_tabla, name: 'H.A.A. TAB', type: 'scatter', mode: 'lines', line: {color: '#ffb6c1', width: 2}, yaxis: 'y2' };
+            const haaReal = { x: ejeX, y: datos.haa_real, name: 'H.A.A. Real', type: 'scatter', mode: 'lines', line: {color: 'lime', width: 2}, yaxis: 'y2', connectgaps: true };
+            const haaTab = { x: ejeX, y: datos.haa_tabla, name: 'H.A.A. TAB', type: 'scatter', mode: 'lines', line: {color: '#ffb6c1', width: 2}, yaxis: 'y2', connectgaps: true };
 
             // Variables Tercer Eje (y3) - Exclusivo Conversión
-            const convAcum = { x: ejeX, y: datos.conv_acum_real, name: 'Conv. Acum.', type: 'scatter', mode: 'lines', line: {color: 'maroon', width: 3}, yaxis: 'y3' };
-            const convTab = { x: ejeX, y: datos.conv_acum_tabla, name: 'CONVERSION TAB', type: 'scatter', mode: 'lines', line: {color: '#d2b48c', width: 3}, yaxis: 'y3' };
+            const convAcum = { x: ejeX, y: datos.conv_acum_real, name: 'Conv. Acum.', type: 'scatter', mode: 'lines', line: {color: 'maroon', width: 3}, yaxis: 'y3', connectgaps: true };
+            const convTab = { x: ejeX, y: datos.conv_acum_tabla, name: 'CONVERSION TAB', type: 'scatter', mode: 'lines', line: {color: '#d2b48c', width: 3}, yaxis: 'y3', connectgaps: true };
 
             const trazos = [prodReal, prodTabla, mortAcum, haaReal, haaTab, convAcum, mortTab, convTab];
 
@@ -140,7 +146,28 @@
                 margin: { l: 60, r: 80, t: 50, b: 80 }
             };
 
-            Plotly.newPlot('graficoPlotly', trazos, layout, { responsive: true, displayModeBar: true, displaylogo: false });
+            const config = {
+                responsive: true,
+                displayModeBar: true,
+                displaylogo: false,
+                modeBarButtonsToAdd: [{
+                    name: 'Pantalla Completa',
+                    icon: {
+                        'width': 500, 'height': 500,
+                        'path': 'M80,80 H180 V120 H120 V180 H80 Z M320,80 H420 V180 H380 V120 H320 Z M80,320 H120 V380 H180 V420 H80 Z M380,320 H420 V420 H320 V380 H380 Z'
+                    },
+                    click: function(gd) {
+                        if (!document.fullscreenElement) {
+                            if (gd.requestFullscreen) gd.requestFullscreen();
+                            else if (gd.webkitRequestFullscreen) gd.webkitRequestFullscreen();
+                        } else {
+                            if (document.exitFullscreen) document.exitFullscreen();
+                        }
+                    }
+                }]
+            };
+
+            Plotly.newPlot('graficoPlotly', trazos, layout, config);
         }
     });
 
