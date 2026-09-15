@@ -129,8 +129,8 @@ def login():
                 session['user_foto'] = usuario[5] or ''  # Nombre del archivo de la foto de perfil (si existe) o cadena vacía
                 
                 # Mensaje de bienvenida con imagen incrustada
-                img_url = url_for('static', filename='img/Saludo.gif')
-                flash(f"<img src='{img_url}' style='width: 25px; margin-right: 8px; vertical-align: middle;'> ¡Bienvenido, {usuario[1]}!", "success") 
+                img_url = url_for('static', filename='img/SALUDO.gif')
+                flash(f'<img src="{img_url}" style="vertical-align: middle; height: 55px; width: auto;"> ¡Bienvenido, {usuario[1]}!', 'success')
                 
                 return redirect(url_for('main.index'))
         else:
@@ -441,8 +441,8 @@ def logout():
     session.clear()
     
     # Mensaje de despedida con imagen incrustada
-    img_url = url_for('static', filename='img/Despedida.gif')
-    flash(f"<img src='{img_url}' style='width: 25px; margin-right: 8px; vertical-align: middle;'> Has cerrado sesión exitosamente.", "success")
+    img_url = url_for('static', filename='img/DESPEDIDA.gif')
+    flash(f'<img src="{img_url}" style="vertical-align: middle; height: 55px; width: auto;"> Has cerrado sesión exitosamente.', 'success')
     
     return redirect(url_for('main.login_page'))
 
@@ -1359,3 +1359,29 @@ def proyeccion_costos():
 def recetario_formulas():
     # Redirige directamente al catálogo, que es donde ahora gestionamos las recetas
     return redirect(url_for('main.catalogo_alimentos'))
+
+# ==============================================================================
+# GRÁFICOS DE ARRANQUE EN GRANJA (PRIMERA SEMANA)   
+# ==============================================================================
+@bp.route('/grafico-primera-semana', methods=['GET', 'POST'])
+@login_requerido
+def grafico_primera_semana():
+    # Sistema de memoria para recordar el lote seleccionado
+    if request.method == 'POST':
+        lote_seleccionado = request.form.get('lote', '')
+        if lote_seleccionado and lote_seleccionado != 'VACIO':
+            session['ultimo_lote'] = lote_seleccionado
+    else:
+        lote_seleccionado = session.get('ultimo_lote', '')
+
+    datos_grafico = None
+    if lote_seleccionado and lote_seleccionado != 'VACIO':
+        from models.primera_semana.services import get_data_grafico_primera_semana
+        datos_grafico = get_data_grafico_primera_semana(lote_seleccionado)
+
+    return render_template(
+        'grafico_primera_semana.html',
+        lotes=get_lotes_distintos(),
+        lote_seleccionado=lote_seleccionado,
+        datos_grafico=datos_grafico
+    )

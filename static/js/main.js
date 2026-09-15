@@ -54,7 +54,6 @@ document.addEventListener('DOMContentLoaded', function() {
 /**
  * Guarda el lote en sessionStorage cuando el usuario hace submit,
  * y lo restaura automáticamente al entrar a cualquier página con selector de lote.
- * Si el servidor ya devolvió un lote_seleccionado (POST previo), ese tiene prioridad.
  */
 function setupPersistenciaLote() {
     const selectLote = document.getElementById('lote');
@@ -77,10 +76,20 @@ function setupPersistenciaLote() {
         if (opcionExiste) {
             log(`Restaurando lote desde sesión: ${loteGuardado}`);
             selectLote.value = loteGuardado;
+            
             // Enviar el formulario automáticamente para cargar los datos del lote
             const form = selectLote.closest('form');
             if (form) {
-                form.submit();
+                // AQUI ESTÁ LA SOLUCIÓN: 
+                // Verificamos si es el formulario de carga de archivos
+                const esFormularioDeCarga = form.querySelector('input[type="file"]');
+                
+                // Solo hacemos submit automático si NO es el formulario de carga
+                if (!esFormularioDeCarga) {
+                    form.submit();
+                } else {
+                    log('Lote restaurado. Auto-submit bloqueado para evitar bucle en Carga Masiva.');
+                }
             }
         } else {
             // El lote guardado ya no existe, limpiar

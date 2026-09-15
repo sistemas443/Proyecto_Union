@@ -303,6 +303,7 @@ def update_registro_diario_field(id_reg: int, columna: str, valor: str) -> tuple
         cur.close()
         conn.close()
         
+import io
 import pandas as pd
 import psycopg2.extras
 import numpy as np
@@ -322,8 +323,15 @@ def procesar_excel_diario(archivo, lote_nombre):
             return False, f"No se encontró el lote '{lote_nombre}' en la base de datos."
         id_lote = lote_row['id']
 
-        # 2. Leer el Excel
-        df = pd.read_excel(archivo, sheet_name='DIARIO', skiprows=7, header=None)
+        # ==========================================
+        # SOLUCIÓN DE MEMORIA RAM (Adiós recargas)
+        # ==========================================
+        # Extraemos los datos crudos del archivo que el navegador envió
+        stream_memoria = io.BytesIO(archivo.read())
+        
+        # Le decimos a pandas que lea desde la memoria, no desde el disco
+        df = pd.read_excel(stream_memoria, sheet_name='DIARIO', skiprows=7, header=None)
+        # ==========================================
         
         df = df[df[0].notnull()] 
         df = df.replace(r'^\s*$', np.nan, regex=True)
@@ -368,11 +376,11 @@ def procesar_excel_diario(archivo, lote_nombre):
         if not valores_a_insertar:
             return False, "El archivo está vacío o no tiene datos válidos."
 
-        # Prevención de duplicados
+        # Prevención de duplicados usando el ID real para evitar fallos por texto
         if fechas_a_cargar:
             cur.execute(
-                "DELETE FROM data_diario WHERE lote = %s AND fecha_dia = ANY(%s)", 
-                (lote_nombre, fechas_a_cargar)
+                "DELETE FROM data_diario WHERE id_lote = %s AND fecha_dia = ANY(%s)", 
+                (id_lote, fechas_a_cargar)
             )
 
         # 4. Inserción Masiva
