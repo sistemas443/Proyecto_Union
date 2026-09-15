@@ -2,6 +2,116 @@
 {% block title %}Carga Masiva de Datos{% endblock %}
 
 {% block content %}
+<style>
+    /* 1. Bloqueamos el scroll general y aplicamos zoom global del 80% */
+    body {
+        overflow-y: hidden !important;
+        zoom: 0.8;
+    }
+
+    /* --- ESTILOS NUEVOS PARA EL DRAG & DROP --- */
+
+    /* La zona de soltura (ahora es solo el gatillo visual) */
+    .drop-zone {
+        width: 100%;
+        height: 200px;
+        border: 3px dashed #ced4da;
+        border-radius: 10px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        background-color: #f8f9fa;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .drop-zone .icon {
+        font-size: 3rem;
+        color: #6c757d;
+        margin-bottom: 10px;
+        transition: color 0.3s;
+    }
+
+    .drop-zone .text {
+        font-size: 1.1rem;
+        color: #6c757d;
+        font-weight: 500;
+    }
+
+    .drop-zone .subtext {
+        font-size: 0.9rem;
+        color: #adb5bd;
+        margin-top: 5px;
+    }
+
+    #archivo_excel {
+        display: none;
+    }
+
+    .file-name {
+        margin-top: 10px;
+        font-weight: bold;
+        color: #198754;
+        display: none;
+    }
+
+      /* --- OVERLAY DE PANTALLA COMPLETA (MEJORADO) --- */
+  #fullPageOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    /* Usamos 100% en lugar de 100vw/100vh para evitar problemas con la barra de scroll */
+    width: 100%;
+    height: 100%;
+    background-color: rgba(33, 37, 41, 0.9); /* Fondo un poco más oscuro */
+    z-index: 99999; /* Aseguramos que esté por encima de todo, incluso del navbar */
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    text-align: center;
+    pointer-events: none; /* Permite que los eventos pasen al document */
+    transition: opacity 0.3s ease;
+    backdrop-filter: blur(5px); /* Efecto de desenfoque de fondo (opcional, muy chevre) */
+  }
+
+  #fullPageOverlay.active {
+    display: flex;
+  }
+
+  #fullPageOverlay .overlay-icon {
+    font-size: 8rem; /* Icono más grande */
+    color: #0d6efd;
+    margin-bottom: 20px;
+    animation: bounce 1s infinite alternate;
+    text-shadow: 0 4px 15px rgba(13, 110, 253, 0.5);
+  }
+
+  #fullPageOverlay .overlay-text {
+    font-size: 2.5rem; /* Texto más grande */
+    font-weight: 900;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+    letter-spacing: 1px;
+  }
+
+  #fullPageOverlay .overlay-subtext {
+    font-size: 1.3rem;
+    color: #adb5bd;
+    margin-top: 15px;
+    font-weight: 500;
+  }
+
+  @keyframes bounce {
+    from { transform: translateY(0); }
+    to { transform: translateY(-20px); }
+  }
+</style>
+
 <div class="container-fluid px-4 py-4">
     <div class="row justify-content-center">
         <div class="col-md-8">
@@ -21,7 +131,9 @@
                     {% endfor %}
                     {% endif %}
                     {% endwith %}
-                    <form action="{{ url_for('main.procesar_carga') }}" method="POST" enctype="multipart/form-data">
+
+                    <form action="{{ url_for('main.procesar_carga') }}" method="POST" enctype="multipart/form-data"
+                        id="formCarga">
 
                         <div class="mb-4">
                             <label for="modulo" class="form-label fw-bold text-secondary">1. Selecciona el Tipo de
@@ -47,11 +159,20 @@
                             </select>
                         </div>
 
+                        <!-- 3. ZONA DE ARRASTRAR Y SOLTAR (Gatillo visual) -->
                         <div class="mb-4">
-                            <label for="archivo_excel" class="form-label fw-bold text-secondary">3. Sube el archivo
-                                Excel (.xlsx)</label>
-                            <input class="form-control shadow-sm" type="file" id="archivo_excel" name="archivo_excel"
-                                accept=".xlsx, .xls" required>
+                            <label class="form-label fw-bold text-secondary">3. Sube el archivo Excel (.xlsx, .xls, .xlsm)</label>
+
+                            <!-- Input oculto real -->
+                            <input type="file" id="archivo_excel" name="archivo_excel" accept=".xlsx, .xls, .xlsm" required>
+
+                            <!-- Zona visual Drop Zone -->
+                            <div class="drop-zone" id="dropZone">
+                                <i class='bx bx-cloud-upload icon'></i>
+                                <div class="text">Arrastra tu archivo aquí</div>
+                                <div class="subtext">o haz clic para seleccionar</div>
+                                <div class="file-name" id="fileNameDisplay"></div>
+                            </div>
                         </div>
 
                         <button type="submit" class="btn btn-primary w-100 fw-bold shadow-sm py-2">
@@ -63,4 +184,135 @@
         </div>
     </div>
 </div>
+
+<!-- OVERLAY DE PANTALLA COMPLETA (Oculto por defecto) -->
+<div id="fullPageOverlay">
+    <i class='bx bx-cloud-upload overlay-icon'></i>
+    <div class="overlay-text">Suelta el archivo aquí</div>
+    <div class="overlay-subtext">El archivo se cargará automáticamente en el formulario</div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // --- SISTEMA INTELIGENTE DE ALTURA PERFECTA (RESIZE OBSERVER) ---
+    document.addEventListener("DOMContentLoaded", function () {
+        const tabla = document.querySelector('.tabla-scroll');
+
+        if (tabla) {
+            const observer = new ResizeObserver(() => {
+                const rect = tabla.getBoundingClientRect();
+                const pixelesLibres = window.innerHeight - rect.top;
+                const alturaPerfecta = (pixelesLibres / 0.8) - 10;
+                tabla.style.height = alturaPerfecta + "px";
+                tabla.style.maxHeight = alturaPerfecta + "px";
+            });
+            observer.observe(document.body);
+        }
+    });
+
+      // --- LÓGICA DEL DRAG & DROP (PANTALLA COMPLETA CON VALIDACIÓN DE PÍXELES) ---
+  document.addEventListener("DOMContentLoaded", function() {
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('archivo_excel');
+    const fileNameDisplay = document.getElementById('fileNameDisplay');
+    const overlay = document.getElementById('fullPageOverlay');
+
+    // --- VALIDACIÓN DE PÍXELES DE PANTALLA ---
+    // Esta función ajusta el tamaño del overlay según la resolución del monitor
+    function ajustarOverlayAPantalla() {
+      const ancho = window.innerWidth;
+      const alto = window.innerHeight;
+      
+      // Si la pantalla es muy pequeña (ej. laptop pequeña), reducimos el texto
+      if (ancho < 1366 || alto < 768) {
+        overlay.style.fontSize = '0.8rem';
+        document.querySelector('#fullPageOverlay .overlay-icon').style.fontSize = '5rem';
+        document.querySelector('#fullPageOverlay .overlay-text').style.fontSize = '1.8rem';
+      } else {
+        // Pantalla normal o grande
+        overlay.style.fontSize = '1rem';
+        document.querySelector('#fullPageOverlay .overlay-icon').style.fontSize = '8rem';
+        document.querySelector('#fullPageOverlay .overlay-text').style.fontSize = '2.5rem';
+      }
+    }
+
+    // Ejecutamos la validación al cargar y cuando se redimensiona la ventana
+    ajustarOverlayAPantalla();
+    window.addEventListener('resize', ajustarOverlayAPantalla);
+
+    // 1. Click en la zona -> Abre el explorador de archivos
+    dropZone.addEventListener('click', () => {
+      fileInput.click();
+    });
+
+    // 2. Prevenir el comportamiento por defecto en TODA la ventana
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+      document.body.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      }, false);
+    });
+
+    // 3. Mostrar el Overlay cuando se arrastra un archivo
+    document.body.addEventListener('dragenter', (e) => {
+      if (e.dataTransfer && e.dataTransfer.types.includes('Files')) {
+        overlay.classList.add('active');
+      }
+    });
+
+    // 4. Ocultar el Overlay cuando el ratón sale de la ventana (con retraso)
+    let dragLeaveTimer;
+    document.body.addEventListener('dragleave', (e) => {
+      if (!e.relatedTarget) {
+        clearTimeout(dragLeaveTimer);
+        dragLeaveTimer = setTimeout(() => {
+          overlay.classList.remove('active');
+        }, 100);
+      }
+    });
+
+    // 5. Manejar el archivo soltado en CUALQUIER parte de la ventana
+    document.body.addEventListener('drop', (e) => {
+      clearTimeout(dragLeaveTimer);
+      overlay.classList.remove('active'); // Ocultar overlay inmediatamente
+      
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        const file = files[0];
+        if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls') || file.name.endsWith('.xlsm')) {
+          fileInput.files = files;
+          actualizarNombreArchivo(file.name);
+        } else {
+          alert("Por favor, suelta solo archivos Excel (.xlsx o .xls)");
+        }
+      }
+    });
+
+    // 6. Manejar el archivo seleccionado por click
+    fileInput.addEventListener('change', function() {
+      if (this.files.length > 0) {
+        actualizarNombreArchivo(this.files[0].name);
+      }
+    });
+
+    // Función auxiliar para mostrar el nombre del archivo
+    function actualizarNombreArchivo(nombre) {
+      fileNameDisplay.textContent = "Archivo seleccionado: " + nombre;
+      fileNameDisplay.style.display = 'block';
+      
+      dropZone.style.borderColor = '#198754';
+      dropZone.style.backgroundColor = '#d1e7dd';
+      
+      const icon = dropZone.querySelector('.icon');
+      icon.classList.remove('bx-cloud-upload');
+      icon.classList.add('bx-check-circle');
+      icon.style.color = '#198754';
+      
+      dropZone.querySelector('.text').textContent = "¡Archivo listo!";
+      dropZone.querySelector('.subtext').textContent = "Haz clic para cambiar si lo deseas";
+    }
+  });
+</script>
 {% endblock %}
