@@ -427,3 +427,44 @@ def recalcular_primera_semana_cascada_interna(lote_nombre, aves_iniciales, cur, 
         """, valores_update)
 
     return valores_update, campos_reg_actualizado
+
+def get_data_grafico_primera_semana(lote_nombre):
+    """
+    Extrae y formatea los datos de la primera semana para alimentar 
+    el gráfico mixto de Peso, Consumo y Uniformidad.
+    """
+    if not lote_nombre or lote_nombre == 'VACIO':
+        return None
+        
+    filas = get_primera_semana_by_lote(lote_nombre)
+    if not filas:
+        return None
+
+    # Estructura de datos para Chart.js
+    datos = {
+        'etiquetas': [],
+        'peso_tabla': [],
+        'peso_real': [],
+        'consumo_tab_acum': [],
+        'consumo_real_acum': [],
+        'unif_menos': [],
+        'unif_centro': [],
+        'unif_mas': []
+    }
+
+    for f in filas:
+        # Eje X (0, 0/1, 0/2...)
+        datos['etiquetas'].append(f.get('sem', ''))
+        
+        # Líneas (Gramos)
+        datos['peso_tabla'].append(to_float_safe(f.get('peso_tabla', 0)))
+        datos['peso_real'].append(to_float_safe(f.get('peso_real', 0)))
+        datos['consumo_tab_acum'].append(to_float_safe(f.get('cons_gr_ave_tab_acum', 0)))
+        datos['consumo_real_acum'].append(to_float_safe(f.get('cons_gr_ave_ac', 0)))
+        
+        # Barras apiladas (Porcentajes)
+        datos['unif_menos'].append(to_float_safe(f.get('unif_10_menos', 0)))
+        datos['unif_centro'].append(to_float_safe(f.get('porc_uniformidad', 0)))
+        datos['unif_mas'].append(to_float_safe(f.get('unif_10_mas', 0)))
+
+    return datos
