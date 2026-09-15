@@ -1,0 +1,80 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4 align-items-center">
+        <div class="col-md-6">
+            <h2 class="h4 text-primary fw-bold mb-0">
+                <i class="fas fa-layer-group me-2"></i> Fórmulas Configuradas por Lote
+            </h2>
+        </div>
+        <!-- Selector de Lote -->
+        <div class="col-md-6 d-flex justify-content-end align-items-center gap-2">
+            <label class="fw-bold text-muted small mb-0">Seleccionar Lote:</label>
+            <form method="GET" action="{{ url_for('main.resumen_lote_formulas') }}" class="d-inline-block">
+                <select name="lote_id" class="form-select form-select-sm fw-bold text-primary"
+                    onchange="this.form.submit()">
+                    {% for l in lotes %}
+                    <option value="{{ l['lote'] }}" {% if l['lote']==lote_id %}selected{% endif %}>
+                        {{ l['lote'] }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabla Resumen -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="bg-light">
+                        <tr>
+                            <th class="text-secondary small fw-bold text-uppercase px-4">ITEM</th>
+                            <th class="text-secondary small fw-bold text-uppercase">Nombre de la Dieta</th>
+                            <th class="text-secondary small fw-bold text-uppercase text-center">N° Insumos</th>
+                            <th class="text-secondary small fw-bold text-uppercase text-end">Total Peso</th>
+                            <th class="text-secondary small fw-bold text-uppercase text-end">Costo Bache</th>
+                            <th class="text-secondary small fw-bold text-uppercase text-center px-4">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for f in formulas %}
+                        <tr>
+                            <td class="px-4 fw-bold text-primary">{{ f['item_id'] }}</td>
+                            <td class="fw-bold text-dark">{{ f['nombre_dieta'] }}</td>
+                            <td class="text-center"><span class="badge bg-secondary">{{ f['total_insumos'] }}
+                                    insumos</span></td>
+                            <td class="text-end fw-semibold">{{ "{:,.2f}".format(f['total_kg']) }} kg</td>
+                            <td class="text-end fw-bold text-success">$ {{ "{:,.2f}".format(f['costo_total_bache']) }}
+                            </td>
+                            <td class="text-center px-4">
+                                <div class="d-flex justify-content-center gap-2">
+                                    <a href="{{ url_for('main.editar_receta', item_id=f['item_id'], lote_id=lote_id) }}"
+                                        class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-edit me-1"></i> Editar
+                                    </a>
+                                    <form method="POST"
+                                        action="{{ url_for('main.eliminar_formula_lote', item_id=f['item_id'], lote_id=lote_id) }}"
+                                        onsubmit="return confirm('¿Seguro que deseas borrar toda esta fórmula del lote {{ lote_id }}?');">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                                            <i class="fas fa-trash-alt me-1"></i> Borrar
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center py-4 text-muted">No hay fórmulas registradas para el lote
+                                {{ lote_id }}.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -65,8 +65,8 @@
                                     <td class="fw-bold text-dark">{{ alimento['nombre'] }}</td>
                                     <td class="text-center text-muted">{{ alimento['rango_semanas'] }}</td>
                                     <td class="text-center px-4">
-                                        <a href="{{ url_for('main.editar_receta', item_id=alimento['item_id']) }}"
-                                            class="btn btn-sm btn-outline-primary">
+                                        <a href="{{ url_for('main.editar_receta', item_id=alimento['item_id'], lote_id=alimento['lote'] if alimento['lote'] else 'GENERAL') }}"
+                                            class="btn btn-sm btn-outline-primary" title="Editar Fórmula">
                                             <i class="fas fa-edit me-1"></i> Ver Fórmula
                                         </a>
                                     </td>
