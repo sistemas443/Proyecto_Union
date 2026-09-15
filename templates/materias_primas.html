@@ -2,67 +2,164 @@
 
 {% block content %}
 <div class="container-fluid py-4">
-    <div class="row mb-4">
-        <div class="col-12 d-flex justify-content-between align-items-center">
+    <!-- Encabezado con Botón de Modal -->
+    <div class="row mb-3 align-items-center">
+        <div class="col-md-6">
             <h2 class="h4 text-primary fw-bold mb-0">
-                <i class="fas fa-seedling me-2"></i> Gestión de Materias Primas
+                <i class="fas fa-boxes me-2"></i> Gestión de Materias Primas
             </h2>
+        </div>
+        <div class="col-md-6 text-end">
+            <!-- BOTÓN QUE ACTIVA EL MODAL -->
+            <button type="button" class="btn btn-dark btn-sm fw-bold shadow-sm" data-bs-toggle="modal"
+                data-bs-target="#modalNuevaMateriaPrima">
+                <i class="fas fa-plus me-1"></i> Agregar Materia Prima +
+            </button>
         </div>
     </div>
 
+    <!-- Tabla ocupando el 100% del ancho (col-12) -->
     <div class="row">
-        <!-- Formulario de Registro -->
-        <div class="col-md-4 mb-4">
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
-                    <h6 class="fw-bold text-secondary">Nueva Materia Prima</h6>
-                </div>
-                <div class="card-body">
-                    <form method="POST" action="{{ url_for('main.materias_primas') }}">
-                        <div class="mb-3">
-                            <label class="form-label fw-bold text-muted small">Nombre del Insumo</label>
-                            <input type="text" name="nombre" class="form-control form-control-sm" placeholder="Ej. MAIZ, TORTA DE SOYA" required autocomplete="off">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label fw-bold text-muted small">Precio Actual (por KG)</label>
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text">$</span>
-                                <input type="number" step="0.01" name="precio_actual_kg" class="form-control" placeholder="0.00" required>
-                            </div>
-                        </div>
-                        <button type="submit" class="btn btn-primary btn-sm w-100 fw-bold">
-                            <i class="fas fa-save me-1"></i> Guardar Insumo
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </div>
-
-        <!-- Tabla de Inventario Base -->
-        <div class="col-md-8">
+        <div class="col-12">
             <div class="card border-0 shadow-sm">
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
-                            <thead class="bg-light">
+                        <table class="table table-bordered table-hover align-middle mb-0 text-nowrap"
+                            style="font-size: 0.85rem;">
+                            <thead class="text-center align-middle" style="background-color: #f8f9fa;">
                                 <tr>
-                                    <th class="text-secondary small fw-bold text-uppercase px-4">Insumo</th>
-                                    <th class="text-secondary small fw-bold text-uppercase text-end">Costo (KG)</th>
-                                    <th class="text-secondary small fw-bold text-uppercase text-center px-4">Última Actualización</th>
+                                    <th style="background-color: #000000; color: #f8f4f4;">PRODUCTO</th>
+                                    <th style="background-color: #000000; color: #f8f4f4;width: 200px;">PROVEEDOR</th>
+                                    <th style="background-color: #000000; color: #f8f4f4;">PRECIO KG</th>
+                                    <th style="background-color: #000000; color: #f8f4f4; width: 150px;">IVA</th>
+                                    <th style="background-color: #198754; color: #fff;">P+IVA</th>
+                                    <th style="background-color: #000000; color: #f8f4f4; width: 120px;">FLETE</th>
+                                    <th style="background-color: #0d6efd; color: #fff;">P+IVA+FLETE</th>
+                                    <th style="background-color: #000000; color: #f8f4f4;">PRECIO NETO</th>
+                                    <th style="background-color: #0bdb2a; color: #fff;">P+FLETE</th>
+                                    <th style="background-color: #f8f9fa;">ACCIONES</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for mp in materias_primas %}
-                                <tr>
-                                    <td class="px-4 fw-bold text-dark">{{ mp.nombre }}</td>
-                                    <td class="text-end fw-semibold text-success">$ {{ "{:,.2f}".format(mp.precio_actual_kg) }}</td>
-                                    <td class="text-center text-muted small px-4">
-                                        {{ mp.fecha_actualizacion.strftime('%Y-%m-%d %H:%M') if mp.fecha_actualizacion else 'Sin fecha' }}
+                                <tr {% if mp['es_maquila'] %}class="table-warning" {% endif %}>
+                                    <!-- PRODUCTO -->
+                                    <td class="px-2">
+                                        <input type="text" form="form-mp-edit-{{ mp['id'] }}" name="nombre"
+                                            value="{{ mp['nombre'] }}"
+                                            class="form-control form-control-sm border-0 bg-transparent fw-bold text-dark text-uppercase"
+                                            required>
+                                    </td>
+
+                                    <!-- PROVEEDOR DESPLEGABLE -->
+                                    <td class="px-2">
+                                        <select form="form-mp-edit-{{ mp['id'] }}" name="proveedor"
+                                            class="form-select form-select-sm border-0 bg-transparent text-uppercase fw-semibold"
+                                            style="font-size: 0.85rem;">
+                                            <option value="">-- SIN PROVEEDOR --</option>
+                                            {% for prov in proveedores %}
+                                            <option value="{{ prov['nombre'] }}" {% if mp['proveedor']==prov['nombre']
+                                                %}selected{% endif %}>
+                                                {{ prov['nombre'] }}
+                                            </option>
+                                            {% endfor %}
+                                        </select>
+                                    </td>
+
+                                    <!-- PRECIO KG -->
+                                    <td class="text-end px-2">
+                                        <input type="text" form="form-mp-edit-{{ mp['id'] }}" name="precio_actual_kg"
+                                            value="{{ " {:,.0f}".format(mp['precio_actual_kg']).replace(',', '.' ) if
+                                            mp['precio_actual_kg'] else '0' }}"
+                                            class="form-control form-control-sm border-0 bg-transparent text-end fw-bold text-dark monto-miles"
+                                            style="width: 85px;" required>
+                                    </td>
+
+                                    <!-- IVA -->
+                                    <!-- IVA (Factor) -->
+                                    <td class="text-center px-1">
+                                        <select form="form-mp-edit-{{ mp['id'] }}" name="iva"
+                                            class="form-select form-select-sm border-0 bg-transparent text-center p-0"
+                                            style="font-size: 0.85rem;">
+                                            <option value="1.00" {% if mp['iva']|float==1.00 %}selected{% endif %}>1.00
+                                            </option>
+                                            <option value="1.05" {% if mp['iva']|float==1.05 %}selected{% endif %}>1.05
+                                            </option>
+                                            <option value="1.19" {% if mp['iva']|float==1.19 %}selected{% endif %}>1.19
+                                            </option>
+                                        </select>
+                                    </td>
+
+                                    <!-- P+IVA -->
+                                    <td class="text-end px-2 text-success fw-semibold"
+                                        style="background-color: #e8f5e9;">
+                                        $ {{ "{:,.1f}".format(mp['p_iva']) }}
+                                    </td>
+
+                                    <!-- FLETE -->
+                                    <td class="text-end px-2">
+                                        <input type="text" form="form-mp-edit-{{ mp['id'] }}" name="flete" value="{{ "
+                                            {:,.0f}".format(mp['flete']).replace(',', '.' ) if mp['flete'] else '0' }}"
+                                            class="form-control form-control-sm border-0 bg-transparent text-end monto-miles"
+                                            style="width: 70px;">
+                                    </td>
+
+                                    <!-- P+IVA+FLETE -->
+                                    <td class="text-end px-2 text-primary fw-bold" style="background-color: #e3f2fd;">
+                                        $ {{ "{:,.0f}".format(mp['p_iva_flete']) }}
+                                    </td>
+
+                                    <!-- PRECIO NETO -->
+                                    <td class="text-end px-2 text-muted">
+                                        $ {{ "{:,.0f}".format(mp['precio_neto']) }}
+                                    </td>
+
+                                    <!-- P+FLETE -->
+                                    <td class="text-end px-2 text-dark" style="background-color: #f1f3f5;">
+                                        $ {{ "{:,.0f}".format(mp['p_flete']) }}
+                                    </td>
+
+                                    <!-- ACCIONES -->
+                                    <td class="text-center px-2">
+                                        <div class="d-flex justify-content-center gap-1">
+                                            <form id="form-mp-edit-{{ mp['id'] }}" method="POST"
+                                                action="{{ url_for('main.editar_materia_prima', id_mp=mp['id']) }}">
+                                            </form>
+
+                                            <!-- Lápiz Guardar -->
+                                            <button type="submit" form="form-mp-edit-{{ mp['id'] }}"
+                                                class="btn btn-sm btn-outline-primary border-0 p-1"
+                                                title="Guardar Cambios">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15"
+                                                    fill="currentColor" class="bi bi-pencil-square" viewBox="0 0 16 16">
+                                                    <path
+                                                        d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z" />
+                                                    <path fill-rule="evenodd"
+                                                        d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5z" />
+                                                </svg>
+                                            </button>
+
+                                            <!-- Papelera Borrar -->
+                                            <form method="POST"
+                                                action="{{ url_for('main.eliminar_materia_prima', id_mp=mp['id']) }}"
+                                                onsubmit="return confirm('¿Deseas eliminar este insumo?');"
+                                                class="d-inline">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger border-0 p-1"
+                                                    title="Eliminar Insumo">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15"
+                                                        fill="currentColor" class="bi bi-trash3" viewBox="0 0 16 16">
+                                                        <path
+                                                            d="M6.5 1h3a.5.5 0 0 1 .5.5v1H6v-1a.5.5 0 0 1 .5-.5M11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3A1.5 1.5 0 0 0 5 1.5v1H1.5a.5.5 0 0 0 0 1h.538l.853 10.66A2 2 0 0 0 4.937 16h6.126a2 2 0 0 0 1.997-1.84l.853-10.66h.538a.5.5 0 0 0 0-1zm1.958 1-.846 10.58a1 1 0 0 1-.997.92H4.937a1 1 0 0 1-.997-.92L3.042 3.5zm-7.487 1a.5.5 0 0 1 .528.47l.5 8.5a.5.5 0 0 1-.998.06L5 5.03a.5.5 0 0 1 .47-.53Zm5.058 0a.5.5 0 0 1 .47.53l-.5 8.5a.5.5 0 1 1-.998-.06l.5-8.5a.5.5 0 0 1 .528-.47M8 4.5a.5.5 0 0 1 .5.5v8.5a.5.5 0 0 1-1 0V5a.5.5 0 0 1 .5-.5" />
+                                                    </svg>
+                                                </button>
+                                            </form>
+                                        </div>
                                     </td>
                                 </tr>
                                 {% else %}
                                 <tr>
-                                    <td colspan="3" class="text-center py-4 text-muted">No hay materias primas registradas.</td>
+                                    <td colspan="10" class="text-center py-4 text-muted">No hay materias primas
+                                        registradas.</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -73,4 +170,105 @@
         </div>
     </div>
 </div>
+
+<!-- MODAL: REGISTRO DE NUEVA MATERIA PRIMA -->
+<div class="modal fade" id="modalNuevaMateriaPrima" tabindex="-1" aria-labelledby="modalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title fw-bold fs-6" id="modalLabel">
+                    <i class="fas fa-plus-circle me-1"></i> Nueva Materia Prima
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <!-- INICIO DEL FORMULARIO -->
+            <form method="POST" action="{{ url_for('main.materias_primas') }}">
+                <div class="modal-body">
+                    
+                    <!-- Producto -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-muted small mb-1">Nombre del Producto</label>
+                        <input type="text" name="nombre" class="form-control form-control-sm text-uppercase" placeholder="Ej. MAIZ" required autocomplete="off">
+                    </div>
+
+                    <!-- Proveedor -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-muted small mb-1">Proveedor</label>
+                        <select name="proveedor" class="form-select form-select-sm text-uppercase">
+                            <option value="">-- SELECCIONE PROVEEDOR (OPCIONAL) --</option>
+                            {% for prov in proveedores %}
+                            <option value="{{ prov['nombre'] }}">{{ prov['nombre'] }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Precio KG -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-muted small mb-1">Precio KG ($)</label>
+                        <input type="text" name="precio_actual_kg" class="form-control form-control-sm monto-miles" placeholder="0" required autocomplete="off">
+                    </div>
+
+                    <!-- Row con Factor IVA y Flete -->
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-bold text-muted small mb-1">Factor IVA</label>
+                            <select name="iva" class="form-select form-select-sm">
+                                <option value="1.00">1.00 (0%)</option>
+                                <option value="1.05">1.05 (5%)</option>
+                                <option value="1.19">1.19 (19%)</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-bold text-muted small mb-1">Flete ($/Kg)</label>
+                            <input type="text" name="flete" class="form-control form-control-sm monto-miles" placeholder="0" autocomplete="off">
+                        </div>
+                    </div>
+
+                    <!-- Checkbox Maquila -->
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" name="es_maquila" id="es_maquila_check">
+                        <label class="form-check-label fw-bold text-secondary small" for="es_maquila_check">
+                            ¿Es costo de Maquila?
+                        </label>
+                    </div>
+
+                </div>
+
+                <!-- FOOTER DENTRO DEL FORMULARIO -->
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-sm btn-primary fw-bold">
+                        <i class="fas fa-save me-1"></i> Guardar Insumo
+                    </button>
+                </div>
+            </form>
+            <!-- FIN DEL FORMULARIO -->
+
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        function formatNumber(value) {
+            return value.replace(/\D/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+        }
+
+        document.querySelectorAll('.monto-miles').forEach(function (input) {
+            input.addEventListener('input', function (e) {
+                e.target.value = formatNumber(e.target.value);
+            });
+        });
+
+        document.querySelectorAll('form').forEach(function (form) {
+            form.addEventListener('submit', function () {
+                form.querySelectorAll('.monto-miles').forEach(function (input) {
+                    input.value = input.value.replace(/\./g, '');
+                });
+            });
+        });
+    });
+</script>
 {% endblock %}
