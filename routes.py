@@ -1176,9 +1176,25 @@ def procesar_carga():
         except Exception as e:
             print(f"Error procesando semanal producción: {e}")
             flash(f"Error procesando el archivo semanal: {e}", "danger")
+            
+    # ---------------------------------------------------------
+    # 3. Procesamiento del Módulo Primera Semana
+    # ---------------------------------------------------------
+    elif modulo_seleccionado == 'primera_semana':
+        try:
+            from models.primera_semana.services import procesar_excel_primera_semana
+            exito, msj_resultado = procesar_excel_primera_semana(archivo, lote_seleccionado)
+            
+            if exito:
+                flash(msj_resultado, "success")
+            else:
+                flash(msj_resultado, "danger")
+        except Exception as e:
+            print(f"Error procesando primera semana: {e}")
+            flash(f"Error procesando el archivo de primera semana: {e}", "danger")
 
     # ---------------------------------------------------------
-    # 3. Otros módulos no programados aún
+    # 4. Otros módulos no programados aún
     # ---------------------------------------------------------
     else:
         flash(f"La carga para '{modulo_seleccionado}' aún no está programada.", "warning")
