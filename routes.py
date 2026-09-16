@@ -1329,21 +1329,26 @@ def editar_receta(item_id, lote_id):
     # Registros de Producción por Día
     # 1. Registros de Producción por Día
     registros_produccion = FormulaProduccion.obtener_produccion_por_lote(item_id, lote_id)
-    
-    # IMPORTANTE: Convertimos la suma total a float
     total_toneladas_lote = float(sum([r['toneladas'] for r in registros_produccion])) if registros_produccion else 0.0
 
     # 2. Cálculo dinámico de Consumo Total por Materia Prima
     receta_calculada = []
     for insumo in insumos_receta:
-        # Aseguramos que ambos valores sean float
         cant_kg = float(insumo['cantidad_kg']) if insumo['cantidad_kg'] else 0.0
+        
+        # --- NUEVO: Matriz de consumo por cada día registrado ---
+        consumos_diarios = []
+        for reg in registros_produccion:
+            toneladas_dia = float(reg['toneladas'])
+            consumos_diarios.append(cant_kg * toneladas_dia)
+        # --------------------------------------------------------
         
         receta_calculada.append({
             'id': insumo['id'],
             'insumo': insumo['insumo'],
             'cantidad_kg': cant_kg,
-            'total_consumo_kg': cant_kg * total_toneladas_lote  # Multiplicación float * float
+            'consumos_diarios': consumos_diarios,  # Enviamos la lista de días a Jinja2
+            'total_consumo_kg': cant_kg * total_toneladas_lote
         })
     return render_template(
         'editar_receta.html',

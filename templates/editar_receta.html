@@ -39,14 +39,26 @@
                 </div>
                 <div class="card-body p-0">
                     <!-- TABLA: COMPOSICIÓN BASE (1.000 KG) CON ACCIONES HABILITADAS -->
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0" style="font-size: 0.88rem;">
+                    <!-- TABLA: COMPOSICIÓN BASE (1.000 KG) CON MATRIZ DIARIA -->
+                    <div class="table-responsive shadow-sm">
+                        <table class="table table-hover align-middle mb-0 text-nowrap" style="font-size: 0.88rem;">
                             <thead class="bg-light">
                                 <tr>
                                     <th class="px-3">MATERIA PRIMA</th>
                                     <th class="text-end" style="width: 140px;">KG / BACHE</th>
-                                    <th class="text-end text-primary fw-bold">TOTAL CONSUMO (Kg)</th>
-                                    <th class="text-center px-3" style="width: 90px;">ACCIONES</th>
+
+                                    <!-- COLUMNAS DINÁMICAS: UNA POR CADA DÍA REGISTRADO -->
+                                    {% for reg in registros_produccion %}
+                                    <th class="text-end text-secondary" style="min-width: 110px;">
+                                        {{ reg['fecha'].strftime('%d/%m/%Y') }}<br>
+                                        <small class="text-muted">({{ "{:,.0f}".format(reg['toneladas']) }} Ton)</small>
+                                    </th>
+                                    {% endfor %}
+
+                                    <th class="text-end text-primary fw-bold">TOTAL ACUMULADO</th>
+                                    <th class="text-center px-3"
+                                        style="width: 90px; position: sticky; right: 0; background: #f8f9fa;">ACCIONES
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -66,23 +78,31 @@
                                             style="width: 110px;" required>
                                     </td>
 
-                                    <!-- CONSUMO TOTAL CALCULADO -->
-                                    <td class="text-end fw-bold text-primary">
+                                    <!-- CONSUMOS INDIVIDUALES POR DÍA -->
+                                    {% for consumo_dia in insumo['consumos_diarios'] %}
+                                    <td class="text-end text-secondary">
+                                        {{ "{:,.2f}".format(consumo_dia).replace(',', 'X').replace('.',
+                                        ',').replace('X', '.') }}
+                                    </td>
+                                    {% endfor %}
+
+                                    <!-- CONSUMO TOTAL ACUMULADO -->
+                                    <td class="text-end fw-bold text-primary" style="background-color: #f1f8ff;">
                                         {{ "{:,.2f}".format(insumo['total_consumo_kg']).replace(',', 'X').replace('.',
-                                        ',').replace('X', '.') }} Kg
+                                        ',').replace('X', '.') }}
                                     </td>
 
-                                    <!-- ACCIONES (EDITAR Y ELIMINAR) -->
-                                    <td class="text-center px-3">
+                                    <!-- ACCIONES (Fijas a la derecha) -->
+                                    <td class="text-center px-3"
+                                        style="position: sticky; right: 0; background: white; box-shadow: -2px 0 5px rgba(0,0,0,0.05); min-width: 90px;">
                                         <div class="d-flex justify-content-center gap-1">
-                                            <!-- Formulario Oculto de Actualización -->
                                             <form id="form-receta-edit-{{ insumo['id'] }}" method="POST"
                                                 action="{{ url_for('main.actualizar_insumo_receta', id_registro=insumo['id']) }}">
                                                 <input type="hidden" name="item_id" value="{{ item_id }}">
                                                 <input type="hidden" name="lote_id" value="{{ lote_id }}">
                                             </form>
 
-                                            <!-- Botón Guardar (Lápiz) -->
+                                            <!-- Botón Guardar (Lápiz SVG) -->
                                             <button type="submit" form="form-receta-edit-{{ insumo['id'] }}"
                                                 class="btn btn-sm btn-outline-primary border-0 p-1"
                                                 title="Guardar Cantidad">
@@ -95,11 +115,10 @@
                                                 </svg>
                                             </button>
 
-                                            <!-- Formulario y Botón Eliminar -->
+                                            <!-- Formulario y Botón Eliminar (Papelera SVG) -->
                                             <form method="POST"
                                                 action="{{ url_for('main.eliminar_insumo_receta', id_registro=insumo['id']) }}"
-                                                onsubmit="return confirm('¿Deseas eliminar este insumo de la receta?');"
-                                                class="d-inline">
+                                                onsubmit="return confirm('¿Eliminar insumo?');" class="d-inline">
                                                 <input type="hidden" name="item_id" value="{{ item_id }}">
                                                 <input type="hidden" name="lote_id" value="{{ lote_id }}">
                                                 <button type="submit" class="btn btn-sm btn-outline-danger border-0 p-1"
@@ -116,25 +135,34 @@
                                 </tr>
                                 {% else %}
                                 <tr>
-                                    <td colspan="4" class="text-center py-4 text-muted">No hay insumos agregados en la
-                                        receta de este lote.</td>
+                                    <td colspan="100%" class="text-center py-4 text-muted">No hay insumos agregados en
+                                        la receta de este lote.</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
 
-                            <!-- PIE DE TABLA CON TOTALES -->
+                            <!-- PIE DE TABLA CON TOTALES DIARIOS Y GENERALES -->
                             <tfoot class="bg-light fw-bold">
                                 <tr>
                                     <td class="px-3 text-uppercase">TOTAL BACHE:</td>
                                     <td class="text-end text-dark">
                                         {{ "{:,.2f}".format(totales['total_kg'] or 0).replace(',', 'X').replace('.',
-                                        ',').replace('X', '.') }} Kg
+                                        ',').replace('X', '.') }}
                                     </td>
-                                    <td class="text-end text-primary fs-6">
+
+                                    <!-- TOTALES CALCULADOS POR CADA DÍA -->
+                                    {% for reg in registros_produccion %}
+                                    <td class="text-end text-secondary">
                                         {{ "{:,.2f}".format((totales['total_kg']|float or 0.0) *
-                                        total_toneladas).replace(',', 'X').replace('.', ',').replace('X', '.') }} Kg
+                                        reg['toneladas']|float).replace(',', 'X').replace('.', ',').replace('X', '.') }}
                                     </td>
-                                    <td></td>
+                                    {% endfor %}
+
+                                    <td class="text-end text-primary fs-6" style="background-color: #e3f2fd;">
+                                        {{ "{:,.2f}".format((totales['total_kg']|float or 0.0) *
+                                        total_toneladas).replace(',', 'X').replace('.', ',').replace('X', '.') }}
+                                    </td>
+                                    <td style="position: sticky; right: 0; background: #f8f9fa;"></td>
                                 </tr>
                             </tfoot>
                         </table>

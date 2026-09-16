@@ -81,17 +81,23 @@ class FormulaDetalle:
 
     @staticmethod
     def obtener_lotes_disponibles():
+        """Obtiene todos los lotes de la tabla maestra para el selector."""
         conn = get_db_connection()
         try:
-            with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
+            with conn.cursor(cursor_factory=DictCursor) as cur:
+                # Consulta directa a la tabla maestra de lotes
                 cur.execute("""
-                    SELECT DISTINCT lote_id AS lote 
-                    FROM formula_detalle 
-                    WHERE lote_id IS NOT NULL AND lote_id != ''
-                    ORDER BY lote_id ASC;
+                    SELECT lote 
+                    FROM cabecera_lotes 
+                    WHERE lote IS NOT NULL 
+                    ORDER BY lote ASC;
                 """)
-                lotes = cur.fetchall()
-                return lotes if lotes else [{'lote': '69-7'}, {'lote': '69-10'}, {'lote': '72-11'}]
+                lotes_db = cur.fetchall()
+                
+                # Agregamos 'LOTE GENERAL' como primera opción y luego todos los lotes de la BD
+                lotes_lista = [{'lote': 'LOTE GENERAL'}] + [dict(l) for l in lotes_db]
+                
+                return lotes_lista
         finally:
             conn.close()
             
