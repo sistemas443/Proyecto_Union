@@ -10,6 +10,7 @@ from werkzeug.utils import secure_filename
 from models.planta_alimentos.maestros import MateriaPrima, Proveedor
 # Importaciones para procesar imágenes de perfil (recortar a cuadrado y comprimir sin perder calidad)
 from PIL import Image, ImageOps
+from flask import jsonify  # Asegúrate de tener esto arriba en los imports
 
 # Importaciones de los servicios y modelos de base de datos de cada módulo del sistema
 from models.base import get_db_connection  
@@ -1310,10 +1311,39 @@ def empresas_maquila():
 from models.planta_alimentos.formulas import FormulaDetalle, FormulaProduccion
 # Asegúrate de que MateriaPrima y CatalogoAlimento estén importados arriba
 
-@bp.route('/editar-receta/<int:item_id>', defaults={'lote_id': '69-10'}, methods=['GET', 'POST'])
+@bp.route('/editar-receta/<int:item_id>', defaults={'lote_id': '0'}, methods=['GET', 'POST'])
 @bp.route('/editar-receta/<int:item_id>/<string:lote_id>', methods=['GET', 'POST'])
 @login_requerido
 def editar_receta(item_id, lote_id):
+    
+    # ==========================================
+    # 1. CARGA INICIAL (Siempre necesaria)
+    # ==========================================
+    lotes = FormulaDetalle.obtener_lotes_disponibles()
+    materias_primas = MateriaPrima.get_all()
+
+    # ==========================================
+    # 2. VALIDACIÓN: SI NO HAY LOTE, CARGAR PÁGINA VACÍA
+    # ==========================================
+    if lote_id == '0':
+        return render_template(
+            'editar_receta.html',
+            item_id=item_id,
+            lote_id=lote_id,
+            # Enviamos explícitamente variables vacías para evitar errores de Jinja2
+            insumos_receta=[],
+            totales={'total_kg': 0, 'total_baches': 0},
+            registros_produccion=[],
+            total_toneladas=0.0,
+            insumos_nucleo=[],
+            # ¡Las dos vitales para que no se vea el select en blanco!
+            lotes=lotes, 
+            materias_primas=materias_primas
+        )
+
+    # ==========================================
+    # 3. PROCESAMIENTO DE FORMULARIOS (POST)
+    # ==========================================
     if request.method == 'POST':
         # Validar si el formulario enviado es de Producción Diaria
         if 'guardar_produccion' in request.form:
@@ -1321,12 +1351,16 @@ def editar_receta(item_id, lote_id):
             toneladas_raw = request.form.get('toneladas', '0').replace('.', '').replace(',', '.')
             toneladas = float(toneladas_raw) if toneladas_raw else 0.0
             
+            # Capturar la novedad
+            novedad = request.form.get('novedad', '')
+
             if fecha and toneladas > 0:
-                FormulaProduccion.registrar_produccion(item_id, lote_id, fecha, toneladas)
+                FormulaProduccion.registrar_produccion(item_id, lote_id, fecha, toneladas, novedad)
                 flash('Registro de producción agregado.', 'success')
+            
             return redirect(url_for('main.editar_receta', item_id=item_id, lote_id=lote_id))
 
-        # Formulario de Insumo de Receta
+        # Formulario de Insumo de Receta (Agregar a Composición Base)
         materia_prima_id = request.form.get('materia_prima_id')
         cantidad_raw = request.form.get('cantidad_kg', '0').replace('.', '').replace(',', '.')
         cantidad_kg = float(cantidad_raw) if cantidad_raw else 0.0
@@ -1337,35 +1371,45 @@ def editar_receta(item_id, lote_id):
             
         return redirect(url_for('main.editar_receta', item_id=item_id, lote_id=lote_id))
 
+    # ==========================================
+    # 4. CARGA DE DATOS PARA UN LOTE ESPECÍFICO (GET)
+    # ==========================================
     insumos_receta = FormulaDetalle.obtener_receta(item_id, lote_id)
     resumen_totales = FormulaDetalle.obtener_resumen_totales(item_id, lote_id)
-    materias_primas = MateriaPrima.get_all()
-    lotes = FormulaDetalle.obtener_lotes_disponibles()
     
     # Registros de Producción por Día
-    # 1. Registros de Producción por Día
     registros_produccion = FormulaProduccion.obtener_produccion_por_lote(item_id, lote_id)
     total_toneladas_lote = float(sum([r['toneladas'] for r in registros_produccion])) if registros_produccion else 0.0
 
-    # 2. Cálculo dinámico de Consumo Total por Materia Prima
+    # Cálculo dinámico de Consumo Total por Materia Prima y Núcleos
     receta_calculada = []
     for insumo in insumos_receta:
         cant_kg = float(insumo['cantidad_kg']) if insumo['cantidad_kg'] else 0.0
         
-        # --- NUEVO: Matriz de consumo por cada día registrado ---
+        # Matriz de consumo por cada día registrado
         consumos_diarios = []
         for reg in registros_produccion:
             toneladas_dia = float(reg['toneladas'])
             consumos_diarios.append(cant_kg * toneladas_dia)
-        # --------------------------------------------------------
         
         receta_calculada.append({
             'id': insumo['id'],
             'insumo': insumo['insumo'],
             'cantidad_kg': cant_kg,
-            'consumos_diarios': consumos_diarios,  # Enviamos la lista de días a Jinja2
-            'total_consumo_kg': cant_kg * total_toneladas_lote
+            'consumos_diarios': consumos_diarios,
+            'total_consumo_kg': cant_kg * total_toneladas_lote,
+            
+            # Variables del núcleo (con valores por defecto por si falló la BD)
+            'es_nucleo': insumo.get('es_nucleo', True) if dict(insumo).get('es_nucleo') is not None else True,
+            'baches_nucleo': float(insumo.get('baches_nucleo', 6)) if dict(insumo).get('baches_nucleo') is not None else 6.0
         })
+
+    # Filtrar insumos para pasarlos a la tabla de Núcleo
+    insumos_nucleo = [i for i in receta_calculada if i['es_nucleo']]
+
+    # ==========================================
+    # 5. RETORNO FINAL CON TODAS LAS VARIABLES
+    # ==========================================
     return render_template(
         'editar_receta.html',
         item_id=item_id,
@@ -1375,7 +1419,8 @@ def editar_receta(item_id, lote_id):
         materias_primas=materias_primas,
         lotes=lotes,
         registros_produccion=registros_produccion,
-        total_toneladas=total_toneladas_lote
+        total_toneladas=total_toneladas_lote,
+        insumos_nucleo=insumos_nucleo
     )
 
 from models.planta_alimentos.transacciones import RegistroProduccion
@@ -1443,18 +1488,22 @@ def recetario_formulas():
 @bp.route('/resumen-lote-formulas', methods=['GET'])
 @login_requerido
 def resumen_lote_formulas():
-    lotes = RegistroProduccion.get_lotes()
-    lote_id = request.args.get('lote_id')
+    # Obtener el lote_id del formulario GET. Si no hay, asignamos '0'
+    lote_id = request.args.get('lote_id', '0')
     
-    if not lote_id and lotes:
-        lote_id = lotes[0]['lote']
+    lotes = FormulaDetalle.obtener_lotes_disponibles()
+    
+    if lote_id == '0':
+        formulas = []
+    else:
+        formulas = FormulaDetalle.obtener_formulas_por_lote(lote_id)
         
-    formulas_lote = FormulaDetalle.obtener_formulas_por_lote(lote_id) if lote_id else []
-    
-    return render_template('resumen_lote_formulas.html', 
-                           lotes=lotes, 
-                           lote_id=lote_id, 
-                           formulas=formulas_lote)
+    return render_template(
+        'resumen_lote_formulas.html',
+        lote_id=lote_id,
+        lotes=lotes,
+        formulas=formulas
+    )
     
     
 @bp.route('/receta/actualizar/<int:id_registro>', methods=['POST'])
@@ -1582,8 +1631,9 @@ def eliminar_produccion_diaria(id_registro):
 def actualizar_produccion_diaria(id_registro):
     item_id = request.form.get('item_id')
     lote_id = request.form.get('lote_id')
-    toneladas_raw = request.form.get('toneladas', '0').replace('.', '').replace(',', '.')
-    
+    toneladas = request.form.get('toneladas')
+    novedad = request.form.get('novedad', '')
+    FormulaProduccion.actualizar_produccion(id_registro, toneladas, novedad)
     try:
         toneladas = float(toneladas_raw) if toneladas_raw else 0.0
         if toneladas > 0:
@@ -1623,3 +1673,105 @@ def grafico_primera_semana():
         lote_seleccionado=lote_seleccionado,
         datos_grafico=datos_grafico
     )
+    
+# --- RUTAS NUEVAS PARA EL NÚCLEO ---
+@bp.route('/receta/nucleo/toggle/<int:id_registro>/<int:estado>', methods=['POST'])
+@login_requerido
+def toggle_nucleo(id_registro, estado):
+    es_nucleo = True if estado == 1 else False
+    try:
+        FormulaDetalle.alternar_nucleo(id_registro, es_nucleo)
+        return jsonify({'success': True, 'estado': estado})
+    except Exception as e:
+        print(f"Error al alternar núcleo: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@bp.route('/receta/nucleo/baches/<int:id_registro>', methods=['POST'])
+@login_requerido
+def actualizar_baches_nucleo(id_registro):
+    item_id = request.form.get('item_id')
+    lote_id = request.form.get('lote_id')
+    baches_raw = request.form.get('baches_nucleo', '6').replace(',', '.')
+    
+    try:
+        FormulaDetalle.actualizar_baches_nucleo(id_registro, float(baches_raw))
+    except Exception as e:
+        print(f"Error: {e}")
+        
+    return redirect(url_for('main.editar_receta', item_id=item_id, lote_id=lote_id))
+
+@bp.route('/revision-costos/<int:item_id>/<string:lote_id>', methods=['GET'])
+@login_requerido
+def revision_costos(item_id, lote_id):
+    insumos = FormulaDetalle.obtener_costos_detallados(item_id, lote_id)
+    
+    # Variables para los totales
+    nombre_dieta = insumos[0]['nombre_dieta'] if insumos else f"Dieta {item_id}"
+    totales = {'cantidad': 0, 'c_iva': 0, 'c_flete': 0, 'c_iva_flete': 0}
+    totales_sin_maquila = {'c_iva': 0, 'c_flete': 0, 'c_iva_flete': 0}
+
+    for fila in insumos:
+        cant = float(fila['cantidad'])
+        precio = float(fila['precio'])
+        iva_mult = float(fila['iva']) # Asumiendo que 1.00 es sin IVA extra
+        flete = float(fila['flete'])
+
+        # Cálculos por insumo
+        costo_iva = cant * (precio * iva_mult)
+        costo_flete = cant * (precio + flete)
+        costo_iva_flete = cant * ((precio * iva_mult) + flete)
+
+        # Guardamos en la fila para mostrarlos en la tabla
+        fila['costo_iva'] = costo_iva
+        fila['costo_flete'] = costo_flete
+        fila['costo_iva_flete'] = costo_iva_flete
+
+        # Sumamos a los totales generales
+        totales['cantidad'] += cant
+        totales['c_iva'] += costo_iva
+        totales['c_flete'] += costo_flete
+        totales['c_iva_flete'] += costo_iva_flete
+
+        # Sumamos a los totales sin maquila si corresponde
+        if not fila['es_maquila']:
+            totales_sin_maquila['c_iva'] += costo_iva
+            totales_sin_maquila['c_flete'] += costo_flete
+            totales_sin_maquila['c_iva_flete'] += costo_iva_flete
+
+    return render_template(
+        'revision_costos.html',
+        item_id=item_id,
+        lote_id=lote_id,
+        nombre_dieta=nombre_dieta,
+        insumos=insumos,
+        totales=totales,
+        totales_sin_maquila=totales_sin_maquila
+    )
+    
+@bp.route('/catalogo-alimentos/editar/<int:item_id>', methods=['POST'])
+@login_requerido
+def editar_dieta(item_id):
+    nombre = request.form.get('nombre')
+    rango = request.form.get('rango_semanas')
+    
+    if nombre:
+        exito = FormulaDetalle.actualizar_dieta(item_id, nombre, rango)
+        if exito:
+            flash('Dieta actualizada correctamente.', 'success')
+        else:
+            flash('Hubo un error al actualizar la dieta en la base de datos.', 'error')
+    else:
+        flash('El nombre de la dieta es obligatorio.', 'error')
+        
+    return redirect(url_for('main.catalogo_alimentos'))
+
+@bp.route('/catalogo-alimentos/eliminar/<int:item_id>', methods=['POST'])
+@login_requerido
+def eliminar_dieta(item_id):
+    exito = FormulaDetalle.eliminar_dieta(item_id)
+    if exito:
+        flash('Dieta eliminada del catálogo correctamente.', 'success')
+    else:
+        flash('Error al eliminar. Es posible que esta dieta ya tenga fórmulas o lotes asociados y no se pueda borrar.', 'error')
+        
+    return redirect(url_for('main.catalogo_alimentos'))

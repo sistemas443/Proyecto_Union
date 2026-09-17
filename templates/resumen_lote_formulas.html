@@ -11,20 +11,50 @@
         <!-- Selector de Lote -->
         <div class="col-md-6 d-flex justify-content-end align-items-center gap-2">
             <label class="fw-bold text-muted small mb-0">Seleccionar Lote:</label>
+            <!-- Mantenemos tu formulario GET -->
             <form method="GET" action="{{ url_for('main.resumen_lote_formulas') }}" class="d-inline-block">
                 <select name="lote_id" class="form-select form-select-sm fw-bold text-primary"
                     onchange="this.form.submit()">
+                    <option value="0" {% if lote_id=='0' or not lote_id %}selected{% endif %} disabled>Seleccione un
+                        lote...</option>
+
+                    {% if not lotes %}
+                    <option value="" disabled>⚠️ No se encontraron lotes</option>
+                    {% else %}
                     {% for l in lotes %}
-                    <option value="{{ l['lote'] }}" {% if l['lote']==lote_id %}selected{% endif %}>
-                        {{ l['lote'] }}
+                    {% set valor_lote = l.get('lote', l) if l is mapping else l %}
+
+                    <option value="{{ valor_lote }}" {% if valor_lote|string==lote_id|string %}selected{% endif %}>
+                        {% if 'LOTE' not in valor_lote|string|upper %}LOTE {% endif %}{{ valor_lote }}
                     </option>
                     {% endfor %}
+                    {% endif %}
                 </select>
             </form>
         </div>
     </div>
 
-    <!-- Tabla Resumen -->
+    <!-- ==========================================
+         VALIDACIÓN DE ESPERA
+         ========================================== -->
+    {% if lote_id == '0' or not lote_id %}
+
+    <!-- Pantalla azul de espera -->
+    <div class="alert alert-info text-center mt-5 shadow-sm border-0 py-5"
+        style="background-color: #e3f2fd; color: #052c65; border-radius: 10px;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" fill="currentColor" class="bi bi-cursor mb-3"
+            viewBox="0 0 16 16">
+            <path
+                d="M14.082 2.182a.5.5 0 0 1 .103.557L8.528 15.467a.5.5 0 0 1-.917-.007L5.57 10.694.803 8.652a.5.5 0 0 1-.006-.916l12.728-5.657a.5.5 0 0 1 .556.103zM2.25 8.184l3.897 1.67a.5.5 0 0 1 .262.263l1.67 3.897L12.743 3.52z" />
+        </svg>
+        <h4 class="fw-bold">Esperando selección de Lote</h4>
+        <p class="mb-0 fs-5 text-muted">Por favor, selecciona un lote en el menú desplegable de arriba para ver las
+            fórmulas configuradas.</p>
+    </div>
+
+    {% else %}
+
+    <!-- Tabla Resumen (Solo se muestra si hay un lote seleccionado) -->
     <div class="card border-0 shadow-sm">
         <div class="card-body p-0">
             <div class="table-responsive">
@@ -44,16 +74,20 @@
                         <tr>
                             <td class="px-4 fw-bold text-primary">{{ f['item_id'] }}</td>
                             <td class="fw-bold text-dark">{{ f['nombre_dieta'] }}</td>
-                            <td class="text-center"><span class="badge bg-secondary">{{ f['total_insumos'] }}
+                            <td class="text-center"><span class="badge bg-secondary">{{ f['num_insumos'] }}
                                     insumos</span></td>
-                            <td class="text-end fw-semibold">{{ "{:,.2f}".format(f['total_kg']) }} kg</td>
-                            <td class="text-end fw-bold text-success">$ {{ "{:,.2f}".format(f['costo_total_bache']) }}
-                            </td>
+                            <td class="text-end fw-semibold">{{ "{:,.2f}".format(f['total_peso']) }} kg</td>
+                            <td class="text-end fw-bold text-success">$ {{ "{:,.2f}".format(f['costo_bache']) }}</td>
                             <td class="text-center px-4">
                                 <div class="d-flex justify-content-center gap-2">
                                     <a href="{{ url_for('main.editar_receta', item_id=f['item_id'], lote_id=lote_id) }}"
                                         class="btn btn-sm btn-outline-primary">
                                         <i class="fas fa-edit me-1"></i> Editar
+                                    </a>
+                                    <!-- Botón Revisión de Costos -->
+                                    <a href="{{ url_for('main.revision_costos', item_id=f['item_id'], lote_id=lote_id) }}"
+                                        class="btn btn-sm btn-outline-success" title="Revisión de Costos">
+                                        <i class="fas fa-file-invoice-dollar me-1"></i> Costos
                                     </a>
                                     <form method="POST"
                                         action="{{ url_for('main.eliminar_formula_lote', item_id=f['item_id'], lote_id=lote_id) }}"
@@ -67,8 +101,10 @@
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="6" class="text-center py-4 text-muted">No hay fórmulas registradas para el lote
-                                {{ lote_id }}.</td>
+                            <td colspan="6" class="text-center py-5 text-muted fw-bold">
+                                <i class="fas fa-folder-open fs-2 mb-3 d-block text-secondary opacity-50"></i>
+                                No hay fórmulas registradas para el lote {{ lote_id }}.
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -76,5 +112,7 @@
             </div>
         </div>
     </div>
+
+    {% endif %}
 </div>
 {% endblock %}
