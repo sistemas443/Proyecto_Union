@@ -4,6 +4,147 @@ from models.base import get_db_connection
 
 
 class FormulaDetalle:
+    
+    @staticmethod
+    def obtener_consolidado_costos():
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cur:
+                consulta = """
+                    WITH UltimasVersiones AS (
+                        -- 1. Buscamos la última versión real de cada receta, sin excepciones
+                        SELECT item_id, lote_id, MAX(version) as max_version
+                        FROM formula_detalle
+                        GROUP BY item_id, lote_id
+                    ),
+                    CostosBase AS (
+                        SELECT 
+                            fd.item_id,
+                            fd.lote_id,
+                            SUM(fd.cantidad_kg * mp.precio_actual_kg) AS total_precio_base,
+                            SUM(fd.cantidad_kg * mp.flete) AS total_flete,
+                            SUM(fd.cantidad_kg * (mp.precio_actual_kg * COALESCE(mp.iva, 1))) AS total_con_iva
+                        FROM formula_detalle fd
+                        JOIN UltimasVersiones uv 
+                            ON fd.item_id = uv.item_id AND fd.lote_id = uv.lote_id AND fd.version = uv.max_version
+                        JOIN materias_primas mp ON fd.materia_prima_id = mp.id
+                        
+                        -- 2. EL CAMBIO VA AQUÍ: Validamos que ESA ÚLTIMA VERSIÓN no esté vencida
+                        WHERE fd.fecha_vencimiento >= CURRENT_DATE
+                        
+                        GROUP BY fd.item_id, fd.lote_id
+                    )
+                    SELECT 
+                        cb.lote_id AS lote,
+                        ca.nombre AS etapa, 
+                        e.nombre AS nombre_empresa,
+                        e.costo_maquila,
+                        
+                        (cb.total_precio_base + cb.total_flete + e.costo_maquila) AS precio_flete_maquila,
+                        (cb.total_con_iva + e.costo_maquila) AS precio_iva_maquila,
+                        (cb.total_con_iva + cb.total_flete + e.costo_maquila) AS precio_flete_iva_maquila
+
+                    FROM CostosBase cb
+                    JOIN catalogo_alimentos ca ON cb.item_id = ca.item_id 
+                    JOIN cabecera_lotes cl ON cb.lote_id = cl.lote 
+                    JOIN empresas e ON cl.empresa_id = e.id
+                    ORDER BY e.nombre, cb.lote_id;
+                """
+                cur.execute(consulta)
+                columnas = [desc[0] for desc in cur.description]
+                return [dict(zip(columnas, fila)) for fila in cur.fetchall()]
+        except Exception as e:
+            print(f"Error al generar consolidado de costos: {e}")
+            return []
+        finally:
+            conn.close()
+    
+    @staticmethod
+    def crear_nueva_version(item_id, lote_id):
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT COALESCE(MAX(version), 1) 
+                    FROM formula_detalle 
+                    WHERE item_id = %s AND lote_id = %s;
+                """, (item_id, lote_id))
+                version_actual = cur.fetchone()[0]
+                nueva_version = version_actual + 1
+
+                cur.execute("""
+                    UPDATE formula_detalle 
+                    SET fecha_vencimiento = CURRENT_DATE 
+                    WHERE item_id = %s AND lote_id = %s AND version = %s;
+                """, (item_id, lote_id, version_actual))
+
+                cur.execute("""
+                    INSERT INTO formula_detalle 
+                    (item_id, lote_id, materia_prima_id, cantidad_kg, precio_guardado, iva_guardado, flete_guardado, fecha_creacion, fecha_vencimiento, version)
+                    SELECT 
+                        item_id, lote_id, materia_prima_id, cantidad_kg, precio_guardado, iva_guardado, flete_guardado, 
+                        CURRENT_DATE, CURRENT_DATE + INTERVAL '7 days', %s
+                    FROM formula_detalle
+                    WHERE item_id = %s AND lote_id = %s AND version = %s;
+                """, (nueva_version, item_id, lote_id, version_actual))
+                
+            conn.commit()
+            return nueva_version
+        except Exception as e:
+            print(f"Error al crear nueva versión de dieta: {e}")
+            conn.rollback()
+            return None
+        finally:
+            conn.close()
+    @staticmethod
+    def modificar_fecha_vencimiento(item_id, lote_id, version, nueva_fecha):
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cur:
+                consulta = """
+                    UPDATE formula_detalle 
+                    SET fecha_vencimiento = %s 
+                    WHERE item_id = %s AND lote_id = %s AND version = %s;
+                """
+                cur.execute(consulta, (nueva_fecha, item_id, lote_id, version))
+            conn.commit()
+            return True
+        except Exception as e:
+            print(f"Error al modificar fecha de vencimiento: {e}")
+            conn.rollback()
+            return False
+        finally:
+            conn.close()
+    @staticmethod
+    def obtener_info_versiones(item_id, lote_id):
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cur:
+                # Obtenemos la lista de versiones y sus fechas
+                consulta = """
+                    SELECT version, MAX(fecha_vencimiento) as fecha_vencimiento 
+                    FROM formula_detalle 
+                    WHERE item_id = %s AND lote_id = %s
+                    GROUP BY version
+                    ORDER BY version ASC;
+                """
+                cur.execute(consulta, (item_id, lote_id))
+                resultados = cur.fetchall()
+                
+                versiones = []
+                # Si no hay registros aún, asumimos la versión 1
+                if not resultados:
+                    return [{'version': 1, 'fecha_vencimiento': None}]
+                    
+                columnas = [desc[0] for desc in cur.description]
+                for fila in resultados:
+                    versiones.append(dict(zip(columnas, fila)))
+                return versiones
+        except Exception as e:
+            print(f"Error al obtener versiones: {e}")
+            return [{'version': 1, 'fecha_vencimiento': None}]
+        finally:
+            conn.close()
     @staticmethod
     def obtener_costos_detallados(item_id, lote_id):
         conn = get_db_connection()
@@ -13,9 +154,9 @@ class FormulaDetalle:
                     SELECT 
                         mp.nombre AS insumo,
                         fd.cantidad_kg AS cantidad,
-                        mp.precio_actual_kg AS precio,
-                        COALESCE(mp.iva, 1.00) AS iva,
-                        COALESCE(mp.flete, 0) AS flete,
+                        COALESCE(fd.precio_guardado, mp.precio_actual_kg) AS precio,
+                        COALESCE(fd.iva_guardado, mp.iva, 1.00) AS iva,
+                        COALESCE(fd.flete_guardado, mp.flete, 0) AS flete,
                         COALESCE(mp.es_maquila, false) AS es_maquila,
                         ca.nombre AS nombre_dieta
                     FROM 
@@ -61,25 +202,31 @@ class FormulaDetalle:
             
         finally:
             conn.close()
+    
     @staticmethod
-    def obtener_receta(item_id, lote_id):
-        """Retorna la lista de insumos y cantidades en Kg para la dieta y lote seleccionados."""
+    def obtener_receta(item_id, lote_id, version):
         conn = get_db_connection()
         try:
-            with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
+            with conn.cursor() as cur:
+                # Restauramos la lectura de tus columnas reales del núcleo
                 consulta = """
                     SELECT 
-                        formula_detalle.id, 
-                        materias_primas.nombre AS insumo, 
-                        formula_detalle.cantidad_kg,
-                        formula_detalle.es_nucleo,
-                        formula_detalle.baches_nucleo
-                    FROM formula_detalle
-                    JOIN materias_primas ON formula_detalle.materia_prima_id = materias_primas.id
-                    WHERE formula_detalle.item_id = %s AND formula_detalle.lote_id = %s;
+                        fd.id, 
+                        mp.nombre AS insumo, 
+                        fd.cantidad_kg, 
+                        COALESCE(fd.es_nucleo, true) AS es_nucleo,
+                        COALESCE(fd.baches_nucleo, 6.0) AS baches_nucleo
+                    FROM formula_detalle fd
+                    JOIN materias_primas mp ON fd.materia_prima_id = mp.id
+                    WHERE fd.item_id = %s AND fd.lote_id = %s AND fd.version = %s
+                    ORDER BY mp.nombre ASC;
                 """
-                cur.execute(consulta, (item_id, lote_id))
-                return cur.fetchall()
+                cur.execute(consulta, (item_id, lote_id, version))
+                columnas = [desc[0] for desc in cur.description]
+                return [dict(zip(columnas, fila)) for fila in cur.fetchall()]
+        except Exception as e:
+            print(f"Error al obtener receta: {e}")
+            return []
         finally:
             conn.close()
     @staticmethod
@@ -103,32 +250,53 @@ class FormulaDetalle:
             conn.close()
 
     @staticmethod
-    def obtener_resumen_totales(item_id, lote_id):
-        """Calcula únicamente el total de kilos del bache base (generalmente 1.000 Kg)."""
+    def obtener_resumen_totales(item_id, lote_id, version):
         conn = get_db_connection()
         try:
-            with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
+            with conn.cursor() as cur:
+                # Se agregó: AND fd.version = %s
                 consulta = """
-                    SELECT COALESCE(SUM(cantidad_kg), 0) AS total_kg
-                    FROM formula_detalle
-                    WHERE item_id = %s AND lote_id = %s;
+                    SELECT 
+                        COALESCE(SUM(fd.cantidad_kg), 0) AS total_kg,
+                        COALESCE(SUM(fd.cantidad_kg * COALESCE(fd.precio_guardado, mp.precio_actual_kg)), 0) AS total_costo
+                    FROM formula_detalle fd
+                    JOIN materias_primas mp ON fd.materia_prima_id = mp.id
+                    WHERE fd.item_id = %s AND fd.lote_id = %s AND fd.version = %s;
                 """
-                cur.execute(consulta, (item_id, lote_id))
-                return cur.fetchone()
+                cur.execute(consulta, (item_id, lote_id, version))
+                columnas = [desc[0] for desc in cur.description]
+                resultado = cur.fetchone()
+                return dict(zip(columnas, resultado)) if resultado else {'total_kg': 0, 'total_costo': 0}
+        except Exception as e:
+            print(f"Error al obtener resumen de totales: {e}")
+            return {'total_kg': 0, 'total_costo': 0}
         finally:
             conn.close()
 
     @staticmethod
-    def agregar_insumo(item_id, lote_id, materia_prima_id, cantidad_kg):
+    def agregar_insumo(item_id, lote_id, materia_prima_id, cantidad_kg, version):
         conn = get_db_connection()
         try:
             with conn.cursor() as cur:
-                cur.execute(
-                    """INSERT INTO formula_detalle (item_id, lote_id, materia_prima_id, cantidad_kg) 
-                       VALUES (%s, %s, %s, %s)""",
-                    (item_id, lote_id, materia_prima_id, cantidad_kg),
-                )
+                # Agregamos la columna version al INSERT y al SELECT
+                consulta = """
+                    INSERT INTO formula_detalle 
+                        (item_id, lote_id, materia_prima_id, cantidad_kg, precio_guardado, iva_guardado, flete_guardado, version) 
+                    SELECT 
+                        %s, %s, %s, %s, precio_actual_kg, iva, flete, %s
+                    FROM 
+                        materias_primas
+                    WHERE 
+                        id = %s;
+                """
+                # Pasamos 'version' en el orden correcto
+                cur.execute(consulta, (item_id, lote_id, materia_prima_id, cantidad_kg, version, materia_prima_id))
                 conn.commit()
+                return True
+        except Exception as e:
+            print(f"Error al agregar insumo con precios congelados: {e}")
+            conn.rollback()
+            return False
         finally:
             conn.close()
 
@@ -183,33 +351,48 @@ class FormulaDetalle:
         try:
             with conn.cursor() as cur:
                 consulta = """
+                    WITH ResumenVersiones AS (
+                        SELECT 
+                            fd.item_id,
+                            fd.version,
+                            COUNT(fd.materia_prima_id) AS num_insumos,
+                            SUM(fd.cantidad_kg) AS peso_version,
+                            SUM(fd.cantidad_kg * mp.precio_actual_kg) AS costo_version
+                        FROM formula_detalle fd
+                        JOIN materias_primas mp ON fd.materia_prima_id = mp.id
+                        WHERE fd.lote_id = %s
+                        GROUP BY fd.item_id, fd.version
+                    ),
+                    UltimaVersion AS (
+                        SELECT item_id, MAX(version) AS max_version
+                        FROM ResumenVersiones
+                        GROUP BY item_id
+                    )
                     SELECT 
-                        ca.item_id AS item_id, 
-                        ca.nombre AS nombre_dieta, 
-                        COUNT(fd.id) AS num_insumos, 
-                        COALESCE(SUM(fd.cantidad_kg), 0) AS total_peso,
-                        COALESCE(SUM(fd.cantidad_kg * mp.precio_actual_kg), 0) AS costo_bache
-                    FROM 
-                        catalogo_alimentos ca
-                    JOIN 
-                        formula_detalle fd ON ca.item_id = fd.item_id
-                    JOIN 
-                        materias_primas mp ON fd.materia_prima_id = mp.id
-                    WHERE 
-                        fd.lote_id = %s
-                    GROUP BY 
-                        ca.item_id, ca.nombre
-                    ORDER BY 
-                        ca.item_id;
+                        rv.item_id,
+                        ca.nombre AS nombre_dieta,
+                        
+                        -- Formateamos las versiones con insignias HTML de distinto color:
+                        -- La versión en azul (bg-info/bg-primary) y la cantidad en gris (bg-secondary)
+                        STRING_AGG(
+                            '<span class="badge bg-primary me-1">V-' || rv.version || '</span>' ||
+                            '<span class="badge bg-secondary me-2">' || rv.num_insumos || ' insumos</span>',
+                            ' ' ORDER BY rv.version ASC
+                        ) AS resumen_insumos_html,
+                        
+                        MAX(CASE WHEN rv.version = uv.max_version THEN rv.peso_version ELSE 0 END) AS total_peso,
+                        MAX(CASE WHEN rv.version = uv.max_version THEN rv.costo_version ELSE 0 END) AS costo_bache
+
+                    FROM ResumenVersiones rv
+                    JOIN UltimaVersion uv ON rv.item_id = uv.item_id
+                    JOIN catalogo_alimentos ca ON rv.item_id = ca.item_id
+                    GROUP BY rv.item_id, ca.nombre;
                 """
                 cur.execute(consulta, (lote_id,))
-                
                 columnas = [desc[0] for desc in cur.description]
-                resultados = [dict(zip(columnas, fila)) for fila in cur.fetchall()]
-                
-                return resultados
+                return [dict(zip(columnas, fila)) for fila in cur.fetchall()]
         except Exception as e:
-            print(f"Error al obtener fórmulas consolidadas por lote: {e}")
+            print(f"Error al obtener resumen de fórmulas por lote: {e}")
             return []
         finally:
             conn.close()
@@ -253,36 +436,43 @@ class FormulaDetalle:
 class FormulaProduccion:
 
     @staticmethod
-    def obtener_produccion_por_lote(item_id, lote_id):
+    def obtener_produccion_por_lote(item_id, lote_id, version):
         conn = get_db_connection()
         try:
-            # Usamos DictCursor directamente
-            with conn.cursor(cursor_factory=DictCursor) as cur:
+            with conn.cursor() as cur:
+                # Filtramos por versión
                 consulta = """
                     SELECT id, fecha, toneladas, novedad 
                     FROM formula_produccion_diaria 
-                    WHERE item_id = %s AND lote_id = %s 
+                    WHERE item_id = %s AND lote_id = %s AND version = %s
                     ORDER BY fecha ASC;
-                    """
-                cur.execute(consulta, (item_id, lote_id))
-                return cur.fetchall()
+                """
+                cur.execute(consulta, (item_id, lote_id, version))
+                columnas = [desc[0] for desc in cur.description]
+                return [dict(zip(columnas, fila)) for fila in cur.fetchall()]
+        except Exception as e:
+            print(f"Error al obtener registros de producción: {e}")
+            return []
         finally:
             conn.close()
 
     @staticmethod
-    def registrar_produccion(item_id, lote_id, fecha, toneladas, novedad=''):
+    def registrar_produccion(item_id, lote_id, fecha, toneladas, novedad, version):
         conn = get_db_connection()
         try:
             with conn.cursor() as cur:
-                consulta = """
-                    INSERT INTO formula_produccion_diaria (item_id, lote_id, fecha, toneladas, novedad)
-                    VALUES (%s, %s, %s, %s, %s);
-                """
-                cur.execute(consulta, (item_id, lote_id, fecha, toneladas, novedad))
+                # Se agregó 'version' al insert
+                cur.execute(
+                    """INSERT INTO formula_produccion_diaria 
+                       (item_id, lote_id, fecha, toneladas, novedad, version) 
+                       VALUES (%s, %s, %s, %s, %s, %s)""",
+                    (item_id, lote_id, fecha, toneladas, novedad, version)
+                )
                 conn.commit()
-                return True  # <--- AGREGA ESTO AQUÍ TAMBIÉN
+                return True
         except Exception as e:
-            print(f"Error al insertar en BD: {e}")
+            print(f"Error al registrar producción diaria: {e}")
+            conn.rollback()
             return False
         finally:
             conn.close()
@@ -335,3 +525,8 @@ class FormulaProduccion:
                 conn.commit()
         finally:
             conn.close()
+    
+    
+
+    
+    

@@ -1311,35 +1311,31 @@ def empresas_maquila():
 from models.planta_alimentos.formulas import FormulaDetalle, FormulaProduccion
 # Asegúrate de que MateriaPrima y CatalogoAlimento estén importados arriba
 
-@bp.route('/editar-receta/<int:item_id>', defaults={'lote_id': '0'}, methods=['GET', 'POST'])
 @bp.route('/editar-receta/<int:item_id>/<string:lote_id>', methods=['GET', 'POST'])
 @login_requerido
 def editar_receta(item_id, lote_id):
     
     # ==========================================
-    # 1. CARGA INICIAL (Siempre necesaria)
+    # 0. CONSULTAS BASE (SOLUCIÓN AL ERROR NameError)
+    # Reemplaza por los métodos exactos que uses en tu proyecto
     # ==========================================
-    lotes = FormulaDetalle.obtener_lotes_disponibles()
+    lotes = get_todos_los_lotes()
     materias_primas = MateriaPrima.get_all()
 
-    # ==========================================
-    # 2. VALIDACIÓN: SI NO HAY LOTE, CARGAR PÁGINA VACÍA
-    # ==========================================
-    if lote_id == '0':
-        return render_template(
-            'editar_receta.html',
-            item_id=item_id,
-            lote_id=lote_id,
-            # Enviamos explícitamente variables vacías para evitar errores de Jinja2
-            insumos_receta=[],
-            totales={'total_kg': 0, 'total_baches': 0},
-            registros_produccion=[],
-            total_toneladas=0.0,
-            insumos_nucleo=[],
-            # ¡Las dos vitales para que no se vea el select en blanco!
-            lotes=lotes, 
-            materias_primas=materias_primas
-        )
+    # 1. Obtener la versión seleccionada en la URL (si no viene, será None)
+    version_solicitada = request.args.get('version', type=int)
+    
+    # 2. Consultar las versiones existentes
+    info_versiones = FormulaDetalle.obtener_info_versiones(item_id, lote_id)
+    lista_versiones = [v['version'] for v in info_versiones]
+    ultima_version_existente = max(lista_versiones) if lista_versiones else 1
+    
+    # 3. Determinar qué versión vamos a mostrar en pantalla
+    version_actual = version_solicitada if version_solicitada else ultima_version_existente
+    es_ultima_version = (version_actual == ultima_version_existente)
+    
+    # 4. Obtener la fecha de vencimiento de la versión actual
+    fecha_vencimiento = next((v['fecha_vencimiento'] for v in info_versiones if v['version'] == version_actual), '')
 
     # ==========================================
     # 3. PROCESAMIENTO DE FORMULARIOS (POST)
@@ -1350,15 +1346,14 @@ def editar_receta(item_id, lote_id):
             fecha = request.form.get('fecha')
             toneladas_raw = request.form.get('toneladas', '0').replace('.', '').replace(',', '.')
             toneladas = float(toneladas_raw) if toneladas_raw else 0.0
-            
-            # Capturar la novedad
             novedad = request.form.get('novedad', '')
 
             if fecha and toneladas > 0:
-                FormulaProduccion.registrar_produccion(item_id, lote_id, fecha, toneladas, novedad)
+                # [!] Pasamos la versión para que la producción se asocie a la versión correcta
+                FormulaProduccion.registrar_produccion(item_id, lote_id, fecha, toneladas, novedad, version_actual)
                 flash('Registro de producción agregado.', 'success')
             
-            return redirect(url_for('main.editar_receta', item_id=item_id, lote_id=lote_id))
+            return redirect(url_for('main.editar_receta', item_id=item_id, lote_id=lote_id, version=version_actual))
 
         # Formulario de Insumo de Receta (Agregar a Composición Base)
         materia_prima_id = request.form.get('materia_prima_id')
@@ -1366,19 +1361,22 @@ def editar_receta(item_id, lote_id):
         cantidad_kg = float(cantidad_raw) if cantidad_raw else 0.0
         
         if materia_prima_id and cantidad_kg > 0:
-            FormulaDetalle.agregar_insumo(item_id, lote_id, materia_prima_id, cantidad_kg)
+            # [!] Pasamos la versión para guardar el ingrediente en la versión correcta
+            FormulaDetalle.agregar_insumo(item_id, lote_id, materia_prima_id, cantidad_kg, version_actual)
             flash('Insumo agregado a la receta.', 'success')
             
-        return redirect(url_for('main.editar_receta', item_id=item_id, lote_id=lote_id))
+        return redirect(url_for('main.editar_receta', item_id=item_id, lote_id=lote_id, version=version_actual))
 
     # ==========================================
     # 4. CARGA DE DATOS PARA UN LOTE ESPECÍFICO (GET)
     # ==========================================
-    insumos_receta = FormulaDetalle.obtener_receta(item_id, lote_id)
-    resumen_totales = FormulaDetalle.obtener_resumen_totales(item_id, lote_id)
     
-    # Registros de Producción por Día
-    registros_produccion = FormulaProduccion.obtener_produccion_por_lote(item_id, lote_id)
+    # [!] MUY IMPORTANTE: Ahora estas funciones reciben version_actual para no mezclar recetas viejas con nuevas
+    insumos_receta = FormulaDetalle.obtener_receta(item_id, lote_id, version_actual)
+    resumen_totales = FormulaDetalle.obtener_resumen_totales(item_id, lote_id, version_actual)
+    
+    # Registros de Producción por Día filtrados por versión
+    registros_produccion = FormulaProduccion.obtener_produccion_por_lote(item_id, lote_id, version_actual)
     total_toneladas_lote = float(sum([r['toneladas'] for r in registros_produccion])) if registros_produccion else 0.0
 
     # Cálculo dinámico de Consumo Total por Materia Prima y Núcleos
@@ -1386,7 +1384,6 @@ def editar_receta(item_id, lote_id):
     for insumo in insumos_receta:
         cant_kg = float(insumo['cantidad_kg']) if insumo['cantidad_kg'] else 0.0
         
-        # Matriz de consumo por cada día registrado
         consumos_diarios = []
         for reg in registros_produccion:
             toneladas_dia = float(reg['toneladas'])
@@ -1398,13 +1395,10 @@ def editar_receta(item_id, lote_id):
             'cantidad_kg': cant_kg,
             'consumos_diarios': consumos_diarios,
             'total_consumo_kg': cant_kg * total_toneladas_lote,
-            
-            # Variables del núcleo (con valores por defecto por si falló la BD)
             'es_nucleo': insumo.get('es_nucleo', True) if dict(insumo).get('es_nucleo') is not None else True,
             'baches_nucleo': float(insumo.get('baches_nucleo', 6)) if dict(insumo).get('baches_nucleo') is not None else 6.0
         })
 
-    # Filtrar insumos para pasarlos a la tabla de Núcleo
     insumos_nucleo = [i for i in receta_calculada if i['es_nucleo']]
 
     # ==========================================
@@ -1414,10 +1408,16 @@ def editar_receta(item_id, lote_id):
         'editar_receta.html',
         item_id=item_id,
         lote_id=lote_id,
+        version_actual=version_actual,
+        lista_versiones=lista_versiones,
+        es_ultima_version=es_ultima_version,
+        fecha_vencimiento=fecha_vencimiento,
+        
+        # Aquí van todas las variables de tu tabla y producción
         insumos_receta=receta_calculada,
         totales=resumen_totales,
-        materias_primas=materias_primas,
-        lotes=lotes,
+        materias_primas=materias_primas,  
+        lotes=lotes,                      
         registros_produccion=registros_produccion,
         total_toneladas=total_toneladas_lote,
         insumos_nucleo=insumos_nucleo
@@ -1775,3 +1775,55 @@ def eliminar_dieta(item_id):
         flash('Error al eliminar. Es posible que esta dieta ya tenga fórmulas o lotes asociados y no se pueda borrar.', 'error')
         
     return redirect(url_for('main.catalogo_alimentos'))
+
+
+@bp.route('/receta/nueva-version/<int:item_id>/<string:lote_id>', methods=['POST'])
+@login_requerido
+def crear_version_receta(item_id, lote_id):
+    nueva_version = FormulaDetalle.crear_nueva_version(item_id, lote_id)
+    if nueva_version:
+        flash(f'Versión {nueva_version} creada exitosamente. La versión anterior ha sido congelada.', 'success')
+    else:
+        flash('Error al generar la nueva versión.', 'error')
+    
+    # Redirigimos a la misma pantalla para ver los cambios
+    return redirect(url_for('main.editar_receta', item_id=item_id, lote_id=lote_id))
+
+@bp.route('/receta/modificar-fecha', methods=['POST'])
+@login_requerido
+def modificar_fecha_receta():
+    item_id = request.form.get('item_id')
+    lote_id = request.form.get('lote_id')
+    version = request.form.get('version')
+    nueva_fecha = request.form.get('nueva_fecha')
+    
+    if FormulaDetalle.modificar_fecha_vencimiento(item_id, lote_id, version, nueva_fecha):
+        flash('Fecha de vencimiento actualizada (Plazo ampliado).', 'success')
+    else:
+        flash('Error al actualizar la fecha.', 'error')
+        
+    return redirect(url_for('main.editar_receta', item_id=item_id, lote_id=lote_id))
+
+
+@bp.route('/consolidado-precios')
+@login_requerido
+def consolidado_precios():
+    # 1. Obtenemos las materias primas para la tabla izquierda
+    precios_mp = MateriaPrima.get_all() 
+    
+    # 2. Obtenemos toda la matemática procesada
+    costos_dietas = FormulaDetalle.obtener_consolidado_costos()
+    
+    # 3. Agrupamos por empresa (San Martín, Country, etc.)
+    costos_agrupados = {}
+    for dieta in costos_dietas:
+        empresa = dieta['nombre_empresa']
+        if empresa not in costos_agrupados:
+            costos_agrupados[empresa] = []
+        costos_agrupados[empresa].append(dieta)
+
+    return render_template(
+        'consolidado_precios.html',
+        precios_mp=precios_mp,
+        costos_agrupados=costos_agrupados
+    )

@@ -81,11 +81,11 @@
                                         <select form="form-mp-edit-{{ mp['id'] }}" name="iva"
                                             class="form-select form-select-sm border-0 bg-transparent text-center p-0"
                                             style="font-size: 0.85rem;">
-                                            <option value="1.00" {% if mp['iva']|float==1.00 %}selected{% endif %}>1.00
+                                            <option value="1.00" {% if mp['iva']|float==1.00 %}selected{% endif %}>(0%)
                                             </option>
-                                            <option value="1.05" {% if mp['iva']|float==1.05 %}selected{% endif %}>1.05
+                                            <option value="1.05" {% if mp['iva']|float==1.05 %}selected{% endif %}>(5%)
                                             </option>
-                                            <option value="1.19" {% if mp['iva']|float==1.19 %}selected{% endif %}>1.19
+                                            <option value="1.19" {% if mp['iva']|float==1.19 %}selected{% endif %}>(19%)
                                             </option>
                                         </select>
                                     </td>
@@ -215,7 +215,7 @@
                         <div class="col-6">
                             <label class="form-label fw-bold text-muted small mb-1">Factor IVA</label>
                             <select name="iva" class="form-select form-select-sm">
-                                <option value="1.00">1.00 (0%)</option>
+                                <option value="1.00">0 (0%)</option>
                                 <option value="1.05">1.05 (5%)</option>
                                 <option value="1.19">1.19 (19%)</option>
                             </select>

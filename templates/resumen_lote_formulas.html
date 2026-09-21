@@ -70,40 +70,24 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for f in formulas %}
+                        {% for formula in formulas %}
                         <tr>
-                            <td class="px-4 fw-bold text-primary">{{ f['item_id'] }}</td>
-                            <td class="fw-bold text-dark">{{ f['nombre_dieta'] }}</td>
-                            <td class="text-center"><span class="badge bg-secondary">{{ f['num_insumos'] }}
-                                    insumos</span></td>
-                            <td class="text-end fw-semibold">{{ "{:,.2f}".format(f['total_peso']) }} kg</td>
-                            <td class="text-end fw-bold text-success">$ {{ "{:,.2f}".format(f['costo_bache']) }}</td>
-                            <td class="text-center px-4">
-                                <div class="d-flex justify-content-center gap-2">
-                                    <a href="{{ url_for('main.editar_receta', item_id=f['item_id'], lote_id=lote_id) }}"
-                                        class="btn btn-sm btn-outline-primary">
-                                        <i class="fas fa-edit me-1"></i> Editar
-                                    </a>
-                                    <!-- Botón Revisión de Costos -->
-                                    <a href="{{ url_for('main.revision_costos', item_id=f['item_id'], lote_id=lote_id) }}"
-                                        class="btn btn-sm btn-outline-success" title="Revisión de Costos">
-                                        <i class="fas fa-file-invoice-dollar me-1"></i> Costos
-                                    </a>
-                                    <form method="POST"
-                                        action="{{ url_for('main.eliminar_formula_lote', item_id=f['item_id'], lote_id=lote_id) }}"
-                                        onsubmit="return confirm('¿Seguro que deseas borrar toda esta fórmula del lote {{ lote_id }}?');">
-                                        <button type="submit" class="btn btn-sm btn-outline-danger">
-                                            <i class="fas fa-trash-alt me-1"></i> Borrar
-                                        </button>
-                                    </form>
-                                </div>
+                            <td class="fw-bold text-primary">{{ formula['item_id'] }}</td>
+                            <td class="fw-bold">{{ formula['nombre_dieta'] }}</td>
+                            <td class="align-middle">
+                                {{ formula['resumen_insumos_html'] | safe }}
                             </td>
-                        </tr>
-                        {% else %}
-                        <tr>
-                            <td colspan="6" class="text-center py-5 text-muted fw-bold">
-                                <i class="fas fa-folder-open fs-2 mb-3 d-block text-secondary opacity-50"></i>
-                                No hay fórmulas registradas para el lote {{ lote_id }}.
+                            <td>{{ "{:,.2f}".format(formula['total_peso'] | default(0) | float) }} kg</td>
+                            <td class="fw-bold text-success">$ {{ "{:,.2f}".format(formula['costo_bache'] | default(0) |
+                                float) }}</td>
+                            <td>
+                                <!-- Si tienes algún condicional alrededor de los botones, asegúrate de cerrarlo con endif -->
+                                {% if formula['item_id'] %}
+                                <a href="{{ url_for('main.editar_receta', item_id=formula['item_id'], lote_id=lote_seleccionado) }}"
+                                    class="btn btn-sm btn-outline-primary">Editar</a>
+                                <a href="#" class="btn btn-sm btn-outline-success">Costos</a>
+                                <a href="#" class="btn btn-sm btn-outline-danger">Borrar</a>
+                                {% endif %}
                             </td>
                         </tr>
                         {% endfor %}
