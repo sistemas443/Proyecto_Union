@@ -9,7 +9,7 @@
         <h2 class="text-primary mb-0">Formulación de Dieta - ITEM: {{ item_id }}</h2>
 
         <!-- Botón Volver a la derecha -->
-        <a href="{{ url_for('main.resumen_lote_formulas', lote_id=lote_id) }}" class="btn btn-outline-secondary">
+        <a href="{{ url_for('planta_alimentos.resumen_lote_formulas', lote_id=lote_id) }}" class="btn btn-outline-secondary">
             Volver
         </a>
 
@@ -31,7 +31,7 @@
                             onchange="window.location.href=this.value">
                             {% for v in lista_versiones %}
                             <option
-                                value="{{ url_for('main.editar_receta', item_id=item_id, lote_id=lote_id, version=v) }}"
+                                value="{{ url_for('planta_alimentos.editar_receta', item_id=item_id, lote_id=lote_id, version=v) }}"
                                 {% if v==version_actual %}selected{% endif %}>
                                 Ver Versión {{ v }}
                             </option>
@@ -41,7 +41,7 @@
 
                     <div class="d-flex align-items-center gap-3">
                         <!-- Modificador de Fecha de Vencimiento -->
-                        <form method="POST" action="{{ url_for('main.modificar_fecha_receta') }}"
+                        <form method="POST" action="{{ url_for('planta_alimentos.modificar_fecha_receta') }}"
                             class="d-flex align-items-center">
                             <input type="hidden" name="item_id" value="{{ item_id }}">
                             <input type="hidden" name="lote_id" value="{{ lote_id }}">
@@ -62,7 +62,7 @@
                         <!-- Botón Crear Nueva Versión (Solo visible en la última versión) -->
                         {% if es_ultima_version %}
                         <form method="POST"
-                            action="{{ url_for('main.crear_version_receta', item_id=item_id, lote_id=lote_id) }}"
+                            action="{{ url_for('planta_alimentos.crear_version_receta', item_id=item_id, lote_id=lote_id) }}"
                             onsubmit="return confirm('¿Seguro que deseas congelar la Versión {{ version_actual }} y crear la Versión {{ version_actual + 1 }}?');">
                             <button type="submit" class="btn btn-sm btn-primary fw-bold shadow-sm">
                                 <i class="fas fa-code-branch me-1"></i> Nueva Versión
@@ -86,7 +86,7 @@
             {% for lote in lotes %}
             {% if lote is mapping %}
             <!-- Usamos lote.get('lote') tanto para la URL como para el texto -->
-            <option value="{{ url_for('main.editar_receta', item_id=item_id, lote_id=lote.get('lote', '')) }}" {% if
+            <option value="{{ url_for('planta_alimentos.editar_receta', item_id=item_id, lote_id=lote.get('lote', '')) }}" {% if
                 lote_id==lote.get('lote', '' )|string %}selected{% endif %}>
 
                 <!-- Pequeño truco para que todos digan "LOTE" al principio sin repetirlo en "LOTE LOTE GENERAL" -->
@@ -94,7 +94,7 @@
 
             </option>
             {% else %}
-            <option value="{{ url_for('main.editar_receta', item_id=item_id, lote_id=lote) }}" {% if
+            <option value="{{ url_for('planta_alimentos.editar_receta', item_id=item_id, lote_id=lote) }}" {% if
                 lote_id==lote|string %}selected{% endif %}>
                 {% if 'LOTE' not in lote|upper %}LOTE {% endif %}{{ lote }}
             </option>
@@ -197,7 +197,7 @@
                                     style="position: sticky; right: 0; background: white; box-shadow: -2px 0 5px rgba(0,0,0,0.05); min-width: 90px;">
                                     <div class="d-flex justify-content-center gap-1">
                                         <form id="form-receta-edit-{{ insumo['id'] }}" method="POST"
-                                            action="{{ url_for('main.actualizar_insumo_receta', id_registro=insumo['id']) }}">
+                                            action="{{ url_for('planta_alimentos.actualizar_insumo_receta', id_registro=insumo['id']) }}">
                                             <input type="hidden" name="item_id" value="{{ item_id }}">
                                             <input type="hidden" name="lote_id" value="{{ lote_id }}">
                                         </form>
@@ -217,7 +217,7 @@
 
                                         <!-- Formulario y Botón Eliminar (Papelera SVG) -->
                                         <form method="POST"
-                                            action="{{ url_for('main.eliminar_insumo_receta', id_registro=insumo['id']) }}"
+                                            action="{{ url_for('planta_alimentos.eliminar_insumo_receta', id_registro=insumo['id']) }}"
                                             onsubmit="return confirm('¿Eliminar insumo?');" class="d-inline">
                                             <input type="hidden" name="item_id" value="{{ item_id }}">
                                             <input type="hidden" name="lote_id" value="{{ lote_id }}">
@@ -280,7 +280,7 @@
             </div>
             <div class="card-body">
                 <!-- Formulario de Registro de Producción -->
-                <form method="POST" action="{{ url_for('main.editar_receta', item_id=item_id, lote_id=lote_id) }}"
+                <form method="POST" action="{{ url_for('planta_alimentos.editar_receta', item_id=item_id, lote_id=lote_id) }}"
                     class="mb-3">
                     <input type="hidden" name="guardar_produccion" value="1">
 
@@ -340,7 +340,7 @@
                                     <div class="d-flex justify-content-center gap-1">
                                         <!-- Formulario Oculto de Actualización -->
                                         <form id="form-prod-edit-{{ reg['id'] }}" method="POST"
-                                            action="{{ url_for('main.actualizar_produccion_diaria', id_registro=reg['id']) }}">
+                                            action="{{ url_for('planta_alimentos.actualizar_produccion_diaria', id_registro=reg['id']) }}">
                                             <input type="hidden" name="item_id" value="{{ item_id }}">
                                             <input type="hidden" name="lote_id" value="{{ lote_id }}">
                                         </form>
@@ -360,7 +360,7 @@
 
                                         <!-- Formulario y Botón Eliminar (Papelera SVG) -->
                                         <form method="POST"
-                                            action="{{ url_for('main.eliminar_produccion_diaria', id_registro=reg['id']) }}"
+                                            action="{{ url_for('planta_alimentos.eliminar_produccion_diaria', id_registro=reg['id']) }}"
                                             onsubmit="return confirm('¿Eliminar registro?');" class="d-inline">
                                             <input type="hidden" name="item_id" value="{{ item_id }}">
                                             <input type="hidden" name="lote_id" value="{{ lote_id }}">
@@ -459,7 +459,7 @@
                                 </td>
                                 <td class="text-center align-middle">
                                     <form id="form-nucleo-{{ insumo['id'] }}" method="POST"
-                                        action="{{ url_for('main.actualizar_baches_nucleo', id_registro=insumo['id']) }}">
+                                        action="{{ url_for('planta_alimentos.actualizar_baches_nucleo', id_registro=insumo['id']) }}">
                                         <input type="hidden" name="item_id" value="{{ item_id }}">
                                         <input type="hidden" name="lote_id" value="{{ lote_id }}">
                                         <input type="number" name="baches_nucleo" value="{{ insumo['baches_nucleo'] }}"
@@ -519,7 +519,7 @@
                 <h5 class="modal-title fw-bold fs-6">Agregar Insumo a la Receta</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form method="POST" action="{{ url_for('main.editar_receta', item_id=item_id, lote_id=lote_id) }}">
+            <form method="POST" action="{{ url_for('planta_alimentos.editar_receta', item_id=item_id, lote_id=lote_id) }}">
                 <div class="modal-body">
                     <div class="mb-3">
                         <label class="form-label fw-bold text-muted small">Materia Prima</label>

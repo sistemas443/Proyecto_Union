@@ -1,0 +1,211 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="container-fluid mt-4 mb-5">
+    <!-- Cabecera -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2><i class="fas fa-boxes me-2 text-info"></i>Consolidado Mensual de Inventarios</h2>
+        <button class="btn btn-outline-secondary shadow-sm" onclick="window.print()">
+            <i class="fas fa-print me-1"></i> Imprimir Reporte
+        </button>
+    </div>
+
+    <!-- Filtros de Mes y Año + Acciones de Cierre/Reapertura -->
+    <div class="card shadow-sm border-0 mb-4 bg-light d-print-none">
+        <div class="card-body py-2">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <!-- Formulario de Filtros -->
+                <form method="GET" action="{{ url_for('planta_alimentos.resumen_inventario') }}"
+                    class="row align-items-center g-2 mb-0">
+                    <div class="col-auto">
+                        <label class="form-label font-weight-bold mb-0">Mes:</label>
+                    </div>
+                    <div class="col-auto">
+                        <select name="mes" class="form-select form-select-sm">
+                            {% for m_num, m_nombre in meses_nombres %}
+                            <option value="{{ m_num }}" {% if m_num==mes %}selected{% endif %}>{{ m_nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-auto">
+                        <label class="form-label font-weight-bold mb-0">Año:</label>
+                    </div>
+                    <div class="col-auto">
+                        <select name="anio" class="form-select form-select-sm text-center" style="width: 100px;">
+                            {% for a in anios_disponibles %}
+                            <option value="{{ a }}" {% if a==anio %}selected{% endif %}>{{ a }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-info btn-sm text-white">
+                            <i class="fas fa-sync-alt me-1"></i> Actualizar
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Botones de Acción: Cierre y Reapertura -->
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-warning btn-sm fw-bold shadow-sm text-dark"
+                        data-bs-toggle="modal" data-bs-target="#modalCierreMes">
+                        <i class="fas fa-lock me-1"></i> Cerrar Mes
+                    </button>
+                    <button type="button" class="btn btn-outline-danger btn-sm fw-bold shadow-sm" data-bs-toggle="modal"
+                        data-bs-target="#modalReabrirMes">
+                        <i class="fas fa-unlock me-1"></i> Reabrir Mes
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Confirmación para Cierre Manual -->
+    <div class="modal fade" id="modalCierreMes" tabindex="-1" aria-labelledby="modalCierreMesLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title" id="modalCierreMesLabel">
+                        <i class="fas fa-exclamation-triangle me-2"></i>Confirmar Cierre de Mes
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-2">¿Está seguro de que desea ejecutar el cierre del mes <strong>{{ mes }}/{{ anio
+                            }}</strong>?</p>
+                    <div class="alert alert-secondary mb-0" style="font-size: 0.85rem;">
+                        <i class="fas fa-info-circle me-1 text-primary"></i>
+                        Esta acción tomará el <strong>Inventario Final</strong> del periodo seleccionado y lo registrará
+                        como el <strong>Inventario Inicial</strong> del mes siguiente.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                    <form method="POST" action="{{ url_for('planta_alimentos.realizar_cierre_mes') }}">
+                        <input type="hidden" name="mes" value="{{ mes }}">
+                        <input type="hidden" name="anio" value="{{ anio }}">
+                        <button type="submit" class="btn btn-warning btn-sm fw-bold">
+                            <i class="fas fa-check-circle me-1"></i> Sí, Ejecutar Cierre
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Confirmación para Reabrir Mes -->
+    <div class="modal fade" id="modalReabrirMes" tabindex="-1" aria-labelledby="modalReabrirMesLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="modalReabrirMesLabel">
+                        <i class="fas fa-unlock-alt me-2"></i>Reabrir Mes Seleccionado
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                        aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-2">¿Desea anular el cierre del mes <strong>{{ mes }}/{{ anio }}</strong>?</p>
+                    <div class="alert alert-danger mb-0" style="font-size: 0.85rem;">
+                        <i class="fas fa-exclamation-circle me-1"></i>
+                        <strong>Atención:</strong> Se eliminarán los registros de <strong>Inventario Inicial</strong>
+                        que se hayan generado para el mes siguiente. Utilice esta opción si necesita ingresar mermas o
+                        compras extemporáneas.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                    <form method="POST" action="{{ url_for('planta_alimentos.reabrir_mes') }}">
+                        <input type="hidden" name="mes" value="{{ mes }}">
+                        <input type="hidden" name="anio" value="{{ anio }}">
+                        <button type="submit" class="btn btn-danger btn-sm fw-bold">
+                            <i class="fas fa-undo me-1"></i> Sí, Reabrir Mes
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla Resumen -->
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover align-middle mb-0 text-center"
+                    style="font-size: 0.9rem;">
+                    <thead class="table-dark">
+                        <tr>
+                            <th style="width: 20%; text-align: left; padding-left: 15px;background-color: #000000">
+                                MATERIA PRIMA</th>
+                            <th style="width: 13%; background-color: #0d06c5;">CONSUMO DEL MES</th>
+                            <th style="width: 11%; background-color: #000000;">INICIAL</th>
+                            <th style="width: 11%; background-color: #1cd20f;">COMPRAS</th>
+                            <th style="width: 12%; background-color: #000000;">TOTAL (gr)</th>
+                            <th style="width: 13%; background-color: #bc740a;">INVENTARIO FINAL (gr)</th>
+                            <th style="width: 12%; background-color: #06090f;">CONSUMO 7 DIAS</th>
+                            <th style="width: 8%; background-color: #c1b7b7;">SEM INV.</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in inventario %}
+                        <tr>
+                            <td class="font-weight-bold text-start ps-3 bg-light">{{ item['materia_prima'] }}</td>
+                            <td class="text-danger font-weight-bold">{{ "{:,.0f}".format(item['consumo_mes']) }}</td>
+                            <td class="text-secondary">{{ "{:,.0f}".format(item['inicial']) }}</td>
+                            <td class="text-primary">{{ "{:,.0f}".format(item['compras']) }}</td>
+                            <td class="font-weight-bold">{{ "{:,.0f}".format(item['total_disponible']) }}</td>
+                            <td
+                                class="font-weight-bold fs-6 {% if item['inventario_final'] < 0 %}bg-danger text-white{% else %}text-success{% endif %}">
+                                {{ "{:,.0f}".format(item['inventario_final']) }}
+                            </td>
+                            <td class="text-muted">{{ "{:,.0f}".format(item['consumo_7_dias']) }}</td>
+                            <td
+                                class="font-weight-bold align-middle {% if item['sem_inv'] != none and item['sem_inv'] < 1 %}text-danger{% elif item['sem_inv'] == none %}text-secondary{% endif %}">
+                                {% if item['sem_inv'] != none %}
+                                {% if item['sem_inv'] < 0 %} ({{ "{:,.0f}" .format(item['sem_inv']|abs) }}) {% else %}
+                                    {{ "{:,.0f}" .format(item['sem_inv']) }} {% endif %} {% else %} <span
+                                    class="badge bg-light text-secondary border fw-normal" style="font-size: 0.75rem;"
+                                    title="No existen ingresos o consumos de esta materia prima para calcular las semanas.">
+                                    Sin registros
+                                    </span>
+                                    {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot class="table-dark font-weight-bold fs-6">
+                        {% set totales = namespace(
+                        consumo=0,
+                        inicial=0,
+                        compras=0,
+                        disponible=0,
+                        final=0,
+                        consumo7=0
+                        ) %}
+
+                        {% for item in inventario %}
+                        {% set totales.consumo = totales.consumo + item['consumo_mes'] %}
+                        {% set totales.inicial = totales.inicial + item['inicial'] %}
+                        {% set totales.compras = totales.compras + item['compras'] %}
+                        {% set totales.disponible = totales.disponible + item['total_disponible'] %}
+                        {% set totales.final = totales.final + item['inventario_final'] %}
+                        {% set totales.consumo7 = totales.consumo7 + item['consumo_7_dias'] %}
+                        {% endfor %}
+
+                        <tr>
+                            <td class="text-start ps-3 fs-5">TOTAL GENERAL (gr)</td>
+                            <td class="text-danger">{{ "{:,.0f}".format(totales.consumo) }}</td>
+                            <td>{{ "{:,.0f}".format(totales.inicial) }}</td>
+                            <td class="text-info">{{ "{:,.0f}".format(totales.compras) }}</td>
+                            <td>{{ "{:,.0f}".format(totales.disponible) }}</td>
+                            <td class="text-success">{{ "{:,.0f}".format(totales.final) }}</td>
+                            <td class="text-warning">{{ "{:,.0f}".format(totales.consumo7) }}</td>
+                            <td class="text-muted">-</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

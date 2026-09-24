@@ -123,7 +123,7 @@
                                     <td class="text-center px-2">
                                         <div class="d-flex justify-content-center gap-1">
                                             <form id="form-mp-edit-{{ mp['id'] }}" method="POST"
-                                                action="{{ url_for('main.editar_materia_prima', id_mp=mp['id']) }}">
+                                                action="{{ url_for('planta_alimentos.editar_materia_prima', id_mp=mp['id']) }}">
                                             </form>
 
                                             <!-- Lápiz Guardar -->
@@ -141,7 +141,7 @@
 
                                             <!-- Papelera Borrar -->
                                             <form method="POST"
-                                                action="{{ url_for('main.eliminar_materia_prima', id_mp=mp['id']) }}"
+                                                action="{{ url_for('planta_alimentos.eliminar_materia_prima', id_mp=mp['id']) }}"
                                                 onsubmit="return confirm('¿Deseas eliminar este insumo?');"
                                                 class="d-inline">
                                                 <button type="submit" class="btn btn-sm btn-outline-danger border-0 p-1"
@@ -184,7 +184,7 @@
             </div>
 
             <!-- INICIO DEL FORMULARIO -->
-            <form method="POST" action="{{ url_for('main.materias_primas') }}">
+            <form method="POST" action="{{ url_for('planta_alimentos.materias_primas') }}">
                 <div class="modal-body">
                     
                     <!-- Producto -->
