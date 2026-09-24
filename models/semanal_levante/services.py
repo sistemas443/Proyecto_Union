@@ -534,3 +534,194 @@ def recalcular_lote_semanal_levante_directo(id_lote, cur):
                 conv_sem_tab = %s, cons_kilos_ajustado = %s, porc_cumpl_cons = %s
             WHERE id = %s                      
         """, valores_update)
+        
+def procesar_excel_semanal_levante(archivo_excel, lote_nombre):
+    """
+    Procesa el Excel para el módulo Semanal Levante.
+    Extrae únicamente las columnas crudas digitadas por el usuario (peso, uniformidades, tarso, agua)
+    y dispara el recálculo general para sincronizar consumos y mortalidades desde los registros diarios.
+    """
+    import pandas as pd
+    import unicodedata
+    from models.base import get_db_connection, to_float_safe
+    from models.cabecera.model import fetch_cabecera_by_lote
+    from models.semanal_levante import model
+
+    if not lote_nombre or lote_nombre == 'VACIO':
+        return False, "Debes seleccionar un lote válido de destino."
+
+    cabecera = fetch_cabecera_by_lote(lote_nombre)
+    if not cabecera:
+        return False, f"El lote '{lote_nombre}' no existe en el sistema."
+
+    id_lote = cabecera.get('id')
+
+    try:
+        # 1. Garantizar que la estructura de las 18 semanas exista en la BD
+        if model.count_semanal(id_lote) == 0:
+            generar_estructura_semanal_levante(lote_nombre, cabecera.get('fecha_recepcion'), id_lote)
+
+        # 2. Leer TODAS las hojas del Excel sin encabezados
+        hojas = pd.read_excel(archivo_excel, sheet_name=None, header=None)
+        df = None
+        header_idx = -1
+
+        def normalizar(texto):
+            texto = str(texto).lower().strip()
+            texto = ''.join(c for c in unicodedata.normalize('NFD', texto) if unicodedata.category(c) != 'Mn')
+            return ' '.join(texto.replace('\n', ' ').split())
+
+        # 3. Escáner: se detiene si encuentra "semana" junto a "tarso" o "agua"
+        for nombre_hoja, hoja_df in hojas.items():
+            for i, row in hoja_df.iterrows():
+                fila_texto = " ".join([normalizar(x) for x in row.values])
+
+                if 'semana' in fila_texto and ('tarso' in fila_texto or 'agua' in fila_texto):
+                    df = hoja_df
+                    header_idx = i
+                    break
+            if df is not None:
+                break
+
+        if df is None:
+            return False, "No se encontró la tabla de Levante. Faltan las columnas 'Tarso' o 'Agua' junto a 'Semana'."
+
+        # 4. Fusionar la fila principal y la de abajo (celdas combinadas)
+        nuevas_columnas = []
+        for col_idx in range(df.shape[1]):
+            val1 = normalizar(df.iloc[header_idx, col_idx])
+            val2 = normalizar(df.iloc[header_idx + 1, col_idx]) if (header_idx + 1) < len(df) else ''
+
+            val1 = val1 if val1 not in ['nan', 'none'] else ''
+            val2 = val2 if val2 not in ['nan', 'none'] else ''
+
+            nuevas_columnas.append(f"{val1} {val2}".strip())
+
+        df.columns = nuevas_columnas
+        df = df.iloc[header_idx + 2:].reset_index(drop=True)
+
+        # 5. Ubicar la columna "Semana" con lógica robusta
+        col_semana = None
+
+        claves_semana = ['semana', 'sem.', 'sem ', ' sem']
+        exclusiones = ['ganancia', 'fecha', 'fin sem', 'conv', 'kilos', 'k.acum',
+                       'mort', 'acum', 'acm', '%', 'tab', 'gr ave', 'peso',
+                       'uniformidad', 'tarso', 'agua', 'saldo', 'aves', 'observaciones',
+                       'marca', 'real', 'c.v', 'otros', 'sel', 'inventario']
+
+        for col in df.columns:
+            c = str(col).lower().strip()
+            if not c:
+                continue
+            if any(excl in c for excl in exclusiones):
+                continue
+            if any(clave in c for clave in claves_semana):
+                valores_prueba = df[col].dropna().astype(str).str.replace('.0', '', regex=False).str.strip()
+                valores_prueba = valores_prueba[valores_prueba.str.isdigit()]
+                if len(valores_prueba) > 0:
+                    nums = valores_prueba.astype(int)
+                    if ((nums >= 1) & (nums <= 18)).sum() > 0:
+                        col_semana = col
+                        break
+
+        # Fallback: buscar cualquier columna con valores entre 1 y 18
+        if not col_semana:
+            for col in df.columns:
+                valores_prueba = df[col].dropna().astype(str).str.replace('.0', '', regex=False).str.strip()
+                valores_prueba = valores_prueba[valores_prueba.str.isdigit()]
+                if len(valores_prueba) > 0:
+                    nums = valores_prueba.astype(int)
+                    if ((nums >= 1) & (nums <= 18)).sum() >= 3:
+                        col_semana = col
+                        break
+
+        if not col_semana:
+            return False, "Error interno: No se ubicó la columna 'Semana' con valores del 1 al 18."
+
+        # 6. MAPEO ESTRICTO DE LA LISTA BLANCA
+        mapeo_columnas = {
+            'peso corporal': 'peso_real',
+            '10%-':          'unif_10_menos',
+            '%unif':         'unif_porc_unif',
+            '10%+':          'unif_10_mas',
+            'c.v':           'unif_cv',
+            'tarso':         't_tarso_r',
+            'agua':          'agua_real',
+            'observaciones': 'observaciones',
+            'marca/tipo':    'marca_tipo_de'
+        }
+
+        conn = get_db_connection()
+        cur = conn.cursor()
+        filas_actualizadas = 0
+
+        def extraer_valor(v):
+            if pd.isna(v): return None
+            v_str = str(v).strip().lower()
+            if v_str in ['', 'nan', '-', 'none']: return None
+            return v
+
+        # 7. Iterar sobre las 18 semanas y armar el UPDATE
+        for _, row in df.iterrows():
+            # --- LIMPIEZA ROBUSTA DEL VALOR DE SEMANA ---
+            val_semana_raw = row[col_semana]
+            if pd.isna(val_semana_raw):
+                continue
+
+            val_semana_str = str(val_semana_raw).strip()
+            val_semana_str = val_semana_str.replace(',', '.').replace(' ', '')
+            if '.' in val_semana_str:
+                val_semana_str = val_semana_str.split('.')[0]
+            val_semana_str = val_semana_str.lower().replace('semana', '').replace('sem', '').replace('s', '').strip()
+
+            if not val_semana_str.isdigit():
+                continue
+            num_semana = int(val_semana_str)
+            if not (1 <= num_semana <= 18):
+                continue
+
+            campos_a_actualizar = []
+            valores = []
+            columnas_ya_procesadas = set()
+
+            for palabra_clave, col_db in mapeo_columnas.items():
+                if col_db in columnas_ya_procesadas:
+                    continue
+
+                col_encontrada = next((c for c in df.columns if palabra_clave in c), None)
+                if col_encontrada:
+                    v = extraer_valor(row[col_encontrada])
+                    if v is not None:
+                        if col_db in ['observaciones', 'marca_tipo_de']:
+                            campos_a_actualizar.append(f'"{col_db}" = %s')
+                            valores.append(str(v))
+                            columnas_ya_procesadas.add(col_db)
+                        else:
+                            try:
+                                campos_a_actualizar.append(f'"{col_db}" = %s')
+                                valores.append(to_float_safe(v) or 0.0)
+                                columnas_ya_procesadas.add(col_db)
+                            except: pass
+
+            if campos_a_actualizar:
+                valores.extend([id_lote, num_semana])
+                query = f"UPDATE semanal_levante SET {', '.join(campos_a_actualizar)} WHERE id_lote = %s AND sem = %s"
+                cur.execute(query, valores)
+                filas_actualizadas += 1
+
+        # 8. Recalcular cascada general del lote
+        recalcular_lote_semanal_levante_directo(id_lote, cur)
+
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        if filas_actualizadas > 0:
+            return True, f"¡Éxito! Se cargaron datos puros de {filas_actualizadas} semanas de levante."
+        else:
+            return False, "La tabla fue detectada, pero las filas de las semanas (1-18) estaban vacías."
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return False, f"Error al procesar el archivo Excel: {str(e)}"

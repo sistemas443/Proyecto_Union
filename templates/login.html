@@ -351,5 +351,9 @@
             observer.observe(document.body);
         }
     });
+
+    // Al cargar el login, limpiamos cualquier rastro de la sidebar
+  localStorage.removeItem('estadoSidebarLotes');
+  document.body.classList.remove('sidebar-activa');
 </script>
 {% endblock %}

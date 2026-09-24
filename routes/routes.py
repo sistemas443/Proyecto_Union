@@ -90,7 +90,7 @@ def limitar_intentos(f):
         # Bloquea la petición si el límite fue alcanzado y muestra advertencia
         if len(intentos_ip[ip_cliente]) >= max_intentos:
             flash("Demasiados intentos detectados. Por seguridad, espera 1 minuto antes de volver a intentar.", "error")
-            return redirect(url_for('main.index'))
+            return redirect(url_for('main.pantalla_principal'))
             
         # Almacena el timestamp de este intento válido y permite el paso
         intentos_ip[ip_cliente].append(tiempo_actual)
@@ -124,7 +124,7 @@ def login():
             # Rechaza el acceso si un Superadmin desactivó (Soft Delete) esta cuenta
             if not usuario[3]:
                 flash("Tu cuenta está desactivada. Contacta al administrador.", "error")
-                return redirect(url_for('main.index'))
+                return redirect(url_for('main.pantalla_principal'))
             else:
                 # Inyecta las variables esenciales de autorización y diseño en las cookies encriptadas de la sesión
                 session['user_id'] = usuario[0] # ID único del usuario en la base de datos
@@ -136,7 +136,7 @@ def login():
                 img_url = url_for('static', filename='img/SALUDO.gif')
                 flash(f'<img src="{img_url}" style="vertical-align: middle; height: 55px; width: auto;"> ¡Bienvenido, {usuario[1]}!', 'success')
                 
-                return redirect(url_for('main.index'))
+                return redirect(url_for('main.pantalla_principal'))
         else:
             # Respuesta unificada y ambigua para prevenir que descubran si el error fue el correo o la clave
             flash("Usuario o contraseña incorrectos.", "error")
@@ -439,17 +439,6 @@ def cancelar_recuperacion():
     session.pop('pin_verificado', None)
     return redirect(url_for('main.login_page'))
 
-@bp.route('/logout')
-def logout():
-    # Destrucción forzada de todas las variables temporales del navegador
-    session.clear()
-    
-    # Mensaje de despedida con imagen incrustada
-    img_url = url_for('static', filename='img/DESPEDIDA.gif')
-    flash(f'<img src="{img_url}" style="vertical-align: middle; height: 55px; width: auto;"> Has cerrado sesión exitosamente.', 'success')
-    
-    return redirect(url_for('main.login_page'))
-
 # ADMINISTRACIÓN DEL ACCESO AL SISTEMA (USUARIOS Y ROLES)
 
 @bp.route('/usuarios') 
@@ -654,17 +643,40 @@ def crear_rol():
 
 @bp.route('/')
 def login_page():
-    # Si el usuario ya está logueado, lo mandamos directo al dashboard (index)
+    # Si el usuario ya está logueado, lo mandamos a la pantalla principal
     if 'user_id' in session:
-        return redirect(url_for('main.index'))
+        return redirect(url_for('main.pantalla_principal'))
     # Si no está logueado, le mostramos la pantalla de login limpia
     return render_template('login.html')
 
+
+@bp.route('/pantalla-principal')
+@login_requerido
+def pantalla_principal():
+    # Pantalla de bienvenida con el GIF centrado (solo esto se ve)
+    return render_template('pantalla_principal.html')
+
+
 @bp.route('/inicio')
-@login_requerido 
+@login_requerido
 def index():
-    # Este ahora es el Panel Privado (Dashboard)
+    # Panel Privado (Dashboard) - Ahora se accede desde la pestaña "Reportes"
     return render_template('index.html')
+
+
+@bp.route('/logout')
+def logout():
+    # Destrucción forzada de todas las variables temporales del navegador
+    session.clear()
+
+    # Mensaje de despedida con imagen incrustada
+    img_url = url_for('static', filename='img/DESPEDIDA.gif')
+    flash(f'<img src="{img_url}" style="vertical-align: middle; height: 55px; width: auto;"> Has cerrado sesión exitosamente.', 'success')
+
+    # Creamos una respuesta de redirección y le inyectamos un script para limpiar el localStorage
+    response = redirect(url_for('main.login_page'))
+    response.set_cookie('clear_sidebar', 'true', max_age=5)  # Cookie temporal
+    return response
 
 @bp.route('/api/cabecera/actualizar', methods=['POST'])
 @login_requerido
@@ -1196,9 +1208,41 @@ def procesar_carga():
         except Exception as e:
             print(f"Error procesando primera semana: {e}")
             flash(f"Error procesando el archivo de primera semana: {e}", "danger")
-
+    
     # ---------------------------------------------------------
-    # 4. Otros módulos no programados aún
+    # 4. Procesamiento del Módulo Semanal Levante
+    # ---------------------------------------------------------
+    elif modulo_seleccionado == 'semanal_levante':
+        try:
+            from models.semanal_levante.services import procesar_excel_semanal_levante
+            exito, msj_resultado = procesar_excel_semanal_levante(archivo, lote_seleccionado)
+            
+            if exito:
+                flash(msj_resultado, "success")
+            else:
+                flash(msj_resultado, "danger")
+        except Exception as e:
+            print(f"Error procesando semanal levante: {e}")
+            flash(f"Error procesando el archivo de levante: {e}", "danger")
+    
+    # ---------------------------------------------------------
+    # 5. Procesamiento del Módulo Clasificación de Producción
+    # ---------------------------------------------------------
+    elif modulo_seleccionado == 'clasificacion':
+        try:
+            from models.clasificacion.services import procesar_excel_clasificacion
+            exito, msj_resultado = procesar_excel_clasificacion(archivo, lote_seleccionado)
+
+            if exito:
+                flash(msj_resultado, "success")
+            else:
+                flash(msj_resultado, "danger")
+        except Exception as e:
+            print(f"Error procesando clasificación: {e}")
+            flash(f"Error procesando el archivo de clasificación: {e}", "danger")
+    
+    # ---------------------------------------------------------
+    # 6. Otros módulos no programados aún
     # ---------------------------------------------------------
     else:
         flash(f"La carga para '{modulo_seleccionado}' aún no está programada.", "warning")
@@ -1206,6 +1250,396 @@ def procesar_carga():
     # Redirección final segura si todo termina bien (usando código 303)
     return redirect(url_for('main.carga_datos_vista'), code=303)
 
+
+# ==============================================================================
+# MÓDULOS PROVISIONALES - PLANTA DE ALIMENTOS
+# ==============================================================================
+
+from models.planta_alimentos.maestros import MateriaPrima, Proveedor
+
+@bp.route('/materias-primas', methods=['GET', 'POST'])
+@login_requerido
+def materias_primas():
+    if request.method == 'POST':
+        nombre = request.form.get('nombre', '').strip().upper()
+        proveedor = request.form.get('proveedor', '').strip().upper()
+        
+        precio_raw = request.form.get('precio_actual_kg', '0').replace('.', '')
+        flete_raw = request.form.get('flete', '0').replace('.', '')
+        
+        precio_actual_kg = float(precio_raw) if precio_raw else 0.0
+        flete = float(flete_raw) if flete_raw else 0.0
+        iva = float(request.form.get('iva', '1.00'))
+        es_maquila = True if request.form.get('es_maquila') else False
+
+        try:
+            MateriaPrima.create(nombre, precio_actual_kg, proveedor, iva, flete, es_maquila)
+            flash('Materia prima registrada exitosamente.', 'success')
+        except Exception as e:
+            print(f"Error al guardar materia prima: {e}")
+            flash('Error al guardar la materia prima.', 'danger')
+            
+        return redirect(url_for('main.materias_primas'))
+        
+    lista_mp = MateriaPrima.get_all()
+    lista_proveedores = Proveedor.get_all()  # <--- Consulta la lista de proveedores
+    
+    return render_template(
+        'materias_primas.html', 
+        materias_primas=lista_mp, 
+        proveedores=lista_proveedores  # <--- Envía la lista a Jinja2
+    )
+
+
+@bp.route('/materias-primas/editar/<int:id_mp>', methods=['POST'])
+@login_requerido
+def editar_materia_prima(id_mp):
+    nombre = request.form.get('nombre', '').strip().upper()
+    proveedor = request.form.get('proveedor', '').strip().upper()
+    
+    precio_raw = request.form.get('precio_actual_kg', '0').replace('.', '')
+    flete_raw = request.form.get('flete', '0').replace('.', '')
+    
+    precio_actual_kg = float(precio_raw) if precio_raw else 0.0
+    flete = float(flete_raw) if flete_raw else 0.0
+    iva = float(request.form.get('iva', '1.00'))
+    es_maquila = True if request.form.get('es_maquila') else False
+
+    try:
+        MateriaPrima.update(id_mp, nombre, precio_actual_kg, proveedor, iva, flete, es_maquila)
+        flash('Materia prima actualizada correctamente.', 'success')
+    except Exception as e:
+        print(f"Error al editar materia prima: {e}")
+        flash('Error al actualizar la materia prima.', 'danger')
+
+    return redirect(url_for('main.materias_primas'))
+
+@bp.route('/catalogo-alimentos', methods=['GET', 'POST'])
+@login_requerido
+def catalogo_alimentos():
+    if request.method == 'POST':
+        item_id = request.form.get('item_id')
+        nombre = request.form.get('nombre').strip().upper()
+        rango_semanas = request.form.get('rango_semanas').strip()
+        
+        try:
+            CatalogoAlimento.create(item_id, nombre, rango_semanas)
+        except Exception as e:
+            print(f"Error al guardar dieta: {e}") 
+            
+        return redirect(url_for('main.catalogo_alimentos'))
+        
+    lista_alimentos = CatalogoAlimento.get_all()
+    return render_template('catalogo_alimentos.html', alimentos=lista_alimentos)
+
+# Actualiza la importación
+from models.planta_alimentos.maestros import MateriaPrima, CatalogoAlimento, Empresa
+
+# ...
+
+@bp.route('/empresas-maquila', methods=['GET', 'POST'])
+@login_requerido
+def empresas_maquila():
+    if request.method == 'POST':
+        nombre = request.form.get('nombre').strip().upper()
+        costo_maquila = request.form.get('costo_maquila', 0)
+        
+        try:
+            Empresa.create(nombre, costo_maquila)
+        except Exception as e:
+            print(f"Error al guardar empresa: {e}") 
+            
+        return redirect(url_for('main.empresas_maquila'))
+        
+    lista_empresas = Empresa.get_all()
+    return render_template('empresas_maquila.html', empresas=lista_empresas)
+
+from models.planta_alimentos.formulas import FormulaDetalle, FormulaProduccion
+# Asegúrate de que MateriaPrima y CatalogoAlimento estén importados arriba
+
+@bp.route('/editar-receta/<int:item_id>', defaults={'lote_id': '69-10'}, methods=['GET', 'POST'])
+@bp.route('/editar-receta/<int:item_id>/<string:lote_id>', methods=['GET', 'POST'])
+@login_requerido
+def editar_receta(item_id, lote_id):
+    if request.method == 'POST':
+        # Validar si el formulario enviado es de Producción Diaria
+        if 'guardar_produccion' in request.form:
+            fecha = request.form.get('fecha')
+            toneladas_raw = request.form.get('toneladas', '0').replace('.', '').replace(',', '.')
+            toneladas = float(toneladas_raw) if toneladas_raw else 0.0
+            
+            if fecha and toneladas > 0:
+                FormulaProduccion.registrar_produccion(item_id, lote_id, fecha, toneladas)
+                flash('Registro de producción agregado.', 'success')
+            return redirect(url_for('main.editar_receta', item_id=item_id, lote_id=lote_id))
+
+        # Formulario de Insumo de Receta
+        materia_prima_id = request.form.get('materia_prima_id')
+        cantidad_raw = request.form.get('cantidad_kg', '0').replace('.', '').replace(',', '.')
+        cantidad_kg = float(cantidad_raw) if cantidad_raw else 0.0
+        
+        if materia_prima_id and cantidad_kg > 0:
+            FormulaDetalle.agregar_insumo(item_id, lote_id, materia_prima_id, cantidad_kg)
+            flash('Insumo agregado a la receta.', 'success')
+            
+        return redirect(url_for('main.editar_receta', item_id=item_id, lote_id=lote_id))
+
+    insumos_receta = FormulaDetalle.obtener_receta(item_id, lote_id)
+    resumen_totales = FormulaDetalle.obtener_resumen_totales(item_id, lote_id)
+    materias_primas = MateriaPrima.get_all()
+    lotes = FormulaDetalle.obtener_lotes_disponibles()
+    
+    # Registros de Producción por Día
+    # 1. Registros de Producción por Día
+    registros_produccion = FormulaProduccion.obtener_produccion_por_lote(item_id, lote_id)
+    
+    # IMPORTANTE: Convertimos la suma total a float
+    total_toneladas_lote = float(sum([r['toneladas'] for r in registros_produccion])) if registros_produccion else 0.0
+
+    # 2. Cálculo dinámico de Consumo Total por Materia Prima
+    receta_calculada = []
+    for insumo in insumos_receta:
+        # Aseguramos que ambos valores sean float
+        cant_kg = float(insumo['cantidad_kg']) if insumo['cantidad_kg'] else 0.0
+        
+        receta_calculada.append({
+            'id': insumo['id'],
+            'insumo': insumo['insumo'],
+            'cantidad_kg': cant_kg,
+            'total_consumo_kg': cant_kg * total_toneladas_lote  # Multiplicación float * float
+        })
+    return render_template(
+        'editar_receta.html',
+        item_id=item_id,
+        lote_id=lote_id,
+        insumos_receta=receta_calculada,
+        totales=resumen_totales,
+        materias_primas=materias_primas,
+        lotes=lotes,
+        registros_produccion=registros_produccion,
+        total_toneladas=total_toneladas_lote
+    )
+
+from models.planta_alimentos.transacciones import RegistroProduccion
+# Asegúrate de tener Empresa y CatalogoAlimento importados arriba
+
+@bp.route('/registro-baches', methods=['GET', 'POST'])
+@login_requerido
+def registro_baches():
+    if request.method == 'POST':
+        fecha = request.form.get('fecha')
+        lote_id = request.form.get('lote_id')
+        empresa_id = request.form.get('empresa_id')
+        item_id = request.form.get('item_id')
+        cantidad_baches = request.form.get('cantidad_baches', 0)
+        toneladas = request.form.get('toneladas_producidas', 0)
+        
+        try:
+            RegistroProduccion.create(fecha, lote_id, empresa_id, item_id, cantidad_baches, toneladas)
+        except Exception as e:
+            print(f"Error al guardar producción: {e}")
+            
+        return redirect(url_for('main.registro_baches'))
+        
+    historial = RegistroProduccion.get_all()
+    empresas = Empresa.get_all()
+    alimentos = CatalogoAlimento.get_all()
+    lotes = RegistroProduccion.get_lotes() # Llana al modelo limpiamente
+    
+    return render_template('registro_baches.html', 
+                           historial=historial, 
+                           empresas=empresas, 
+                           alimentos=alimentos,
+                           lotes=lotes)
+    
+    return render_template('registro_baches.html', 
+                           historial=historial, 
+                           empresas=empresas, 
+                           alimentos=alimentos,
+                           lotes=lotes)
+@bp.route('/recepcion-compras')
+@login_requerido
+def recepcion_compras():
+    return "Módulo de Recepción (Compras) en construcción"
+
+@bp.route('/kardex-inventario')
+@login_requerido
+def kardex_inventario():
+    return "Módulo de Kardex en construcción"
+
+@bp.route('/control-silos')
+@login_requerido
+def control_silos():
+    return "Módulo de Control de Silos en construcción"
+
+@bp.route('/proyeccion-costos')
+@login_requerido
+def proyeccion_costos():
+    return "Módulo de Proyección y Costos en construcción"
+@bp.route('/recetario-formulas')
+@login_requerido
+def recetario_formulas():
+    # Redirige directamente al catálogo, que es donde ahora gestionamos las recetas
+    return redirect(url_for('main.catalogo_alimentos'))
+
+@bp.route('/resumen-lote-formulas', methods=['GET'])
+@login_requerido
+def resumen_lote_formulas():
+    lotes = RegistroProduccion.get_lotes()
+    lote_id = request.args.get('lote_id')
+    
+    if not lote_id and lotes:
+        lote_id = lotes[0]['lote']
+        
+    formulas_lote = FormulaDetalle.obtener_formulas_por_lote(lote_id) if lote_id else []
+    
+    return render_template('resumen_lote_formulas.html', 
+                           lotes=lotes, 
+                           lote_id=lote_id, 
+                           formulas=formulas_lote)
+    
+    
+@bp.route('/receta/actualizar/<int:id_registro>', methods=['POST'])
+@login_requerido
+def actualizar_insumo_receta(id_registro):
+    item_id = request.form.get('item_id')
+    lote_id = request.form.get('lote_id')
+    
+    # Captura y limpieza del peso enviado desde la tabla
+    cantidad_raw = request.form.get('cantidad_kg', '0').replace('.', '').replace(',', '.')
+    
+    try:
+        nueva_cantidad = float(cantidad_raw) if cantidad_raw else 0.0
+        if nueva_cantidad > 0:
+            FormulaDetalle.actualizar_insumo(id_registro, nueva_cantidad)
+            flash('Cantidad actualizada correctamente.', 'success')
+        else:
+            flash('La cantidad debe ser mayor a cero.', 'warning')
+    except Exception as e:
+        print(f"Error al actualizar insumo de receta: {e}")
+        flash('Error al actualizar la cantidad del insumo.', 'danger')
+
+    # ESENCIAL: Siempre debe retornar una respuesta HTTP
+    if item_id and lote_id:
+        return redirect(url_for('main.editar_receta', item_id=item_id, lote_id=lote_id))
+    
+    return redirect(url_for('main.catalogo_alimentos'))
+
+
+@bp.route('/receta/eliminar-insumo/<int:id_registro>', methods=['POST'])
+@login_requerido
+def eliminar_insumo_receta(id_registro):
+    item_id = request.form.get('item_id')
+    lote_id = request.form.get('lote_id')
+    
+    try:
+        FormulaDetalle.eliminar_insumo(id_registro)
+    except Exception as e:
+        print(f"Error al eliminar insumo: {e}")
+        
+    return redirect(url_for('main.editar_receta', item_id=item_id, lote_id=lote_id))
+
+
+@bp.route('/receta/eliminar-formula/<int:item_id>/<string:lote_id>', methods=['POST'])
+@login_requerido
+def eliminar_formula_lote(item_id, lote_id):
+    try:
+        FormulaDetalle.eliminar_formula_lote(item_id, lote_id)
+    except Exception as e:
+        print(f"Error al eliminar la fórmula: {e}")
+        
+    return redirect(url_for('main.resumen_lote_formulas', lote_id=lote_id))
+
+
+@bp.route('/materias-primas/eliminar/<int:id_mp>', methods=['POST'])
+@login_requerido
+def eliminar_materia_prima(id_mp):
+    try:
+        MateriaPrima.delete(id_mp)
+        flash('Materia prima eliminada correctamente.', 'success')
+    except Exception as e:
+        print(f"Error al eliminar materia prima: {e}")
+        # Si viola la restricción de llave foránea (psycopg2.errors.ForeignKeyViolation)
+        flash('No se puede eliminar la materia prima porque está asignada a una o más fórmulas activas.', 'danger')
+        
+    return redirect(url_for('main.materias_primas'))
+
+
+
+# ==========================================
+# 3. PROVEEDORES
+# ==========================================
+
+@bp.route('/proveedores', methods=['GET', 'POST'])
+@login_requerido
+def proveedores():
+    if request.method == 'POST':
+        nombre = request.form.get('nombre', '')
+        if nombre:
+            Proveedor.create(nombre)
+            flash('Proveedor guardado correctamente.', 'success')
+        return redirect(url_for('main.proveedores'))
+        
+    lista_proveedores = Proveedor.get_all()
+    return render_template('proveedores.html', proveedores=lista_proveedores)
+
+
+@bp.route('/proveedores/editar/<int:id_prov>', methods=['POST'])
+@login_requerido
+def editar_proveedor(id_prov):
+    nombre = request.form.get('nombre', '')
+    if nombre:
+        Proveedor.update(id_prov, nombre)
+        flash('Proveedor actualizado.', 'success')
+    return redirect(url_for('main.proveedores'))
+
+
+@bp.route('/proveedores/eliminar/<int:id_prov>', methods=['POST'])
+@login_requerido
+def eliminar_proveedor(id_prov):
+    Proveedor.delete(id_prov)
+    flash('Proveedor eliminado.', 'warning')
+    return redirect(url_for('main.proveedores'))
+
+
+@bp.route('/editar-receta/eliminar-produccion/<int:id_registro>', methods=['POST'])
+@login_requerido
+def eliminar_produccion_diaria(id_registro):
+    item_id = request.form.get('item_id')
+    lote_id = request.form.get('lote_id')
+    
+    try:
+        FormulaProduccion.eliminar_produccion(id_registro)
+        flash('Registro de producción eliminado.', 'warning')
+    except Exception as e:
+        print(f"Error al eliminar registro de producción: {e}")
+        flash('Error al eliminar la fecha de producción.', 'danger')
+
+    if item_id and lote_id:
+        return redirect(url_for('main.editar_receta', item_id=item_id, lote_id=lote_id))
+    return redirect(url_for('main.catalogo_alimentos'))
+
+@bp.route('/editar-receta/actualizar-produccion/<int:id_registro>', methods=['POST'])
+@login_requerido
+def actualizar_produccion_diaria(id_registro):
+    item_id = request.form.get('item_id')
+    lote_id = request.form.get('lote_id')
+    toneladas_raw = request.form.get('toneladas', '0').replace('.', '').replace(',', '.')
+    
+    try:
+        toneladas = float(toneladas_raw) if toneladas_raw else 0.0
+        if toneladas > 0:
+            FormulaProduccion.actualizar_produccion(id_registro, toneladas)
+            flash('Toneladas actualizadas correctamente.', 'success')
+        else:
+            flash('Las toneladas deben ser mayor a cero.', 'warning')
+    except Exception as e:
+        print(f"Error al actualizar producción: {e}")
+        flash('Error al actualizar las toneladas.', 'danger')
+
+    if item_id and lote_id:
+        return redirect(url_for('main.editar_receta', item_id=item_id, lote_id=lote_id))
+    return redirect(url_for('main.catalogo_alimentos'))
 # ==============================================================================
 # GRÁFICOS DE ARRANQUE EN GRANJA (PRIMERA SEMANA)   
 # ==============================================================================
