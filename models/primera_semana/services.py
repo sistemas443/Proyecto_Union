@@ -472,9 +472,12 @@ def get_data_grafico_primera_semana(lote_nombre):
 def procesar_excel_primera_semana(archivo_excel, lote_nombre):
     """
     Procesa un archivo Excel subido por el usuario para el módulo de Primera Semana.
-    Detecta automáticamente las columnas (fusionando celdas combinadas) y detona el recálculo en cascada.
+    Escanea todas las hojas buscando la tabla correcta, fusiona celdas combinadas,
+    extrae solo los datos crudos (los que el usuario digita) y detona el recálculo
+    matemático en cascada.
     """
     import pandas as pd
+    import unicodedata
     from models.base import get_db_connection, to_float_safe
     from models.cabecera.model import fetch_cabecera_by_lote
 
@@ -486,111 +489,173 @@ def procesar_excel_primera_semana(archivo_excel, lote_nombre):
         return False, f"El lote '{lote_nombre}' no existe en el sistema."
 
     try:
-        # 1. Garantizar que la estructura exista en BD
+        # 1. Garantizar que la estructura de los 8 días exista en la BD
         generar_estructura_primera_semana(lote_nombre, cabecera.get('fecha_recepcion'))
 
-        # 2. Leer SIN encabezados para procesar las celdas combinadas manualmente
-        df = pd.read_excel(archivo_excel, header=None)
+        # 2. Leer TODAS las hojas del Excel sin encabezados
+        hojas = pd.read_excel(archivo_excel, sheet_name=None, header=None)
 
-        # Fusionar las filas 0 y 1 (donde están los encabezados reales en tu Excel)
+        df = None
+        header_idx = -1
+
+        # Función para normalizar texto
+        def normalizar(texto):
+            texto = str(texto).lower().strip()
+            texto = ''.join(c for c in unicodedata.normalize('NFD', texto)
+                            if unicodedata.category(c) != 'Mn')
+            texto = texto.replace('\n', ' ').replace('\r', ' ').replace('\t', ' ')
+            texto = ' '.join(texto.split())
+            return texto
+
+        # 3. Escáner flexible
+        for nombre_hoja, hoja_df in hojas.items():
+            for i, row in hoja_df.iterrows():
+                fila_texto = " ".join([normalizar(x) for x in row.values])
+                
+                tiene_semana = 'semana' in fila_texto
+                tiene_mortalidad = 'mortalidad' in fila_texto or 'mort' in fila_texto
+                tiene_uniformidad = 'uniformidad' in fila_texto or 'unif' in fila_texto
+                
+                if sum([tiene_semana, tiene_mortalidad, tiene_uniformidad]) >= 2:
+                    df = hoja_df
+                    header_idx = i
+                    break
+            
+            if df is not None:
+                break
+
+        if df is None:
+            hojas_info = ", ".join([f"'{h}' ({len(d)} filas)" for h, d in hojas.items()])
+            return False, (f"No se encontró la tabla de Primera Semana. "
+                          f"Se revisaron las hojas: {hojas_info}.")
+
+        # 4. Fusionar la fila principal y la de abajo
         nuevas_columnas = []
         for col_idx in range(df.shape[1]):
-            val1 = str(df.iloc[0, col_idx]).strip().lower()
-            val2 = str(df.iloc[1, col_idx]).strip().lower()
+            val1 = str(df.iloc[header_idx, col_idx]).strip().lower().replace('\n', ' ')
+            val2 = ''
+            if (header_idx + 1) < len(df):
+                val2 = str(df.iloc[header_idx + 1, col_idx]).strip().lower().replace('\n', ' ')
             
-            val1 = val1 if val1 != 'nan' else ''
-            val2 = val2 if val2 != 'nan' else ''
+            val1 = val1 if val1 not in ['nan', 'none'] else ''
+            val2 = val2 if val2 not in ['nan', 'none'] else ''
             
-            # Al unir, si "Semana" está combinada, val1 será 'semana' y val2 estará vacío
             nombre_col = f"{val1} {val2}".strip()
             nuevas_columnas.append(nombre_col)
             
         df.columns = nuevas_columnas
-        
-        # Descartar las 2 filas de encabezado para quedarnos solo con los datos
-        df = df.iloc[2:].reset_index(drop=True)
+        df = df.iloc[header_idx + 2:].reset_index(drop=True)
 
-        # 3. Mapeo de sub-cadenas a columnas de la Base de Datos
+        # 5. MAPEO HIPER-ESTRICTO (Múltiples palabras clave para evitar fallos por saltos de línea)
         mapeo_columnas = {
-            'sel': 'sel',
-            'peso real': 'peso_real',
-            '10% menos': 'unif_10_menos',
-            '% uniformidad': 'porc_uniformidad',
-            '10% mas': 'unif_10_mas',
-            'coeficiente': 'coef_variacion', # Cubre "Coeficiente e variacion"
-            'kilos semana': 'consumo_kg',
-            'real diaria': 'consumo_kg',
-            'observaciones': 'observaciones'
+            'real diaria':      'consumo_kg',
+            'peso real':        'peso_real',
+            '10% menos':        'unif_10_menos',
+            'menos':            'unif_10_menos',     # Filtro de respaldo
+            '% unif':           'porc_uniformidad',  # Filtro exacto para "% uniformi dad"
+            'uniformi':         'porc_uniformidad',  # Filtro de respaldo anti-saltos de línea
+            '10% mas':          'unif_10_mas',
+            ' mas':             'unif_10_mas',       # Filtro de respaldo (" mas" con espacio)
+            'coeficiente':      'coef_variacion',
+            'observaciones':    'observaciones',
         }
 
-        # Identificar las columnas críticas dinámicamente
         col_semana = None
         col_mortalidad = None
-        
+        col_sel = None
+
         for col in df.columns:
-            if 'semana' in col and 'kilos' not in col:
+            col_lower = str(col).lower()
+            if 'semana' in col_lower and 'kilos' not in col_lower and 'fecha' not in col_lower:
                 col_semana = col
-            # Para la mortalidad, evitamos la columna "% mort" o "sel"
-            if 'mortalidad' in col and 'sel' not in col and '%' not in col:
+            if 'mortalidad' in col_lower and 'sel' not in col_lower and '%' not in col_lower:
                 col_mortalidad = col
+            if col_lower.strip() == 'sel' or 'sel ' in col_lower or ' sel' in col_lower:
+                col_sel = col
 
         if not col_semana:
-            return False, "No se encontró la columna 'Semana' en el archivo Excel."
+            for col in df.columns:
+                if df[col].notna().sum() > 0:
+                    col_semana = col
+                    break
+
+        if not col_semana:
+            return False, "Error interno: No se pudo ubicar la columna 'Semana'."
 
         conn = get_db_connection()
         cur = conn.cursor()
         filas_actualizadas = 0
 
-        # 4. Iterar sobre las filas de datos
+        def extraer_valor(v):
+            if pd.isna(v): return None
+            v_str = str(v).strip().lower()
+            if v_str in ['', 'nan', '-', 'none', '#div/0!', '#n/a', '#valor!', '#ref!']: 
+                return None
+            return v
+
+        # 6. Iterar sobre las filas y armar el UPDATE
         for _, row in df.iterrows():
             val_semana = str(row[col_semana]).strip()
-            
-            # Limpiar por si Pandas lee "0.0" en vez de "0"
             if val_semana.endswith('.0'):
                 val_semana = val_semana[:-2]
 
-            # Ignorar filas que no pertenezcan a la primera semana
             if val_semana not in ["0", "0/1", "0/2", "0/3", "0/4", "0/5", "0/6", "0/7"]:
                 continue
 
             campos_a_actualizar = []
             valores = []
+            columnas_ya_procesadas = set()
 
-            # A. Procesar columna de Mortalidad
-            if col_mortalidad and pd.notna(row[col_mortalidad]):
-                campos_a_actualizar.append('"mortalidad" = %s')
-                valores.append(int(to_float_safe(row[col_mortalidad])))
+            if col_mortalidad:
+                v = extraer_valor(row[col_mortalidad])
+                if v is not None:
+                    try:
+                        campos_a_actualizar.append('"mortalidad" = %s')
+                        valores.append(int(to_float_safe(v) or 0))
+                        columnas_ya_procesadas.add('mortalidad')
+                    except: pass
 
-            # B. Procesar el resto de columnas mapeadas
+            if col_sel and 'sel' not in columnas_ya_procesadas:
+                v = extraer_valor(row[col_sel])
+                if v is not None:
+                    try:
+                        campos_a_actualizar.append('"sel" = %s')
+                        valores.append(int(to_float_safe(v) or 0))
+                        columnas_ya_procesadas.add('sel')
+                    except: pass
+
             for palabra_clave, col_db in mapeo_columnas.items():
+                # Esta regla asegura que si ya llenamos "% uniformidad", no se vuelva a llenar por accidente
+                if col_db in columnas_ya_procesadas:
+                    continue
+
                 col_encontrada = next((c for c in df.columns if palabra_clave in c), None)
-                
-                if col_encontrada and pd.notna(row[col_encontrada]):
-                    val = row[col_encontrada]
-                    if col_db == 'observaciones':
-                        val_final = str(val).strip()
-                    elif col_db == 'sel':
-                        val_final = int(to_float_safe(val))
-                    else:
-                        val_final = to_float_safe(val)
+                if col_encontrada:
+                    v = extraer_valor(row[col_encontrada])
+                    if v is not None:
+                        if col_db == 'observaciones':
+                            campos_a_actualizar.append(f'"{col_db}" = %s')
+                            valores.append(str(v))
+                            columnas_ya_procesadas.add(col_db)
+                        else:
+                            try:
+                                campos_a_actualizar.append(f'"{col_db}" = %s')
+                                valores.append(to_float_safe(v) or 0.0)
+                                columnas_ya_procesadas.add(col_db)
+                            except: pass
 
-                    campos_a_actualizar.append(f'"{col_db}" = %s')
-                    valores.append(val_final)
-
-            # Ejecutar UPDATE si el usuario digitó al menos un dato en ese día
             if campos_a_actualizar:
                 valores.extend([lote_nombre, val_semana])
                 query = f"UPDATE primera_semana SET {', '.join(campos_a_actualizar)} WHERE lote = %s AND semana = %s"
                 cur.execute(query, valores)
                 filas_actualizadas += 1
 
-        # 5. Recalcular toda la cascada matemática del lote modificado
+        # 7. Disparar el recálculo matemático
         id_lote = cabecera.get('id')
         cur.execute("SELECT no_pollitas_recibidas FROM cabecera_lotes WHERE id = %s", (id_lote,))
         cab_info = cur.fetchone()
         aves_iniciales = float(cab_info[0]) if cab_info and cab_info[0] else 10000.0
-        if aves_iniciales <= 0:
-            aves_iniciales = 1.0
+        if aves_iniciales <= 0: aves_iniciales = 1.0
 
         recalcular_primera_semana_cascada_interna(lote_nombre, aves_iniciales, cur)
 
@@ -601,7 +666,7 @@ def procesar_excel_primera_semana(archivo_excel, lote_nombre):
         if filas_actualizadas > 0:
             return True, f"¡Éxito! Se cargaron y recalcularon {filas_actualizadas} días."
         else:
-            return False, "No se encontraron datos de la Primera Semana en el archivo."
+            return False, "La tabla fue detectada, pero las celdas de los días (0 a 0/7) estaban vacías."
 
     except Exception as e:
         import traceback

@@ -25,15 +25,12 @@
     .sidebar-rapido {
       position: fixed;
       top: 64px;
-      /* Altura exacta para acoplarse justo debajo de la navbar */
       left: 0;
       width: 50px;
       height: auto;
-      /* Mide exactamente lo que ocupan las 6 opciones */
       max-height: calc(100vh - 60px);
       background-color: #212529;
       border-bottom-right-radius: 10px;
-      /* Esquina redondeada flotante */
       box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.35);
       z-index: 1040;
       display: flex;
@@ -43,12 +40,10 @@
       transform: translateX(-100%);
     }
 
-    /* Cuando la barra entra en pantalla */
     body.sidebar-activa .sidebar-rapido {
       transform: translateX(0);
     }
 
-    /* Ancho compacto al pasar el mouse */
     .sidebar-rapido:hover {
       width: 185px;
     }
@@ -88,13 +83,8 @@
       opacity: 1;
     }
 
-    /* ======================================================== */
-    /* CORRECCIÓN DEL HUECO BLANCO:                             */
-    /* La Navbar no se mueve, solo se desplaza el <main>        */
-    /* ======================================================== */
     body {
       padding-left: 0 !important;
-      /* Garantiza que la página y el navbar no se muevan */
     }
 
     main.container-fluid {
@@ -103,7 +93,14 @@
 
     body.sidebar-activa main.container-fluid {
       padding-left: 65px;
-      /* Empuja únicamente las tablas/tarjetas, no el menú superior */
+    }
+
+    /* Forzar tamaño uniforme de imágenes en todos los toasts */
+    .swal2-toast img {
+      height: 65px !important;
+      width: 65px !important;
+      object-fit: contain;
+      margin-right: 10px;
     }
   </style>
 
@@ -114,23 +111,23 @@
 
   {% include 'nav.html' %}
 
-<!-- BANNER DE SUPLANTACIÓN FLOTANTE (PÍLDORA INFERIOR) -->
+  <!-- BANNER DE SUPLANTACIÓN FLOTANTE -->
   {% if session.get('is_impersonating') %}
-  <div class="shadow-lg rounded-pill px-4 py-2 d-flex align-items-center justify-content-between" 
-       style="position: fixed; bottom: 25px; left: 50%; transform: translateX(-50%); z-index: 1050; background-color: #212529; border: 2px solid #97271C;">
-      
-      <div class="text-white fw-bold d-flex align-items-center" style="font-size: 0.95rem;">
-          <i class='bx bx-show fs-4 me-2 text-warning'></i>
-          <span class="me-3">Navegando como <span class="text-warning">{{ session.get('user_nombre') }}</span> (Solo Lectura)</span>
-      </div>
-      
-      <a href="{{ url_for('main.revertir_suplantacion') }}" class="btn btn-sm rounded-pill fw-bold px-3 shadow-sm border-0" 
-         style="background-color: #97271C; color: white;">
-          Salir
-      </a>
+  <div class="shadow-lg rounded-pill px-4 py-2 d-flex align-items-center justify-content-between"
+    style="position: fixed; bottom: 25px; left: 50%; transform: translateX(-50%); z-index: 1050; background-color: #212529; border: 2px solid #97271C;">
+    <div class="text-white fw-bold d-flex align-items-center" style="font-size: 0.95rem;">
+      <i class='bx bx-show fs-4 me-2 text-warning'></i>
+      <span class="me-3">Navegando como <span class="text-warning">{{ session.get('user_nombre') }}</span> (Solo
+        Lectura)</span>
+    </div>
+    <a href="{{ url_for('main.revertir_suplantacion') }}"
+      class="btn btn-sm rounded-pill fw-bold px-3 shadow-sm border-0" style="background-color: #97271C; color: white;">
+      Salir
+    </a>
   </div>
   {% endif %}
 
+  {# --- SIDEBAR: SOLO SE MUESTRA SI EL USUARIO ESTÁ LOGUEADO --- #}
   {% if session.get('user_id') %}
   <div class="sidebar-rapido">
     <a href="{{ url_for('main.vista_lotes') }}" title="Gestión de Lotes">
@@ -179,24 +176,19 @@
   <script src="{{ url_for('static', filename='js/main.js') }}"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-  <!-- LÓGICA DE LA BARRA LATERAL (Memoria y Botón) -->
+  <!-- LÓGICA DE LA BARRA LATERAL (CORREGIDA) -->
   <script>
-    // Al cargar la página, revisamos si el usuario había dejado la barra abierta
     document.addEventListener("DOMContentLoaded", function () {
       if (localStorage.getItem('estadoSidebarLotes') === 'abierta') {
         document.body.classList.add('sidebar-activa');
       }
     });
 
-    // Función que llamaremos desde el menú superior para mostrar/ocultar
     function toggleSidebarLotes(event) {
-      event.preventDefault(); // Evita que la página salte
+      event.preventDefault();
       const body = document.body;
-
-      // Ponemos o quitamos la clase
       body.classList.toggle('sidebar-activa');
 
-      // Guardamos la preferencia en la memoria del navegador
       if (body.classList.contains('sidebar-activa')) {
         localStorage.setItem('estadoSidebarLotes', 'abierta');
       } else {
@@ -213,26 +205,24 @@
   <script>
     document.addEventListener("DOMContentLoaded", function () {
       const Toast = Swal.mixin({
-        toast: true, position: "top-end", showConfirmButton: false,
-        timer: 2000, timerProgressBar: true,
-        didOpen: (toast) => { toast.onmouseenter = Swal.stopTimer; toast.onmouseleave = Swal.resumeTimer; }
+        toast: true, 
+        position: "top-end", 
+        showConfirmButton: false,
+        timer: 2000, 
+        timerProgressBar: true, 
+        width: window.innerWidth < 500 ? '90%' : '450px',
+        padding: '10px 15px',
+        didOpen: (toast) => { toast.onmouseover = Swal.stopTimer; toast.onmouseleave = Swal.resumeTimer; }
       });
       const rawData = document.getElementById('flash-messages-data').textContent;
       const mensajes = JSON.parse(rawData);
       mensajes.forEach(function (msg) {
         const categoria = msg[0]; const texto = msg[1];
         let icono = 'info';
-
         if (categoria === 'error' || categoria === 'danger') icono = 'error';
         else if (categoria === 'success') icono = 'success';
         else if (categoria === 'warning') icono = 'warning';
-
-        // Si el texto del mensaje incluye una imagen, anulamos el icono por defecto
-        if (texto.includes('<img')) {
-          icono = false;
-        }
-
-        // Cambiamos "title" por "html" para que el navegador lea la etiqueta de la imagen
+        if (texto.includes('<img')) { icono = false; }
         Toast.fire({ icon: icono, html: texto });
       });
     });
@@ -259,60 +249,25 @@
     });
   </script>
 
-  <!-- CONTROL ANTI-DOBLE CLIC CON RUEDITA DE CARGA EN BOTONES -->
+  <!-- CONTROL ANTI-DOBLE CLIC CON RUEDITA DE CARGA -->
   <script>
     document.addEventListener("DOMContentLoaded", function () {
       document.querySelectorAll("form").forEach(function (form) {
         form.addEventListener("submit", function (e) {
           const btnSubmit = form.querySelector('button[type="submit"]');
-
           if (btnSubmit) {
-            if (btnSubmit.disabled) {
-              e.preventDefault();
-              return;
-            }
-
-            // Guardar dimensiones originales
+            if (btnSubmit.disabled) { e.preventDefault(); return; }
             btnSubmit.style.width = btnSubmit.offsetWidth + "px";
             btnSubmit.style.height = btnSubmit.offsetHeight + "px";
-
-            // Guardar los colores originales del botón
             const estilo = window.getComputedStyle(btnSubmit);
             const colorFondo = estilo.backgroundColor;
             const colorTexto = estilo.color;
             const colorBorde = estilo.borderColor;
-
-            // Deshabilitar para bloquear doble clic
             btnSubmit.disabled = true;
-
-            // Mantener el mismo aspecto visual mientras carga
-            btnSubmit.style.setProperty(
-              "background-color",
-              colorFondo,
-              "important"
-            );
-
-            btnSubmit.style.setProperty(
-              "color",
-              colorTexto,
-              "important"
-            );
-
-            btnSubmit.style.setProperty(
-              "border-color",
-              colorBorde,
-              "important"
-            );
-
-            // Spinner usando el mismo color del texto del botón
-            btnSubmit.innerHTML = `
-            <span
-              class="spinner-border spinner-border-sm"
-              role="status"
-              aria-hidden="true"
-              style="color: ${colorTexto};"
-            ></span>
-          `;
+            btnSubmit.style.setProperty("background-color", colorFondo, "important");
+            btnSubmit.style.setProperty("color", colorTexto, "important");
+            btnSubmit.style.setProperty("border-color", colorBorde, "important");
+            btnSubmit.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="color: ${colorTexto};"></span>`;
           }
         });
       });
@@ -324,31 +279,19 @@
   <script>
     document.addEventListener("DOMContentLoaded", function () {
       let temporizadorInactividad;
-
-      // CONFIGURACIÓN: Tiempo límite en milisegundos (15 minutos = 15 * 60 * 1000)
       const TIEMPO_LIMITE = 15 * 60 * 1000;
       function cerrarSesionPorInactividad() {
-        // Mostramos una alerta bonita con SweetAlert2 que ya tienes instalado
         Swal.fire({
           title: 'Sesión Expirada',
           text: 'Por tu seguridad, la sesión se ha cerrado debido a inactividad.',
           icon: 'warning',
-          timer: 3000,
-          timerProgressBar: true,
-          showConfirmButton: false,
-          allowOutsideClick: false
-        }).then(() => {
-          // Redirigimos a la ruta de logout en Python
-          window.location.href = "{{ url_for('main.logout') }}";
-        });
+          timer: 3000, timerProgressBar: true, showConfirmButton: false, allowOutsideClick: false
+        }).then(() => { window.location.href = "{{ url_for('main.logout') }}"; });
       }
-
       function reiniciarTemporizador() {
         clearTimeout(temporizadorInactividad);
         temporizadorInactividad = setTimeout(cerrarSesionPorInactividad, TIEMPO_LIMITE);
       }
-
-      // Escuchamos cualquier señal de vida del usuario en la página
       window.onload = reiniciarTemporizador;
       document.onmousemove = reiniciarTemporizador;
       document.onkeypress = reiniciarTemporizador;
@@ -357,19 +300,13 @@
     });
   </script>
 
-  <!-- ATAJO DE TECLADO: ALT + Z PARA OCULTAR/MOSTRAR INFO GENERAL -->
   <script>
     document.addEventListener("keydown", function (event) {
-      // Detectamos si presiona la tecla 'Alt' y la tecla 'Z' (sin importar si está en mayúscula o minúscula)
       if (event.altKey && event.key.toLowerCase() === "z") {
-
-        // Buscamos el botón/encabezado que controla el acordeón de la Info General
         const btnInfoGeneral = document.querySelector('[data-bs-target="#collapseInfoGeneral"]');
-
-        // Si la pantalla actual tiene ese encabezado, hacemos clic por el usuario
         if (btnInfoGeneral) {
-          event.preventDefault(); // Evitamos que el navegador haga alguna acción por defecto
-          btnInfoGeneral.click(); // Simulamos el clic mágico
+          event.preventDefault();
+          btnInfoGeneral.click();
         }
       }
     });

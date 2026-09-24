@@ -379,3 +379,256 @@ def recalcular_lote_completo_clasificacion(id_lote):
     finally:
         cur.close()
         conn.close()
+        
+def procesar_excel_clasificacion(archivo_excel, lote_nombre):
+    """
+    Procesa el Excel de Clasificación de Producción.
+    Extrae únicamente las columnas crudas digitadas por el usuario (las que NO tienen fórmula),
+    y dispara el recálculo completo en cascada (porcentajes, acumulados, promedios).
+    """
+    import pandas as pd
+    import unicodedata
+    import re
+    from models.base import get_db_connection, to_float_safe
+    from models.cabecera.model import fetch_cabecera_by_lote
+    from models.clasificacion import model
+
+    if not lote_nombre or lote_nombre == 'VACIO':
+        return False, "Debes seleccionar un lote válido de destino."
+
+    cabecera = fetch_cabecera_by_lote(lote_nombre)
+    if not cabecera:
+        return False, f"El lote '{lote_nombre}' no existe en el sistema."
+
+    id_lote = cabecera.get('id')
+
+    try:
+        # 1. Garantizar que la estructura de semanas (18 a 109) exista en la BD
+        if model.count_clasificacion(id_lote) == 0:
+            generar_estructura_clasificacion(lote_nombre, id_lote)
+
+        # 2. Leer TODAS las hojas del Excel sin encabezados
+        hojas = pd.read_excel(archivo_excel, sheet_name=None, header=None)
+        df = None
+        header_idx = -1
+
+        def normalizar(texto):
+            texto = str(texto).lower().strip()
+            texto = ''.join(c for c in unicodedata.normalize('NFD', texto) if unicodedata.category(c) != 'Mn')
+            return ' '.join(texto.replace('\n', ' ').split())
+
+        # 3. Escáner: buscar la fila con los sub-encabezados reales
+        for nombre_hoja, hoja_df in hojas.items():
+            for i, row in hoja_df.iterrows():
+                fila_texto = " ".join([normalizar(x) for x in row.values])
+
+                tiene_jum = 'jum' in fila_texto
+                tiene_extra = 'extra' in fila_texto
+                tiene_pipo = 'pipo' in fila_texto
+                tiene_sv = 'sv' in fila_texto
+
+                # Requerir al menos 3 de estas 4 palabras clave
+                if sum([tiene_jum, tiene_extra, tiene_pipo, tiene_sv]) >= 3:
+                    df = hoja_df
+                    header_idx = i
+                    break
+            if df is not None:
+                break
+
+        if df is None:
+            return False, "No se encontró la tabla de Clasificación."
+
+        # 4. Combinar las DOS filas de encabezados:
+        #    - Fila superior (header_idx - 1): contiene títulos generales y 'sv' fusionado
+        #    - Fila inferior (header_idx): contiene los sub-encabezados (jum, extra, a a, etc.)
+        fila_superior = [normalizar(x) for x in df.iloc[header_idx - 1].values] if header_idx > 0 else [''] * len(df.columns)
+        fila_inferior = [normalizar(x) for x in df.iloc[header_idx].values]
+
+        nuevas_columnas = []
+        for col_idx in range(len(fila_inferior)):
+            val_sup = fila_superior[col_idx] if col_idx < len(fila_superior) else ''
+            val_inf = fila_inferior[col_idx] if col_idx < len(fila_inferior) else ''
+
+            val_sup = val_sup if val_sup not in ['nan', 'none'] else ''
+            val_inf = val_inf if val_inf not in ['nan', 'none'] else ''
+
+            # Preferir el valor inferior (sub-encabezado), si está vacío usar el superior
+            if val_inf:
+                nombre_col = val_inf
+            elif val_sup:
+                nombre_col = val_sup
+            else:
+                nombre_col = ''
+
+            nuevas_columnas.append(nombre_col)
+
+        df.columns = nuevas_columnas
+
+        # --- DESDUPLICAR NOMBRES DE COLUMNAS ---
+        cols_unicas = []
+        contador = {}
+        for c in df.columns:
+            if c in contador:
+                contador[c] += 1
+                cols_unicas.append(f"{c}__dup{contador[c]}")
+            else:
+                contador[c] = 0
+                cols_unicas.append(c)
+        df.columns = cols_unicas
+
+        # Los datos empiezan en la fila SIGUIENTE al header_idx
+        df = df.iloc[header_idx + 1:].reset_index(drop=True)
+
+        # 5. Ubicar la columna "SV"
+        col_sv = None
+        for col in df.columns:
+            c = str(col).lower().strip()
+            if c == 'sv':
+                valores_prueba = []
+                for v in df[col].dropna().tolist():
+                    try:
+                        v_str = str(v).strip().replace('.0', '')
+                        if v_str.isdigit():
+                            valores_prueba.append(int(v_str))
+                    except:
+                        continue
+
+                if len(valores_prueba) > 0:
+                    nums = pd.Series(valores_prueba)
+                    if ((nums >= 18) & (nums <= 110)).sum() > 0:
+                        col_sv = col
+                        break
+
+        if not col_sv:
+            return False, "Error interno: No se ubicó la columna 'SV' con valores válidos (18-110)."
+
+        # 6. MAPEO de columnas
+        mapeo_columnas = {
+            'jum':   'clas_jum',
+            'extra': 'clas_extra',
+            'aa':    'clas_aa',
+            'a a':   'clas_aa',
+            'pipo':  'clas_pipo',
+            'sucio': 'clas_sucio',
+            'totia': 'clas_totiao',
+            'yema':  'clas_yema',
+        }
+
+        conn = get_db_connection()
+        cur = conn.cursor()
+        filas_actualizadas = 0
+
+        def extraer_valor(v):
+            if pd.isna(v): return None
+            v_str = str(v).strip().lower()
+            if v_str in ['', 'nan', '-', 'none']: return None
+            return v
+
+        # 7. Iterar sobre las filas
+        for _, row in df.iterrows():
+            val_sv_raw = row[col_sv]
+            if pd.isna(val_sv_raw):
+                continue
+
+            val_sv_str = str(val_sv_raw).strip().replace(',', '.').replace(' ', '')
+            if '.' in val_sv_str:
+                val_sv_str = val_sv_str.split('.')[0]
+
+            if not val_sv_str.isdigit():
+                continue
+            num_sv = int(val_sv_str)
+            if not (18 <= num_sv <= 110):
+                continue
+
+            campos_a_actualizar = []
+            valores = []
+            columnas_ya_procesadas = set()
+
+            # A. Columnas compuestas (jum, extra, aa, pipo, sucio, totiao, yema)
+            for palabra_clave, col_db in mapeo_columnas.items():
+                if col_db in columnas_ya_procesadas:
+                    continue
+                col_encontrada = None
+                for c in df.columns:
+                    c_lower = str(c).lower().strip()
+                    if '__dup' in c_lower:
+                        continue
+                    palabras = c_lower.split()
+                    if palabra_clave in palabras or c_lower == palabra_clave:
+                        col_encontrada = c
+                        break
+
+                if col_encontrada:
+                    v = extraer_valor(row[col_encontrada])
+                    if v is not None:
+                        try:
+                            campos_a_actualizar.append(f'"{col_db}" = %s')
+                            valores.append(to_float_safe(v) or 0.0)
+                            columnas_ya_procesadas.add(col_db)
+                        except: pass
+
+            # B. Columnas de una sola letra (A, B, C) con coincidencia ESTRICTA
+            mapeo_letras = {
+                'a': 'clas_a',
+                'b': 'clas_b',
+                'c': 'clas_c',
+            }
+
+            for letra, col_db in mapeo_letras.items():
+                if col_db in columnas_ya_procesadas:
+                    continue
+
+                col_encontrada = None
+                for c in df.columns:
+                    c_lower = str(c).lower().strip()
+
+                    # Ignorar duplicados
+                    if '__dup' in c_lower:
+                        continue
+
+                    # Ignorar 'a a' o 'aa' (doble A)
+                    if c_lower == 'a a' or c_lower == 'aa':
+                        continue
+
+                    # Coincidencia por palabra completa
+                    palabras = c_lower.split()
+
+                    # Debe contener EXACTAMENTE la letra como palabra completa
+                    if letra in palabras:
+                        # Descartar si también contiene otra letra del mismo set
+                        letras_presentes = [l for l in ['a', 'b', 'c'] if l in palabras]
+                        if len(letras_presentes) == 1 and letras_presentes[0] == letra:
+                            col_encontrada = c
+                            break
+
+                if col_encontrada:
+                    v = extraer_valor(row[col_encontrada])
+                    if v is not None:
+                        try:
+                            campos_a_actualizar.append(f'"{col_db}" = %s')
+                            valores.append(to_float_safe(v) or 0.0)
+                            columnas_ya_procesadas.add(col_db)
+                        except: pass
+
+            if campos_a_actualizar:
+                valores.extend([id_lote, num_sv])
+                query = f"UPDATE clasificacion_produccion SET {', '.join(campos_a_actualizar)} WHERE id_lote = %s AND sv = %s"
+                cur.execute(query, valores)
+                filas_actualizadas += 1
+
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        # 8. Recalcular toda la cascada
+        recalcular_lote_completo_clasificacion(id_lote)
+
+        if filas_actualizadas > 0:
+            return True, f"¡Éxito! Se cargaron datos puros de {filas_actualizadas} semanas de clasificación."
+        else:
+            return False, "La tabla fue detectada, pero las filas de SV (18-110) estaban vacías."
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return False, f"Error al procesar el archivo Excel: {str(e)}"

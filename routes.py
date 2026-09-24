@@ -86,7 +86,7 @@ def limitar_intentos(f):
         # Bloquea la petición si el límite fue alcanzado y muestra advertencia
         if len(intentos_ip[ip_cliente]) >= max_intentos:
             flash("Demasiados intentos detectados. Por seguridad, espera 1 minuto antes de volver a intentar.", "error")
-            return redirect(url_for('main.index'))
+            return redirect(url_for('main.pantalla_principal'))
             
         # Almacena el timestamp de este intento válido y permite el paso
         intentos_ip[ip_cliente].append(tiempo_actual)
@@ -120,7 +120,7 @@ def login():
             # Rechaza el acceso si un Superadmin desactivó (Soft Delete) esta cuenta
             if not usuario[3]:
                 flash("Tu cuenta está desactivada. Contacta al administrador.", "error")
-                return redirect(url_for('main.index'))
+                return redirect(url_for('main.pantalla_principal'))
             else:
                 # Inyecta las variables esenciales de autorización y diseño en las cookies encriptadas de la sesión
                 session['user_id'] = usuario[0] # ID único del usuario en la base de datos
@@ -132,7 +132,7 @@ def login():
                 img_url = url_for('static', filename='img/SALUDO.gif')
                 flash(f'<img src="{img_url}" style="vertical-align: middle; height: 55px; width: auto;"> ¡Bienvenido, {usuario[1]}!', 'success')
                 
-                return redirect(url_for('main.index'))
+                return redirect(url_for('main.pantalla_principal'))
         else:
             # Respuesta unificada y ambigua para prevenir que descubran si el error fue el correo o la clave
             flash("Usuario o contraseña incorrectos.", "error")
@@ -435,17 +435,6 @@ def cancelar_recuperacion():
     session.pop('pin_verificado', None)
     return redirect(url_for('main.login_page'))
 
-@bp.route('/logout')
-def logout():
-    # Destrucción forzada de todas las variables temporales del navegador
-    session.clear()
-    
-    # Mensaje de despedida con imagen incrustada
-    img_url = url_for('static', filename='img/DESPEDIDA.gif')
-    flash(f'<img src="{img_url}" style="vertical-align: middle; height: 55px; width: auto;"> Has cerrado sesión exitosamente.', 'success')
-    
-    return redirect(url_for('main.login_page'))
-
 # ADMINISTRACIÓN DEL ACCESO AL SISTEMA (USUARIOS Y ROLES)
 
 @bp.route('/usuarios') 
@@ -650,17 +639,40 @@ def crear_rol():
 
 @bp.route('/')
 def login_page():
-    # Si el usuario ya está logueado, lo mandamos directo al dashboard (index)
+    # Si el usuario ya está logueado, lo mandamos a la pantalla principal
     if 'user_id' in session:
-        return redirect(url_for('main.index'))
+        return redirect(url_for('main.pantalla_principal'))
     # Si no está logueado, le mostramos la pantalla de login limpia
     return render_template('login.html')
 
+
+@bp.route('/pantalla-principal')
+@login_requerido
+def pantalla_principal():
+    # Pantalla de bienvenida con el GIF centrado (solo esto se ve)
+    return render_template('pantalla_principal.html')
+
+
 @bp.route('/inicio')
-@login_requerido 
+@login_requerido
 def index():
-    # Este ahora es el Panel Privado (Dashboard)
+    # Panel Privado (Dashboard) - Ahora se accede desde la pestaña "Reportes"
     return render_template('index.html')
+
+
+@bp.route('/logout')
+def logout():
+    # Destrucción forzada de todas las variables temporales del navegador
+    session.clear()
+
+    # Mensaje de despedida con imagen incrustada
+    img_url = url_for('static', filename='img/DESPEDIDA.gif')
+    flash(f'<img src="{img_url}" style="vertical-align: middle; height: 55px; width: auto;"> Has cerrado sesión exitosamente.', 'success')
+
+    # Creamos una respuesta de redirección y le inyectamos un script para limpiar el localStorage
+    response = redirect(url_for('main.login_page'))
+    response.set_cookie('clear_sidebar', 'true', max_age=5)  # Cookie temporal
+    return response
 
 @bp.route('/api/cabecera/actualizar', methods=['POST'])
 @login_requerido
@@ -1192,16 +1204,47 @@ def procesar_carga():
         except Exception as e:
             print(f"Error procesando primera semana: {e}")
             flash(f"Error procesando el archivo de primera semana: {e}", "danger")
-
+    
     # ---------------------------------------------------------
-    # 4. Otros módulos no programados aún
+    # 4. Procesamiento del Módulo Semanal Levante
+    # ---------------------------------------------------------
+    elif modulo_seleccionado == 'semanal_levante':
+        try:
+            from models.semanal_levante.services import procesar_excel_semanal_levante
+            exito, msj_resultado = procesar_excel_semanal_levante(archivo, lote_seleccionado)
+            
+            if exito:
+                flash(msj_resultado, "success")
+            else:
+                flash(msj_resultado, "danger")
+        except Exception as e:
+            print(f"Error procesando semanal levante: {e}")
+            flash(f"Error procesando el archivo de levante: {e}", "danger")
+    
+    # ---------------------------------------------------------
+    # 5. Procesamiento del Módulo Clasificación de Producción
+    # ---------------------------------------------------------
+    elif modulo_seleccionado == 'clasificacion':
+        try:
+            from models.clasificacion.services import procesar_excel_clasificacion
+            exito, msj_resultado = procesar_excel_clasificacion(archivo, lote_seleccionado)
+
+            if exito:
+                flash(msj_resultado, "success")
+            else:
+                flash(msj_resultado, "danger")
+        except Exception as e:
+            print(f"Error procesando clasificación: {e}")
+            flash(f"Error procesando el archivo de clasificación: {e}", "danger")
+    
+    # ---------------------------------------------------------
+    # 6. Otros módulos no programados aún
     # ---------------------------------------------------------
     else:
         flash(f"La carga para '{modulo_seleccionado}' aún no está programada.", "warning")
 
     # Redirección final segura si todo termina bien (usando código 303)
     return redirect(url_for('main.carga_datos_vista'), code=303)
-
 
 
 # ==============================================================================

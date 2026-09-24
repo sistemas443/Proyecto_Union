@@ -1,0 +1,151 @@
+{% extends 'layout.html' %}
+{% block title %}Inicio – Avícola San Martín{% endblock %}
+
+{% block content %}
+
+<style>
+    /* 1. Bloqueamos el scroll general y aplicamos zoom global del 80% (igual que primera_semana) */
+    body {
+        overflow-y: hidden !important;
+        zoom: 0.8;
+    }
+
+    /* 2. El contenedor principal base (igual que primera_semana) */
+    main.container-fluid {
+        display: flex;
+        flex-direction: column;
+        padding-bottom: 0px;
+    }
+
+    /* 3. Contenedor que ocupa toda la pantalla útil para centrar el GIF */
+    .pantalla-bienvenida {
+        width: 100%;
+        height: calc(100vh / 0.8 - 80px);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding-top: 40px;
+        background-color: #ffffff;
+        gap: 1rem;
+        /* Separación entre el saludo y el GIF */
+    }
+
+    /* 4. Estilo del saludo personalizado */
+    .saludo-bienvenida {
+        text-align: center;
+        font-family: 'Segoe UI', 'Arial', sans-serif;
+        animation: fadeInDown 0.8s ease-out;
+    }
+
+    .saludo-bienvenida .saludo-hora {
+        font-size: 2.5rem;
+        font-weight: 300;
+        color: #6c757d;
+        margin-bottom: 5px;
+        letter-spacing: 1px;
+        margin-top: -20px; /* Ajuste para centrar verticalmente con el GIF */
+    }
+
+    .saludo-bienvenida .saludo-nombre {
+        font-size: 3.5rem;
+        font-weight: 900;
+        color: #212529;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+    }
+
+    /* Línea decorativa naranja debajo del nombre */
+    .saludo-bienvenida .saludo-nombre::after {
+        content: "";
+        display: block;
+        width: 80px;
+        height: 4px;
+        background-color: #97271C;
+        margin: 15px auto 0 auto;
+        border-radius: 2px;
+    }
+
+    /* 5. Estilo del GIF */
+    .pantalla-bienvenida img {
+        max-width: 50%;
+        max-height: 60%;
+        width: auto;
+        height: auto;
+        object-fit: contain;
+        animation: fadeInUp 0.8s ease-out;
+        margin-top: -80px;  
+    }
+
+    /* Animaciones */
+    @keyframes fadeInDown {
+        from {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+}
+</style>
+
+<div class="pantalla-bienvenida">
+
+    <!-- SALUDO DINÁMICO -->
+    <div class="saludo-bienvenida">
+        <div class="saludo-hora" id="saludoHora">Buenos días,</div>
+        <div class="saludo-nombre">{{ session.get('user_nombre', 'Usuario') }}</div>
+        <div style="font-size: 2rem; color: #6c757d; margin-top: 5px;">
+            Bienvenido al sistema de gestión de datos productivos
+        </div>
+    </div>
+
+    <!-- GIF DE BIENVENIDA -->
+    <img src="{{ url_for('static', filename='img/LOGO_AVICOLA_SAN_MARTIN_LOGIN.gif') }}"
+        alt="Bienvenido a Avícola San Martín">
+
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function actualizarSaludo() {
+    const saludoHora = document.getElementById('saludoHora');
+    if (!saludoHora) return;
+
+    const hora = new Date().getHours();
+    let saludo = 'Buenos días,';
+    let emoji = '☀️';
+
+    if (hora >= 12 && hora < 19) {
+      saludo = 'Buenas tardes,';
+      emoji = '🌤️';
+    } else if (hora >= 19 || hora < 5) {
+      saludo = 'Buenas noches,';
+      emoji = '🌙';
+    }
+
+    saludoHora.textContent = `${emoji} ${saludo}`;
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    actualizarSaludo();                          // Se ejecuta al cargar
+    setInterval(actualizarSaludo, 60 * 1000);    // Se ejecuta cada 60 segundos (1 minuto)
+  });
+</script>
+{% endblock %}

@@ -159,3 +159,47 @@ input[type="number"] {
   -moz-appearance: textfield;
   appearance: textfield; /* Propiedad estándar */
 }
+
+/* =========================================
+   OVERLAY DRAG & DROP (CARGA DE DATOS)
+   ========================================= */
+.drag-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(6px);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    transition: all 0.3s ease;
+}
+
+.drag-overlay.d-none {
+    display: none !important;
+}
+
+.drag-content {
+    text-align: center;
+    border: 3px dashed #0d6efd;
+    border-radius: 20px;
+    padding: 60px 120px;
+    background-color: rgba(13, 110, 253, 0.1);
+    pointer-events: none;
+}
+
+.drag-icon {
+    font-size: 100px;
+    color: #0d6efd;
+    margin-bottom: 15px;
+    animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-15px); }
+}
