@@ -12,7 +12,7 @@
         <div class="col-md-6 d-flex justify-content-end align-items-center gap-2">
             <label class="fw-bold text-muted small mb-0">Seleccionar Lote:</label>
             <!-- Mantenemos tu formulario GET -->
-            <form method="GET" action="{{ url_for('main.resumen_lote_formulas') }}" class="d-inline-block">
+            <form method="GET" action="{{ url_for('planta_alimentos.resumen_lote_formulas') }}" class="d-inline-block">
                 <select name="lote_id" class="form-select form-select-sm fw-bold text-primary"
                     onchange="this.form.submit()">
                     <option value="0" {% if lote_id=='0' or not lote_id %}selected{% endif %} disabled>Seleccione un
@@ -71,23 +71,47 @@
                     </thead>
                     <tbody>
                         {% for formula in formulas %}
-                        <tr>
+                        <tr class="align-middle">
+                            <!-- 1. ITEM -->
                             <td class="fw-bold text-primary">{{ formula['item_id'] }}</td>
+
+                            <!-- 2. NOMBRE DE LA DIETA -->
                             <td class="fw-bold">{{ formula['nombre_dieta'] }}</td>
-                            <td class="align-middle">
-                                {{ formula['resumen_insumos_html'] | safe }}
-                            </td>
+
+                            <!-- 3. N° INSUMOS -->
+                            <td>{{ formula['resumen_insumos_html'] | safe }}</td>
+
+                            <!-- 4. TOTAL PESO -->
                             <td>{{ "{:,.2f}".format(formula['total_peso'] | default(0) | float) }} kg</td>
-                            <td class="fw-bold text-success">$ {{ "{:,.2f}".format(formula['costo_bache'] | default(0) |
-                                float) }}</td>
-                            <td>
-                                <!-- Si tienes algún condicional alrededor de los botones, asegúrate de cerrarlo con endif -->
-                                {% if formula['item_id'] %}
-                                <a href="{{ url_for('main.editar_receta', item_id=formula['item_id'], lote_id=lote_seleccionado) }}"
-                                    class="btn btn-sm btn-outline-primary">Editar</a>
-                                <a href="#" class="btn btn-sm btn-outline-success">Costos</a>
-                                <a href="#" class="btn btn-sm btn-outline-danger">Borrar</a>
-                                {% endif %}
+
+                            <!-- 5. COSTO BACHE (Faltaba esta celda en la plantilla) -->
+                            <td class="fw-bold text-success">
+                                $ {{ "{:,.2f}".format(formula['costo_bache'] | default(0) | float) }}
+                            </td>
+
+                            <!-- 6. ACCIONES -->
+                            <td class="text-center">
+                                <!-- Botón Editar -->
+                                <a href="{{ url_for('planta_alimentos.recetario_formulas', item_id=formula['item_id'], lote_id=lote_seleccionado, version=formula['ultima_version']) }}"
+                                    class="btn btn-sm btn-outline-primary me-1">
+                                    Editar
+                                </a>
+
+                                <!-- Botón Costos -->
+                                <a href="{{ url_for('planta_alimentos.consolidado_precios') }}"
+                                    class="btn btn-sm btn-outline-success me-1">
+                                    Costos
+                                </a>
+
+                                <!-- Botón Borrar -->
+                                <form
+                                    action="{{ url_for('planta_alimentos.eliminar_formula_lote', item_id=formula['item_id'], lote_id=lote_seleccionado) }}"
+                                    method="POST" class="d-inline"
+                                    onsubmit="return confirm('¿Estás seguro de que deseas eliminar esta fórmula?');">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                        Borrar
+                                    </button>
+                                </form>
                             </td>
                         </tr>
                         {% endfor %}

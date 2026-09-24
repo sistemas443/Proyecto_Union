@@ -9,7 +9,7 @@
             </h2>
         </div>
         <div class="col-md-6 text-end">
-            <a href="{{ url_for('main.materias_primas') }}" class="btn btn-outline-secondary btn-sm">
+            <a href="{{ url_for('planta_alimentos.materias_primas') }}" class="btn btn-outline-secondary btn-sm">
                 <i class="fas fa-arrow-left me-1"></i> Ir a Materias Primas
             </a>
         </div>
@@ -23,7 +23,7 @@
                     <h6 class="fw-bold text-secondary">Nuevo Proveedor</h6>
                 </div>
                 <div class="card-body">
-                    <form method="POST" action="{{ url_for('main.proveedores') }}">
+                    <form method="POST" action="{{ url_for('planta_alimentos.proveedores') }}">
                         <div class="mb-3">
                             <label class="form-label fw-bold text-muted small">Nombre Empresa / Proveedor</label>
                             <input type="text" name="nombre" class="form-control form-control-sm text-uppercase" placeholder="Ej. ITALCOL" required autocomplete="off">
@@ -58,7 +58,7 @@
                                     </td>
                                     <td class="text-center px-3">
                                         <div class="d-flex justify-content-center gap-1">
-                                            <form id="form-prov-{{ prov['id'] }}" method="POST" action="{{ url_for('main.editar_proveedor', id_prov=prov['id']) }}"></form>
+                                            <form id="form-prov-{{ prov['id'] }}" method="POST" action="{{ url_for('planta_alimentos.editar_proveedor', id_prov=prov['id']) }}"></form>
 
                                             <button type="submit" form="form-prov-{{ prov['id'] }}" class="btn btn-sm btn-outline-primary border-0 p-1" title="Guardar Cambios">
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pencil-square" viewBox="0 0 16 16">
@@ -67,7 +67,7 @@
                                                 </svg>
                                             </button>
 
-                                            <form method="POST" action="{{ url_for('main.eliminar_proveedor', id_prov=prov['id']) }}" onsubmit="return confirm('¿Eliminar este proveedor?');" class="d-inline">
+                                            <form method="POST" action="{{ url_for('planta_alimentos.eliminar_proveedor', id_prov=prov['id']) }}" onsubmit="return confirm('¿Eliminar este proveedor?');" class="d-inline">
                                                 <button type="submit" class="btn btn-sm btn-outline-danger border-0 p-1" title="Eliminar Proveedor">
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash3" viewBox="0 0 16 16">
                                                         <path d="M6.5 1h3a.5.5 0 0 1 .5.5v1H6v-1a.5.5 0 0 1 .5-.5M11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3A1.5 1.5 0 0 0 5 1.5v1H1.5a.5.5 0 0 0 0 1h.538l.853 10.66A2 2 0 0 0 4.937 16h6.126a2 2 0 0 0 1.997-1.84l.853-10.66h.538a.5.5 0 0 0 0-1zm1.958 1-.846 10.58a1 1 0 0 1-.997.92H4.937a1 1 0 0 1-.997-.92L3.042 3.5zm-7.487 1a.5.5 0 0 1 .528.47l.5 8.5a.5.5 0 0 1-.998.06L5 5.03a.5.5 0 0 1 .47-.53Zm5.058 0a.5.5 0 0 1 .47.53l-.5 8.5a.5.5 0 1 1-.998-.06l.5-8.5a.5.5 0 0 1 .528-.47M8 4.5a.5.5 0 0 1 .5.5v8.5a.5.5 0 0 1-1 0V5a.5.5 0 0 1 .5-.5"/>

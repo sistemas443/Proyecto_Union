@@ -208,10 +208,11 @@ class FormulaDetalle:
         conn = get_db_connection()
         try:
             with conn.cursor() as cur:
-                # Restauramos la lectura de tus columnas reales del núcleo
+                # Incluimos fd.materia_prima_id explícitamente
                 consulta = """
                     SELECT 
                         fd.id, 
+                        fd.materia_prima_id,
                         mp.nombre AS insumo, 
                         fd.cantidad_kg, 
                         COALESCE(fd.es_nucleo, true) AS es_nucleo,
@@ -314,12 +315,17 @@ class FormulaDetalle:
             conn.close()
 
     @staticmethod
-    def eliminar_insumo(id_registro):
+    def eliminar_insumo(detalle_id):
         conn = get_db_connection()
         try:
             with conn.cursor() as cur:
-                cur.execute("DELETE FROM formula_detalle WHERE id = %s", (id_registro,))
+                cur.execute("DELETE FROM formula_detalle WHERE id = %s;", (detalle_id,))
                 conn.commit()
+                return True
+        except Exception as e:
+            print(f"Error al eliminar insumo: {e}")
+            conn.rollback()
+            return False
         finally:
             conn.close()
 
@@ -370,10 +376,9 @@ class FormulaDetalle:
                     )
                     SELECT 
                         rv.item_id,
+                        uv.max_version AS ultima_version,
                         ca.nombre AS nombre_dieta,
                         
-                        -- Formateamos las versiones con insignias HTML de distinto color:
-                        -- La versión en azul (bg-info/bg-primary) y la cantidad en gris (bg-secondary)
                         STRING_AGG(
                             '<span class="badge bg-primary me-1">V-' || rv.version || '</span>' ||
                             '<span class="badge bg-secondary me-2">' || rv.num_insumos || ' insumos</span>',
@@ -386,7 +391,7 @@ class FormulaDetalle:
                     FROM ResumenVersiones rv
                     JOIN UltimaVersion uv ON rv.item_id = uv.item_id
                     JOIN catalogo_alimentos ca ON rv.item_id = ca.item_id
-                    GROUP BY rv.item_id, ca.nombre;
+                    GROUP BY rv.item_id, uv.max_version, ca.nombre;
                 """
                 cur.execute(consulta, (lote_id,))
                 columnas = [desc[0] for desc in cur.description]
