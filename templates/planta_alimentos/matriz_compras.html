@@ -1,0 +1,192 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="container-fluid mt-4 mb-5">
+    <!-- Cabecera y Filtros -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2><i class="fas fa-table me-2 text-primary"></i>Matriz Mensual de Control de Compras (gr)</h2>
+        <a href="{{ url_for('planta_alimentos.ingreso_diario') }}" class="btn btn-success">
+            <i class="fas fa-plus me-1"></i> Registrar Día
+        </a>
+    </div>
+
+    <!-- Seleccionar Mes y Año -->
+    <div class="card shadow-sm border-0 mb-4 bg-light">
+        <div class="card-body py-2">
+            <form method="GET" action="{{ url_for('planta_alimentos.matriz_mensual_compras') }}"
+                class="row align-items-center g-2">
+                <div class="col-auto">
+                    <label class="form-label font-weight-bold mb-0">Mes:</label>
+                </div>
+                <div class="col-auto">
+                    <!-- Desplegable de Meses en Español -->
+                    <select name="mes" class="form-select form-select-sm">
+                        {% for m_num, m_nombre in meses_nombres %}
+                        <option value="{{ m_num }}" {% if m_num==mes %}selected{% endif %}>{{ m_nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <label class="form-label font-weight-bold mb-0">Año:</label>
+                </div>
+                <div class="col-auto">
+                    <!-- Desplegable Dinámico de Años -->
+                    <select name="anio" class="form-select form-select-sm text-center" style="width: 100px;">
+                        {% for a in anios_disponibles %}
+                        <option value="{{ a }}" {% if a==anio %}selected{% endif %}>{{ a }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-search me-1"></i>
+                        Consultar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabla Matriz Estilo Excel -->
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-0">
+            <div class="table-responsive" style="max-height: 75vh;">
+                <table class="table table-bordered table-hover align-middle mb-0 text-center"
+                    style="font-size: 0.85rem;">
+                    <thead class="table-dark sticky-top">
+                        <tr>
+                            <th style="min-width: 60px;">DIA</th>
+                            {% for mp in materias_primas %}
+                            <th style="min-width: 140px;" class="bg-warning text-dark">{{ mp['nombre'] }} (gr)</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for dia in dias %}
+                        <tr>
+                            <td class="font-weight-bold bg-light">{{ dia }}</td>
+                            {% for mp in materias_primas %}
+                            {% set cant = matriz[dia][mp['id']] %}
+                            <!-- 1. CELDA MODIFICADA CON DATOS INTERACTIVOS -->
+                            <td class="celda-interactiva {% if cant > 0 %}table-success font-weight-bold{% else %}text-muted{% endif %}"
+                                data-dia="{{ dia }}" 
+                                data-mp-id="{{ mp['id'] }}" 
+                                data-mp-nombre="{{ mp['nombre'] }}"
+                                title="Clic para registrar ingreso de {{ mp['nombre'] }} el día {{ dia }}">
+                                {% if cant > 0 %}
+                                {{ "{:,.0f}".format(cant) }}
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot class="table-dark sticky-bottom font-weight-bold">
+                        <tr>
+                            <td>TOTAL</td>
+                            {% for mp in materias_primas %}
+                            {% set total_col = namespace(val=0) %}
+                            {% for dia in dias %}
+                            {% set total_col.val = total_col.val + matriz[dia][mp['id']] %}
+                            {% endfor %}
+                            <td class="bg-success text-white">
+                                {{ "{:,.0f}".format(total_col.val) }}
+                            </td>
+                            {% endfor %}
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 2. ESTILOS PARA LAS CELDAS -->
+<style>
+    .celda-interactiva {
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+    .celda-interactiva:hover {
+        background-color: #d1ecf1 !important; 
+        border: 2px solid #0c5460;
+    }
+</style>
+
+<!-- 3. MODAL DE INGRESO RÁPIDO -->
+<div class="modal fade" id="modalIngresoCelda" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="fas fa-plus-circle me-2"></i>Ingreso Rápido</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('planta_alimentos.guardar_celda_matriz') }}">
+                <div class="modal-body">
+                    <p class="mb-3 text-secondary">
+                        Registrando ingreso para el <strong>Día <span id="modal-dia-txt"></span></strong> 
+                        del mes seleccionado.
+                    </p>
+                    
+                    <!-- Campos Ocultos -->
+                    <input type="hidden" name="dia" id="input-dia">
+                    <input type="hidden" name="mes" value="{{ mes }}">
+                    <input type="hidden" name="anio" value="{{ anio }}">
+                    <input type="hidden" name="materia_prima_id" id="input-mp-id">
+                    <input type="hidden" name="materia_prima_nombre" id="input-mp-nombre">
+
+                    <div class="mb-3">
+                        <label class="form-label font-weight-bold">Materia Prima:</label>
+                        <input type="text" class="form-control" id="modal-mp-txt" disabled>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label font-weight-bold text-success">Cantidad Recibida (gr) *</label>
+                        <input type="number" step="0.01" name="cantidad" class="form-control form-control-lg text-end" required placeholder="Ej: 50000">
+                    </div>
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <label class="form-label font-weight-bold">Costo Total ($)</label>
+                            <input type="number" step="0.01" name="costo" class="form-control text-end" placeholder="0.00">
+                        </div>
+                        <div class="col-6 mb-3">
+                            <label class="form-label font-weight-bold">Lote / Remisión</label>
+                            <input type="text" name="lote" class="form-control text-center" placeholder="Opcional">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success"><i class="fas fa-save me-1"></i> Guardar Ingreso</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 4. JAVASCRIPT PARA ACTIVAR MODAL Y LLENAR DATOS -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const celdas = document.querySelectorAll('.celda-interactiva');
+    const modal = new bootstrap.Modal(document.getElementById('modalIngresoCelda'));
+
+    celdas.forEach(celda => {
+        celda.addEventListener('click', function() {
+            const dia = this.getAttribute('data-dia');
+            const mpId = this.getAttribute('data-mp-id');
+            const mpNombre = this.getAttribute('data-mp-nombre');
+
+            // Textos visuales
+            document.getElementById('modal-dia-txt').textContent = dia;
+            document.getElementById('modal-mp-txt').value = mpNombre;
+
+            // Inputs ocultos
+            document.getElementById('input-dia').value = dia;
+            document.getElementById('input-mp-id').value = mpId;
+            document.getElementById('input-mp-nombre').value = mpNombre;
+
+            modal.show();
+        });
+    });
+});
+</script>
+{% endblock %}

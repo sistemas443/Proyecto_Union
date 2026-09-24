@@ -81,11 +81,11 @@
                                         <select form="form-mp-edit-{{ mp['id'] }}" name="iva"
                                             class="form-select form-select-sm border-0 bg-transparent text-center p-0"
                                             style="font-size: 0.85rem;">
-                                            <option value="1.00" {% if mp['iva']|float==1.00 %}selected{% endif %}>1.00
+                                            <option value="1.00" {% if mp['iva']|float==1.00 %}selected{% endif %}>(0%)
                                             </option>
-                                            <option value="1.05" {% if mp['iva']|float==1.05 %}selected{% endif %}>1.05
+                                            <option value="1.05" {% if mp['iva']|float==1.05 %}selected{% endif %}>(5%)
                                             </option>
-                                            <option value="1.19" {% if mp['iva']|float==1.19 %}selected{% endif %}>1.19
+                                            <option value="1.19" {% if mp['iva']|float==1.19 %}selected{% endif %}>(19%)
                                             </option>
                                         </select>
                                     </td>
@@ -123,7 +123,7 @@
                                     <td class="text-center px-2">
                                         <div class="d-flex justify-content-center gap-1">
                                             <form id="form-mp-edit-{{ mp['id'] }}" method="POST"
-                                                action="{{ url_for('main.editar_materia_prima', id_mp=mp['id']) }}">
+                                                action="{{ url_for('planta_alimentos.editar_materia_prima', id_mp=mp['id']) }}">
                                             </form>
 
                                             <!-- Lápiz Guardar -->
@@ -141,7 +141,7 @@
 
                                             <!-- Papelera Borrar -->
                                             <form method="POST"
-                                                action="{{ url_for('main.eliminar_materia_prima', id_mp=mp['id']) }}"
+                                                action="{{ url_for('planta_alimentos.eliminar_materia_prima', id_mp=mp['id']) }}"
                                                 onsubmit="return confirm('¿Deseas eliminar este insumo?');"
                                                 class="d-inline">
                                                 <button type="submit" class="btn btn-sm btn-outline-danger border-0 p-1"
@@ -184,7 +184,7 @@
             </div>
 
             <!-- INICIO DEL FORMULARIO -->
-            <form method="POST" action="{{ url_for('main.materias_primas') }}">
+            <form method="POST" action="{{ url_for('planta_alimentos.materias_primas') }}">
                 <div class="modal-body">
                     
                     <!-- Producto -->
@@ -215,7 +215,7 @@
                         <div class="col-6">
                             <label class="form-label fw-bold text-muted small mb-1">Factor IVA</label>
                             <select name="iva" class="form-select form-select-sm">
-                                <option value="1.00">1.00 (0%)</option>
+                                <option value="1.00">0 (0%)</option>
                                 <option value="1.05">1.05 (5%)</option>
                                 <option value="1.19">1.19 (19%)</option>
                             </select>

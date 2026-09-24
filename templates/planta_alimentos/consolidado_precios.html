@@ -1,0 +1,80 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <h2 class="text-primary mb-4">Consolidado de Costos y Precios</h2>
+
+    <div class="row">
+        <!-- TABLA IZQUIERDA: PRECIOS MATERIAS PRIMAS -->
+        <div class="col-md-4">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-success text-white text-center fw-bold">
+                    PRECIOS MATERIAS PRIMAS + FLETE
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-bordered table-striped table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>MATERIA PRIMA</th>
+                                <th>PRECIO NETO</th>
+                                <th>FLETE</th>
+                                <th>TOTAL</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for mp in precios_mp %}
+                            <tr>
+                                <td>{{ mp['nombre'] }}</td>
+                                <td class="text-end">$ {{ "{:,.0f}".format(mp['precio_actual_kg'] | default(0) | float)
+                                    }}</td>
+                                <td class="text-end">$ {{ "{:,.0f}".format(mp['flete'] | default(0) | float) }}</td>
+                                <td class="text-end fw-bold; "style="font-size: 12px;">$ {{ "{:,.0f}".format((mp['precio_actual_kg'] | default(0)
+                                    | float) + (mp['flete'] | default(0) | float)) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TABLA DERECHA: COSTO DIETAS POR EMPRESA -->
+        <div class="col-md-8">
+            {% for empresa, dietas in costos_agrupados.items() %}
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-secondary text-white text-center fw-bold">
+                    COSTO DIETAS {{ empresa | upper }}
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-bordered table-striped table-hover mb-0">
+                        <thead class="table-light">
+                            <tr class="text-center" style="font-size: 0.9em;">
+                                <th>LOTE</th>
+                                <th>ETAPA</th>
+                                <th>PRECIO + FLETE + MAQ.</th>
+                                <th>PRECIO + IVA + MAQ.</th>
+                                <th>PRECIO + FLETE + IVA + MAQ.</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for dieta in dietas %}
+                            <tr>
+                                <td class="fw-bold" style="font-size: 12px;">{{ dieta['lote'] }}</td>
+                                <td>{{ dieta['etapa'] }}</td>
+                                <td class="text-end" style="background-color: #f8d7da;">$ {{
+                                    "{:,.0f}".format(dieta['precio_flete_maquila'] | default(0) | float) }}</td>
+                                <td class="text-end" style="background-color: #cff4fc;">$ {{
+                                    "{:,.0f}".format(dieta['precio_iva_maquila'] | default(0) | float) }}</td>
+                                <td class="text-end fw-bold" style="background-color: #d1e7dd;">$ {{
+                                    "{:,.0f}".format(dieta['precio_flete_iva_maquila'] | default(0) | float) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

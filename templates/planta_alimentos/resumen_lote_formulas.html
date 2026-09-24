@@ -1,0 +1,126 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4 align-items-center">
+        <div class="col-md-6">
+            <h2 class="h4 text-primary fw-bold mb-0">
+                <i class="fas fa-layer-group me-2"></i> Fórmulas Configuradas por Lote
+            </h2>
+        </div>
+        <!-- Selector de Lote -->
+        <div class="col-md-6 d-flex justify-content-end align-items-center gap-2">
+            <label class="fw-bold text-muted small mb-0">Seleccionar Lote:</label>
+            <!-- Mantenemos tu formulario GET -->
+            <form method="GET" action="{{ url_for('planta_alimentos.resumen_lote_formulas') }}" class="d-inline-block">
+                <select name="lote_id" class="form-select form-select-sm fw-bold text-primary"
+                    onchange="this.form.submit()">
+                    <option value="0" {% if lote_id=='0' or not lote_id %}selected{% endif %} disabled>Seleccione un
+                        lote...</option>
+
+                    {% if not lotes %}
+                    <option value="" disabled>⚠️ No se encontraron lotes</option>
+                    {% else %}
+                    {% for l in lotes %}
+                    {% set valor_lote = l.get('lote', l) if l is mapping else l %}
+
+                    <option value="{{ valor_lote }}" {% if valor_lote|string==lote_id|string %}selected{% endif %}>
+                        {% if 'LOTE' not in valor_lote|string|upper %}LOTE {% endif %}{{ valor_lote }}
+                    </option>
+                    {% endfor %}
+                    {% endif %}
+                </select>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==========================================
+         VALIDACIÓN DE ESPERA
+         ========================================== -->
+    {% if lote_id == '0' or not lote_id %}
+
+    <!-- Pantalla azul de espera -->
+    <div class="alert alert-info text-center mt-5 shadow-sm border-0 py-5"
+        style="background-color: #e3f2fd; color: #052c65; border-radius: 10px;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" fill="currentColor" class="bi bi-cursor mb-3"
+            viewBox="0 0 16 16">
+            <path
+                d="M14.082 2.182a.5.5 0 0 1 .103.557L8.528 15.467a.5.5 0 0 1-.917-.007L5.57 10.694.803 8.652a.5.5 0 0 1-.006-.916l12.728-5.657a.5.5 0 0 1 .556.103zM2.25 8.184l3.897 1.67a.5.5 0 0 1 .262.263l1.67 3.897L12.743 3.52z" />
+        </svg>
+        <h4 class="fw-bold">Esperando selección de Lote</h4>
+        <p class="mb-0 fs-5 text-muted">Por favor, selecciona un lote en el menú desplegable de arriba para ver las
+            fórmulas configuradas.</p>
+    </div>
+
+    {% else %}
+
+    <!-- Tabla Resumen (Solo se muestra si hay un lote seleccionado) -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="bg-light">
+                        <tr>
+                            <th class="text-secondary small fw-bold text-uppercase px-4">ITEM</th>
+                            <th class="text-secondary small fw-bold text-uppercase">Nombre de la Dieta</th>
+                            <th class="text-secondary small fw-bold text-uppercase text-center">N° Insumos</th>
+                            <th class="text-secondary small fw-bold text-uppercase text-end">Total Peso</th>
+                            <th class="text-secondary small fw-bold text-uppercase text-end">Costo Bache</th>
+                            <th class="text-secondary small fw-bold text-uppercase text-center px-4">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for formula in formulas %}
+                        <tr class="align-middle">
+                            <!-- 1. ITEM -->
+                            <td class="fw-bold text-primary">{{ formula['item_id'] }}</td>
+
+                            <!-- 2. NOMBRE DE LA DIETA -->
+                            <td class="fw-bold">{{ formula['nombre_dieta'] }}</td>
+
+                            <!-- 3. N° INSUMOS -->
+                            <td>{{ formula['resumen_insumos_html'] | safe }}</td>
+
+                            <!-- 4. TOTAL PESO -->
+                            <td>{{ "{:,.2f}".format(formula['total_peso'] | default(0) | float) }} kg</td>
+
+                            <!-- 5. COSTO BACHE (Faltaba esta celda en la plantilla) -->
+                            <td class="fw-bold text-success">
+                                $ {{ "{:,.2f}".format(formula['costo_bache'] | default(0) | float) }}
+                            </td>
+
+                            <!-- 6. ACCIONES -->
+                            <td class="text-center">
+                                <!-- Botón Editar -->
+                                <a href="{{ url_for('planta_alimentos.recetario_formulas', item_id=formula['item_id'], lote_id=lote_seleccionado, version=formula['ultima_version']) }}"
+                                    class="btn btn-sm btn-outline-primary me-1">
+                                    Editar
+                                </a>
+
+                                <!-- Botón Costos -->
+                                <a href="{{ url_for('planta_alimentos.consolidado_precios') }}"
+                                    class="btn btn-sm btn-outline-success me-1">
+                                    Costos
+                                </a>
+
+                                <!-- Botón Borrar -->
+                                <form
+                                    action="{{ url_for('planta_alimentos.eliminar_formula_lote', item_id=formula['item_id'], lote_id=lote_seleccionado) }}"
+                                    method="POST" class="d-inline"
+                                    onsubmit="return confirm('¿Estás seguro de que deseas eliminar esta fórmula?');">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                        Borrar
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    {% endif %}
+</div>
+{% endblock %}

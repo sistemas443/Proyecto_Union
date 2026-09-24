@@ -10,6 +10,7 @@ from werkzeug.utils import secure_filename
 from models.planta_alimentos.maestros import MateriaPrima, Proveedor
 # Importaciones para procesar imágenes de perfil (recortar a cuadrado y comprimir sin perder calidad)
 from PIL import Image, ImageOps
+from flask import jsonify  # Asegúrate de tener esto arriba en los imports
 
 # Importaciones de los servicios y modelos de base de datos de cada módulo del sistema
 from models.base import get_db_connection  
@@ -20,6 +21,9 @@ from models.primera_semana.services import get_primera_semana_by_lote, update_pr
 from models.semanal_levante.services import get_semanal_levante_all, update_semanal_field as update_levante_field
 from models.clasificacion.services import get_clasificacion_all, update_clasificacion_field, recalcular_lote_completo_clasificacion
 from models.lotes.services import get_lotes_distintos, get_todos_los_lotes, guardar_nuevo_lote, actualizar_lote, borrar_lote, get_opciones_dinamicas
+from models.planta_alimentos.maestros import Empresa
+from models.planta_alimentos.formulas import FormulaDetalle
+from models.planta_alimentos.maestros import CatalogoAlimento
 
 # Registramos este archivo como un componente (Blueprint) principal de Flask
 bp = Blueprint('main', __name__)
@@ -1661,3 +1665,20 @@ def grafico_primera_semana():
         lote_seleccionado=lote_seleccionado,
         datos_grafico=datos_grafico
     )
+
+
+
+
+
+    
+
+
+    
+
+
+
+    
+
+
+
+

@@ -1,0 +1,641 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Encabezado (SIEMPRE VISIBLE) -->
+    <div class="d-flex justify-content-between align-items-center mb-3 mt-2">
+
+        <!-- Título a la izquierda -->
+        <h2 class="text-primary mb-0">Formulación de Dieta - ITEM: {{ item_id }}</h2>
+
+        <!-- Botón Volver a la derecha -->
+        <a href="{{ url_for('planta_alimentos.resumen_lote_formulas', lote_id=lote_id) }}" class="btn btn-outline-secondary">
+            Volver
+        </a>
+
+    </div>
+    <!-- ==========================================
+     PANEL DE CONTROL DE VERSIONES
+     ========================================== -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm border-top border-primary border-3">
+                <div class="card-body d-flex flex-wrap justify-content-between align-items-center py-2 gap-3">
+
+                    <!-- Navegador de Versiones -->
+                    <div class="d-flex align-items-center gap-3">
+                        <h6 class="mb-0 fw-bold text-secondary">Versión:
+                            <span class="badge bg-primary ms-1 fs-6">V-{{ version_actual }}</span>
+                        </h6>
+                        <select class="form-select form-select-sm fw-bold w-auto text-primary border-primary"
+                            onchange="window.location.href=this.value">
+                            {% for v in lista_versiones %}
+                            <option
+                                value="{{ url_for('planta_alimentos.editar_receta', item_id=item_id, lote_id=lote_id, version=v) }}"
+                                {% if v==version_actual %}selected{% endif %}>
+                                Ver Versión {{ v }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="d-flex align-items-center gap-3">
+                        <!-- Modificador de Fecha de Vencimiento -->
+                        <form method="POST" action="{{ url_for('planta_alimentos.modificar_fecha_receta') }}"
+                            class="d-flex align-items-center">
+                            <input type="hidden" name="item_id" value="{{ item_id }}">
+                            <input type="hidden" name="lote_id" value="{{ lote_id }}">
+                            <input type="hidden" name="version" value="{{ version_actual }}">
+                            <div class="input-group input-group-sm shadow-sm" style="width: 260px;">
+                                <span class="input-group-text bg-light fw-bold text-muted"
+                                    style="font-size: 0.75rem;">Vence:</span>
+                                <!-- Si la versión es antigua, deshabilitamos la edición de fecha -->
+                                <input type="date" name="nueva_fecha" class="form-control fw-bold text-dark"
+                                    value="{{ fecha_vencimiento }}" {% if not es_ultima_version %}readonly{% endif %}
+                                    required>
+                                <button type="submit" class="btn btn-outline-secondary">
+                                    Guardar
+                                </button>
+                            </div>
+                        </form>
+
+                        <!-- Botón Crear Nueva Versión (Solo visible en la última versión) -->
+                        {% if es_ultima_version %}
+                        <form method="POST"
+                            action="{{ url_for('planta_alimentos.crear_version_receta', item_id=item_id, lote_id=lote_id) }}"
+                            onsubmit="return confirm('¿Seguro que deseas congelar la Versión {{ version_actual }} y crear la Versión {{ version_actual + 1 }}?');">
+                            <button type="submit" class="btn btn-sm btn-primary fw-bold shadow-sm">
+                                <i class="fas fa-code-branch me-1"></i> Nueva Versión
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 d-flex justify-content-end align-items-center gap-2">
+        <label class="fw-bold text-muted small mb-0">Lote:</label>
+        <select class="form-select text-primary fw-bold border-primary" onchange="window.location.href=this.value">
+            <option value="" {% if lote_id=='0' %}selected{% endif %} disabled>Seleccione un lote...</option>
+
+            {% if not lotes %}
+            <option value="" disabled>⚠️ No se encontraron lotes</option>
+            {% else %}
+            {% for lote in lotes %}
+            {% if lote is mapping %}
+            <!-- Usamos lote.get('lote') tanto para la URL como para el texto -->
+            <option value="{{ url_for('planta_alimentos.editar_receta', item_id=item_id, lote_id=lote.get('lote', '')) }}" {% if
+                lote_id==lote.get('lote', '' )|string %}selected{% endif %}>
+
+                <!-- Pequeño truco para que todos digan "LOTE" al principio sin repetirlo en "LOTE LOTE GENERAL" -->
+                {% if 'LOTE' not in lote.get('lote', '')|upper %}LOTE {% endif %}{{ lote.get('lote', '') }}
+
+            </option>
+            {% else %}
+            <option value="{{ url_for('planta_alimentos.editar_receta', item_id=item_id, lote_id=lote) }}" {% if
+                lote_id==lote|string %}selected{% endif %}>
+                {% if 'LOTE' not in lote|upper %}LOTE {% endif %}{{ lote }}
+            </option>
+            {% endif %}
+            {% endfor %}
+            {% endif %}
+        </select>
+    </div>
+</div>
+
+<!-- ==========================================
+         INICIO DE LA CONDICIÓN JINJA2
+         ========================================== -->
+{% if lote_id == '0' %}
+
+<!-- Pantalla de espera cuando no hay lote seleccionado -->
+<div class="alert alert-info text-center mt-5 shadow-sm border-0" style="background-color: #e3f2fd; color: #052c65;">
+    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" fill="currentColor" class="bi bi-cursor mb-3"
+        viewBox="0 0 16 16">
+        <path
+            d="M14.082 2.182a.5.5 0 0 1 .103.557L8.528 15.467a.5.5 0 0 1-.917-.007L5.57 10.694.803 8.652a.5.5 0 0 1-.006-.916l12.728-5.657a.5.5 0 0 1 .556.103zM2.25 8.184l3.897 1.67a.5.5 0 0 1 .262.263l1.67 3.897L12.743 3.52z" />
+    </svg>
+    <h5 class="fw-bold">Esperando selección de Lote</h5>
+    <p class="mb-0">Por favor, selecciona un lote en el menú desplegable de arriba para cargar la formulación, el
+        núcleo y los registros de producción.</p>
+</div>
+
+{% else %}
+<!-- ==========================================
+         ZONA DE TABLAS (Solo visible con lote seleccionado)
+         ========================================== -->
+
+<div class="row">
+    <!-- COLUMNA IZQUIERDA: RECETA BASE (1.000 KG) -->
+    <div class="col-lg-7 mb-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center border-bottom">
+                <h6 class="fw-bold text-primary mb-0"><i class="fas fa-list-ol me-2"></i> Composición Base (1.000
+                    Kg)</h6>
+                <button class="btn btn-sm btn-primary fw-bold" data-bs-toggle="modal"
+                    data-bs-target="#modalAgregarInsumo">
+                    <i class="fas fa-plus me-1"></i> Insumo +
+                </button>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive shadow-sm">
+                    <table class="table table-hover align-middle mb-0 text-nowrap" style="font-size: 0.88rem;">
+                        <thead class="bg-light">
+                            <tr>
+                                <th class="px-3">MATERIA PRIMA</th>
+                                <th class="text-end" style="width: 140px;">KG / BACHE</th>
+
+                                <!-- COLUMNAS DINÁMICAS: UNA POR CADA DÍA REGISTRADO -->
+                                {% for reg in registros_produccion %}
+                                <th class="text-end text-secondary" style="min-width: 110px;">
+                                    {{ reg['fecha'].strftime('%d/%m/%Y') }}<br>
+                                    <small class="text-muted">({{ "{:,.0f}".format(reg['toneladas']) }} Ton)</small>
+                                </th>
+                                {% endfor %}
+
+                                <th class="text-end text-primary fw-bold">TOTAL ACUMULADO</th>
+                                <th class="text-center px-3"
+                                    style="width: 90px; position: sticky; right: 0; background: #f8f9fa;">ACCIONES
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for insumo in insumos_receta %}
+                            <tr>
+                                <!-- MATERIA PRIMA -->
+                                <td class="px-3 fw-bold text-dark">
+                                    {{ insumo['insumo'] }}
+                                </td>
+
+                                <!-- KG / BACHE EDITABLE -->
+                                <td class="text-end">
+                                    <input type="text" form="form-receta-edit-{{ insumo['id'] }}" name="cantidad_kg"
+                                        value="{{ " {:,.2f}".format(insumo['cantidad_kg']).replace(',', 'X'
+                                        ).replace('.', ',' ).replace('X', '.' ) }}"
+                                        class="form-control form-control-sm text-end fw-bold ms-auto monto-miles"
+                                        style="width: 110px;" required>
+                                </td>
+
+                                <!-- CONSUMOS INDIVIDUALES POR DÍA -->
+                                {% for consumo_dia in insumo['consumos_diarios'] %}
+                                <td class="text-end text-secondary">
+                                    {{ "{:,.2f}".format(consumo_dia).replace(',', 'X').replace('.',
+                                    ',').replace('X', '.') }}
+                                </td>
+                                {% endfor %}
+
+                                <!-- CONSUMO TOTAL ACUMULADO -->
+                                <td class="text-end fw-bold text-primary" style="background-color: #f1f8ff;">
+                                    {{ "{:,.2f}".format(insumo['total_consumo_kg']).replace(',', 'X').replace('.',
+                                    ',').replace('X', '.') }}
+                                </td>
+
+                                <!-- ACCIONES (Fijas a la derecha) -->
+                                <td class="text-center px-3"
+                                    style="position: sticky; right: 0; background: white; box-shadow: -2px 0 5px rgba(0,0,0,0.05); min-width: 90px;">
+                                    <div class="d-flex justify-content-center gap-1">
+                                        <form id="form-receta-edit-{{ insumo['id'] }}" method="POST"
+                                            action="{{ url_for('planta_alimentos.actualizar_insumo_receta', id_registro=insumo['id']) }}">
+                                            <input type="hidden" name="item_id" value="{{ item_id }}">
+                                            <input type="hidden" name="lote_id" value="{{ lote_id }}">
+                                        </form>
+
+                                        <!-- Botón Guardar (Lápiz SVG) -->
+                                        <button type="submit" form="form-receta-edit-{{ insumo['id'] }}"
+                                            class="btn btn-sm btn-outline-primary border-0 p-1"
+                                            title="Guardar Cantidad">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15"
+                                                fill="currentColor" class="bi bi-pencil-square" viewBox="0 0 16 16">
+                                                <path
+                                                    d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z" />
+                                                <path fill-rule="evenodd"
+                                                    d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5z" />
+                                            </svg>
+                                        </button>
+
+                                        <!-- Formulario y Botón Eliminar (Papelera SVG) -->
+                                        <form method="POST"
+                                            action="{{ url_for('planta_alimentos.eliminar_insumo_receta', id_registro=insumo['id']) }}"
+                                            onsubmit="return confirm('¿Eliminar insumo?');" class="d-inline">
+                                            <input type="hidden" name="item_id" value="{{ item_id }}">
+                                            <input type="hidden" name="lote_id" value="{{ lote_id }}">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger border-0 p-1"
+                                                title="Eliminar Insumo">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15"
+                                                    fill="currentColor" class="bi bi-trash3" viewBox="0 0 16 16">
+                                                    <path
+                                                        d="M6.5 1h3a.5.5 0 0 1 .5.5v1H6v-1a.5.5 0 0 1 .5-.5M11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3A1.5 1.5 0 0 0 5 1.5v1H1.5a.5.5 0 0 0 0 1h.538l.853 10.66A2 2 0 0 0 4.937 16h6.126a2 2 0 0 0 1.997-1.84l.853-10.66h.538a.5.5 0 0 0 0-1zm1.958 1-.846 10.58a1 1 0 0 1-.997.92H4.937a1 1 0 0 1-.997-.92L3.042 3.5zm-7.487 1a.5.5 0 0 1 .528.47l.5 8.5a.5.5 0 0 1-.998.06L5 5.03a.5.5 0 0 1 .47-.53Zm5.058 0a.5.5 0 0 1 .47.53l-.5 8.5a.5.5 0 1 1-.998-.06l.5-8.5a.5.5 0 0 1 .528-.47M8 4.5a.5.5 0 0 1 .5.5v8.5a.5.5 0 0 1-1 0V5a.5.5 0 0 1 .5-.5" />
+                                                </svg>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="100%" class="text-center py-4 text-muted">No hay insumos agregados en
+                                    la receta de este lote.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+
+                        <!-- PIE DE TABLA CON TOTALES DIARIOS Y GENERALES -->
+                        <tfoot class="bg-light fw-bold">
+                            <tr>
+                                <td class="px-3 text-uppercase">TOTAL BACHE:</td>
+                                <td class="text-end text-dark">
+                                    {{ "{:,.2f}".format(totales['total_kg'] or 0).replace(',', 'X').replace('.',
+                                    ',').replace('X', '.') }}
+                                </td>
+
+                                <!-- TOTALES CALCULADOS POR CADA DÍA -->
+                                {% for reg in registros_produccion %}
+                                <td class="text-end text-secondary">
+                                    {{ "{:,.2f}".format((totales['total_kg']|float or 0.0) *
+                                    reg['toneladas']|float).replace(',', 'X').replace('.', ',').replace('X', '.') }}
+                                </td>
+                                {% endfor %}
+
+                                <td class="text-end text-primary fs-6" style="background-color: #e3f2fd;">
+                                    {{ "{:,.2f}".format((totales['total_kg']|float or 0.0) *
+                                    total_toneladas).replace(',', 'X').replace('.', ',').replace('X', '.') }}
+                                </td>
+                                <td style="position: sticky; right: 0; background: #f8f9fa;"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- COLUMNA DERECHA: REGISTRO DE PRODUCCIÓN DIARIA (FECHA Y TONELADAS) -->
+    <div class="col-lg-5 mb-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white py-3 border-bottom">
+                <h6 class="fw-bold text-success mb-0"><i class="fas fa-calendar-alt me-2"></i> Registro de
+                    Producción por Día</h6>
+            </div>
+            <div class="card-body">
+                <!-- Formulario de Registro de Producción -->
+                <form method="POST" action="{{ url_for('planta_alimentos.editar_receta', item_id=item_id, lote_id=lote_id) }}"
+                    class="mb-3">
+                    <input type="hidden" name="guardar_produccion" value="1">
+
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-muted mb-1">Fecha</label>
+                            <input type="date" name="fecha" class="form-control form-control-sm" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold text-muted mb-1">Toneladas</label>
+                            <input type="number" name="toneladas" class="form-control form-control-sm" step="0.01"
+                                placeholder="Ej. 12" required>
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label small fw-bold text-muted mb-1">Novedad (Opcional)</label>
+                            <input type="text" name="novedad" class="form-control form-control-sm"
+                                placeholder="Ej. Cocorná">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-sm btn-success w-100 fw-bold">Registrar Día de
+                        Producción</button>
+                </form>
+
+                <!-- Tabla de Registros -->
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover align-middle text-center mb-0"
+                        style="font-size: 0.85rem;">
+                        <thead class="bg-light">
+                            <tr>
+                                <th>FECHA</th>
+                                <th style="width: 80px;">TONELADAS</th>
+                                <th>NOVEDADES</th>
+                                <th style="width: 70px;">ACCIONES</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for reg in registros_produccion %}
+                            <tr>
+                                <td class="fw-bold">{{ reg['fecha'].strftime('%d/%m/%Y') }}</td>
+
+                                <!-- Edición de Toneladas -->
+                                <td>
+                                    <input type="number" form="form-prod-edit-{{ reg['id'] }}" name="toneladas"
+                                        value="{{ reg['toneladas'] }}"
+                                        class="form-control form-control-sm text-center fw-bold text-success p-1"
+                                        step="0.01" required>
+                                </td>
+
+                                <!-- Edición de Novedad -->
+                                <td>
+                                    <input type="text" form="form-prod-edit-{{ reg['id'] }}" name="novedad"
+                                        value="{{ reg['novedad'] or '' }}"
+                                        class="form-control form-control-sm text-center p-1" placeholder="...">
+                                </td>
+
+                                <td class="align-middle">
+                                    <div class="d-flex justify-content-center gap-1">
+                                        <!-- Formulario Oculto de Actualización -->
+                                        <form id="form-prod-edit-{{ reg['id'] }}" method="POST"
+                                            action="{{ url_for('planta_alimentos.actualizar_produccion_diaria', id_registro=reg['id']) }}">
+                                            <input type="hidden" name="item_id" value="{{ item_id }}">
+                                            <input type="hidden" name="lote_id" value="{{ lote_id }}">
+                                        </form>
+
+                                        <!-- Botón Guardar / Actualizar (Lápiz SVG) -->
+                                        <button type="submit" form="form-prod-edit-{{ reg['id'] }}"
+                                            class="btn btn-sm btn-outline-primary border-0 p-1"
+                                            title="Actualizar Registro">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                fill="currentColor" class="bi bi-pencil-square" viewBox="0 0 16 16">
+                                                <path
+                                                    d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z" />
+                                                <path fill-rule="evenodd"
+                                                    d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5z" />
+                                            </svg>
+                                        </button>
+
+                                        <!-- Formulario y Botón Eliminar (Papelera SVG) -->
+                                        <form method="POST"
+                                            action="{{ url_for('planta_alimentos.eliminar_produccion_diaria', id_registro=reg['id']) }}"
+                                            onsubmit="return confirm('¿Eliminar registro?');" class="d-inline">
+                                            <input type="hidden" name="item_id" value="{{ item_id }}">
+                                            <input type="hidden" name="lote_id" value="{{ lote_id }}">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger border-0 p-1"
+                                                title="Eliminar Registro">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                    fill="currentColor" class="bi bi-trash3" viewBox="0 0 16 16">
+                                                    <path
+                                                        d="M6.5 1h3a.5.5 0 0 1 .5.5v1H6v-1a.5.5 0 0 1 .5-.5M11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3A1.5 1.5 0 0 0 5 1.5v1H1.5a.5.5 0 0 0 0 1h.538l.853 10.66A2 2 0 0 0 4.937 16h6.126a2 2 0 0 0 1.997-1.84l.853-10.66h.538a.5.5 0 0 0 0-1zm1.958 1-.846 10.58a1 1 0 0 1-.997.92H4.937a1 1 0 0 1-.997-.92L3.042 3.5zm-7.487 1a.5.5 0 0 1 .528.47l.5 8.5a.5.5 0 0 1-.998.06L5 5.03a.5.5 0 0 1 .47-.53Zm5.058 0a.5.5 0 0 1 .47.53l-.5 8.5a.5.5 0 1 1-.998-.06l.5-8.5a.5.5 0 0 1 .528-.47M8 4.5a.5.5 0 0 1 .5.5v8.5a.5.5 0 0 1-1 0V5a.5.5 0 0 1 .5-.5" />
+                                                </svg>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4" class="text-muted py-3">Sin fechas de producción registradas.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot class="bg-light fw-bold">
+                            <tr>
+                                <td class="text-end">TOTAL TONELADAS:</td>
+                                <td class="text-success fs-6">{{ "{:,.0f}".format(total_toneladas) }} Ton</td>
+                                <td colspan="2"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- SECCIÓN: NÚCLEOS -->
+<div class="row mt-4 mb-5">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header py-2 d-flex justify-content-between align-items-center"
+                style="background-color: #198754; color: white;">
+                <h6 class="fw-bold mb-0 text-uppercase">
+                    Núcleo Arranque {{ item_id }} - Lote {{ lote_id }}
+                </h6>
+
+                <div class="d-flex align-items-center gap-2">
+                    <select id="select-agregar-nucleo" class="form-select form-select-sm border-0 shadow-sm"
+                        style="min-width: 220px;">
+                        <option value="" disabled selected>Devolver materia prima...</option>
+                        {% for insumo in insumos_receta %}
+                        {% if not insumo.get('es_nucleo', True) %}
+                        <option value="{{ insumo['id'] }}">{{ insumo['insumo'] }}</option>
+                        {% endif %}
+                        {% endfor %}
+                    </select>
+                    <button type="button" onclick="agregarDesdeSelect(event)"
+                        class="btn btn-sm btn-light text-success fw-bold text-nowrap shadow-sm">
+                        Agregar +
+                    </button>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="bg-light">
+                            <tr>
+                                <th class="px-3">MATERIA PRIMA</th>
+                                <th class="text-end">KG (BASE)</th>
+                                <th class="text-center" style="width: 120px;">CANT. BACHES</th>
+                                <th class="text-end text-success fw-bold">TOTAL NÚCLEO</th>
+                                <th class="text-center px-3" style="width: 90px;">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% set total_nucleo = namespace(valor=0) %}
+                            {% set total_kg_base = namespace(valor=0) %}
+                            {% for insumo in insumos_nucleo %}
+                            {% set subtotal = insumo['cantidad_kg']|float * insumo['baches_nucleo']|float %}
+                            {% set total_nucleo.valor = total_nucleo.valor + subtotal %}
+                            {% set total_kg_base.valor = total_kg_base.valor + insumo['cantidad_kg']|float %}
+                            {% set es_sal = (insumo['insumo']|upper == 'SAL DE MAR') %}
+
+                            <tr {% if es_sal %} style="background-color: #ffe0b2;"
+                                title="¡Atención! Agregar solo después de preparar el núcleo para evitar oxidación." {%
+                                endif %}>
+                                <td class="px-3 fw-bold {% if es_sal %}text-danger{% else %}text-dark{% endif %}">
+                                    {{ insumo['insumo'] }}
+                                    {% if es_sal %}
+                                    <br><small class="text-danger fw-normal"><i class="fas fa-exclamation-triangle"></i>
+                                        Agregar al final de la
+                                        preparación (NO MEZCLAR AL NUCLEO)</small>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end text-muted align-middle">
+                                    {{ "{:,.0f}".format(insumo['cantidad_kg']) }}
+                                </td>
+                                <td class="text-center align-middle">
+                                    <form id="form-nucleo-{{ insumo['id'] }}" method="POST"
+                                        action="{{ url_for('planta_alimentos.actualizar_baches_nucleo', id_registro=insumo['id']) }}">
+                                        <input type="hidden" name="item_id" value="{{ item_id }}">
+                                        <input type="hidden" name="lote_id" value="{{ lote_id }}">
+                                        <input type="number" name="baches_nucleo" value="{{ insumo['baches_nucleo'] }}"
+                                            class="form-control form-control-sm text-center fw-bold text-success"
+                                            step="0.1" onchange="this.form.submit()">
+                                    </form>
+                                </td>
+                                <td class="text-end fw-bold text-success align-middle" {% if not es_sal
+                                    %}style="background-color: #e8f5e9;" {% endif %}>
+                                    {{ "{:,.0f}".format(subtotal) }}
+                                </td>
+                                <td class="text-center px-3 align-middle">
+                                    <button type="button" onclick="quitarDelNucleo(event, {{ insumo.id }}, this)"
+                                        class="btn btn-sm btn-outline-danger border-0 d-inline-flex align-items-center justify-content-center"
+                                        style="width: 26px; height: 26px;" title="Quitar del Núcleo">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                            fill="currentColor" class="bi bi-x-lg" viewBox="0 0 16 16"
+                                            style="min-width: 16px;">
+                                            <path
+                                                d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z" />
+                                        </svg>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center py-3 text-muted">No hay insumos en el núcleo.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot class="bg-light fw-bold">
+                            <tr>
+                                <td class="text-end text-uppercase px-3">Total Premezcla:</td>
+                                <td class="text-end align-middle" style="color: #6c757d;">
+                                    {{ "{:,.0f}".format(total_kg_base.valor) }}
+                                </td>
+                                <td></td>
+                                <td class="text-end text-success fs-6 align-middle" style="background-color: #c8e6c9;">
+                                    {{ "{:,.0f}".format(total_nucleo.valor) }}
+                                </td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL PARA AGREGAR INSUMO -->
+<div class="modal fade" id="modalAgregarInsumo" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title fw-bold fs-6">Agregar Insumo a la Receta</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('planta_alimentos.editar_receta', item_id=item_id, lote_id=lote_id) }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-muted small">Materia Prima</label>
+                        <select name="materia_prima_id" class="form-select form-select-sm" required>
+                            <option value="" disabled selected>Seleccione materia prima...</option>
+                            {% for mp in materias_primas %}
+                            <option value="{{ mp['id'] }}">{{ mp['nombre'] }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-muted small">Cantidad (Kg por Bache)</label>
+                        <input type="text" name="cantidad_kg" class="form-control form-control-sm monto-miles"
+                            placeholder="Ej. 595,374" required autocomplete="off">
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-sm btn-primary fw-bold">Guardar Insumo</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endif %}
+<!-- ==========================================
+         FIN DE LA CONDICIÓN JINJA2
+         ========================================== -->
+
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        function formatNumber(value) {
+            return value.replace(/\D/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+        }
+        document.querySelectorAll('.monto-miles').forEach(function (input) {
+            input.addEventListener('input', function (e) {
+                e.target.value = formatNumber(e.target.value);
+            });
+        });
+        document.querySelectorAll('form').forEach(function (form) {
+            form.addEventListener('submit', function () {
+                form.querySelectorAll('.monto-miles').forEach(function (input) {
+                    input.value = input.value.replace(/\./g, '');
+                });
+            });
+        });
+    });
+</script>
+
+<script>
+    // Función para quitar sin recargar la página
+    function quitarDelNucleo(event, idRegistro, btnElement) {
+        event.preventDefault();
+
+        fetch(`/receta/nucleo/toggle/${idRegistro}/0`, {
+            method: 'POST'
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const fila = btnElement.closest('tr');
+                    fila.style.transition = "opacity 0.3s ease";
+                    fila.style.opacity = "0";
+
+                    setTimeout(() => {
+                        fila.remove();
+                    }, 300);
+                } else {
+                    alert('Hubo un error al quitar el insumo.');
+                }
+            })
+            .catch(error => console.error('Error:', error));
+    }
+
+    // Función para agregar (Recarga la página para reconstruir la tabla)
+    function agregarAlNucleo(event, idRegistro) {
+        event.preventDefault();
+
+        fetch(`/receta/nucleo/toggle/${idRegistro}/1`, {
+            method: 'POST'
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.reload();
+                }
+            });
+    }
+
+    // Función para agregar al núcleo desde el menú desplegable en la cabecera
+    function agregarDesdeSelect(event) {
+        event.preventDefault();
+
+        const select = document.getElementById('select-agregar-nucleo');
+        const idRegistro = select.value;
+
+        if (!idRegistro) {
+            alert('Por favor, selecciona una materia prima de la lista para agregar.');
+            return;
+        }
+
+        fetch(`/receta/nucleo/toggle/${idRegistro}/1`, {
+            method: 'POST'
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.reload();
+                } else {
+                    alert('Hubo un error al agregar el insumo.');
+                }
+            })
+            .catch(error => console.error('Error:', error));
+    }
+</script>
+{% endblock %}
