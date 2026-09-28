@@ -1,7 +1,7 @@
 from flask import render_template, request, redirect, url_for, flash
 from routes.planta_alimentos.catalogo_a import planta_bp
 from routes.routes import login_requerido
-from routes.routes import get_todos_los_lotes
+from models.lotes.services import get_todos_los_lotes
 from models.planta_alimentos.maestros import MateriaPrima, CatalogoAlimento, Empresa
 from models.planta_alimentos.transacciones import RegistroProduccion
 from models.base import get_db_connection

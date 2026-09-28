@@ -130,14 +130,11 @@
 
     const hora = new Date().getHours();
     let saludo = 'Buenos días,';
-    let emoji = '☀️';
 
     if (hora >= 12 && hora < 19) {
       saludo = 'Buenas tardes,';
-      emoji = '🌤️';
     } else if (hora >= 19 || hora < 5) {
       saludo = 'Buenas noches,';
-      emoji = '🌙';
     }
 
     saludoHora.textContent = `${emoji} ${saludo}`;

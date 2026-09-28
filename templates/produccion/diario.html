@@ -313,7 +313,7 @@
       if(input) input.removeAttribute('id');
   });
 
-  const API_URL = "{{ url_for('main.actualizar_diario') }}";
+  const API_URL = "{{ url_for('diario.actualizar_diario') }}";
 
   // Motor Ajax de autoguardado asincrono
   document.querySelectorAll('.table-fixed input:not([readonly])').forEach(function (input) {

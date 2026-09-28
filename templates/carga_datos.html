@@ -129,7 +129,7 @@
                     {% endif %}
                     {% endwith %}
 
-                    <form action="{{ url_for('main.procesar_carga') }}" method="POST" enctype="multipart/form-data" id="formCarga">
+                    <form action="{{ url_for('carga_datos.procesar_carga') }}" method="POST" enctype="multipart/form-data" id="formCarga">
 
                         <div class="mb-4">
                             <label for="modulo" class="form-label fw-bold text-secondary">1. Selecciona el Tipo de Informe</label>

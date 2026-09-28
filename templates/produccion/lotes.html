@@ -625,7 +625,7 @@
 
         if (!nombre) { alert("El nombre es obligatorio."); return; }
 
-        fetch("{{ url_for('main.crear_catalogo') }}", {
+        fetch("{{ url_for('lotes.crear_catalogo') }}", {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ tipo: tipo, nombre: nombre })

@@ -910,7 +910,7 @@
   });
 
   // 3. GUARDADO AUTOMÁTICO (SOLO PARA EDITORES/SUPERADMINS)
-  const API_URL_SEM = "{{ url_for('main.actualizar_semanal') }}";
+  const API_URL_SEM = "{{ url_for('semanal.actualizar_semanal') }}";
 
   // Envolvemos el guardado: Si ES Lector, esta parte del código simplemente no existe para él
   if (userRol !== 'Lector') {
