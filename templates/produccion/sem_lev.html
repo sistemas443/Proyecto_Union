@@ -378,7 +378,7 @@
   });
 
   // Guardado asíncrono y control de actualizaciones
-  const API_URL = "{{ url_for('main.actualizar_semanal') }}";
+  const API_URL = "{{ url_for('semanal.actualizar_semanal') }}";
 
   document.querySelectorAll('.table-fixed input:not([readonly])').forEach(function (input) {
     input.addEventListener('change', function () {

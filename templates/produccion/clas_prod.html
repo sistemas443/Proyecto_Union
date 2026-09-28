@@ -368,8 +368,8 @@
 
 {% block scripts %}
 <script>
-  const API_URL_CLAS = "{{ url_for('main.actualizar_clasificacion') }}";
-  const API_RECALCULAR = "{{ url_for('main.recalcular_clas_lote') }}";
+  const API_URL_CLAS = "{{ url_for('clasificacion.actualizar_clasificacion') }}";
+  const API_RECALCULAR = "{{ url_for('clasificacion.recalcular_clas_lote') }}";
 
   function actualizarPantallaSilenciosa() {
     const formData = new FormData();

@@ -19,9 +19,6 @@
       opacity: 1 !important;
     }
 
-    /* ======================================================== */
-    /* BARRA LATERAL FLOTANTE COMPACTA                          */
-    /* ======================================================== */
     .sidebar-rapido {
       position: fixed;
       top: 64px;
@@ -95,12 +92,35 @@
       padding-left: 65px;
     }
 
-    /* Forzar tamaño uniforme de imágenes en todos los toasts */
+    /* Imágenes en toasts (pequeños) */
     .swal2-toast img {
-      height: 65px !important;
-      width: 65px !important;
+      height: 55px !important;
+      width: 55px !important;
       object-fit: contain;
       margin-right: 10px;
+      vertical-align: middle;
+    }
+
+    /* Imágenes en el popup flotante */
+    .swal2-popup img {
+      height: 60px !important;
+      width: auto !important;
+      max-width: 100%;
+      object-fit: contain;
+      vertical-align: middle;
+      margin-right: 12px;
+    }
+
+    /* Fondo transparente (sin oscurecer) */
+    .swal2-container.swal2-backdrop-show,
+    .swal2-container.swal2-noanimation,
+    .swal2-container {
+      background-color: transparent !important;
+    }
+
+    .swal2-popup {
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
+      border: 1px solid #dee2e6 !important;
     }
   </style>
 
@@ -117,8 +137,7 @@
     style="position: fixed; bottom: 25px; left: 50%; transform: translateX(-50%); z-index: 1050; background-color: #212529; border: 2px solid #97271C;">
     <div class="text-white fw-bold d-flex align-items-center" style="font-size: 0.95rem;">
       <i class='bx bx-show fs-4 me-2 text-warning'></i>
-      <span class="me-3">Navegando como <span class="text-warning">{{ session.get('user_nombre') }}</span> (Solo
-        Lectura)</span>
+      <span class="me-3">Navegando como <span class="text-warning">{{ session.get('user_nombre') }}</span> (Solo Lectura)</span>
     </div>
     <a href="{{ url_for('main.revertir_suplantacion') }}"
       class="btn btn-sm rounded-pill fw-bold px-3 shadow-sm border-0" style="background-color: #97271C; color: white;">
@@ -127,37 +146,37 @@
   </div>
   {% endif %}
 
-  {# --- SIDEBAR: SOLO SE MUESTRA SI EL USUARIO ESTÁ LOGUEADO --- #}
+  {# --- SIDEBAR --- #}
   {% if session.get('user_id') %}
   <div class="sidebar-rapido">
-    <a href="{{ url_for('main.vista_lotes') }}" title="Gestión de Lotes">
+    <a href="{{ url_for('lotes.vista_lotes') }}" title="Gestión de Lotes">
       <i class='bx bx-list-ul'></i><span>Gestión de Lotes</span>
     </a>
-    <a href="{{ url_for('main.primera_semana') }}" title="1era Semana">
+    <a href="{{ url_for('primera_semana.primera_semana') }}" title="1era Semana">
       <i class='bx bx-calendar-event'></i><span>1era Semana</span>
     </a>
-    <a href="{{ url_for('main.semanal_levante') }}" title="Semanal Levante">
+    <a href="{{ url_for('semanal_levante.semanal_levante') }}" title="Semanal Levante">
       <i class='bx bx-trending-up'></i><span>Semanal Levante</span>
     </a>
-    <a href="{{ url_for('main.diario') }}" title="Diario">
+    <a href="{{ url_for('diario.diario') }}" title="Diario">
       <i class='bx bx-sun'></i><span>Diario</span>
     </a>
-    <a href="{{ url_for('main.semanal') }}" title="Semanal Producción">
+    <a href="{{ url_for('semanal.semanal') }}" title="Semanal Producción">
       <i class='bx bx-line-chart'></i><span>Semanal Prod.</span>
     </a>
-    <a href="{{ url_for('main.clas_prod') }}" title="Clasificación Prod.">
+    <a href="{{ url_for('clasificacion.clas_prod') }}" title="Clasificación Prod.">
       <i class='bx bx-layer'></i><span>Clasificación Prod.</span>
     </a>
-    <a href="{{ url_for('main.grafico_primera_semana') }}" class="nav-link text-white d-flex align-items-center gap-2">
+    <a href="{{ url_for('primera_semana.grafico_primera_semana') }}" class="nav-link text-white d-flex align-items-center gap-2">
       <i class='bx bx-bar-chart-alt-2 fs-5'></i>
       <span>Gráfico 1era Semana</span>
     </a>
-    <a href="{{ url_for('main.grafico_general') }}" class="nav-link text-white d-flex align-items-center gap-2">
+    <a href="{{ url_for('semanal.grafico_general') }}" class="nav-link text-white d-flex align-items-center gap-2">
       <i class='bx bx-bar-chart-alt-2 fs-5'></i>
       <span>Gráfico General</span>
     </a>
     <li class="nav-item">
-      <a href="{{ url_for('main.grafico_conversion') }}" class="nav-link text-white d-flex align-items-center gap-2">
+      <a href="{{ url_for('semanal.grafico_conversion') }}" class="nav-link text-white d-flex align-items-center gap-2">
         <i class='bx bx-pie-chart-alt-2 fs-5'></i>
         <span>Gráfico Conversión</span>
       </a>
@@ -176,7 +195,7 @@
   <script src="{{ url_for('static', filename='js/main.js') }}"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-  <!-- LÓGICA DE LA BARRA LATERAL (CORREGIDA) -->
+  <!-- BARRA LATERAL -->
   <script>
     document.addEventListener("DOMContentLoaded", function () {
       if (localStorage.getItem('estadoSidebarLotes') === 'abierta') {
@@ -197,40 +216,64 @@
     }
   </script>
 
+  <!-- MENSAJES FLASH -->
   {% with messages = get_flashed_messages(with_categories=true) %}
   {% if messages %}
   <script type="application/json" id="flash-messages-data">
-        {{ messages | tojson | safe }}
-      </script>
+      {{ messages | tojson | safe }}
+    </script>
   <script>
     document.addEventListener("DOMContentLoaded", function () {
-      const Toast = Swal.mixin({
-        toast: true, 
-        position: "top-end", 
-        showConfirmButton: false,
-        timer: 2000, 
-        timerProgressBar: true, 
-        width: window.innerWidth < 500 ? '90%' : '450px',
-        padding: '10px 15px',
-        didOpen: (toast) => { toast.onmouseover = Swal.stopTimer; toast.onmouseleave = Swal.resumeTimer; }
-      });
-      const rawData = document.getElementById('flash-messages-data').textContent;
-      const mensajes = JSON.parse(rawData);
+      const rawData = document.getElementById('flash-messages-data');
+      if (!rawData) return;
+
+      const mensajes = JSON.parse(rawData.textContent);
+
       mensajes.forEach(function (msg) {
-        const categoria = msg[0]; const texto = msg[1];
-        let icono = 'info';
-        if (categoria === 'error' || categoria === 'danger') icono = 'error';
-        else if (categoria === 'success') icono = 'success';
-        else if (categoria === 'warning') icono = 'warning';
-        if (texto.includes('<img')) { icono = false; }
-        Toast.fire({ icon: icono, html: texto });
+        const categoria = msg[0];
+        const texto = msg[1];
+        const tieneImagen = texto.includes('<img');
+
+        if (tieneImagen) {
+          Swal.fire({
+            html: texto,
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true,
+            position: 'top-end',
+            width: 'auto',
+            padding: '15px 25px',
+            toast: false,
+            backdrop: false
+          });
+        } else {
+          const Toast = Swal.mixin({
+            toast: true,
+            position: "top-end",
+            showConfirmButton: false,
+            timer: 2500,
+            timerProgressBar: true,
+            padding: '10px 15px',
+            didOpen: (toast) => {
+              toast.onmouseover = Swal.stopTimer;
+              toast.onmouseleave = Swal.resumeTimer;
+            }
+          });
+
+          let icono = 'info';
+          if (categoria === 'error' || categoria === 'danger') icono = 'error';
+          else if (categoria === 'success') icono = 'success';
+          else if (categoria === 'warning') icono = 'warning';
+
+          Toast.fire({ icon: icono, html: texto });
+        }
       });
     });
   </script>
   {% endif %}
   {% endwith %}
 
-  <!-- CANDADO GLOBAL: MODO LECTURA -->
+  <!-- CANDADO MODO LECTURA -->
   <script>
     document.addEventListener("DOMContentLoaded", function () {
       const rolUsuarioGlobal = "{{ session.get('user_rol') }}";
@@ -249,7 +292,7 @@
     });
   </script>
 
-  <!-- CONTROL ANTI-DOBLE CLIC CON RUEDITA DE CARGA -->
+  <!-- ANTI-DOBLE CLIC -->
   <script>
     document.addEventListener("DOMContentLoaded", function () {
       document.querySelectorAll("form").forEach(function (form) {
@@ -274,7 +317,7 @@
     });
   </script>
 
-  <!-- VIGILANTE DE INACTIVIDAD DE SESIÓN -->
+  <!-- VIGILANTE INACTIVIDAD -->
   {% if session.get('user_id') %}
   <script>
     document.addEventListener("DOMContentLoaded", function () {
@@ -309,6 +352,37 @@
           btnInfoGeneral.click();
         }
       }
+    });
+  </script>
+  {% endif %}
+
+  <!-- ATAJOS DE PRUEBA (SOLO USUARIO ID=1 Y SOLO EN PANTALLA PRINCIPAL) -->
+  {% if session.get('user_id')|string == '1' %}
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const rutaActual = window.location.pathname;
+      const esPantallaPrincipal = (rutaActual === '/pantalla-principal');
+
+      if (!esPantallaPrincipal) return;
+
+      document.addEventListener("keydown", function (event) {
+        const tag = document.activeElement.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+        if (event.altKey || event.ctrlKey || event.metaKey) return;
+
+        if (event.key === '1') {
+          event.preventDefault();
+          window.location.href = "{{ url_for('main.test_flash_saludo') }}";
+        }
+        if (event.key === '2') {
+          event.preventDefault();
+          window.location.href = "{{ url_for('main.test_flash_despedida') }}";
+        }
+        if (event.key === '3') {
+          event.preventDefault();
+          window.location.href = "{{ url_for('main.test_flash_sin_imagen') }}";
+        }
+      });
     });
   </script>
   {% endif %}

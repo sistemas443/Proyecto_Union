@@ -1,5 +1,6 @@
 import os
 import time
+import random
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -7,23 +8,9 @@ from functools import wraps
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash, session, current_app
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
-from models.planta_alimentos.maestros import MateriaPrima, Proveedor
-# Importaciones para procesar imágenes de perfil (recortar a cuadrado y comprimir sin perder calidad)
 from PIL import Image, ImageOps
-from flask import jsonify  # Asegúrate de tener esto arriba en los imports
 
-# Importaciones de los servicios y modelos de base de datos de cada módulo del sistema
-from models.base import get_db_connection  
-from models.cabecera.services import get_cabecera_info, update_cabecera_unificada
-from models.diario.services import get_diario_all, update_registro_diario_field
-from models.semanal.services import get_semanal_all, update_semanal_field as update_produccion_field
-from models.primera_semana.services import get_primera_semana_by_lote, update_primera_semana_field
-from models.semanal_levante.services import get_semanal_levante_all, update_semanal_field as update_levante_field
-from models.clasificacion.services import get_clasificacion_all, update_clasificacion_field, recalcular_lote_completo_clasificacion
-from models.lotes.services import get_lotes_distintos, get_todos_los_lotes, guardar_nuevo_lote, actualizar_lote, borrar_lote, get_opciones_dinamicas
-from models.planta_alimentos.maestros import Empresa
-from models.planta_alimentos.formulas import FormulaDetalle
-from models.planta_alimentos.maestros import CatalogoAlimento
+from models.base import get_db_connection
 
 # Registramos este archivo como un componente (Blueprint) principal de Flask
 bp = Blueprint('main', __name__)
@@ -32,7 +19,7 @@ bp = Blueprint('main', __name__)
 
 def login_requerido(f):
     # Candado que verifica si el usuario tiene una sesión en su navegador antes de cargar una pantalla
-    @wraps(f) 
+    @wraps(f)
     def decorated_function(*args, **kwargs): # Si no hay sesión activa, bloquea el acceso a la función
         if 'user_id' not in session: # Si no hay sesión activa, bloquea el acceso a la función
             # Si la petición es interna (API AJAX), devuelve un error estructurado JSON
@@ -40,7 +27,7 @@ def login_requerido(f):
                 return jsonify({'status': 'error', 'msg': 'Sesión expirada o no autorizada. Inicie sesión nuevamente.'}), 401
             # Si es una carga de pantalla normal, redirige al usuario a la página de inicio
             flash("Debes iniciar sesión para acceder a esta página.", "warning")
-            return redirect(url_for('main.login_page')) 
+            return redirect(url_for('main.login_page'))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -49,7 +36,7 @@ def superadmin_requerido(f):
     @wraps(f)
     def decorated_function(*args, **kwargs): # Si el rol del usuario no es Superadmin, bloquea el acceso a la función
         if session.get('user_rol') != 'Superadmin': # Si el rol del usuario no es Superadmin, bloquea el acceso
-            if request.path.startswith('/api/'): 
+            if request.path.startswith('/api/'):
                 return jsonify({'status': 'error', 'msg': 'No tienes permisos para realizar esta acción.'}), 403 # Si es una petición API, devuelve un error JSON
             flash("Acceso denegado. Esta área es exclusiva para Superadministradores.", "error")
             return redirect(url_for('main.login_page')) # Si es una carga de pantalla normal, redirige al usuario a la vista principal de lotes
@@ -64,7 +51,7 @@ def editor_requerido(f):
             if request.path.startswith('/api/'):
                 return jsonify({'status': 'error', 'msg': 'Modo Lectura: No tienes permisos para modificar datos.'}), 403
             flash("Acceso denegado. Solo tienes permisos de lectura.", "error") # Si es una carga de pantalla normal, redirige al usuario a la vista principal de lotes
-            return redirect(request.referrer or url_for('main.vista_lotes'))
+            return redirect(request.referrer or url_for('lotes.vista_lotes'))
         return f(*args, **kwargs) # Si el rol es Editor o Superadmin, permite el acceso a la función
     return decorated_function
 
@@ -79,19 +66,19 @@ def limitar_intentos(f):
         tiempo_actual = time.time()
         ventana_tiempo = 60 # Tiempo de penalización configurado en segundos
         max_intentos = 5 # Margen de error tolerado
-        
+
         # Inicia el conteo para IPs desconocidas
         if ip_cliente not in intentos_ip:
             intentos_ip[ip_cliente] = []
-            
+
         # Purgado automático: borra del registro los intentos que ocurrieron hace más de 1 minuto
         intentos_ip[ip_cliente] = [t for t in intentos_ip[ip_cliente] if tiempo_actual - t < ventana_tiempo]
-        
+
         # Bloquea la petición si el límite fue alcanzado y muestra advertencia
         if len(intentos_ip[ip_cliente]) >= max_intentos:
             flash("Demasiados intentos detectados. Por seguridad, espera 1 minuto antes de volver a intentar.", "error")
             return redirect(url_for('main.pantalla_principal'))
-            
+
         # Almacena el timestamp de este intento válido y permite el paso
         intentos_ip[ip_cliente].append(tiempo_actual)
         return f(*args, **kwargs)
@@ -105,14 +92,14 @@ def login():
     username = request.form.get('username', '').strip().replace(" ", "").lower()
     # La contraseña viaja intacta, respetando estrictamente su formato original (mayúsculas y caracteres)
     password = request.form.get('password')
-    
+
     conn = get_db_connection()
     cur = conn.cursor()
-    
+
     try:
         # Extrae los credenciales de la base de datos junto con el rol e imagen del usuario
         cur.execute("""
-            SELECT u.id, u.nombre_completo, u.password_hash, u.activo, r.nombre, u.foto_perfil 
+            SELECT u.id, u.nombre_completo, u.password_hash, u.activo, r.nombre, u.foto_perfil
             FROM usuarios u
             JOIN roles r ON u.rol_id = r.id
             WHERE u.username = %s
@@ -131,16 +118,16 @@ def login():
                 session['user_nombre'] = usuario[1] # Nombre completo del usuario (para mostrar en la interfaz)
                 session['user_rol'] = usuario[4] # Nombre del rol (Superadmin, Editor, Lector)
                 session['user_foto'] = usuario[5] or ''  # Nombre del archivo de la foto de perfil (si existe) o cadena vacía
-                
+
                 # Mensaje de bienvenida con imagen incrustada
-                img_url = url_for('static', filename='img/SALUDO.gif')
+                img_url = url_for('static', filename='img/Saludo.gif')
                 flash(f'<img src="{img_url}" style="vertical-align: middle; height: 55px; width: auto;"> ¡Bienvenido, {usuario[1]}!', 'success')
-                
+
                 return redirect(url_for('main.pantalla_principal'))
         else:
             # Respuesta unificada y ambigua para prevenir que descubran si el error fue el correo o la clave
             flash("Usuario o contraseña incorrectos.", "error")
-            
+
     except Exception as e:
         # Fuga de datos prevenida: El error SQL se imprime en el servidor y al usuario se le da un texto limpio
         print(f"[ERROR DE AUTENTICACIÓN]: {e}")
@@ -155,56 +142,56 @@ def login():
 @limitar_intentos
 def solicitar_recuperacion():
     # Sanitización de variables provenientes de la petición POST del modal
-    username = request.form.get('username_recuperar', '').strip().replace(" ", "").lower() 
-    
+    username = request.form.get('username_recuperar', '').strip().replace(" ", "").lower()
+
     if not username: # Si el campo de usuario está vacío, no se procesa la solicitud y se devuelve un mensaje de advertencia
-        flash("Por favor ingresa un nombre de usuario.", "warning") 
+        flash("Por favor ingresa un nombre de usuario.", "warning")
         return redirect(url_for('main.login_page'))
 
     conn = get_db_connection() # Creamos la conexión a la base de datos para verificar si el usuario existe y enviar la notificación al administrador
     cur = conn.cursor()
-    
+
     try:
         # Traemos el nombre y también el estado (activo/inactivo)
         cur.execute("SELECT nombre_completo, activo FROM usuarios WHERE username = %s", (username,))
         usuario = cur.fetchone()
-        
+
         if usuario:
             nombre_real = usuario[0]
             esta_activo = usuario[1]
-            
+
             # Si el usuario está desactivado, lanzamos una alerta de error directa y cortamos el proceso
             if not esta_activo:
                 flash("Tu cuenta se encuentra desactivada. Contacta directamente al administrador.", "error")
                 return redirect(request.referrer or url_for('main.login_page'))
-            
+
             # Constantes de configuración del servidor de correo emisor corporativo
             correo_remitente = "sistemas@avicolasanmartin.com" #correo que envía la notificación al administrador
             password_remitente = "veusvqztzlfcyatw"  #Clave de aplicación generada en Google Workspace para SMTP (no es la contraseña de la cuenta)
             correo_administrador = "sistemas@avicolasanmartin.com" #correo que se encarga de recuperar las cuentas
-           
+
             # Configuración del servidor SMTP
             smtp_server = 'smtp.gmail.com' #Servidor SMTP de Google Workspace
             smtp_port = 587 #Puerto de conexión seguro para TLS
-            
+
             # Estructura de cabeceras y cuerpo plano del correo electrónico
             asunto = f"ALERTA: Solicitud de restablecimiento - {nombre_real}"
             cuerpo = f"""
             El usuario ha solicitado un restablecimiento de contraseña.
-            
+
             Datos de la solicitud:
             - Nombre Completo: {nombre_real}
             - Usuario (Login): {username}
-            
+
             Por favor, ingresa al Panel de Usuarios de Avícola San Martín para asignarle una nueva contraseña.
             """
-            
+
             msg = MIMEMultipart()
             msg['From'] = correo_remitente
             msg['To'] = correo_administrador
             msg['Subject'] = asunto
             msg.attach(MIMEText(cuerpo, 'plain'))
-            
+
             # Transmisión segura con protocolo TLS hacia Google Workspace
             try:
                 server = smtplib.SMTP(smtp_server, smtp_port) # Inicia la conexión con el servidor SMTP
@@ -220,96 +207,94 @@ def solicitar_recuperacion():
             # Ahora decimos explícitamente si falló
             flash("El usuario ingresado no existe en el sistema.", "error")
             return redirect(url_for('main.login_page'))
-            
+
     except Exception as e:
         print(f"[ERROR RECUPERACION]: {e}")
         flash("Se produjo un error de conexión con el sistema.", "error")
     finally:
         cur.close()
         conn.close()
-        
-    return redirect(request.referrer or url_for('main.login_page'))
 
-import random 
+    return redirect(request.referrer or url_for('main.login_page'))
 
 @bp.route('/solicitar-pin', methods=['POST'])
 @limitar_intentos
 def solicitar_pin():
     username = request.form.get('username_pin', '').strip().replace(" ", "").lower()
-    
+
     if not username:
         flash("Por favor ingresa tu usuario.", "warning")
         return redirect(url_for('main.login_page'))
 
     conn = get_db_connection()
     cur = conn.cursor()
-    
+
     try:
         # Buscamos al usuario, verificando que tenga correo y esté activo
         cur.execute("SELECT nombre_completo, correo, activo FROM usuarios WHERE username = %s", (username,))
         usuario = cur.fetchone()
-        
+
         if usuario:
             nombre_real = usuario[0]
             correo_usuario = usuario[1]
             esta_activo = usuario[2]
-            
+
             if not esta_activo:
                 flash("Tu cuenta está desactivada. Contacta al administrador.", "error")
                 return redirect(url_for('main.login_page'))
-                
+
             if not correo_usuario:
                 flash("No tienes un correo registrado. Usa la opción de contactar al administrador.", "error")
                 return redirect(url_for('main.login_page'))
-                
+
             # Generamos un PIN secreto de 6 dígitos
             pin_secreto = str(random.randint(100000, 999999))
-            
+
             # Guardamos el PIN y el usuario temporalmente en la sesión del navegador
             session['reset_user'] = username
             session['reset_pin'] = pin_secreto
             session['reset_time'] = time.time()
-            
+
             # --- ENVÍO DEL CORREO AL USUARIO ---
             correo_remitente = "sistemas@avicolasanmartin.com"
             password_remitente = "veusvqztzlfcyatw"
-            
+
             smtp_server = 'smtp.gmail.com'
             smtp_port = 587
-            
+
             asunto = "Tu Código de Recuperación - Avícola San Martín"
             cuerpo = f"""
             Hola {nombre_real},
-            
+
             Has solicitado restablecer tu contraseña. Tu código de seguridad (PIN) es:
-            
+
             {pin_secreto}
-            
+
             ⚠️ Este código tiene una validez de 15 minutos. Si el tiempo expira, deberás solicitar uno nuevo.
-            
+
             Si no fuiste tú quien solicitó este cambio, por favor ignora este mensaje y avisa a soporte.
             """
-            
+
             msg = MIMEMultipart()
             msg['From'] = correo_remitente
             msg['To'] = correo_usuario
             msg['Subject'] = asunto
             msg.attach(MIMEText(cuerpo, 'plain'))
-            
+
             server = smtplib.SMTP(smtp_server, smtp_port)
             server.starttls()
             server.login(correo_remitente, password_remitente)
             server.send_message(msg)
             server.quit()
-            
+
             flash("Te hemos enviado un código de 6 dígitos a tu correo.", "success")
             # Lo enviaremos a una nueva pantalla para que escriba el PIN
-            return redirect(url_for('main.verificar_pin_page')) 
-            
+            return redirect(url_for('main.verificar_pin_page'))
+
         else:
             flash("El usuario ingresado no existe en el sistema.", "error")
             return redirect(url_for('main.login_page'))
-            
+
     except Exception as e:
         print(f"[ERROR PIN]: {e}")
         flash("Error del servidor al intentar enviar el correo.", "error")
@@ -324,16 +309,16 @@ def verificar_pin_page():
     if 'reset_pin' not in session or 'reset_user' not in session:
         flash("Tu sesión de recuperación expiró. Vuelve a intentarlo.", "warning")
         return redirect(url_for('main.login_page'))
-        
+
     # Calculamos el tiempo restante en segundos
     tiempo_creacion = session.get('reset_time', 0)
     tiempo_transcurrido = time.time() - tiempo_creacion
     tiempo_restante = int(900 - tiempo_transcurrido) # 900 seg = 15 min
-    
+
     # Si el tiempo ya se acabó, destruimos todo automáticamente
     if tiempo_restante <= 0:
         return redirect(url_for('main.cancelar_recuperacion'))
-        
+
     # Le pasamos el tiempo restante al HTML
     return render_template('verificar_pin.html', tiempo_restante=tiempo_restante)
 
@@ -346,7 +331,7 @@ def validar_pin():
         return redirect(url_for('main.login_page'))
 
     pin_ingresado = request.form.get('pin', '').strip()
-    
+
     # Control de tiempo de expiración del PIN (15 minutos)
     tiempo_creacion = session.get('reset_time', 0)
     if time.time() - tiempo_creacion > 900: # 15 minutos en segundos
@@ -355,14 +340,14 @@ def validar_pin():
         session.pop('reset_time', None)
         flash("El código ha expirado por seguridad (Límite de 15 minutos). Solicita uno nuevo.", "error")
         return redirect(url_for('main.login_page'))
-    
+
     # Control de intentos fallidos del PIN en la sesión
     intentos = session.get('pin_intentos', 0)
 
     if pin_ingresado != session['reset_pin']:
         intentos += 1
         session['pin_intentos'] = intentos
-        
+
         # Límite de seguridad: Máximo 3 intentos erróneos
         if intentos >= 3:
             session.pop('reset_pin', None)
@@ -370,7 +355,7 @@ def validar_pin():
             session.pop('pin_intentos', None)
             flash("Has superado el límite de 3 intentos fallidos. Solicita un nuevo código.", "error")
             return redirect(url_for('main.login_page'))
-            
+
         intentos_restantes = 3 - intentos
         flash(f"Código incorrecto. Te quedan {intentos_restantes} intento(s).", "error")
         return redirect(url_for('main.verificar_pin_page'))
@@ -392,7 +377,7 @@ def cambiar_clave_pin():
 
     nueva_clave = request.form.get('nueva_clave')
     confirmar_clave = request.form.get('confirmar_clave')
-    
+
     # Validaciones de seguridad para la nueva contraseña
     if len(nueva_clave) < 8:
         flash("La contraseña debe tener al menos 8 caracteres por seguridad.", "warning")
@@ -441,7 +426,7 @@ def cancelar_recuperacion():
 
 # ADMINISTRACIÓN DEL ACCESO AL SISTEMA (USUARIOS Y ROLES)
 
-@bp.route('/usuarios') 
+@bp.route('/usuarios')
 @login_requerido
 @superadmin_requerido
 def gestion_usuarios():
@@ -450,7 +435,7 @@ def gestion_usuarios():
     cur = conn.cursor()
     try:
         cur.execute("""
-            SELECT u.id, u.nombre_completo, u.username, u.activo, r.nombre as rol_nombre, r.id as rol_id, u.foto_perfil, u.correo 
+            SELECT u.id, u.nombre_completo, u.username, u.activo, r.nombre as rol_nombre, r.id as rol_id, u.foto_perfil, u.correo
             FROM usuarios u
             JOIN roles r ON u.rol_id = r.id
             ORDER BY u.id ASC
@@ -484,10 +469,10 @@ def guardar_usuario():
 
     conn = get_db_connection()
     cur = conn.cursor()
-    
+
     try:
         foto_nombre = None
-        
+
         # Recupera el nombre de la foto que ya tenía asignada el usuario para no perderla si solo cambia el nombre
         if id_usuario:
             cur.execute("SELECT foto_perfil FROM usuarios WHERE id = %s", (id_usuario,))
@@ -495,7 +480,7 @@ def guardar_usuario():
             foto_nombre = res_foto[0] if res_foto else None # Si no hay foto previa, se mantiene como None
 
         if file_foto and file_foto.filename != '': # Si el administrador subió un archivo de imagen, se procesa y guarda en la carpeta correspondiente
-            
+
             # Chequeo de peso límite moviendo el cursor de lectura al final de los bytes del archivo
             file_foto.seek(0, os.SEEK_END)
             peso_archivo = file_foto.tell()
@@ -509,7 +494,7 @@ def guardar_usuario():
             # Direccionamiento relativo a la carpeta 'static'
             folder_path = os.path.join(current_app.root_path, 'static', 'uploads', 'usuarios')
             os.makedirs(folder_path, exist_ok=True)
-            
+
             # NUEVO: ELIMINACIÓN DE LA FOTO ANTERIOR (AHORRO DE ESPACIO)
             if foto_nombre:
                 ruta_foto_vieja = os.path.join(folder_path, foto_nombre)
@@ -519,51 +504,51 @@ def guardar_usuario():
                         os.remove(ruta_foto_vieja) # Lo eliminamos físicamente
                     except Exception as e:
                         print(f"[ADVERTENCIA] No se pudo borrar la foto vieja: {e}")
-            
+
             # Construye un nombre unívoco asegurando la limpieza de caracteres prohibidos en el sistema operativo
             nombre_seguro = secure_filename(file_foto.filename)
             filename = f"user_{username}_{nombre_seguro.split('.')[0]}.jpg"
             filepath = os.path.join(folder_path, filename)
-            
+
             # Redimensionado geométrico obligatorio: Fija aspecto de 300x300, parcha fondos transparentes de PNG y comprime al 85%
             img = Image.open(file_foto)
             if img.mode in ("RGBA", "P"):
                 img = img.convert("RGB")
-                
+
             img_cuadrada = ImageOps.fit(img, (300, 300), Image.Resampling.LANCZOS)
             img_cuadrada.save(filepath, format='JPEG', optimize=True, quality=85)
-            
+
             foto_nombre = filename
 
         # Lógica dividida: Actualizar vs Insertar (Update / Insert)
-        if id_usuario:  
-            if password: 
+        if id_usuario:
+            if password:
                 hash_pass = generate_password_hash(password)
                 cur.execute("""
-                    UPDATE usuarios SET nombre_completo = %s, username = %s, rol_id = %s, password_hash = %s, foto_perfil = %s, correo = %s 
+                    UPDATE usuarios SET nombre_completo = %s, username = %s, rol_id = %s, password_hash = %s, foto_perfil = %s, correo = %s
                     WHERE id = %s
                 """, (nombre_completo, username, rol_id, hash_pass, foto_nombre, correo, id_usuario))
-            else: 
+            else:
                 cur.execute("""
-                    UPDATE usuarios SET nombre_completo = %s, username = %s, rol_id = %s, foto_perfil = %s, correo = %s 
+                    UPDATE usuarios SET nombre_completo = %s, username = %s, rol_id = %s, foto_perfil = %s, correo = %s
                     WHERE id = %s
                 """, (nombre_completo, username, rol_id, foto_nombre, correo, id_usuario))
-            
+
             if int(id_usuario) == int(session.get('user_id')):
                 session['user_nombre'] = nombre_completo
                 session['user_foto'] = foto_nombre or ''
                 session.modified = True
-                
+
             flash("Usuario actualizado con éxito", "success")
-            
-        else: 
+
+        else:
             if not password:
                 flash("La contraseña es obligatoria para un usuario nuevo", "error")
                 return redirect(url_for('main.gestion_usuarios'))
-                
+
             hash_pass = generate_password_hash(password)
             cur.execute("""
-                INSERT INTO usuarios (nombre_completo, username, password_hash, rol_id, foto_perfil, correo) 
+                INSERT INTO usuarios (nombre_completo, username, password_hash, rol_id, foto_perfil, correo)
                 VALUES (%s, %s, %s, %s, %s, %s)
             """, (nombre_completo, username, hash_pass, rol_id, foto_nombre, correo))
             flash("Usuario creado con éxito", "success")
@@ -594,7 +579,7 @@ def toggle_estado_usuario(id):
         # Validación de candado: Bloquea intentos de suicidio de sesión
         if int(id) == int(session.get('user_id')):
             return jsonify({'status': 'error', 'msg': 'No puedes desactivar tu propia cuenta.'}), 400
-            
+
         cur.execute("UPDATE usuarios SET activo = NOT activo WHERE id = %s RETURNING activo", (id,)) # Cambia el estado de activo a inactivo o viceversa y devuelve el nuevo estado
         nuevo_estado = cur.fetchone()[0]
         conn.commit()
@@ -615,18 +600,18 @@ def crear_rol():
     data = request.get_json(silent=True) or {} # Obtiene los datos JSON enviados desde el cliente, si no hay datos, se asigna un diccionario vacío
     nombre_rol = data.get('nombre', '').strip()
     descripcion_rol = data.get('descripcion', '').strip()
-    
+
     if not nombre_rol: # Si el nombre del rol está vacío, devuelve un error JSON con código 400 (Bad Request)
         return jsonify({'status': 'error', 'msg': 'El nombre del rol no puede estar vacío.'}), 400
-        
+
     conn = get_db_connection()
     cur = conn.cursor()
     try:
-        cur.execute("INSERT INTO roles (nombre, descripcion) VALUES (%s, %s) RETURNING id", 
+        cur.execute("INSERT INTO roles (nombre, descripcion) VALUES (%s, %s) RETURNING id",
                     (nombre_rol, descripcion_rol))
         nuevo_id = cur.fetchone()[0]
         conn.commit()
-        
+
         return jsonify({'status': 'ok', 'id': nuevo_id, 'nombre': nombre_rol}) # Devuelve un JSON con el estado de éxito y los datos del nuevo rol creado
     except Exception as e:
         conn.rollback()
@@ -670,296 +655,13 @@ def logout():
     session.clear()
 
     # Mensaje de despedida con imagen incrustada
-    img_url = url_for('static', filename='img/DESPEDIDA.gif')
+    img_url = url_for('static', filename='img/Despedida.gif')
     flash(f'<img src="{img_url}" style="vertical-align: middle; height: 55px; width: auto;"> Has cerrado sesión exitosamente.', 'success')
 
     # Creamos una respuesta de redirección y le inyectamos un script para limpiar el localStorage
     response = redirect(url_for('main.login_page'))
     response.set_cookie('clear_sidebar', 'true', max_age=5)  # Cookie temporal
     return response
-
-@bp.route('/api/cabecera/actualizar', methods=['POST'])
-@login_requerido
-@editor_requerido
-def actualizar_cabecera():
-    # Capta y delega la actualización de datos biográficos del lote (Raza, Cliente, Tipo)
-    data = request.get_json(silent=True) or {}
-    lote, columna, valor = data.get('lote'), data.get('columna'), data.get('valor')
-    if not lote or not columna: return jsonify({'status': 'error', 'msg': 'Faltan datos'}), 400
-    success, msg = update_cabecera_unificada(lote, columna, valor)
-    return jsonify({'status': 'ok'}) if success else jsonify({'status': 'error', 'msg': msg}), 500
-
-@bp.route('/diario', methods=['GET', 'POST'])
-@login_requerido
-def diario():
-    # Reconstruye el esquema del control de mortalidad y consumo para el día a día
-    if request.method == 'POST':
-        lote_seleccionado = request.form.get('lote', '')
-        if lote_seleccionado and lote_seleccionado != 'VACIO':
-            session['ultimo_lote'] = lote_seleccionado
-    else:
-        lote_seleccionado = session.get('ultimo_lote', '')
-
-    filas = []
-    cabecera = None
-    if lote_seleccionado and lote_seleccionado != 'VACIO':
-        cabecera = get_cabecera_info(lote_seleccionado)
-        if cabecera:
-            from models.diario.services import generar_estructura_diario
-            generar_estructura_diario(lote_seleccionado, cabecera.get('id'), cabecera.get('fecha_recepcion'))
-        filas = get_diario_all(lote_seleccionado)
-
-    return render_template(
-        'diario.html', 
-        filas=filas, 
-        lotes=get_lotes_distintos(), 
-        lote_seleccionado=lote_seleccionado, 
-        cabecera=cabecera
-    )
-    
-@bp.route('/primera-semana', methods=['GET', 'POST'])
-@login_requerido
-def primera_semana():
-    # Tabla exclusiva para seguimiento estricto del arranque en granja de los primeros 7 días
-    if request.method == 'POST':
-        lote_seleccionado = request.form.get('lote', '')
-        if lote_seleccionado and lote_seleccionado != 'VACIO':
-            session['ultimo_lote'] = lote_seleccionado
-    else:
-        lote_seleccionado = session.get('ultimo_lote', '')
-
-    filas = []
-    cabecera = None
-    if lote_seleccionado and lote_seleccionado != 'VACIO':
-        cabecera = get_cabecera_info(lote_seleccionado)
-        filas = get_primera_semana_by_lote(lote_seleccionado)
-
-    return render_template(
-        'primera_semana.html', 
-        filas=filas, 
-        lotes=get_lotes_distintos(), 
-        lote_seleccionado=lote_seleccionado, 
-        cabecera=cabecera
-    )
-    
-@bp.route('/api/primera-semana/actualizar', methods=['POST'])
-@login_requerido
-@editor_requerido
-def actualizar_primera_semana():
-    # End-point receptor de guardados asíncronos para la tabla de primera semana
-    data = request.get_json(silent=True) or {}
-    id_reg = data.get('id')
-    columna = data.get('columna', '').strip()
-    valor = data.get('valor', '')
-    if not id_reg or not columna: return jsonify({'status': 'error', 'msg': 'Parámetros incompletos'}), 400
-    try:
-        success, campos_actualizados, msg = update_primera_semana_field(int(id_reg), columna, valor)
-        if success: return jsonify({'status': 'ok', 'updated_data': campos_actualizados})
-        else: return jsonify({'status': 'error', 'msg': msg}), 400
-    except Exception as e: 
-        print(f"[ERROR CRÍTICO EN API PRIMERA SEMANA]: {e}") 
-        return jsonify({'status': 'error', 'msg': 'Error interno al procesar los datos. Contacte a soporte.'}), 500 
-    
-@bp.route('/api/diario/actualizar', methods=['POST'])
-@login_requerido
-@editor_requerido
-def actualizar_diario():
-    # Repercute en tiempo real las inserciones de consumo que afectarán directamente la producción semanal
-    data = request.get_json(silent=True) or {}
-    id_reg = data.get('id')
-    columna = data.get('columna', '').strip()
-    valor = data.get('valor', '')
-    if not id_reg or not columna: return jsonify({'status': 'error', 'msg': 'Parámetros incompletos'}), 400
-    try:
-        resultado = update_registro_diario_field(int(id_reg), columna, valor)
-        # Se desempaqueta la respuesta variable de la capa de servicios
-        if isinstance(resultado, tuple) and len(resultado) == 3: success, campos_on_time, msg = resultado
-        elif isinstance(resultado, tuple) and len(resultado) == 2: success, campos_on_time = resultado; msg = "El dato fue rechazado por la base de datos."
-        else: success = resultado; campos_on_time = {}; msg = "Error desconocido al procesar el guardado."
-        
-        if success: return jsonify({'status': 'ok', 'updated_data': campos_on_time})
-        else: return jsonify({'status': 'error', 'msg': msg}), 400
-    except Exception as e: 
-        print(f"[ERROR CRÍTICO EN API DIARIO]: {e}")
-        return jsonify({'status': 'error', 'msg': 'Error interno en conexión.'}), 500
-
-@bp.route('/semanal', methods=['GET', 'POST'])
-@login_requerido
-def semanal():
-    # Recupera y ejecuta los balances matemáticos para la etapa de Producción Pura (de 18 semanas en adelante)
-    lote_seleccionado = request.form.get('lote', '') if request.method == 'POST' else ''
-    return render_template('semanal.html', filas=get_semanal_all(lote_seleccionado), lotes=get_lotes_distintos(), lote_seleccionado=lote_seleccionado, cabecera=get_cabecera_info(lote_seleccionado))
-
-@bp.route('/semanal-levante', methods=['GET', 'POST'])
-@login_requerido
-def semanal_levante():
-    # 1. Si el usuario envía el formulario, guardamos en la sesión
-    if request.method == 'POST':
-        lote_seleccionado = request.form.get('lote', '')
-        if lote_seleccionado and lote_seleccionado != '':
-            session['ultimo_lote'] = lote_seleccionado
-    else:
-        # 2. Si navega desde otro módulo, recuperamos el último lote activo
-        lote_seleccionado = session.get('ultimo_lote', '')
-
-    # 3. Renderizamos la plantilla pasando el lote sincronizado
-    return render_template(
-        'sem_lev.html', 
-        filas=get_semanal_levante_all(lote_seleccionado), 
-        lotes=get_lotes_distintos(), 
-        lote_seleccionado=lote_seleccionado, 
-        cabecera=get_cabecera_info(lote_seleccionado)
-    )
-    
-@bp.route('/api/semanal/actualizar', methods=['POST'])
-@login_requerido
-@editor_requerido
-def actualizar_semanal():
-    # End-point compartido. Usa una bandera ('pantalla') en el JSON para desviar el dato al servicio correspondiente
-    data = request.get_json(silent=True) or {}
-    id_reg, columna, valor = data.get('id'), data.get('columna', '').strip(), data.get('valor', '')
-    pantalla = data.get('pantalla', 'produccion') 
-    
-    if not id_reg or not columna: return jsonify({'status': 'error', 'msg': 'Parámetros incompletos'}), 400
-    try:
-        # Enruta la lógica y las sentencias SQL dependiendo si se guarda en Levante o en Producción
-        if pantalla == 'levante': ok, campos_actualizados, msg = update_levante_field(int(id_reg), columna, valor)
-        else: ok, campos_actualizados, msg = update_produccion_field(int(id_reg), columna, valor)
-        
-        if ok: return jsonify({'status': 'ok', 'updated_data': campos_actualizados})
-        else: return jsonify({'status': 'error', 'msg': f"Rechazado por Base de Datos: {msg}"}), 400
-    except Exception as e: 
-        print(f"[ERROR CRÍTICO EN API SEMANAL]: {e}")
-        return jsonify({'status': 'error', 'msg': 'Error interno en conexión.'}), 500
-
-@bp.route('/clasificacion-produccion', methods=['GET', 'POST'])
-@login_requerido
-def clas_prod():
-    # Despliegue del seguimiento cualitativo y desperdicios para huevo tipo extra, jumbo, sucio, fisurado.
-    if request.method == 'POST':
-        lote_seleccionado = request.form.get('lote', '')
-        if lote_seleccionado and lote_seleccionado != '':
-            session['ultimo_lote'] = lote_seleccionado
-    else:
-        lote_seleccionado = session.get('ultimo_lote', '')
-
-    return render_template(
-        'clas_prod.html', 
-        filas=get_clasificacion_all(lote_seleccionado), 
-        lotes=get_lotes_distintos(), 
-        lote_seleccionado=lote_seleccionado, 
-        cabecera=get_cabecera_info(lote_seleccionado)
-    )
-@bp.route('/api/clasificacion/actualizar', methods=['POST'])
-@login_requerido
-@editor_requerido
-def actualizar_clasificacion():
-    # Peticiones transaccionales del módulo de calcificación
-    data = request.get_json(silent=True) or {}
-    id_reg, columna, valor = data.get('id'), data.get('columna', '').strip(), data.get('valor', '')
-    if not id_reg or not columna: return jsonify({'status': 'error', 'msg': 'Parámetros incompletos'}), 400
-    try:
-        ok = update_clasificacion_field(int(id_reg), columna, valor)
-        return jsonify({'status': 'ok'}) if ok else jsonify({'status': 'error', 'msg': 'Error de integridad SQL'}), 400
-    except Exception as e: 
-        print(f"[ERROR CRÍTICO EN API CLASIFICACIÓN]: {e}")
-        return jsonify({'status': 'error', 'msg': 'Error interno de red.'}), 500
-    
-@bp.route('/api/clasificacion/recalcular', methods=['POST'])
-@login_requerido
-@superadmin_requerido
-def recalcular_clas_lote():
-    # Recálculo forzado de toda la tabla de clasificación. Exclusivo para administradores.
-    data = request.get_json(silent=True) or {}
-    lote = data.get('lote')
-    
-    cabecera = get_cabecera_info(lote)
-    if not cabecera:
-        return jsonify({'status': 'error', 'msg': 'Lote no encontrado'}), 404
-        
-    exito = recalcular_lote_completo_clasificacion(cabecera['id'])
-    
-    if exito:
-        return jsonify({'status': 'ok'})
-    return jsonify({'status': 'error', 'msg': 'Error en el servidor al recalcular'}), 500
-
-@bp.route('/lotes')
-@login_requerido
-def vista_lotes():
-    # Consultamos los catálogos nuevos de la base de datos
-    conn = get_db_connection()
-    cur = conn.cursor()
-    try:
-        cur.execute("SELECT nombre FROM catalogo_nutricionistas ORDER BY nombre ASC")
-        lista_nutricionistas = [row[0] for row in cur.fetchall()]
-        
-        cur.execute("SELECT nombre FROM catalogo_responsables ORDER BY nombre ASC")
-        lista_responsables = [row[0] for row in cur.fetchall()]
-    except Exception as e:
-        print(f"[ERROR CATALOGOS]: {e}")
-        lista_nutricionistas, lista_responsables = [], []
-    finally:
-        cur.close()
-        conn.close()
-
-    # Ventana núcleo donde se administran y configuran los parámetros base de los galpones y aves ingresadas
-    # Pasamos las nuevas listas al HTML (cat_nutricionistas y cat_responsables)
-    return render_template('lotes.html', 
-                           lotes=get_todos_los_lotes(), 
-                           opciones=get_opciones_dinamicas(),
-                           cat_nutricionistas=lista_nutricionistas,
-                           cat_responsables=lista_responsables)
-
-@bp.route('/api/catalogos/crear', methods=['POST'])
-@login_requerido
-@editor_requerido
-def crear_catalogo():
-    # End-point para guardar un nuevo Nutricionista o Responsable Técnico desde el botón "Nuevo"
-    data = request.get_json(silent=True) or {}
-    tipo = data.get('tipo') 
-    nombre = data.get('nombre', '').strip().upper() # Lo guardamos en mayúsculas por uniformidad
-    
-    if not nombre:
-        return jsonify({'status': 'error', 'msg': 'El nombre no puede estar vacío.'}), 400
-        
-    tabla = 'catalogo_nutricionistas' if tipo == 'nutricionista' else 'catalogo_responsables'
-    
-    conn = get_db_connection()
-    cur = conn.cursor()
-    try:
-        cur.execute(f"INSERT INTO {tabla} (nombre) VALUES (%s)", (nombre,))
-        conn.commit()
-        return jsonify({'status': 'ok', 'nombre': nombre})
-    except Exception as e:
-        conn.rollback()
-        if "unique constraint" in str(e).lower():
-            return jsonify({'status': 'error', 'msg': 'Esta persona ya existe en el catálogo.'}), 400
-        print(f"[ERROR CREANDO CATALOGO]: {e}")
-        return jsonify({'status': 'error', 'msg': 'Error interno al guardar.'}), 500
-    finally:
-        cur.close()
-        conn.close()
-
-@bp.route('/guardar-lote', methods=['POST'])
-@login_requerido
-@editor_requerido
-def guardar_lote():
-    # Condiciona la inserción o actualización mediante la presencia del campo ID oculto en el modal de Lotes
-    datos = request.form.to_dict()
-    id_lote = request.form.get('id')
-    success, msg = actualizar_lote(id_lote, datos) if id_lote else guardar_nuevo_lote(datos)
-    if not success: 
-        flash(msg, "error")
-        return redirect(url_for('main.vista_lotes'))
-    flash(msg, "success")
-    return redirect(url_for('main.vista_lotes'))
-
-@bp.route('/api/borrar-lote/<int:id>', methods=['POST'])
-@login_requerido
-@editor_requerido
-def api_borrar_lote(id):
-    # Solicitud drástica que destruye (CASCADE delete) todo el registro histórico de un Lote del servidor
-    return jsonify({'status': 'ok'}) if borrar_lote(id) else jsonify({'status': 'error', 'msg': 'Dato protegido o inexistente'}), 500
 
 # --- SISTEMA DE SUPLANTACIÓN DE SEGURIDAD (LOGIN AS) ---
 @bp.route('/api/usuarios/suplantar/<int:id>', methods=['POST'])
@@ -968,27 +670,27 @@ def api_borrar_lote(id):
 def suplantar_usuario(id):
     if int(id) == int(session.get('user_id')):
         return jsonify({'status': 'error', 'msg': 'No puedes suplantarte a ti mismo.'}), 400
-    
+
     conn = get_db_connection()
     cur = conn.cursor()
     try:
         cur.execute("SELECT id, nombre_completo, activo FROM usuarios WHERE id = %s", (id,))
         usuario = cur.fetchone()
-        
+
         if not usuario: return jsonify({'status': 'error', 'msg': 'Usuario no encontrado.'}), 404
         if not usuario[2]: return jsonify({'status': 'error', 'msg': 'No puedes suplantar a un usuario inactivo.'}), 400
-        
+
         # Guardamos la identidad real del Superadmin en variables temporales
         session['admin_id_real'] = session['user_id']
         session['admin_nombre_real'] = session['user_nombre']
         session['admin_rol_real'] = session['user_rol']
-        
+
         # Aplicamos la máscara (Forzando el rol a 'Lector' por máxima seguridad)
         session['user_id'] = usuario[0]
         session['user_nombre'] = usuario[1]
-        session['user_rol'] = 'Lector' 
+        session['user_rol'] = 'Lector'
         session['is_impersonating'] = True
-        
+
         return jsonify({'status': 'ok'})
     except Exception as e:
         print(f"[ERROR SUPLANTACIÓN]: {e}")
@@ -1044,16 +746,16 @@ def instalar_seguridad():
         cur.execute("SELECT id FROM roles WHERE nombre = 'Superadmin'")
         if not cur.fetchone():
             cur.execute("INSERT INTO roles (nombre, descripcion) VALUES ('Superadmin', 'Control total del sistema')")
-        
+
         # Otorga el primer acceso vital a la organización
         cur.execute("SELECT id FROM usuarios WHERE username = 'admin'")
         if not cur.fetchone():
             hash_pass = generate_password_hash('admin123')
             cur.execute("""
-                INSERT INTO usuarios (nombre_completo, username, password_hash, rol_id) 
+                INSERT INTO usuarios (nombre_completo, username, password_hash, rol_id)
                 VALUES ('Super Administrador', 'admin', %s, (SELECT id FROM roles WHERE nombre = 'Superadmin'))
             """, (hash_pass,))
-            
+
         conn.commit()
         return "<h1>¡SEGURIDAD INSTALADA CON ÉXITO!</h1><p>Las tablas de roles y usuarios ya existen.</p>"
     except Exception as e:
@@ -1062,7 +764,7 @@ def instalar_seguridad():
     finally:
         cur.close()
         conn.close()
-        
+
 @bp.route('/agregar-columna-foto')
 def agregar_columna_foto():
     # Parche inyector: Alteración al DDL original para soportar avatares si la tabla usuarios ya existía antes
@@ -1079,606 +781,31 @@ def agregar_columna_foto():
         cur.close()
         conn.close()
         
-# --- GRÁFICO GENERAL ---
-@bp.route('/grafico-general', methods=['GET', 'POST'])
-@login_requerido
-def grafico_general():
-    if request.method == 'POST':
-        lote_seleccionado = request.form.get('lote', '')
-        if lote_seleccionado and lote_seleccionado != 'VACIO':
-            session['ultimo_lote'] = lote_seleccionado
-    else:
-        lote_seleccionado = session.get('ultimo_lote', '')
-
-    datos_grafico = None
-    if lote_seleccionado and lote_seleccionado != 'VACIO':
-        from models.semanal.services import get_data_grafico_general
-        datos_grafico = get_data_grafico_general(lote_seleccionado)
-
-    return render_template(
-        'grafico_general.html',
-        lotes=get_lotes_distintos(),
-        lote_seleccionado=lote_seleccionado,
-        datos_grafico=datos_grafico
-    )
-
-
-# --- GRÁFICO DE CONVERSIÓN ---
-@bp.route('/grafico-conversion', methods=['GET', 'POST'])
-@login_requerido
-def grafico_conversion():
-    if request.method == 'POST':
-        lote_seleccionado = request.form.get('lote', '')
-        if lote_seleccionado and lote_seleccionado != 'VACIO':
-            session['ultimo_lote'] = lote_seleccionado
-    else:
-        lote_seleccionado = session.get('ultimo_lote', '')
-
-    datos_grafico = None
-    if lote_seleccionado and lote_seleccionado != 'VACIO':
-        from models.semanal.services import get_data_grafico_conversion
-        datos_grafico = get_data_grafico_conversion(lote_seleccionado)
-
-    return render_template(
-        'grafico_conversion.html',
-        lotes=get_lotes_distintos(),
-        lote_seleccionado=lote_seleccionado,
-        datos_grafico=datos_grafico
-    )
-    
-from flask import render_template, request, session, redirect, url_for, flash
-import pandas as pd
-
-# 1. Ruta SOLAMENTE para mostrar el formulario (GET)
-@bp.route('/carga-datos', methods=['GET'])
-@login_requerido
-def carga_datos_vista():
-    if session.get('user_rol') != 'Superadmin':
-        return "Acceso denegado. Solo Superadmin.", 403
-
-    return render_template(
-        'carga_datos.html',
-        lotes=get_lotes_distintos() # Asegúrate de tener esta función importada
-    )
-
-@bp.route('/api-subir-excel', methods=['POST'])
-@login_requerido
-def procesar_carga():
-    if session.get('user_rol') != 'Superadmin':
-        return "Acceso denegado. Solo Superadmin.", 403
-
-    modulo_seleccionado = request.form.get('modulo')
-    archivo = request.files.get('archivo_excel')
-    lote_seleccionado = request.form.get('lote')
-
-    # Validación 1: Módulo
-    if not modulo_seleccionado:
-        flash("Por favor, selecciona el tipo de informe.", "danger")
-        return redirect(url_for('main.carga_datos_vista'), code=303)
-
-    # Validación 2: Archivo
-    if not archivo or archivo.filename == '':
-        flash("Por favor, selecciona un archivo Excel válido.", "danger")
-        return redirect(url_for('main.carga_datos_vista'), code=303)
-
-    # ---------------------------------------------------------
-    # 1. Procesamiento del Módulo Diario
-    # ---------------------------------------------------------
-    if modulo_seleccionado == 'diario':
-        try:
-            from models.diario.services import procesar_excel_diario
-            exito, msj_resultado = procesar_excel_diario(archivo, lote_seleccionado)
-            
-            if exito:
-                flash(msj_resultado, "success")
-            else:
-                flash(msj_resultado, "danger")
-        except Exception as e:
-            print(f"Error procesando diario: {e}")
-            flash(f"Error procesando el archivo diario: {e}", "danger")
-            
-    # ---------------------------------------------------------
-    # 2. Procesamiento del Módulo Semanal de Producción
-    # ---------------------------------------------------------
-    elif modulo_seleccionado == 'semanal_prod':
-        try:
-            from models.semanal.services import procesar_excel_semanal_produccion
-            exito, msj_resultado = procesar_excel_semanal_produccion(archivo, lote_seleccionado)
-            
-            if exito:
-                flash(msj_resultado, "success")
-            else:
-                flash(msj_resultado, "danger")
-        except Exception as e:
-            print(f"Error procesando semanal producción: {e}")
-            flash(f"Error procesando el archivo semanal: {e}", "danger")
-            
-    # ---------------------------------------------------------
-    # 3. Procesamiento del Módulo Primera Semana
-    # ---------------------------------------------------------
-    elif modulo_seleccionado == 'primera_semana':
-        try:
-            from models.primera_semana.services import procesar_excel_primera_semana
-            exito, msj_resultado = procesar_excel_primera_semana(archivo, lote_seleccionado)
-            
-            if exito:
-                flash(msj_resultado, "success")
-            else:
-                flash(msj_resultado, "danger")
-        except Exception as e:
-            print(f"Error procesando primera semana: {e}")
-            flash(f"Error procesando el archivo de primera semana: {e}", "danger")
-    
-    # ---------------------------------------------------------
-    # 4. Procesamiento del Módulo Semanal Levante
-    # ---------------------------------------------------------
-    elif modulo_seleccionado == 'semanal_levante':
-        try:
-            from models.semanal_levante.services import procesar_excel_semanal_levante
-            exito, msj_resultado = procesar_excel_semanal_levante(archivo, lote_seleccionado)
-            
-            if exito:
-                flash(msj_resultado, "success")
-            else:
-                flash(msj_resultado, "danger")
-        except Exception as e:
-            print(f"Error procesando semanal levante: {e}")
-            flash(f"Error procesando el archivo de levante: {e}", "danger")
-    
-    # ---------------------------------------------------------
-    # 5. Procesamiento del Módulo Clasificación de Producción
-    # ---------------------------------------------------------
-    elif modulo_seleccionado == 'clasificacion':
-        try:
-            from models.clasificacion.services import procesar_excel_clasificacion
-            exito, msj_resultado = procesar_excel_clasificacion(archivo, lote_seleccionado)
-
-            if exito:
-                flash(msj_resultado, "success")
-            else:
-                flash(msj_resultado, "danger")
-        except Exception as e:
-            print(f"Error procesando clasificación: {e}")
-            flash(f"Error procesando el archivo de clasificación: {e}", "danger")
-    
-    # ---------------------------------------------------------
-    # 6. Otros módulos no programados aún
-    # ---------------------------------------------------------
-    else:
-        flash(f"La carga para '{modulo_seleccionado}' aún no está programada.", "warning")
-
-    # Redirección final segura si todo termina bien (usando código 303)
-    return redirect(url_for('main.carga_datos_vista'), code=303)
-
-
 # ==============================================================================
-# MÓDULOS PROVISIONALES - PLANTA DE ALIMENTOS
+# RUTAS DE PRUEBA (SOLO SUPERADMIN) - Test de mensajes flash con imágenes
 # ==============================================================================
 
-from models.planta_alimentos.maestros import MateriaPrima, Proveedor
-
-@bp.route('/materias-primas', methods=['GET', 'POST'])
+@bp.route('/test-flash-saludo')
 @login_requerido
-def materias_primas():
-    if request.method == 'POST':
-        nombre = request.form.get('nombre', '').strip().upper()
-        proveedor = request.form.get('proveedor', '').strip().upper()
-        
-        precio_raw = request.form.get('precio_actual_kg', '0').replace('.', '')
-        flete_raw = request.form.get('flete', '0').replace('.', '')
-        
-        precio_actual_kg = float(precio_raw) if precio_raw else 0.0
-        flete = float(flete_raw) if flete_raw else 0.0
-        iva = float(request.form.get('iva', '1.00'))
-        es_maquila = True if request.form.get('es_maquila') else False
-
-        try:
-            MateriaPrima.create(nombre, precio_actual_kg, proveedor, iva, flete, es_maquila)
-            flash('Materia prima registrada exitosamente.', 'success')
-        except Exception as e:
-            print(f"Error al guardar materia prima: {e}")
-            flash('Error al guardar la materia prima.', 'danger')
-            
-        return redirect(url_for('main.materias_primas'))
-        
-    lista_mp = MateriaPrima.get_all()
-    lista_proveedores = Proveedor.get_all()  # <--- Consulta la lista de proveedores
-    
-    return render_template(
-        'materias_primas.html', 
-        materias_primas=lista_mp, 
-        proveedores=lista_proveedores  # <--- Envía la lista a Jinja2
-    )
+@superadmin_requerido
+def test_flash_saludo():
+    img_url = url_for('static', filename='img/Saludo.gif')
+    flash(f'<img src="{img_url}" style="vertical-align: middle; height: 55px; width: auto;"> ¡Bienvenido, {session.get("user_nombre", "Usuario")}!', 'success')
+    return redirect(url_for('main.pantalla_principal'))
 
 
-@bp.route('/materias-primas/editar/<int:id_mp>', methods=['POST'])
+@bp.route('/test-flash-despedida')
 @login_requerido
-def editar_materia_prima(id_mp):
-    nombre = request.form.get('nombre', '').strip().upper()
-    proveedor = request.form.get('proveedor', '').strip().upper()
-    
-    precio_raw = request.form.get('precio_actual_kg', '0').replace('.', '')
-    flete_raw = request.form.get('flete', '0').replace('.', '')
-    
-    precio_actual_kg = float(precio_raw) if precio_raw else 0.0
-    flete = float(flete_raw) if flete_raw else 0.0
-    iva = float(request.form.get('iva', '1.00'))
-    es_maquila = True if request.form.get('es_maquila') else False
+@superadmin_requerido
+def test_flash_despedida():
+    img_url = url_for('static', filename='img/Despedida.gif')
+    flash(f'<img src="{img_url}" style="vertical-align: middle; height: 55px; width: auto;"> Has cerrado sesión exitosamente.', 'success')
+    return redirect(url_for('main.pantalla_principal'))
 
-    try:
-        MateriaPrima.update(id_mp, nombre, precio_actual_kg, proveedor, iva, flete, es_maquila)
-        flash('Materia prima actualizada correctamente.', 'success')
-    except Exception as e:
-        print(f"Error al editar materia prima: {e}")
-        flash('Error al actualizar la materia prima.', 'danger')
 
-    return redirect(url_for('main.materias_primas'))
-
-@bp.route('/catalogo-alimentos', methods=['GET', 'POST'])
+@bp.route('/test-flash-sin-imagen')
 @login_requerido
-def catalogo_alimentos():
-    if request.method == 'POST':
-        item_id = request.form.get('item_id')
-        nombre = request.form.get('nombre').strip().upper()
-        rango_semanas = request.form.get('rango_semanas').strip()
-        
-        try:
-            CatalogoAlimento.create(item_id, nombre, rango_semanas)
-        except Exception as e:
-            print(f"Error al guardar dieta: {e}") 
-            
-        return redirect(url_for('main.catalogo_alimentos'))
-        
-    lista_alimentos = CatalogoAlimento.get_all()
-    return render_template('catalogo_alimentos.html', alimentos=lista_alimentos)
-
-# Actualiza la importación
-from models.planta_alimentos.maestros import MateriaPrima, CatalogoAlimento, Empresa
-
-# ...
-
-@bp.route('/empresas-maquila', methods=['GET', 'POST'])
-@login_requerido
-def empresas_maquila():
-    if request.method == 'POST':
-        nombre = request.form.get('nombre').strip().upper()
-        costo_maquila = request.form.get('costo_maquila', 0)
-        
-        try:
-            Empresa.create(nombre, costo_maquila)
-        except Exception as e:
-            print(f"Error al guardar empresa: {e}") 
-            
-        return redirect(url_for('main.empresas_maquila'))
-        
-    lista_empresas = Empresa.get_all()
-    return render_template('empresas_maquila.html', empresas=lista_empresas)
-
-from models.planta_alimentos.formulas import FormulaDetalle, FormulaProduccion
-# Asegúrate de que MateriaPrima y CatalogoAlimento estén importados arriba
-
-@bp.route('/editar-receta/<int:item_id>', defaults={'lote_id': '69-10'}, methods=['GET', 'POST'])
-@bp.route('/editar-receta/<int:item_id>/<string:lote_id>', methods=['GET', 'POST'])
-@login_requerido
-def editar_receta(item_id, lote_id):
-    if request.method == 'POST':
-        # Validar si el formulario enviado es de Producción Diaria
-        if 'guardar_produccion' in request.form:
-            fecha = request.form.get('fecha')
-            toneladas_raw = request.form.get('toneladas', '0').replace('.', '').replace(',', '.')
-            toneladas = float(toneladas_raw) if toneladas_raw else 0.0
-            
-            if fecha and toneladas > 0:
-                FormulaProduccion.registrar_produccion(item_id, lote_id, fecha, toneladas)
-                flash('Registro de producción agregado.', 'success')
-            return redirect(url_for('main.editar_receta', item_id=item_id, lote_id=lote_id))
-
-        # Formulario de Insumo de Receta
-        materia_prima_id = request.form.get('materia_prima_id')
-        cantidad_raw = request.form.get('cantidad_kg', '0').replace('.', '').replace(',', '.')
-        cantidad_kg = float(cantidad_raw) if cantidad_raw else 0.0
-        
-        if materia_prima_id and cantidad_kg > 0:
-            FormulaDetalle.agregar_insumo(item_id, lote_id, materia_prima_id, cantidad_kg)
-            flash('Insumo agregado a la receta.', 'success')
-            
-        return redirect(url_for('main.editar_receta', item_id=item_id, lote_id=lote_id))
-
-    insumos_receta = FormulaDetalle.obtener_receta(item_id, lote_id)
-    resumen_totales = FormulaDetalle.obtener_resumen_totales(item_id, lote_id)
-    materias_primas = MateriaPrima.get_all()
-    lotes = FormulaDetalle.obtener_lotes_disponibles()
-    
-    # Registros de Producción por Día
-    # 1. Registros de Producción por Día
-    registros_produccion = FormulaProduccion.obtener_produccion_por_lote(item_id, lote_id)
-    
-    # IMPORTANTE: Convertimos la suma total a float
-    total_toneladas_lote = float(sum([r['toneladas'] for r in registros_produccion])) if registros_produccion else 0.0
-
-    # 2. Cálculo dinámico de Consumo Total por Materia Prima
-    receta_calculada = []
-    for insumo in insumos_receta:
-        # Aseguramos que ambos valores sean float
-        cant_kg = float(insumo['cantidad_kg']) if insumo['cantidad_kg'] else 0.0
-        
-        receta_calculada.append({
-            'id': insumo['id'],
-            'insumo': insumo['insumo'],
-            'cantidad_kg': cant_kg,
-            'total_consumo_kg': cant_kg * total_toneladas_lote  # Multiplicación float * float
-        })
-    return render_template(
-        'editar_receta.html',
-        item_id=item_id,
-        lote_id=lote_id,
-        insumos_receta=receta_calculada,
-        totales=resumen_totales,
-        materias_primas=materias_primas,
-        lotes=lotes,
-        registros_produccion=registros_produccion,
-        total_toneladas=total_toneladas_lote
-    )
-
-from models.planta_alimentos.transacciones import RegistroProduccion
-# Asegúrate de tener Empresa y CatalogoAlimento importados arriba
-
-@bp.route('/registro-baches', methods=['GET', 'POST'])
-@login_requerido
-def registro_baches():
-    if request.method == 'POST':
-        fecha = request.form.get('fecha')
-        lote_id = request.form.get('lote_id')
-        empresa_id = request.form.get('empresa_id')
-        item_id = request.form.get('item_id')
-        cantidad_baches = request.form.get('cantidad_baches', 0)
-        toneladas = request.form.get('toneladas_producidas', 0)
-        
-        try:
-            RegistroProduccion.create(fecha, lote_id, empresa_id, item_id, cantidad_baches, toneladas)
-        except Exception as e:
-            print(f"Error al guardar producción: {e}")
-            
-        return redirect(url_for('main.registro_baches'))
-        
-    historial = RegistroProduccion.get_all()
-    empresas = Empresa.get_all()
-    alimentos = CatalogoAlimento.get_all()
-    lotes = RegistroProduccion.get_lotes() # Llana al modelo limpiamente
-    
-    return render_template('registro_baches.html', 
-                           historial=historial, 
-                           empresas=empresas, 
-                           alimentos=alimentos,
-                           lotes=lotes)
-    
-    return render_template('registro_baches.html', 
-                           historial=historial, 
-                           empresas=empresas, 
-                           alimentos=alimentos,
-                           lotes=lotes)
-@bp.route('/recepcion-compras')
-@login_requerido
-def recepcion_compras():
-    return "Módulo de Recepción (Compras) en construcción"
-
-@bp.route('/kardex-inventario')
-@login_requerido
-def kardex_inventario():
-    return "Módulo de Kardex en construcción"
-
-@bp.route('/control-silos')
-@login_requerido
-def control_silos():
-    return "Módulo de Control de Silos en construcción"
-
-@bp.route('/proyeccion-costos')
-@login_requerido
-def proyeccion_costos():
-    return "Módulo de Proyección y Costos en construcción"
-@bp.route('/recetario-formulas')
-@login_requerido
-def recetario_formulas():
-    # Redirige directamente al catálogo, que es donde ahora gestionamos las recetas
-    return redirect(url_for('main.catalogo_alimentos'))
-
-@bp.route('/resumen-lote-formulas', methods=['GET'])
-@login_requerido
-def resumen_lote_formulas():
-    lotes = RegistroProduccion.get_lotes()
-    lote_id = request.args.get('lote_id')
-    
-    if not lote_id and lotes:
-        lote_id = lotes[0]['lote']
-        
-    formulas_lote = FormulaDetalle.obtener_formulas_por_lote(lote_id) if lote_id else []
-    
-    return render_template('resumen_lote_formulas.html', 
-                           lotes=lotes, 
-                           lote_id=lote_id, 
-                           formulas=formulas_lote)
-    
-    
-@bp.route('/receta/actualizar/<int:id_registro>', methods=['POST'])
-@login_requerido
-def actualizar_insumo_receta(id_registro):
-    item_id = request.form.get('item_id')
-    lote_id = request.form.get('lote_id')
-    
-    # Captura y limpieza del peso enviado desde la tabla
-    cantidad_raw = request.form.get('cantidad_kg', '0').replace('.', '').replace(',', '.')
-    
-    try:
-        nueva_cantidad = float(cantidad_raw) if cantidad_raw else 0.0
-        if nueva_cantidad > 0:
-            FormulaDetalle.actualizar_insumo(id_registro, nueva_cantidad)
-            flash('Cantidad actualizada correctamente.', 'success')
-        else:
-            flash('La cantidad debe ser mayor a cero.', 'warning')
-    except Exception as e:
-        print(f"Error al actualizar insumo de receta: {e}")
-        flash('Error al actualizar la cantidad del insumo.', 'danger')
-
-    # ESENCIAL: Siempre debe retornar una respuesta HTTP
-    if item_id and lote_id:
-        return redirect(url_for('main.editar_receta', item_id=item_id, lote_id=lote_id))
-    
-    return redirect(url_for('main.catalogo_alimentos'))
-
-
-@bp.route('/receta/eliminar-insumo/<int:id_registro>', methods=['POST'])
-@login_requerido
-def eliminar_insumo_receta(id_registro):
-    item_id = request.form.get('item_id')
-    lote_id = request.form.get('lote_id')
-    
-    try:
-        FormulaDetalle.eliminar_insumo(id_registro)
-    except Exception as e:
-        print(f"Error al eliminar insumo: {e}")
-        
-    return redirect(url_for('main.editar_receta', item_id=item_id, lote_id=lote_id))
-
-
-@bp.route('/receta/eliminar-formula/<int:item_id>/<string:lote_id>', methods=['POST'])
-@login_requerido
-def eliminar_formula_lote(item_id, lote_id):
-    try:
-        FormulaDetalle.eliminar_formula_lote(item_id, lote_id)
-    except Exception as e:
-        print(f"Error al eliminar la fórmula: {e}")
-        
-    return redirect(url_for('main.resumen_lote_formulas', lote_id=lote_id))
-
-
-@bp.route('/materias-primas/eliminar/<int:id_mp>', methods=['POST'])
-@login_requerido
-def eliminar_materia_prima(id_mp):
-    try:
-        MateriaPrima.delete(id_mp)
-        flash('Materia prima eliminada correctamente.', 'success')
-    except Exception as e:
-        print(f"Error al eliminar materia prima: {e}")
-        # Si viola la restricción de llave foránea (psycopg2.errors.ForeignKeyViolation)
-        flash('No se puede eliminar la materia prima porque está asignada a una o más fórmulas activas.', 'danger')
-        
-    return redirect(url_for('main.materias_primas'))
-
-
-
-# ==========================================
-# 3. PROVEEDORES
-# ==========================================
-
-@bp.route('/proveedores', methods=['GET', 'POST'])
-@login_requerido
-def proveedores():
-    if request.method == 'POST':
-        nombre = request.form.get('nombre', '')
-        if nombre:
-            Proveedor.create(nombre)
-            flash('Proveedor guardado correctamente.', 'success')
-        return redirect(url_for('main.proveedores'))
-        
-    lista_proveedores = Proveedor.get_all()
-    return render_template('proveedores.html', proveedores=lista_proveedores)
-
-
-@bp.route('/proveedores/editar/<int:id_prov>', methods=['POST'])
-@login_requerido
-def editar_proveedor(id_prov):
-    nombre = request.form.get('nombre', '')
-    if nombre:
-        Proveedor.update(id_prov, nombre)
-        flash('Proveedor actualizado.', 'success')
-    return redirect(url_for('main.proveedores'))
-
-
-@bp.route('/proveedores/eliminar/<int:id_prov>', methods=['POST'])
-@login_requerido
-def eliminar_proveedor(id_prov):
-    Proveedor.delete(id_prov)
-    flash('Proveedor eliminado.', 'warning')
-    return redirect(url_for('main.proveedores'))
-
-
-@bp.route('/editar-receta/eliminar-produccion/<int:id_registro>', methods=['POST'])
-@login_requerido
-def eliminar_produccion_diaria(id_registro):
-    item_id = request.form.get('item_id')
-    lote_id = request.form.get('lote_id')
-    
-    try:
-        FormulaProduccion.eliminar_produccion(id_registro)
-        flash('Registro de producción eliminado.', 'warning')
-    except Exception as e:
-        print(f"Error al eliminar registro de producción: {e}")
-        flash('Error al eliminar la fecha de producción.', 'danger')
-
-    if item_id and lote_id:
-        return redirect(url_for('main.editar_receta', item_id=item_id, lote_id=lote_id))
-    return redirect(url_for('main.catalogo_alimentos'))
-
-@bp.route('/editar-receta/actualizar-produccion/<int:id_registro>', methods=['POST'])
-@login_requerido
-def actualizar_produccion_diaria(id_registro):
-    item_id = request.form.get('item_id')
-    lote_id = request.form.get('lote_id')
-    toneladas_raw = request.form.get('toneladas', '0').replace('.', '').replace(',', '.')
-    
-    try:
-        toneladas = float(toneladas_raw) if toneladas_raw else 0.0
-        if toneladas > 0:
-            FormulaProduccion.actualizar_produccion(id_registro, toneladas)
-            flash('Toneladas actualizadas correctamente.', 'success')
-        else:
-            flash('Las toneladas deben ser mayor a cero.', 'warning')
-    except Exception as e:
-        print(f"Error al actualizar producción: {e}")
-        flash('Error al actualizar las toneladas.', 'danger')
-
-    if item_id and lote_id:
-        return redirect(url_for('main.editar_receta', item_id=item_id, lote_id=lote_id))
-    return redirect(url_for('main.catalogo_alimentos'))
-# ==============================================================================
-# GRÁFICOS DE ARRANQUE EN GRANJA (PRIMERA SEMANA)   
-# ==============================================================================
-@bp.route('/grafico-primera-semana', methods=['GET', 'POST'])
-@login_requerido
-def grafico_primera_semana():
-    # Sistema de memoria para recordar el lote seleccionado
-    if request.method == 'POST':
-        lote_seleccionado = request.form.get('lote', '')
-        if lote_seleccionado and lote_seleccionado != 'VACIO':
-            session['ultimo_lote'] = lote_seleccionado
-    else:
-        lote_seleccionado = session.get('ultimo_lote', '')
-
-    datos_grafico = None
-    if lote_seleccionado and lote_seleccionado != 'VACIO':
-        from models.primera_semana.services import get_data_grafico_primera_semana
-        datos_grafico = get_data_grafico_primera_semana(lote_seleccionado)
-
-    return render_template(
-        'grafico_primera_semana.html',
-        lotes=get_lotes_distintos(),
-        lote_seleccionado=lote_seleccionado,
-        datos_grafico=datos_grafico
-    )
-
-
-
-
-
-    
-
-
-    
-
-
-
-    
-
-
-
-
+@superadmin_requerido
+def test_flash_sin_imagen():
+    flash("Este es un mensaje de prueba SIN imagen. Debería aparecer como toast pequeño arriba a la derecha.", 'success')
+    return redirect(url_for('main.pantalla_principal'))
