@@ -320,7 +320,7 @@ def verificar_pin_page():
         return redirect(url_for('main.cancelar_recuperacion'))
 
     # Le pasamos el tiempo restante al HTML
-    return render_template('verificar_pin.html', tiempo_restante=tiempo_restante)
+    return render_template('auth/verificar_pin.html', tiempo_restante=tiempo_restante)
 
 # 2. VALIDAR ÚNICAMENTE EL PIN (PASO 1)
 @bp.route('/validar-pin', methods=['POST'])
@@ -452,7 +452,7 @@ def gestion_usuarios():
         cur.close()
         conn.close()
 
-    return render_template('usuarios.html', usuarios=usuarios, roles=roles)
+    return render_template('auth/usuarios.html', usuarios=usuarios, roles=roles)
 
 @bp.route('/usuarios/guardar', methods=['POST'])
 @login_requerido
@@ -632,21 +632,21 @@ def login_page():
     if 'user_id' in session:
         return redirect(url_for('main.pantalla_principal'))
     # Si no está logueado, le mostramos la pantalla de login limpia
-    return render_template('login.html')
+    return render_template('generales/login.html')
 
 
 @bp.route('/pantalla-principal')
 @login_requerido
 def pantalla_principal():
     # Pantalla de bienvenida con el GIF centrado (solo esto se ve)
-    return render_template('pantalla_principal.html')
+    return render_template('generales/pantalla_principal.html')
 
 
 @bp.route('/inicio')
 @login_requerido
 def index():
     # Panel Privado (Dashboard) - Ahora se accede desde la pestaña "Reportes"
-    return render_template('index.html')
+    return render_template('generales/index.html')
 
 
 @bp.route('/logout')

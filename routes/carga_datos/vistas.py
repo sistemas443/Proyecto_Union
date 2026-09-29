@@ -11,7 +11,7 @@ def carga_datos_vista():
     if session.get('user_rol') != 'Superadmin':
         return "Acceso denegado. Solo Superadmin.", 403
 
-    return render_template('carga_datos.html', lotes=get_lotes_distintos())
+    return render_template('generales/carga_datos.html', lotes=get_lotes_distintos())
 
 
 @carga_datos_bp.route('/api-subir-excel', methods=['POST'])
