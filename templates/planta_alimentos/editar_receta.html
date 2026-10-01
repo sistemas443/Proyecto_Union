@@ -9,7 +9,8 @@
         <h2 class="text-primary mb-0">Formulación de Dieta - ITEM: {{ item_id }}</h2>
 
         <!-- Botón Volver a la derecha -->
-        <a href="{{ url_for('planta_alimentos.resumen_lote_formulas', lote_id=lote_id) }}" class="btn btn-outline-secondary">
+        <a href="{{ url_for('planta_alimentos.resumen_lote_formulas', lote_id=lote_id) }}"
+            class="btn btn-outline-secondary">
             Volver
         </a>
 
@@ -86,8 +87,9 @@
             {% for lote in lotes %}
             {% if lote is mapping %}
             <!-- Usamos lote.get('lote') tanto para la URL como para el texto -->
-            <option value="{{ url_for('planta_alimentos.editar_receta', item_id=item_id, lote_id=lote.get('lote', '')) }}" {% if
-                lote_id==lote.get('lote', '' )|string %}selected{% endif %}>
+            <option
+                value="{{ url_for('planta_alimentos.editar_receta', item_id=item_id, lote_id=lote.get('lote', '')) }}"
+                {% if lote_id==lote.get('lote', '' )|string %}selected{% endif %}>
 
                 <!-- Pequeño truco para que todos digan "LOTE" al principio sin repetirlo en "LOTE LOTE GENERAL" -->
                 {% if 'LOTE' not in lote.get('lote', '')|upper %}LOTE {% endif %}{{ lote.get('lote', '') }}
@@ -280,44 +282,169 @@
             </div>
             <div class="card-body">
                 <!-- Formulario de Registro de Producción -->
-                <form method="POST" action="{{ url_for('planta_alimentos.editar_receta', item_id=item_id, lote_id=lote_id) }}"
-                    class="mb-3">
-                    <input type="hidden" name="guardar_produccion" value="1">
-
+                <!-- Formulario Registro de Producción por Día -->
+                <form method="POST"
+                    action="{{ url_for('planta_alimentos.editar_receta', item_id=item_id, lote_id=lote_id, version=version_actual) }}">
                     <div class="row g-2 mb-2">
-                        <div class="col-md-4">
-                            <label class="form-label small fw-bold text-muted mb-1">Fecha</label>
+                        <div class="col-md-5">
+                            <label class="form-label font-weight-bold mb-1" style="font-size: 0.85rem;">Fecha:</label>
                             <input type="date" name="fecha" class="form-control form-control-sm" required>
                         </div>
-                        <div class="col-md-3">
-                            <label class="form-label small fw-bold text-muted mb-1">Toneladas</label>
-                            <input type="number" name="toneladas" class="form-control form-control-sm" step="0.01"
+                        <div class="col-md-7">
+                            <label class="form-label font-weight-bold mb-1"
+                                style="font-size: 0.85rem;">Toneladas:</label>
+                            <input type="number" step="0.001" name="toneladas" class="form-control form-control-sm"
                                 placeholder="Ej. 12" required>
                         </div>
-                        <div class="col-md-5">
-                            <label class="form-label small fw-bold text-muted mb-1">Novedad (Opcional)</label>
-                            <input type="text" name="novedad" class="form-control form-control-sm"
-                                placeholder="Ej. Cocorná">
+                    </div>
+
+                    <!-- Toggle de Venta Externa -->
+                    <div class="card p-2 bg-light border mb-2">
+                        <div class="form-check form-switch mb-0">
+                            <input class="form-check-input" type="checkbox" id="esVentaSwitch" name="es_venta" value="1"
+                                onchange="toggleCamposVenta(this)">
+                            <label class="form-check-label fw-bold text-dark" for="esVentaSwitch"
+                                style="font-size: 0.85rem;">
+                                ¿Es Venta Externa?
+                            </label>
+                        </div>
+
+                        <!-- Campos Desplegables de Venta -->
+                        <div id="camposVenta" style="display: none;" class="mt-2 row g-2">
+                            <div class="col-6">
+                                <label class="form-label fw-bold text-secondary mb-1"
+                                    style="font-size: 0.75rem;">CLIENTE / EMPRESA:</label>
+                                <select name="empresa_cliente" id="empresa_cliente"
+                                    class="form-select form-select-sm border-secondary-subtle"
+                                    style="background-color: #ffffff;">
+                                    <option value="" disabled selected>Seleccione cliente...</option>
+                                    {% for e in empresas %}
+                                    <option value="{{ e['nombre'] if e['nombre'] is defined else e[1] }}">
+                                        {{ e['nombre'] if e['nombre'] is defined else e[1] }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label fw-bold text-secondary mb-1" style="font-size: 0.75rem;">N°
+                                    REMISIÓN:</label>
+                                <input type="text" name="remision" id="remision"
+                                    class="form-control form-control-sm border-secondary-subtle" placeholder="Ej. 41154"
+                                    style="background-color: #ffffff;">
+                            </div>
+                            
+                            {# =============================================
+                                 CAL / CALCIO (Solo visible si Es Venta Externa = ON)
+                                 ============================================= #}
+                            <div class="col-12">
+                                <div class="form-check form-switch mb-0">
+                                    <input class="form-check-input" type="checkbox" id="esCalCalcioSwitch" name="es_cal_calcio" value="1"
+                                        onchange="toggleCamposCalCalcio(this)">
+                                    <label class="form-check-label fw-bold text-dark" for="esCalCalcioSwitch"
+                                        style="font-size: 0.85rem;">
+                                        ¿Incluye CAL / CALCIO?
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <!-- Campos Desplegables de CAL / CALCIO -->
+                            <div id="camposCalCalcio" style="display: none;" class="mt-2 row g-2">
+                                <div class="col-6">
+                                    <label class="form-label fw-bold text-secondary mb-1"
+                                        style="font-size: 0.75rem;">CAL (Kg) - Carbonato Fino:</label>
+                                    <input type="number" step="0.001" name="cal_kg" id="cal_kg"
+                                        class="form-control form-control-sm border-secondary-subtle" placeholder="Ej. 500"
+                                        style="background-color: #ffffff;" min="0">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label fw-bold text-secondary mb-1" style="font-size: 0.75rem;">CALCIO (Kg) - Carbonato Grueso:</label>
+                                    <input type="number" step="0.001" name="calcio_kg" id="calcio_kg"
+                                        class="form-control form-control-sm border-secondary-subtle" placeholder="Ej. 500"
+                                        style="background-color: #ffffff;" min="0">
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <button type="submit" class="btn btn-sm btn-success w-100 fw-bold">Registrar Día de
-                        Producción</button>
+
+                    <div class="mb-2">
+                        <input type="text" name="novedad" class="form-control form-control-sm"
+                            placeholder="Novedad / Observaciones (Opcional)">
+                    </div>
+
+                    <!-- El name="guardar_produccion" es fundamental para que entre al CASO A en Python -->
+                    <button type="submit" name="guardar_produccion" value="1"
+                        class="btn btn-success btn-sm w-100 fw-bold">
+                        Registrar Día de Producción
+                    </button>
                 </form>
+
+                <script>
+                    function toggleCamposVenta(switchElem) {
+                        const contenedor = document.getElementById('camposVenta');
+                        const inputCliente = document.getElementById('empresa_cliente');
+                        const inputRemision = document.getElementById('remision');
+                        const calCalcioSwitch = document.getElementById('esCalCalcioSwitch');
+                        const camposCalCalcio = document.getElementById('camposCalCalcio');
+                        const inputCal = document.getElementById('cal_kg');
+                        const inputCalcio = document.getElementById('calcio_kg');
+
+                        if (switchElem.checked) {
+                            contenedor.style.display = 'flex';
+                            inputCliente.required = true;
+                            inputRemision.required = true;
+                        } else {
+                            contenedor.style.display = 'none';
+                            inputCliente.required = false;
+                            inputRemision.required = false;
+                            inputCliente.value = '';
+                            inputRemision.value = '';
+                            // También ocultar y limpiar CAL/CALCIO
+                            if (calCalcioSwitch) calCalcioSwitch.checked = false;
+                            if (camposCalCalcio) camposCalCalcio.style.display = 'none';
+                            if (inputCal) { inputCal.required = false; inputCal.value = ''; }
+                            if (inputCalcio) { inputCalcio.required = false; inputCalcio.value = ''; }
+                        }
+                    }
+
+                    function toggleCamposCalCalcio(switchElem) {
+                        const contenedor = document.getElementById('camposCalCalcio');
+                        const inputCal = document.getElementById('cal_kg');
+                        const inputCalcio = document.getElementById('calcio_kg');
+
+                        if (switchElem.checked) {
+                            contenedor.style.display = 'flex';
+                            inputCal.required = false;  // Opcional, no requerido
+                            inputCalcio.required = false;
+                        } else {
+                            contenedor.style.display = 'none';
+                            inputCal.required = false;
+                            inputCalcio.required = false;
+                            inputCal.value = '';
+                            inputCalcio.value = '';
+                        }
+                    }
+                </script>
 
                 <!-- Tabla de Registros -->
                 <div class="table-responsive">
-                    <table class="table table-bordered table-hover align-middle text-center mb-0"
-                        style="font-size: 0.85rem;">
-                        <thead class="bg-light">
-                            <tr>
-                                <th>FECHA</th>
-                                <th style="width: 80px;">TONELADAS</th>
-                                <th>NOVEDADES</th>
-                                <th style="width: 70px;">ACCIONES</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for reg in registros_produccion %}
+                    {# =============================================
+                         TABLA 1: PRODUCCIÓN INTERNA (PLANTA)
+                         ============================================= #}
+                    {% set prod_interna = (registros_produccion|rejectattr('es_venta'))|list %}
+                    {% if prod_interna %}
+                    <div class="mb-3">
+                        <h6 class="fw-bold text-success mb-2"><i class="fas fa-industry me-1"></i> Producción Interna (Planta)</h6>
+                        <table class="table table-bordered table-hover align-middle text-center mb-0" style="font-size: 0.85rem;">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th>FECHA</th>
+                                    <th style="width: 80px;">TONELADAS</th>
+                                    <th>NOVEDADES</th>
+                                    <th style="width: 70px;">ACCIONES</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for reg in prod_interna %}
                             <tr>
                                 <td class="fw-bold">{{ reg['fecha'].strftime('%d/%m/%Y') }}</td>
 
@@ -377,19 +504,157 @@
                                 </td>
                             </tr>
                             {% else %}
-                            <tr>
-                                <td colspan="4" class="text-muted py-3">Sin fechas de producción registradas.</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                        <tfoot class="bg-light fw-bold">
-                            <tr>
-                                <td class="text-end">TOTAL TONELADAS:</td>
-                                <td class="text-success fs-6">{{ "{:,.0f}".format(total_toneladas) }} Ton</td>
-                                <td colspan="2"></td>
-                            </tr>
-                        </tfoot>
-                    </table>
+                                <tr>
+                                    <td colspan="4" class="text-muted py-3">Sin producción interna registrada.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot class="bg-light fw-bold text-success">
+                                <tr>
+                                    <td class="text-end">SUBTOTAL INTERNA:</td>
+                                    <td>
+                                        {% set ns = namespace(subtotal_int=0) %}
+                                        {% for r in prod_interna %}
+                                            {% set ns.subtotal_int = ns.subtotal_int + (r.toneladas|float) %}
+                                        {% endfor %}
+                                        <strong>{{ "{:,.3f}".format(ns.subtotal_int) }} Ton</strong>
+                                    </td>
+                                    <td colspan="2"></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                    {% endif %}
+
+                    {# =============================================
+                         TABLA 2: VENTAS EXTERNAS (CLIENTES)
+                         ============================================= #}
+                    {% set ventas_externas = (registros_produccion|selectattr('es_venta'))|list %}
+                    {% if ventas_externas %}
+                    <div class="mb-3">
+                        <h6 class="fw-bold text-primary mb-2"><i class="fas fa-truck me-1"></i> Ventas Externas (Clientes)</h6>
+                        <table class="table table-bordered table-hover align-middle text-center mb-0" style="font-size: 0.85rem;">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th>FECHA</th>
+                                    <th>CLIENTE</th>
+                                    <th>REMISIÓN</th>
+                                    <th style="width: 80px;">TONELADAS</th>
+                                    <th style="width: 80px;">CAL (Kg)</th>
+                                    <th style="width: 80px;">CALCIO (Kg)</th>
+                                    <th>NOVEDAD</th>
+                                    <th style="width: 70px;">ACCIONES</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for reg in ventas_externas %}
+                                <tr>
+                                    <td class="fw-bold">{{ reg['fecha'].strftime('%d/%m/%Y') }}</td>
+                                    <td>{{ reg['empresa_cliente'] or '' }}</td>
+                                    <td>{{ reg['remision'] or '' }}</td>
+                                    <td>
+                                        <input type="number" form="form-prod-edit-{{ reg['id'] }}" name="toneladas"
+                                            value="{{ reg['toneladas'] }}"
+                                            class="form-control form-control-sm text-center fw-bold text-primary p-1"
+                                            step="0.01" required>
+                                    </td>
+                                    <td>
+                                        <input type="number" form="form-prod-edit-{{ reg['id'] }}" name="cal_kg"
+                                            value="{{ reg['cal_kg'] or 0 }}"
+                                            class="form-control form-control-sm text-center text-warning fw-bold p-1"
+                                            step="0.001" min="0">
+                                    </td>
+                                    <td>
+                                        <input type="number" form="form-prod-edit-{{ reg['id'] }}" name="calcio_kg"
+                                            value="{{ reg['calcio_kg'] or 0 }}"
+                                            class="form-control form-control-sm text-center text-info fw-bold p-1"
+                                            step="0.001" min="0">
+                                    </td>
+                                    <td>
+                                        <input type="text" form="form-prod-edit-{{ reg['id'] }}" name="novedad"
+                                            value="{{ reg['novedad'] or '' }}"
+                                            class="form-control form-control-sm text-center p-1" placeholder="...">
+                                    </td>
+                                    <td class="align-middle">
+                                        <div class="d-flex justify-content-center gap-1">
+                                            <form id="form-prod-edit-{{ reg['id'] }}" method="POST"
+                                                action="{{ url_for('planta_alimentos.actualizar_produccion_diaria', id_registro=reg['id']) }}">
+                                                <input type="hidden" name="item_id" value="{{ item_id }}">
+                                                <input type="hidden" name="lote_id" value="{{ lote_id }}">
+                                            </form>
+                                            <button type="submit" form="form-prod-edit-{{ reg['id'] }}"
+                                                class="btn btn-sm btn-outline-primary border-0 p-1"
+                                                title="Actualizar Registro">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                    fill="currentColor" class="bi bi-pencil-square" viewBox="0 0 16 16">
+                                                    <path
+                                                        d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z" />
+                                                    <path fill-rule="evenodd"
+                                                        d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5z" />
+                                                </svg>
+                                            </button>
+                                            <form method="POST"
+                                                action="{{ url_for('planta_alimentos.eliminar_produccion_diaria', id_registro=reg['id']) }}"
+                                                onsubmit="return confirm('¿Eliminar registro?');" class="d-inline">
+                                                <input type="hidden" name="item_id" value="{{ item_id }}">
+                                                <input type="hidden" name="lote_id" value="{{ lote_id }}">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger border-0 p-1"
+                                                    title="Eliminar Registro">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                        fill="currentColor" class="bi bi-trash3" viewBox="0 0 16 16">
+                                                        <path
+                                                            d="M6.5 1h3a.5.5 0 0 1 .5.5v1H6v-1a.5.5 0 0 1 .5-.5M11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3A1.5 1.5 0 0 0 5 1.5v1H1.5a.5.5 0 0 0 0 1h.538l.853 10.66A2 2 0 0 0 4.937 16h6.126a2 2 0 0 0 1.997-1.84l.853-10.66h.538a.5.5 0 0 0 0-1zm1.958 1-.846 10.58a1 1 0 0 1-.997.92H4.937a1 1 0 0 1-.997-.92L3.042 3.5zm-7.487 1a.5.5 0 0 1 .528.47l.5 8.5a.5.5 0 0 1-.998.06L5 5.03a.5.5 0 0 1 .47-.53Zm5.058 0a.5.5 0 0 1 .47.53l-.5 8.5a.5.5 0 1 1-.998-.06l.5-8.5a.5.5 0 0 1 .528-.47M8 4.5a.5.5 0 0 1 .5.5v8.5a.5.5 0 0 1-1 0V5a.5.5 0 0 1 .5-.5" />
+                                                    </svg>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="6" class="text-muted py-3">Sin ventas externas registradas.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot class="bg-light fw-bold text-primary">
+                                <tr>
+                                    <td class="text-end" colspan="3">SUBTOTAL VENTAS:</td>
+                                    <td>
+                                        {% set ns = namespace(subtotal_vta=0) %}
+                                        {% for r in ventas_externas %}
+                                            {% set ns.subtotal_vta = ns.subtotal_vta + (r.toneladas|float) %}
+                                        {% endfor %}
+                                        <strong>{{ "{:,.3f}".format(ns.subtotal_vta) }} Ton</strong>
+                                    </td>
+                                    <td colspan="2"></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                    {% endif %}
+
+                    {# =============================================
+                         RESUMEN GENERAL: GRAN TOTAL
+                         ============================================= #}
+                    {% set ns = namespace(total_interno=0, total_ventas=0) %}
+                    {% for r in prod_interna %}
+                        {% set ns.total_interno = ns.total_interno + (r.toneladas|float) %}
+                    {% endfor %}
+                    {% for r in ventas_externas %}
+                        {% set ns.total_ventas = ns.total_ventas + (r.toneladas|float) %}
+                    {% endfor %}
+                    {% set gran_total = ns.total_interno + ns.total_ventas %}
+                    <div class="card bg-light border-0 shadow-sm mt-3">
+                        <div class="card-body text-center py-3">
+                            <h6 class="text-muted mb-1">GRAN TOTAL DE TONELADAS PRODUCIDAS</h6>
+                            <h3 class="fw-bold text-primary mb-1">{{ "{:,.3f}".format(gran_total) }} Ton</h3>
+                            <small class="text-muted d-block">
+                                <span class="text-success">Internas: {{ "{:,.3f}".format(ns.total_interno) }} Ton</span>
+                                <span class="mx-2">|</span>
+                                <span class="text-primary">Ventas: {{ "{:,.3f}".format(ns.total_ventas) }} Ton</span>
+                            </small>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -519,7 +784,8 @@
                 <h5 class="modal-title fw-bold fs-6">Agregar Insumo a la Receta</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form method="POST" action="{{ url_for('planta_alimentos.editar_receta', item_id=item_id, lote_id=lote_id) }}">
+            <form method="POST"
+                action="{{ url_for('planta_alimentos.editar_receta', item_id=item_id, lote_id=lote_id) }}">
                 <div class="modal-body">
                     <div class="mb-3">
                         <label class="form-label fw-bold text-muted small">Materia Prima</label>
@@ -639,3 +905,113 @@
     }
 </script>
 {% endblock %}
+
+
+<style>
+    .card-produccion {
+        background-color: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    }
+
+    .card-produccion-header {
+        background-color: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
+        padding: 12px 18px;
+        border-top-left-radius: 12px;
+        border-top-right-radius: 12px;
+    }
+
+    .form-control-custom,
+    .form-select-custom {
+        background-color: #ffffff !important;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .form-control-custom:focus,
+    .form-select-custom:focus {
+        border-color: #10b981;
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+    }
+
+    .box-venta-container {
+        background-color: #f1f5f9;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        padding: 10px 14px;
+    }
+
+    .table-produccion {
+        margin-bottom: 0;
+        font-size: 0.875rem;
+    }
+
+    .table-produccion th {
+        background-color: #f8fafc;
+        color: #475569;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.05em;
+        border-bottom: 2px solid #e2e8f0;
+    }
+
+    .table-produccion td {
+        vertical-align: middle;
+        color: #1e293b;
+    }
+
+    .badge-venta {
+        background-color: #dbeafe;
+        color: #1e40af;
+        border: 1px solid #bfdbfe;
+        font-weight: 500;
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 0.75rem;
+    }
+
+    .badge-interno {
+        background-color: #f1f5f9;
+        color: #475569;
+        border: 1px solid #e2e8f0;
+        font-weight: 500;
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 0.75rem;
+    }
+
+    .btn-action-icon {
+        width: 30px;
+        height: 30px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+        transition: all 0.2s;
+    }
+
+    .btn-action-edit {
+        color: #2563eb;
+        background-color: #eff6ff;
+    }
+
+    .btn-action-edit:hover {
+        background-color: #2563eb;
+        color: #ffffff;
+    }
+
+    .btn-action-delete {
+        color: #dc2626;
+        background-color: #fef2f2;
+    }
+
+    .btn-action-delete:hover {
+        background-color: #dc2626;
+        color: #ffffff;
+    }
+</style>

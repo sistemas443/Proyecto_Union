@@ -7,7 +7,7 @@ class Config:
     DB_HOST = os.environ.get('DB_HOST', '136.114.241.97')
     DB_NAME = os.environ.get('DB_NAME', 'data_vargas')
     DB_USER = os.environ.get('DB_USER', 'admin_app')
-    DB_PASSWORD = os.environ.get('DB_PASSWORD', 'TuClaveSegura123')
+    DB_PASSWORD = os.environ.get('DB_PASSWORD', 'nuevo_password_seguro_2024')
     DB_PORT = os.environ.get('DB_PORT', '5432')
 
 try:

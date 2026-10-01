@@ -445,9 +445,9 @@ class FormulaProduccion:
         conn = get_db_connection()
         try:
             with conn.cursor() as cur:
-                # Filtramos por versión
+                # Filtramos por versión - INCLUYE CAMPOS DE VENTA EXTERNA + CAL/CALCIO
                 consulta = """
-                    SELECT id, fecha, toneladas, novedad 
+                    SELECT id, fecha, toneladas, novedad, es_venta, empresa_cliente, remision, cal_kg, calcio_kg
                     FROM formula_produccion_diaria 
                     WHERE item_id = %s AND lote_id = %s AND version = %s
                     ORDER BY fecha ASC;
@@ -462,17 +462,54 @@ class FormulaProduccion:
             conn.close()
 
     @staticmethod
-    def registrar_produccion(item_id, lote_id, fecha, toneladas, novedad, version):
+    def registrar_produccion(item_id, lote_id, fecha, toneladas, novedad, version, es_venta=False, empresa_cliente=None, remision=None, cal_kg=0, calcio_kg=0):
         conn = get_db_connection()
         try:
             with conn.cursor() as cur:
-                # Se agregó 'version' al insert
+                # 1. Insertar registro de producción con nuevos campos
                 cur.execute(
                     """INSERT INTO formula_produccion_diaria 
-                       (item_id, lote_id, fecha, toneladas, novedad, version) 
-                       VALUES (%s, %s, %s, %s, %s, %s)""",
-                    (item_id, lote_id, fecha, toneladas, novedad, version)
+                       (item_id, lote_id, fecha, toneladas, novedad, version, es_venta, empresa_cliente, remision, cal_kg, calcio_kg) 
+                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                    (item_id, lote_id, fecha, toneladas, novedad, version, es_venta, empresa_cliente, remision, cal_kg, calcio_kg)
                 )
+                
+                # 2. Descuento en Kárdex para la receta base (producción normal)
+                receta_base = FormulaDetalle.obtener_receta(item_id, lote_id, version)
+                
+                for insumo in receta_base:
+                    item = dict(insumo)
+                    mp_id = item.get('materia_prima_id') or item.get('id_materia_prima')
+                    cant_kg = float(item.get('cantidad_kg') or 0)
+                    
+                    if mp_id is not None and cant_kg > 0:
+                        gramos_descontar = (toneladas * cant_kg) * 1000
+                        obs = f"Venta {empresa_cliente} (Rem. {remision})" if es_venta else f"Producción Dieta {item_id} | Lote {lote_id}"
+                        
+                        cur.execute("""
+                            INSERT INTO movimientos_inventario 
+                            (materia_prima_id, tipo_movimiento, cantidad, fecha, observacion)
+                            VALUES (%s, 'SALIDA_PRODUCCION', %s, %s, %s);
+                        """, (mp_id, gramos_descontar, fecha, f"{obs} | {toneladas} Ton"))
+                
+                # 3. Descuento adicional para CAL (ID=7) y CALCIO (ID=4) si es venta y hay cantidades
+                if es_venta:
+                    if cal_kg and float(cal_kg) > 0:
+                        gramos_cal = float(cal_kg) * 1000
+                        cur.execute("""
+                            INSERT INTO movimientos_inventario 
+                            (materia_prima_id, tipo_movimiento, cantidad, fecha, observacion)
+                            VALUES (%s, 'SALIDA_VENTA_CAL', %s, %s, %s);
+                        """, (7, gramos_cal, fecha, f"Venta Cal {empresa_cliente} (Rem. {remision}) | {cal_kg} Kg"))
+                    
+                    if calcio_kg and float(calcio_kg) > 0:
+                        gramos_calcio = float(calcio_kg) * 1000
+                        cur.execute("""
+                            INSERT INTO movimientos_inventario 
+                            (materia_prima_id, tipo_movimiento, cantidad, fecha, observacion)
+                            VALUES (%s, 'SALIDA_VENTA_CALCIO', %s, %s, %s);
+                        """, (4, gramos_calcio, fecha, f"Venta Calcio {empresa_cliente} (Rem. {remision}) | {calcio_kg} Kg"))
+                
                 conn.commit()
                 return True
         except Exception as e:
@@ -502,20 +539,60 @@ class FormulaProduccion:
         finally:
             conn.close()
     @staticmethod
-    def actualizar_produccion(id_registro, toneladas, novedad=''):
+    def actualizar_produccion(id_registro, toneladas, novedad='', cal_kg=0, calcio_kg=0):
         conn = get_db_connection()
         try:
             with conn.cursor() as cur:
-                consulta = """
-                    UPDATE formula_produccion_diaria 
-                    SET toneladas = %s, novedad = %s 
-                    WHERE id = %s;
-                """
-                cur.execute(consulta, (toneladas, novedad, id_registro))
-                conn.commit()
-                return True  # <--- ESTA ES LA CLAVE PARA EL MENSAJE DE ÉXITO
+                # Obtener valores actuales para calcular diferencias de inventario
+                cur.execute("SELECT cal_kg, calcio_kg, fecha, empresa_cliente, remision, es_venta FROM formula_produccion_diaria WHERE id = %s", (id_registro,))
+                row = cur.fetchone()
+                if row:
+                    cal_kg_actual = float(row[0] or 0)
+                    calcio_kg_actual = float(row[1] or 0)
+                    fecha = row[2]
+                    empresa_cliente = row[3]
+                    remision = row[4]
+                    es_venta = row[5]
+                    
+                    cal_kg_nuevo = float(cal_kg or 0)
+                    calcio_kg_nuevo = float(calcio_kg or 0)
+                    
+                    # Actualizar registro
+                    consulta = """
+                        UPDATE formula_produccion_diaria 
+                        SET toneladas = %s, novedad = %s, cal_kg = %s, calcio_kg = %s 
+                        WHERE id = %s;
+                    """
+                    cur.execute(consulta, (toneladas, novedad, cal_kg_nuevo, calcio_kg_nuevo, id_registro))
+                    
+                    # Ajustar inventario si es venta y hay cambios en cal/calcio
+                    if es_venta:
+                        # CAL (ID=7)
+                        diff_cal = (cal_kg_nuevo - cal_kg_actual) * 1000
+                        if diff_cal != 0:
+                            tipo = 'SALIDA_VENTA_CAL' if diff_cal > 0 else 'ENTRADA_AJUSTE_CAL'
+                            cur.execute("""
+                                INSERT INTO movimientos_inventario 
+                                (materia_prima_id, tipo_movimiento, cantidad, fecha, observacion)
+                                VALUES (%s, %s, %s, %s, %s);
+                            """, (7, abs(diff_cal), fecha, f"Ajuste Cal venta {empresa_cliente} (Rem. {remision}) | Diff {diff_cal/1000} Kg"))
+                        
+                        # CALCIO (ID=4)
+                        diff_calcio = (calcio_kg_nuevo - calcio_kg_actual) * 1000
+                        if diff_calcio != 0:
+                            tipo = 'SALIDA_VENTA_CALCIO' if diff_calcio > 0 else 'ENTRADA_AJUSTE_CALCIO'
+                            cur.execute("""
+                                INSERT INTO movimientos_inventario 
+                                (materia_prima_id, tipo_movimiento, cantidad, fecha, observacion)
+                                VALUES (%s, %s, %s, %s, %s);
+                            """, (4, abs(diff_calcio), fecha, f"Ajuste Calcio venta {empresa_cliente} (Rem. {remision}) | Diff {diff_calcio/1000} Kg"))
+                    
+                    conn.commit()
+                    return True
+                return False
         except Exception as e:
             print(f"Error al actualizar BD: {e}")
+            conn.rollback()
             return False
         finally:
             conn.close()
