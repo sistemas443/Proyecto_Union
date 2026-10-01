@@ -122,6 +122,13 @@
       box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
       border: 1px solid #dee2e6 !important;
     }
+
+    /* Validación en caliente para selector de lotes */
+    select.form-select.is-invalid,
+    select#lote.is-invalid {
+      border: 1.5px solid #dc3545 !important;
+      box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25) !important;
+    }
   </style>
 
   {% block head %}{% endblock %}
@@ -170,6 +177,10 @@
     <a href="{{ url_for('primera_semana.grafico_primera_semana') }}" class="nav-link text-white d-flex align-items-center gap-2">
       <i class='bx bx-bar-chart-alt-2 fs-5'></i>
       <span>Gráfico 1era Semana</span>
+    </a>
+    <a href="{{ url_for('semanal_levante.grafico_semanal_levante') }}" class="nav-link text-white d-flex align-items-center gap-2">
+      <i class='bx bx-bar-chart-alt-2 fs-5'></i>
+      <span>Gráfico Levante</span>
     </a>
     <a href="{{ url_for('semanal.grafico_general') }}" class="nav-link text-white d-flex align-items-center gap-2">
       <i class='bx bx-bar-chart-alt-2 fs-5'></i>
@@ -292,25 +303,84 @@
     });
   </script>
 
-  <!-- ANTI-DOBLE CLIC -->
+  <!-- CONTROL INTELIGENTE DE BOTONES, VALIDACIÓN EN CALIENTE Y ANTI-DOBLE CLIC -->
   <script>
     document.addEventListener("DOMContentLoaded", function () {
       document.querySelectorAll("form").forEach(function (form) {
+        const selectLote = form.querySelector('select[name="lote"], select#lote');
+        const btnSubmit = form.querySelector('button[type="submit"]');
+
+        // Validación en caliente si el formulario cuenta con selector de lotes
+        if (selectLote && btnSubmit) {
+          function actualizarEstadoBotonLote() {
+            const tieneLote = selectLote.value && selectLote.value.trim() !== '' && selectLote.value !== 'VACIO';
+            if (tieneLote) {
+              btnSubmit.disabled = false;
+              btnSubmit.style.opacity = "1";
+              btnSubmit.style.cursor = "pointer";
+              selectLote.classList.remove("is-invalid");
+            } else {
+              btnSubmit.disabled = true;
+              btnSubmit.style.opacity = "0.65";
+              btnSubmit.style.cursor = "not-allowed";
+            }
+          }
+
+          selectLote.addEventListener("change", actualizarEstadoBotonLote);
+          selectLote.addEventListener("input", actualizarEstadoBotonLote);
+
+          // Inicializar estado del botón según la selección actual
+          actualizarEstadoBotonLote();
+        }
+
+        // Intercepción del submit: validación final, anti-doble clic y spinner Bootstrap
         form.addEventListener("submit", function (e) {
-          const btnSubmit = form.querySelector('button[type="submit"]');
-          if (btnSubmit) {
-            if (btnSubmit.disabled) { e.preventDefault(); return; }
-            btnSubmit.style.width = btnSubmit.offsetWidth + "px";
-            btnSubmit.style.height = btnSubmit.offsetHeight + "px";
-            const estilo = window.getComputedStyle(btnSubmit);
-            const colorFondo = estilo.backgroundColor;
-            const colorTexto = estilo.color;
-            const colorBorde = estilo.borderColor;
-            btnSubmit.disabled = true;
-            btnSubmit.style.setProperty("background-color", colorFondo, "important");
-            btnSubmit.style.setProperty("color", colorTexto, "important");
-            btnSubmit.style.setProperty("border-color", colorBorde, "important");
-            btnSubmit.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="color: ${colorTexto};"></span>`;
+          const btn = form.querySelector('button[type="submit"]');
+          if (!btn) return;
+
+          if (selectLote) {
+            const tieneLote = selectLote.value && selectLote.value.trim() !== '' && selectLote.value !== 'VACIO';
+            if (!tieneLote) {
+              e.preventDefault();
+              e.stopPropagation();
+              selectLote.classList.add("is-invalid");
+              selectLote.focus();
+              return;
+            }
+          }
+
+          if (btn.disabled) {
+            e.preventDefault();
+            return;
+          }
+
+          // Congelar dimensiones para evitar saltos de layout en la barra superior
+          btn.style.minWidth = btn.offsetWidth + "px";
+          btn.style.minHeight = btn.offsetHeight + "px";
+
+          // Deshabilitar para prevenir doble clic
+          btn.disabled = true;
+
+          // Feedback visual con spinner oficial de Bootstrap
+          btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Cargando...`;
+        });
+      });
+
+      // Restaurar estado si la página se recupera de la caché del navegador (Atrás/Adelante)
+      window.addEventListener("pageshow", function () {
+        document.querySelectorAll("form").forEach(function (form) {
+          const selectLote = form.querySelector('select[name="lote"], select#lote');
+          const btn = form.querySelector('button[type="submit"]');
+          if (btn) {
+            if (selectLote) {
+              const tieneLote = selectLote.value && selectLote.value.trim() !== '' && selectLote.value !== 'VACIO';
+              btn.disabled = !tieneLote;
+              btn.style.opacity = tieneLote ? "1" : "0.65";
+              btn.style.cursor = tieneLote ? "pointer" : "not-allowed";
+              btn.innerHTML = "Cargar Datos";
+            } else {
+              btn.disabled = false;
+            }
           }
         });
       });

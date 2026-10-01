@@ -129,29 +129,40 @@
       <div class="card-body p-0">
         <table class="table table-bordered table-sm mb-0">
           <tbody class="align-middle">
+            <!-- Fila 1: Cliente + Resp. Técnico + Peso -->
             <tr>
-              <th class="bg-light text-end pe-3" style="width:20%;">Cliente:</th>
-              <td class="fw-bold text-dark" style="width:30%;">{{ cabecera.cliente or '---' }}</td>
-              <th class="bg-light text-end pe-3" style="width:20%;">Resp. Técnico:</th>
-              <td class="fw-semibold text-dark" style="width:30%;">{{ cabecera.responsable_tecnico or '---' }}</td>
+              <th class="bg-light text-end pe-3" style="width:15%;">Cliente:</th>
+              <td class="fw-bold text-dark" style="width:20%;">{{ cabecera.cliente or '---' }}</td>
+              <th class="bg-light text-end pe-3" style="width:15%;">Resp. Técnico:</th>
+              <td class="fw-semibold text-dark" style="width:20%;">{{ cabecera.responsable_tecnico or '---' }}</td>
+              <th class="bg-light text-end pe-3" style="width:10%;">Peso:</th>
+              <td class="text-dark" style="width:20%;">{{ cabecera.peso or '---' }}</td>
             </tr>
+            <!-- Fila 2: Granja Levante + Ciudad + Uniformidad -->
             <tr>
               <th class="bg-light text-end pe-3">Granja Levante:</th>
               <td class="text-dark">{{ cabecera.granja_lev or '---' }}</td>
               <th class="bg-light text-end pe-3">Ciudad:</th>
               <td class="text-dark">{{ cabecera.ciudad or '---' }}</td>
+              <th class="bg-light text-end pe-3">Uniformidad:</th>
+              <td class="text-dark">{{ cabecera.uniformidad or '---' }}</td>
             </tr>
+            <!-- Fila 3: Fecha Recepción + Tipo Galpón + Unidad de peso -->
             <tr>
               <th class="bg-light text-end pe-3">Fecha Recepción:</th>
               <td class="text-dark">{{ cabecera.fecha_recepcion or '---' }}</td>
               <th class="bg-light text-end pe-3">Tipo Galpón:</th>
               <td class="text-dark">{{ cabecera.tipo_galpon or '---' }}</td>
+              <th class="bg-light text-end pe-3">Unidad de peso:</th>
+              <td class="text-dark">{{ cabecera.unidad_peso or '---' }}</td>
             </tr>
+            <!-- Fila 4: N° Pollitas Recibidas + Clima + (vacío) -->
             <tr>
-              <th class="bg-light text-end pe-3">Nº Pollitas Recibidas:</th>
+              <th class="bg-light text-end pe-3">N° Pollitas Recibidas:</th>
               <td class="fw-bold text-dark">{{ cabecera.no_pollitas_recibidas or '---' }}</td>
               <th class="bg-light text-end pe-3">Clima:</th>
               <td class="text-dark">{{ cabecera.clima or '---' }}</td>
+              <td colspan="2"></td>
             </tr>
           </tbody>
         </table>

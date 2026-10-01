@@ -6,6 +6,7 @@ load_dotenv()
 
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
+    APP_VERSION = '1.0.0'
 
     DB_HOST = os.environ.get('DB_HOST', '136.114.241.97')
     DB_NAME = os.environ.get('DB_NAME', 'data_vargas')

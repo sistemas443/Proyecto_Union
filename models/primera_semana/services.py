@@ -233,12 +233,15 @@ def get_primera_semana_by_lote(lote_nombre):
         if conn: conn.close()
 
 
-def update_primera_semana_field(id_reg: int, columna: str, valor: str) -> tuple[bool, dict, str]:
+def update_primera_semana_field(id_reg: int, columna: str, valor: str, 
+                                 usuario_id=None, usuario_nombre=None) -> tuple[bool, dict, str]:
     """
     Procesa las peticiones de actualización originadas desde la edición en línea en la vista web.
     Realiza validación de columnas, conversión de tipos de datos, actualización del registro 
     y detonación del recálculo en cascada para mantener la integridad referencial.
     """
+    from models.auditoria.services import registrar_cambio
+    
     if columna not in COLUMNAS_PERMITIDAS:
         return False, {}, f"Columna '{columna}' no permitida"
 
@@ -258,8 +261,26 @@ def update_primera_semana_field(id_reg: int, columna: str, valor: str) -> tuple[
     campos_actualizados = {}
 
     try:
-        # Actualización del valor individual en la base de datos
+        # SELECT previo para obtener el valor anterior
+        cur.execute('SELECT "{}" FROM primera_semana WHERE id = %s'.format(columna), (id_reg,))
+        row = cur.fetchone()
+        valor_anterior = row[0] if row else None
+
+        # UPDATE
         cur.execute(f'UPDATE primera_semana SET "{columna}" = %s WHERE id = %s', (val_final, id_reg))
+        
+        # Registrar en auditoría
+        registrar_cambio(
+            usuario_id=usuario_id,
+            usuario_nombre=usuario_nombre or 'Desconocido',
+            tabla='primera_semana',
+            id_registro=id_reg,
+            campo=columna,
+            valor_anterior=valor_anterior,
+            valor_nuevo=val_final,
+            accion='UPDATE',
+            cursor=cur
+        )
     
         # Obtención de parámetros necesarios para el recálculo
         cur.execute("SELECT lote FROM primera_semana WHERE id = %s", (id_reg,))
@@ -283,11 +304,13 @@ def update_primera_semana_field(id_reg: int, columna: str, valor: str) -> tuple[
         conn.close()
 
 
-def update_dia_0_desde_formulario(lote_nombre, datos_dia_0):
+def update_dia_0_desde_formulario(lote_nombre, datos_dia_0, usuario_id=None, usuario_nombre=None):
     """
     Sincroniza la información del Día 0 basándose en los parámetros provistos 
     desde el formulario general de configuración de la cabecera del lote.
     """
+    from models.auditoria.services import registrar_cambio
+    
     if not lote_nombre or not datos_dia_0: return
 
     conn = get_db_connection()
@@ -312,7 +335,15 @@ def update_dia_0_desde_formulario(lote_nombre, datos_dia_0):
         v_c_kg = int(round(obtener_valor_estricto('consumo_kg', 'dia0_consumo_kg', 0.0)))
         v_k_acum = obtener_valor_estricto('cons_k_acum', 'dia0_cons_k_acum', 0.0)
 
-        # Actualización del registro correspondiente al Día 0
+        # SELECT previo para obtener valores anteriores
+        cur.execute("""
+            SELECT id, mortalidad, sel, peso_real, unif_10_menos, 
+                   porc_uniformidad, unif_10_mas, coef_variacion, consumo_kg, cons_k_acum
+            FROM primera_semana WHERE lote = %s AND semana = '0'
+        """, (lote_nombre,))
+        row_anterior = cur.fetchone()
+
+        # UPDATE
         cur.execute("""
             UPDATE primera_semana SET
                 mortalidad = %s, sel = %s, peso_real = %s,
@@ -320,6 +351,28 @@ def update_dia_0_desde_formulario(lote_nombre, datos_dia_0):
                 coef_variacion = %s, consumo_kg = %s, cons_k_acum = %s
             WHERE lote = %s AND semana = '0'
         """, (v_mort, v_sel, v_p_real, v_10_menos, v_unif, v_10_mas, v_cv, v_c_kg, v_k_acum, lote_nombre))
+        
+        # Registrar en auditoría (un registro por campo modificado)
+        if row_anterior:
+            id_reg = row_anterior[0]
+            campos = ['mortalidad', 'sel', 'peso_real', 'unif_10_menos', 
+                     'porc_uniformidad', 'unif_10_mas', 'coef_variacion', 'consumo_kg', 'cons_k_acum']
+            valores_nuevos = [v_mort, v_sel, v_p_real, v_10_menos, v_unif, v_10_mas, v_cv, v_c_kg, v_k_acum]
+            valores_anteriores = row_anterior[1:]
+            
+            for campo, val_ant, val_nuevo in zip(campos, valores_anteriores, valores_nuevos):
+                if val_ant != val_nuevo:
+                    registrar_cambio(
+                        usuario_id=usuario_id,
+                        usuario_nombre=usuario_nombre or 'Desconocido',
+                        tabla='primera_semana',
+                        id_registro=id_reg,
+                        campo=campo,
+                        valor_anterior=val_ant,
+                        valor_nuevo=val_nuevo,
+                        accion='UPDATE',
+                        cursor=cur
+                    )
         
         # Recuperación de la población inicial para activar el recálculo
         cur.execute("SELECT no_pollitas_recibidas FROM cabecera_lotes WHERE lote = %s", (lote_nombre,))
@@ -469,7 +522,7 @@ def get_data_grafico_primera_semana(lote_nombre):
 
     return datos
 
-def procesar_excel_primera_semana(archivo_excel, lote_nombre):
+def procesar_excel_primera_semana(archivo_excel, lote_nombre, usuario_id=None, usuario_nombre=None):
     """
     Procesa un archivo Excel subido por el usuario para el módulo de Primera Semana.
     Escanea todas las hojas buscando la tabla correcta, fusiona celdas combinadas,
@@ -658,6 +711,21 @@ def procesar_excel_primera_semana(archivo_excel, lote_nombre):
         if aves_iniciales <= 0: aves_iniciales = 1.0
 
         recalcular_primera_semana_cascada_interna(lote_nombre, aves_iniciales, cur)
+
+        # Registrar en auditoría (1 solo registro por carga)
+        if filas_actualizadas > 0:
+            from models.auditoria.services import registrar_cambio
+            registrar_cambio(
+                usuario_id=usuario_id,
+                usuario_nombre=usuario_nombre or 'Desconocido',
+                tabla='primera_semana',
+                id_registro=None,
+                campo=f'Lote {lote_nombre} - Carga Excel',
+                valor_anterior=None,
+                valor_nuevo='Datos cargados correctamente',
+                accion='IMPORT',
+                cursor=cur
+            )
 
         conn.commit()
         cur.close()

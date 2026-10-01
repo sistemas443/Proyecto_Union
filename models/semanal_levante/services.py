@@ -114,10 +114,13 @@ def get_semanal_levante_all(lote_nombre: str = ''):
 
     return rows
 
-def update_semanal_field(id_semanal: int, columna: str, valor: str) -> tuple[bool, dict, str]:
+def update_semanal_field(id_semanal: int, columna: str, valor: str, 
+                         usuario_id=None, usuario_nombre=None) -> tuple[bool, dict, str]:
     # Filtro de seguridad para evitar inyecciones SQL
     if columna not in COLUMNAS_PERMITIDAS:
         return False, {}, f"Columna '{columna}' no permitida"
+
+    from models.auditoria.services import registrar_cambio
 
     valor_db = parse_empty(valor)
     campos_actualizados = {}
@@ -161,6 +164,21 @@ def update_semanal_field(id_semanal: int, columna: str, valor: str) -> tuple[boo
             elif columna in ['peso_real', 'peso_ave_real']: col_db = 'peso_real'
             elif columna in ['peso_tab', 'peso_ave_tab']: col_db = 'peso_tab'
 
+            # SELECT previo para obtener el valor anterior
+            valor_anterior = None
+            try:
+                cur.execute("SAVEPOINT sp_select_previo")
+                cur.execute('SELECT "{}" FROM semanal_levante WHERE id = %s'.format(columna), (id_semanal,))
+                row = cur.fetchone()
+                valor_anterior = row[0] if row else None
+                cur.execute("RELEASE SAVEPOINT sp_select_previo")
+            except Exception:
+                try:
+                    cur.execute("ROLLBACK TO SAVEPOINT sp_select_previo")
+                except Exception:
+                    pass
+                valor_anterior = None
+
             # Actualiza el valor puntual ingresado por el usuario
             cur.execute(f"UPDATE semanal_levante SET {col_db} = %s WHERE id = %s", (valor_db, id_semanal))
 
@@ -190,8 +208,8 @@ def update_semanal_field(id_semanal: int, columna: str, valor: str) -> tuple[boo
             acum_otros = 0.0
             valores_update = []
             acum_gr_ave_tab_exacto = 0.0
-            peso_real_anterior = peso_recep if peso_recep > 0 else 0.0
-            gr_ave_ac_anterior_exacto = 0.0          
+            peso_semana_anterior = peso_recep if peso_recep > 0 else 0.0
+            gr_ave_ac_anterior = 0.0          
 
             # Bucle iterativo de recálculo (recorre semana por semana)
             for idx, f in enumerate(filas):
@@ -258,18 +276,31 @@ def update_semanal_field(id_semanal: int, columna: str, valor: str) -> tuple[boo
                 gr_ave_ac_exacto = (float(acum_kilos) / float(saldo_val)) * 1000.0 if (acum_kilos > 0 and saldo_val > 0) else 0.0
                 gr_ave_ac_val = int(round(gr_ave_ac_exacto))
 
-                # Cálculos de ganancia de peso y conversión alimenticia
-                ganancia_ave_dia_val = round(peso_real_val - peso_real_anterior, 2) if (peso_real_val > 0 and peso_real_anterior > 0) else 0.0
-                if peso_real_val > 0: peso_real_anterior = peso_real_val 
+                # Definir peso y consumo anterior según la semana
+                if num_semana == 1:
+                    u_ant = peso_recep if peso_recep > 0 else 0.0
+                    i_ant = 0.0
+                else:
+                    u_ant = peso_semana_anterior
+                    i_ant = gr_ave_ac_anterior
 
+                # Cálculos de ganancia de peso
+                ganancia_ave_dia_val = round(peso_real_val - u_ant, 2) if (peso_real_val > 0 and u_ant > 0) else 0.0
                 porc_cumpl_ganan_val = round(((ganancia_ave_dia_val / ganancia_ave_val) - 1.0) * 100.0, 2) if (ganancia_ave_dia_val > 0 and ganancia_ave_val > 0) else 0.0
-                
+
+                # Conversión alimenticia semanal (fórmula Excel):
+                # Sem 1: SI(E12>0, SI(Y(U12>0, W6>0), (I12/(U12-W6)), 0), 0)
+                # Sem N: SI(E_n>0, SI(Y(U_n>0, U_(n-1)>0), ((I_n - I_(n-1))/(U_n - U_(n-1))), 0), 0)
                 conversion_sem_val = 0.0
-                if c_k_real > 0 and ganancia_ave_dia_val > 0:
-                    diff_gramos_exacto = gr_ave_ac_exacto - gr_ave_ac_anterior_exacto
-                    conversion_sem_val = round(diff_gramos_exacto / ganancia_ave_dia_val, 2)
-                
-                gr_ave_ac_anterior_exacto = gr_ave_ac_exacto
+                if c_k_real > 0 and peso_real_val > 0 and u_ant > 0:
+                    diff_peso = peso_real_val - u_ant
+                    diff_consumo = gr_ave_ac_val - i_ant
+                    if diff_peso > 0:
+                        conversion_sem_val = round(diff_consumo / diff_peso, 2)
+
+                # Actualizar acumuladores para la siguiente semana
+                peso_semana_anterior = peso_real_val
+                gr_ave_ac_anterior = gr_ave_ac_val
 
                 porc_cumpl_cons_val = 0.0
                 if c_real_exacto is not None and c_real_exacto > 0 and c_tab > 0:
@@ -325,6 +356,19 @@ def update_semanal_field(id_semanal: int, columna: str, valor: str) -> tuple[boo
         else:
             # Si no es una columna matemática, simplemente la guarda de forma aislada
             model.guardar_dato_simple(id_semanal, columna, valor_db, cur)
+
+        # Registrar en auditoría
+        registrar_cambio(
+            usuario_id=usuario_id,
+            usuario_nombre=usuario_nombre or 'Desconocido',
+            tabla='semanal_levante',
+            id_registro=id_semanal,
+            campo=columna,
+            valor_anterior=valor_anterior,
+            valor_nuevo=valor_db,
+            accion='UPDATE',
+            cursor=cur
+        )
 
         conn.commit()
         return True, campos_actualizados, "Ok"
@@ -427,8 +471,8 @@ def recalcular_lote_semanal_levante_directo(id_lote, cur):
     valores_update = []
     
     acum_gr_ave_tab_exacto = 0.0
-    peso_real_anterior = peso_recep if peso_recep > 0 else 0.0
-    gr_ave_ac_anterior_exacto = 0.0          
+    peso_semana_anterior = peso_recep if peso_recep > 0 else 0.0
+    gr_ave_ac_anterior = 0.0          
 
     # Iteración exhaustiva: Reconstruye todo el historial del lote iterando semana por semana
     for idx, f in enumerate(filas):
@@ -492,18 +536,31 @@ def recalcular_lote_semanal_levante_directo(id_lote, cur):
         gr_ave_ac_exacto = (float(acum_kilos) / float(saldo_val)) * 1000.0 if (acum_kilos > 0 and saldo_val > 0) else 0.0
         gr_ave_ac_val = int(round(gr_ave_ac_exacto))
 
-        # Re-calcula ganancias de peso basándose en el historial de pesos que veníamos trayendo
-        ganancia_ave_dia_val = round(peso_real_val - peso_real_anterior, 2) if (peso_real_val > 0 and peso_real_anterior > 0) else 0.0
-        if peso_real_val > 0: peso_real_anterior = peso_real_val 
+        # Definir peso y consumo anterior según la semana
+        if num_semana == 1:
+            u_ant = peso_recep if peso_recep > 0 else 0.0
+            i_ant = 0.0
+        else:
+            u_ant = peso_semana_anterior
+            i_ant = gr_ave_ac_anterior
 
+        # Re-calcula ganancias de peso
+        ganancia_ave_dia_val = round(peso_real_val - u_ant, 2) if (peso_real_val > 0 and u_ant > 0) else 0.0
         porc_cumpl_ganan_val = round(((ganancia_ave_dia_val / ganancia_ave_val) - 1.0) * 100.0, 2) if (ganancia_ave_dia_val > 0 and ganancia_ave_val > 0) else 0.0
-        
+
+        # Conversión alimenticia semanal (fórmula Excel):
+        # Sem 1: SI(E12>0, SI(Y(U12>0, W6>0), (I12/(U12-W6)), 0), 0)
+        # Sem N: SI(E_n>0, SI(Y(U_n>0, U_(n-1)>0), ((I_n - I_(n-1))/(U_n - U_(n-1))), 0), 0)
         conversion_sem_val = 0.0
-        if c_k_real > 0 and ganancia_ave_dia_val > 0:
-            diff_gramos_exacto = gr_ave_ac_exacto - gr_ave_ac_anterior_exacto
-            conversion_sem_val = round(diff_gramos_exacto / ganancia_ave_dia_val, 2)
-        
-        gr_ave_ac_anterior_exacto = gr_ave_ac_exacto
+        if c_k_real > 0 and peso_real_val > 0 and u_ant > 0:
+            diff_peso = peso_real_val - u_ant
+            diff_consumo = gr_ave_ac_val - i_ant
+            if diff_peso > 0:
+                conversion_sem_val = round(diff_consumo / diff_peso, 2)
+
+        # Actualizar acumuladores para la siguiente semana
+        peso_semana_anterior = peso_real_val
+        gr_ave_ac_anterior = gr_ave_ac_val
 
         porc_cumpl_cons_val = 0.0
         if c_real_exacto is not None and c_real_exacto > 0 and c_tab > 0:
@@ -535,7 +592,7 @@ def recalcular_lote_semanal_levante_directo(id_lote, cur):
             WHERE id = %s                      
         """, valores_update)
         
-def procesar_excel_semanal_levante(archivo_excel, lote_nombre):
+def procesar_excel_semanal_levante(archivo_excel, lote_nombre, usuario_id=None, usuario_nombre=None):
     """
     Procesa el Excel para el módulo Semanal Levante.
     Extrae únicamente las columnas crudas digitadas por el usuario (peso, uniformidades, tarso, agua)
@@ -711,6 +768,21 @@ def procesar_excel_semanal_levante(archivo_excel, lote_nombre):
 
         # 8. Recalcular cascada general del lote
         recalcular_lote_semanal_levante_directo(id_lote, cur)
+
+        # Registrar en auditoría (1 solo registro por carga)
+        if filas_actualizadas > 0:
+            from models.auditoria.services import registrar_cambio
+            registrar_cambio(
+                usuario_id=usuario_id,
+                usuario_nombre=usuario_nombre or 'Desconocido',
+                tabla='semanal_levante',
+                id_registro=None,
+                campo=f'Lote {lote_nombre} - Carga Excel',
+                valor_anterior=None,
+                valor_nuevo='Datos de levante cargados correctamente',
+                accion='IMPORT',
+                cursor=cur
+            )
 
         conn.commit()
         cur.close()

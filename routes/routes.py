@@ -10,7 +10,15 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 from PIL import Image, ImageOps
 
-from models.base import get_db_connection
+from models.base import get_db_connection, obtener_hash_git
+from models.auditoria.services import (
+    obtener_historial, 
+    contar_historial,
+    obtener_historial_filtrado,
+    contar_historial_filtrado,
+    obtener_opciones_filtros,
+    obtener_campos_por_tabla
+)
 
 # Registramos este archivo como un componente (Blueprint) principal de Flask
 bp = Blueprint('main', __name__)
@@ -646,7 +654,87 @@ def pantalla_principal():
 @login_requerido
 def index():
     # Panel Privado (Dashboard) - Ahora se accede desde la pestaña "Reportes"
-    return render_template('generales/index.html')
+    version = f"v{current_app.config['APP_VERSION']} ({obtener_hash_git()})"
+    return render_template('generales/index.html', version=version)
+
+
+@bp.route('/ver-historial')
+@superadmin_requerido
+def ver_historial():
+    """Muestra el historial de cambios con paginación y filtros."""
+    opciones = obtener_opciones_filtros()
+    
+    pagina = request.args.get('pagina', 1, type=int)
+    por_pagina = 100
+    offset = (pagina - 1) * por_pagina
+    
+    cambios = obtener_historial(limite=por_pagina, offset=offset)
+    total = contar_historial()
+    total_paginas = (total + por_pagina - 1) // por_pagina
+    
+    return render_template(
+        'generales/ver_historial.html', 
+        cambios=cambios,
+        opciones=opciones,
+        pagina=pagina,
+        total_paginas=total_paginas,
+        total=total
+    )
+
+
+@bp.route('/api/auditoria/filtrar')
+@superadmin_requerido
+def api_auditoria_filtrar():
+    """API para filtrar el historial de cambios."""
+    filtros = {
+        'usuario': request.args.get('usuario', ''),
+        'tabla': request.args.get('tabla', ''),
+        'accion': request.args.get('accion', ''),
+        'campo': request.args.get('campo', ''),
+        'fecha_desde': request.args.get('fecha_desde', ''),
+        'fecha_hasta': request.args.get('fecha_hasta', ''),
+        'lote': request.args.get('lote', ''),
+    }
+    # Limpiar filtros vacíos
+    filtros = {k: v for k, v in filtros.items() if v}
+    
+    pagina = request.args.get('pagina', 1, type=int)
+    por_pagina = request.args.get('por_pagina', 100, type=int)
+    offset = (pagina - 1) * por_pagina
+    
+    cambios = obtener_historial_filtrado(filtros=filtros, limite=por_pagina, offset=offset)
+    total = contar_historial_filtrado(filtros=filtros)
+    total_paginas = (total + por_pagina - 1) // por_pagina
+    
+    return jsonify({
+        'status': 'ok',
+        'cambios': cambios,
+        'pagina': pagina,
+        'total_paginas': total_paginas,
+        'total': total
+    })
+
+
+@bp.route('/api/auditoria/opciones')
+@superadmin_requerido
+def api_auditoria_opciones():
+    """API para obtener las opciones de los dropdowns de filtros."""
+    opciones = obtener_opciones_filtros()
+    return jsonify({
+        'status': 'ok',
+        **opciones
+    })
+
+
+@bp.route('/api/auditoria/campos')
+@superadmin_requerido
+def api_auditoria_campos():
+    """API para obtener los campos de una tabla específica."""
+    tabla = request.args.get('tabla', '')
+    if not tabla:
+        return jsonify({'status': 'ok', 'campos': []})
+    campos = obtener_campos_por_tabla(tabla)
+    return jsonify({'status': 'ok', 'campos': campos})
 
 
 @bp.route('/logout')

@@ -1,4 +1,4 @@
-from flask import request, jsonify
+from flask import request, jsonify, session
 from routes.primera_semana.vistas import primera_semana_bp
 from routes.routes import login_requerido, editor_requerido
 from models.primera_semana.services import update_primera_semana_field
@@ -16,7 +16,11 @@ def actualizar_primera_semana():
     if not id_reg or not columna:
         return jsonify({'status': 'error', 'msg': 'Parámetros incompletos'}), 400
     try:
-        success, campos_actualizados, msg = update_primera_semana_field(int(id_reg), columna, valor)
+        success, campos_actualizados, msg = update_primera_semana_field(
+            int(id_reg), columna, valor,
+            usuario_id=session.get('user_id'),
+            usuario_nombre=session.get('user_nombre', 'Desconocido')
+        )
         if success:
             return jsonify({'status': 'ok', 'updated_data': campos_actualizados})
         else:
