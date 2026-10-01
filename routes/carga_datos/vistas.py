@@ -11,7 +11,7 @@ def carga_datos_vista():
     if session.get('user_rol') != 'Superadmin':
         return "Acceso denegado. Solo Superadmin.", 403
 
-    return render_template('carga_datos.html', lotes=get_lotes_distintos())
+    return render_template('generales/carga_datos.html', lotes=get_lotes_distintos())
 
 
 @carga_datos_bp.route('/api-subir-excel', methods=['POST'])
@@ -53,7 +53,11 @@ def procesar_carga():
     elif modulo_seleccionado == 'primera_semana':
         try:
             from models.primera_semana.services import procesar_excel_primera_semana
-            exito, msj_resultado = procesar_excel_primera_semana(archivo, lote_seleccionado)
+            exito, msj_resultado = procesar_excel_primera_semana(
+                archivo, lote_seleccionado,
+                usuario_id=session.get('user_id'),
+                usuario_nombre=session.get('user_nombre', 'Desconocido')
+            )
             flash(msj_resultado, "success" if exito else "danger")
         except Exception as e:
             print(f"Error procesando primera semana: {e}")
@@ -62,7 +66,11 @@ def procesar_carga():
     elif modulo_seleccionado == 'semanal_levante':
         try:
             from models.semanal_levante.services import procesar_excel_semanal_levante
-            exito, msj_resultado = procesar_excel_semanal_levante(archivo, lote_seleccionado)
+            exito, msj_resultado = procesar_excel_semanal_levante(
+                archivo, lote_seleccionado,
+                usuario_id=session.get('user_id'),
+                usuario_nombre=session.get('user_nombre', 'Desconocido')
+            )
             flash(msj_resultado, "success" if exito else "danger")
         except Exception as e:
             print(f"Error procesando semanal levante: {e}")

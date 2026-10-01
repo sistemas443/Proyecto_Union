@@ -49,7 +49,7 @@ def grafico_primera_semana():
         datos_grafico = get_data_grafico_primera_semana(lote_seleccionado)
 
     return render_template(
-        'produccion/grafico_primera_semana.html',
+        'graficas/grafico_primera_semana.html',
         lotes=get_lotes_distintos(),
         lote_seleccionado=lote_seleccionado,
         datos_grafico=datos_grafico

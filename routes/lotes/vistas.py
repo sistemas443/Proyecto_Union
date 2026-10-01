@@ -75,7 +75,9 @@ def guardar_lote():
     from flask import request
     datos = request.form.to_dict()
     id_lote = request.form.get('id')
-    success, msg = actualizar_lote(id_lote, datos) if id_lote else guardar_nuevo_lote(datos)
+    success, msg = actualizar_lote(id_lote, datos, 
+                                   usuario_id=session.get('user_id'),
+                                   usuario_nombre=session.get('user_nombre', 'Desconocido')) if id_lote else guardar_nuevo_lote(datos)
     if not success:
         flash(msg, "error")
         return redirect(url_for('lotes.vista_lotes'))

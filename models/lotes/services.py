@@ -120,7 +120,7 @@ def guardar_nuevo_lote(datos):
         return False, str(e)
 
 
-def actualizar_lote(id_lote, datos):
+def actualizar_lote(id_lote, datos, usuario_id=None, usuario_nombre=None):
     """
     Coordina la modificación de un lote que ya existe en el sistema.
     INCLUYE RENOMBRAMIENTO MASIVO: Si el nombre del lote cambia, actualiza todas las tablas satélite.
@@ -180,7 +180,7 @@ def actualizar_lote(id_lote, datos):
         
         # PASO 4: MAGIA FINAL - Mandamos los datos nuevos a la tabla Primera Semana (Día 0)
         if lote_nuevo:
-            update_dia_0_desde_formulario(lote_nuevo, datos)
+            update_dia_0_desde_formulario(lote_nuevo, datos, usuario_id=usuario_id, usuario_nombre=usuario_nombre)
             
         return True, "Lote actualizado exitosamente"
         

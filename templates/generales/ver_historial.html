@@ -1,0 +1,530 @@
+{% extends 'generales/layout.html' %}
+{% block title %}Ver Historial – Avícola San Martín{% endblock %}
+
+{% block content %}
+<style>
+  body {
+    overflow-y: hidden !important;
+    zoom: 0.8;
+  }
+  main.container-fluid {
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 0px;
+  }
+  .card-historial {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+  }
+  .card-historial .card-body {
+    flex: 1 1 auto;
+    padding: 10px;
+  }
+  
+  /* Chips de filtro integrados con el estilo del proyecto */
+  .chip-filtro {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 4px;
+    border: 1px solid #dee2e6;
+    background: #f8f9fa;
+    color: #495057;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .chip-filtro:hover {
+    background: #e9ecef;
+    border-color: #adb5bd;
+  }
+  .chip-filtro.activo {
+    background: #97271C;
+    color: #ffffff;
+    border-color: #97271C;
+  }
+  .chip-filtro.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+  .chip-filtro .bx {
+    font-size: 0.875rem;
+  }
+  .chip-filtro .btn-quitar {
+    background: none;
+    border: none;
+    color: inherit;
+    padding: 0;
+    margin-left: 0.25rem;
+    cursor: pointer;
+    font-size: 0.875rem;
+  }
+  .chip-filtro .btn-quitar:hover {
+    color: #ff6b6b;
+  }
+  
+  /* Dropdown de filtros */
+  .dropdown-menu-filtro {
+    max-height: 250px;
+    overflow-y: auto;
+  }
+</style>
+
+<div class="container-fluid px-4 py-3">
+    <!-- Barra superior con título y chips de filtro -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 px-3 py-2 rounded shadow-sm" style="background-color: #212529;">
+        <h5 class="mb-0 fw-bold text-uppercase text-white" style="letter-spacing: 0.5px;">
+            <i class='bx bx-history me-2'></i>HISTORIAL DE CAMBIOS
+        </h5>
+        
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <!-- Chip Usuario -->
+            <div class="dropdown">
+                <button class="chip-filtro" id="chip-usuario" type="button" data-bs-toggle="dropdown">
+                    <i class='bx bx-user'></i> <span class="chip-texto">Usuario</span> <i class='bx bx-chevron-down'></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-filtro">
+                    <li><a class="dropdown-item" href="#" data-filtro="usuario" data-valor="">Todos</a></li>
+                    {% for u in opciones.usuarios %}
+                    <li><a class="dropdown-item" href="#" data-filtro="usuario" data-valor="{{ u.id }}">{{ u.nombre }}</a></li>
+                    {% endfor %}
+                </ul>
+            </div>
+            
+            <!-- Chip Tabla -->
+            <div class="dropdown">
+                <button class="chip-filtro" id="chip-tabla" type="button" data-bs-toggle="dropdown">
+                    <i class='bx bx-table'></i> <span class="chip-texto">Tabla</span> <i class='bx bx-chevron-down'></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-filtro">
+                    <li><a class="dropdown-item" href="#" data-filtro="tabla" data-valor="">Todas</a></li>
+                    {% for t in opciones.tablas %}
+                    <li><a class="dropdown-item" href="#" data-filtro="tabla" data-valor="{{ t }}">{{ t }}</a></li>
+                    {% endfor %}
+                </ul>
+            </div>
+            
+            <!-- Chip Acción -->
+            <div class="dropdown">
+                <button class="chip-filtro" id="chip-accion" type="button" data-bs-toggle="dropdown">
+                    <i class='bx bx-check'></i> <span class="chip-texto">Acción</span> <i class='bx bx-chevron-down'></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-filtro">
+                    <li><a class="dropdown-item" href="#" data-filtro="accion" data-valor="">Todas</a></li>
+                    {% for a in opciones.acciones %}
+                    <li><a class="dropdown-item" href="#" data-filtro="accion" data-valor="{{ a }}">{{ a }}</a></li>
+                    {% endfor %}
+                </ul>
+            </div>
+            
+            <!-- Chip Campo -->
+            <div class="dropdown">
+                <button class="chip-filtro disabled" id="chip-campo" type="button" data-bs-toggle="dropdown" disabled title="Seleccione una tabla primero">
+                    <i class='bx bx-list-ul'></i> <span class="chip-texto">Campo</span> <i class='bx bx-chevron-down'></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-filtro" id="dropdown-campo">
+                    <li><span class="dropdown-item-text text-muted">Seleccione una tabla primero</span></li>
+                </ul>
+            </div>
+            
+            <!-- Chip Fecha -->
+            <div class="dropdown">
+                <button class="chip-filtro" id="chip-fecha" type="button" data-bs-toggle="dropdown">
+                    <i class='bx bx-calendar'></i> <span class="chip-texto">Fecha</span> <i class='bx bx-chevron-down'></i>
+                </button>
+                <div class="dropdown-menu dropdown-menu-dark p-3" style="min-width: 250px;">
+                    <div class="mb-2">
+                        <label class="form-label text-light small">Desde</label>
+                        <input type="date" class="form-control form-control-sm" id="filtro-fecha-desde">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-light small">Hasta</label>
+                        <input type="date" class="form-control form-control-sm" id="filtro-fecha-hasta">
+                    </div>
+                    <button class="btn btn-naranja btn-sm w-100" onclick="aplicarFiltros()">
+                        <i class='bx bx-check'></i> Aplicar
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Chip Lote -->
+            <div class="dropdown">
+                <button class="chip-filtro" id="chip-lote" type="button" data-bs-toggle="dropdown">
+                    <i class='bx bx-layer'></i> <span class="chip-texto">Lote</span> <i class='bx bx-chevron-down'></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-filtro">
+                    <li><a class="dropdown-item" href="#" data-filtro="lote" data-valor="">Todos</a></li>
+                    {% for l in opciones.lotes %}
+                    <li><a class="dropdown-item" href="#" data-filtro="lote" data-valor="{{ l }}">{{ l }}</a></li>
+                    {% endfor %}
+                </ul>
+            </div>
+            
+            <!-- Botones -->
+            <button class="btn btn-naranja btn-sm" onclick="aplicarFiltros()">
+                <i class='bx bx-filter-alt'></i> Aplicar
+            </button>
+            <button class="btn btn-outline-light btn-sm" onclick="limpiarFiltros()">
+                <i class='bx bx-x'></i> Limpiar
+            </button>
+        </div>
+    </div>
+
+    <!-- Tabla -->
+    <div class="card shadow border-0">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-sm table-hover mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Usuario</th>
+                            <th>Tabla</th>
+                            <th>Registro</th>
+                            <th>Campo</th>
+                            <th>Valor Anterior</th>
+                            <th>Valor Nuevo</th>
+                            <th>Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-historial">
+                        {% for c in cambios %}
+                        <tr>
+                            <td>{{ c[3].strftime('%d/%m/%Y %H:%M:%S') if c[3] else '' }}</td>
+                            <td>{{ c[2] }}</td>
+                            <td><span class="badge bg-secondary">{{ c[4] }}</span></td>
+                            <td>
+                                {% if c[10] %}
+                                    Lote {{ c[10] }}, Día {{ c[11] }}
+                                {% elif c[4] == 'primera_semana' %}
+                                    Registro eliminado (ID: {{ c[5] }})
+                                {% else %}
+                                    {{ c[4] }} ID: {{ c[5] }}
+                                {% endif %}
+                            </td>
+                            <td><code>{{ c[6] or '-' }}</code></td>
+                            <td class="text-danger">{{ c[7] or '-' }}</td>
+                            <td class="text-success">{{ c[8] or '-' }}</td>
+                            <td>
+                                {% if c[9] == 'UPDATE' %}
+                                    <span class="badge bg-warning text-dark">ACTUALIZADO</span>
+                                {% elif c[9] == 'INSERT' %}
+                                    <span class="badge bg-success">INSERTADO</span>
+                                {% elif c[9] == 'DELETE' %}
+                                    <span class="badge bg-danger">ELIMINADO</span>
+                                {% elif c[9] == 'IMPORT' %}
+                                    <span class="badge bg-info">IMPORTADO</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="8" class="text-center text-muted py-4">
+                                No hay registros de cambios
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Paginación -->
+    <nav aria-label="Paginación" class="mt-3" id="paginacion" style="display: none;">
+        <ul class="pagination justify-content-center mb-0" id="lista-paginacion">
+            <!-- Se llena dinámicamente con JavaScript -->
+        </ul>
+    </nav>
+</div>
+
+<script id="opciones-filtros" type="application/json">
+    {{ opciones | tojson | safe }}
+</script>
+<script>
+    const API_URL = "{{ url_for('main.api_auditoria_filtrar') }}";
+    const API_OPCIONES = "{{ url_for('main.api_auditoria_opciones') }}";
+    
+    let filtrosActuales = {
+        usuario: '',
+        tabla: '',
+        accion: '',
+        campo: '',
+        fecha_desde: '',
+        fecha_hasta: '',
+        lote: ''
+    };
+    
+    // Opciones cargadas desde el template
+    const opcionesFiltros = JSON.parse(document.getElementById('opciones-filtros').textContent || '{}');
+    
+    const API_CAMPOS = "{{ url_for('main.api_auditoria_campos') }}";
+
+    // Función para cargar campos de una tabla
+    async function cargarCampos(tabla) {
+        const dropdownCampo = document.getElementById('dropdown-campo');
+        const chipCampo = document.getElementById('chip-campo');
+
+        if (!tabla) {
+            chipCampo.classList.add('disabled');
+            chipCampo.setAttribute('disabled', 'disabled');
+            chipCampo.setAttribute('title', 'Seleccione una tabla primero');
+            dropdownCampo.innerHTML = '<li><span class="dropdown-item-text text-muted">Seleccione una tabla primero</span></li>';
+            return;
+        }
+
+        chipCampo.classList.remove('disabled');
+        chipCampo.removeAttribute('disabled');
+        chipCampo.setAttribute('title', 'Filtrar por campo');
+
+        try {
+            const response = await fetch(`${API_CAMPOS}?tabla=${encodeURIComponent(tabla)}`, {
+                credentials: 'same-origin'
+            });
+            const data = await response.json();
+
+            if (data.status === 'ok') {
+                let html = '<li><a class="dropdown-item" href="#" data-filtro="campo" data-valor="">Todos</a></li>';
+                data.campos.forEach(c => {
+                    html += `<li><a class="dropdown-item" href="#" data-filtro="campo" data-valor="${c}">${c}</a></li>`;
+                });
+                dropdownCampo.innerHTML = html;
+
+                dropdownCampo.querySelectorAll('[data-filtro="campo"]').forEach(item => {
+                    item.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        filtrosActuales.campo = this.dataset.valor;
+                        actualizarChips();
+                    });
+                });
+            }
+        } catch (err) {
+            console.error('Error cargando campos:', err);
+        }
+    }
+
+    // Cargar opciones de filtros al iniciar
+    document.addEventListener('DOMContentLoaded', function() {
+        // Manejar clicks en items de dropdown
+        document.querySelectorAll('[data-filtro]').forEach(item => {
+            item.addEventListener('click', function(e) {
+                e.preventDefault();
+                const filtro = this.dataset.filtro;
+                const valor = this.dataset.valor;
+                filtrosActuales[filtro] = valor;
+                actualizarChips();
+            });
+        });
+
+        // Listener especial para el filtro "tabla" (cascada)
+        document.querySelectorAll('[data-filtro="tabla"]').forEach(item => {
+            item.addEventListener('click', function(e) {
+                e.preventDefault();
+                const valor = this.dataset.valor;
+                filtrosActuales.tabla = valor;
+                filtrosActuales.campo = '';
+                actualizarChips();
+                cargarCampos(valor);
+            });
+        });
+    });
+    
+    function actualizarChips() {
+        // Definir configuración de chips
+        const chips = [
+            { id: 'chip-usuario', filtro: 'usuario', nombre: 'Usuario', icono: 'bx-user' },
+            { id: 'chip-tabla', filtro: 'tabla', nombre: 'Tabla', icono: 'bx-table' },
+            { id: 'chip-accion', filtro: 'accion', nombre: 'Acción', icono: 'bx-check' },
+            { id: 'chip-campo', filtro: 'campo', nombre: 'Campo', icono: 'bx-list-ul' },
+            { id: 'chip-fecha', filtro: 'fecha', nombre: 'Fecha', icono: 'bx-calendar' },
+            { id: 'chip-lote', filtro: 'lote', nombre: 'Lote', icono: 'bx-layer' }
+        ];
+        
+        chips.forEach(chip => {
+            const chipEl = document.getElementById(chip.id);
+            const textoEl = chipEl.querySelector('.chip-texto');
+            const iconoEl = chipEl.querySelector('.bx:not(.bx-chevron-down)');
+            
+            // Verificar si hay valor seleccionado
+            let valor = '';
+            if (chip.filtro === 'fecha') {
+                const desde = document.getElementById('filtro-fecha-desde').value;
+                const hasta = document.getElementById('filtro-fecha-hasta').value;
+                if (desde || hasta) {
+                    valor = desde && hasta ? `${desde} - ${hasta}` : (desde || hasta);
+                }
+            } else {
+                valor = filtrosActuales[chip.filtro];
+            }
+            
+            if (valor) {
+                // Chip activo: mostrar valor y X para quitar
+                chipEl.classList.add('activo');
+                
+                // Buscar el nombre para mostrar
+                let textoMostrar = valor;
+                if (chip.filtro === 'usuario') {
+                    const usuario = (opcionesFiltros.usuarios || []).find(u => u.id == valor);
+                    if (usuario) textoMostrar = usuario.nombre.split(' ').slice(0, 2).join(' ');
+                }
+                
+                textoEl.textContent = textoMostrar;
+                
+                // Añadir botón X si no existe
+                if (!chipEl.querySelector('.btn-quitar')) {
+                    const btnQuitar = document.createElement('button');
+                    btnQuitar.className = 'btn-quitar';
+                    btnQuitar.innerHTML = '<i class="bx bx-x"></i>';
+                    btnQuitar.onclick = function(e) {
+                        e.stopPropagation();
+                        quitarFiltro(chip.filtro);
+                    };
+                    chipEl.appendChild(btnQuitar);
+                }
+            } else {
+                // Chip inactivo: mostrar nombre original
+                chipEl.classList.remove('activo');
+                textoEl.textContent = chip.nombre;
+                
+                // Remover botón X si existe
+                const btnQuitar = chipEl.querySelector('.btn-quitar');
+                if (btnQuitar) btnQuitar.remove();
+            }
+        });
+    }
+    
+    function quitarFiltro(filtro) {
+        filtrosActuales[filtro] = '';
+        if (filtro === 'fecha') {
+            document.getElementById('filtro-fecha-desde').value = '';
+            document.getElementById('filtro-fecha-hasta').value = '';
+        }
+        actualizarChips();
+        aplicarFiltros();
+    }
+    
+    function aplicarFiltros() {
+        filtrosActuales.fecha_desde = document.getElementById('filtro-fecha-desde').value;
+        filtrosActuales.fecha_hasta = document.getElementById('filtro-fecha-hasta').value;
+        
+        const params = new URLSearchParams();
+        Object.entries(filtrosActuales).forEach(([key, value]) => {
+            if (value) params.append(key, value);
+        });
+        params.append('pagina', 1);
+        
+        fetch(`${API_URL}?${params}`, {
+            method: 'GET',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' }
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.status === 'ok') {
+                actualizarTabla(data.cambios);
+                actualizarPaginacion(data.pagina, data.total_paginas);
+            }
+        })
+        .catch(err => console.error('Error:', err));
+    }
+    
+    function limpiarFiltros() {
+        filtrosActuales = {
+            usuario: '', tabla: '', accion: '', campo: '',
+            fecha_desde: '', fecha_hasta: '', lote: ''
+        };
+        document.getElementById('filtro-fecha-desde').value = '';
+        document.getElementById('filtro-fecha-hasta').value = '';
+        actualizarChips();
+        aplicarFiltros();
+    }
+    
+    function actualizarTabla(cambios) {
+        const tbody = document.getElementById('tabla-historial');
+        if (cambios.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No hay registros de cambios</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = cambios.map(c => `
+            <tr>
+                <td>${c[3] ? new Date(c[3]).toLocaleString('es-CO') : ''}</td>
+                <td>${c[2]}</td>
+                <td><span class="badge bg-secondary">${c[4]}</span></td>
+                <td>${c[10] ? `Lote ${c[10]}, Día ${c[11]}` : (c[4] === 'primera_semana' ? `Registro eliminado (ID: ${c[5]})` : `${c[4]} ID: ${c[5]}`)}</td>
+                <td><code>${c[6] || '-'}</code></td>
+                <td class="text-danger">${c[7] || '-'}</td>
+                <td class="text-success">${c[8] || '-'}</td>
+                <td>${getBadge(c[9])}</td>
+            </tr>
+        `).join('');
+    }
+    
+    function getBadge(accion) {
+        const badges = {
+            'UPDATE': '<span class="badge bg-warning text-dark">UPDATE</span>',
+            'INSERT': '<span class="badge bg-success">INSERT</span>',
+            'DELETE': '<span class="badge bg-danger">DELETE</span>',
+            'IMPORT': '<span class="badge bg-info">IMPORT</span>'
+        };
+        return badges[accion] || accion;
+    }
+    
+    function actualizarPaginacion(pagina, totalPaginas) {
+        const nav = document.getElementById('paginacion');
+        const lista = document.getElementById('lista-paginacion');
+        
+        if (totalPaginas <= 1) {
+            nav.style.display = 'none';
+            return;
+        }
+        
+        nav.style.display = 'block';
+        let html = '';
+        
+        if (pagina > 1) {
+            html += `<li class="page-item"><a class="page-link" href="#" onclick="irAPagina(${pagina - 1}); return false;">Anterior</a></li>`;
+        }
+        
+        for (let p = 1; p <= totalPaginas; p++) {
+            if (p === pagina) {
+                html += `<li class="page-item active"><span class="page-link">${p}</span></li>`;
+            } else {
+                html += `<li class="page-item"><a class="page-link" href="#" onclick="irAPagina(${p}); return false;">${p}</a></li>`;
+            }
+        }
+        
+        if (pagina < totalPaginas) {
+            html += `<li class="page-item"><a class="page-link" href="#" onclick="irAPagina(${pagina + 1}); return false;">Siguiente</a></li>`;
+        }
+        
+        lista.innerHTML = html;
+    }
+    
+    function irAPagina(pagina) {
+        const params = new URLSearchParams();
+        Object.entries(filtrosActuales).forEach(([key, value]) => {
+            if (value) params.append(key, value);
+        });
+        params.append('pagina', pagina);
+        
+        fetch(`${API_URL}?${params}`, {
+            method: 'GET',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' }
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.status === 'ok') {
+                actualizarTabla(data.cambios);
+                actualizarPaginacion(data.pagina, data.total_paginas);
+            }
+        })
+        .catch(err => console.error('Error:', err));
+    }
+</script>
+{% endblock %}

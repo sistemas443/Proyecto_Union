@@ -1,4 +1,4 @@
-{% extends 'layout.html' %}
+{% extends 'generales/layout.html' %}
 {% block title %}Inicio – Avícola San Martín{% endblock %}
 
 {% block content %}
@@ -137,7 +137,7 @@
       saludo = 'Buenas noches,';
     }
 
-    saludoHora.textContent = `${emoji} ${saludo}`;
+    saludoHora.textContent = saludo;
   }
 
   document.addEventListener("DOMContentLoaded", function () {

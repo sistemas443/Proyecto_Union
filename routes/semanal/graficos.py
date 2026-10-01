@@ -20,7 +20,7 @@ def grafico_general():
         datos_grafico = get_data_grafico_general(lote_seleccionado)
 
     return render_template(
-        'grafico_general.html',
+        'graficas/grafico_general.html',
         lotes=get_lotes_distintos(),
         lote_seleccionado=lote_seleccionado,
         datos_grafico=datos_grafico
@@ -42,7 +42,7 @@ def grafico_conversion():
         datos_grafico = get_data_grafico_conversion(lote_seleccionado)
 
     return render_template(
-        'grafico_conversion.html',
+        'graficas/grafico_conversion.html',
         lotes=get_lotes_distintos(),
         lote_seleccionado=lote_seleccionado,
         datos_grafico=datos_grafico

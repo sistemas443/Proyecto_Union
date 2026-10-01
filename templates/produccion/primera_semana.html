@@ -1,4 +1,4 @@
-{% extends 'layout.html' %}
+{% extends 'generales/layout.html' %}
 {% block title %}1era Semana – Avícola San Martín{% endblock %}
 
 {% block content %}
@@ -35,12 +35,11 @@
     border-bottom: 1px solid #dee2e6;
   }
 
-  /* Animación para que la flecha gire suavemente */
+  /* Icono rotatorio para colapsar */
   .icono-colapso {
     transition: transform 0.3s ease;
   }
 
-  /* Cuando está cerrado, la flecha gira a la derecha */
   .collapsed .icono-colapso {
     transform: rotate(-90deg);
   }
@@ -58,8 +57,7 @@
   <!-- Filtro centrado -->
   <div class="mx-auto">
     <form method="POST" class="d-flex align-items-center gap-2 m-0">
-      <label for="lote" class="mb-0 fw-bold text-light text-nowrap" style="font-size: 0.9rem;">SELECCIONE UN
-        LOTE:</label>
+      <label for="lote" class="mb-0 fw-bold text-light text-nowrap" style="font-size: 0.9rem;">SELECCIONE UN LOTE:</label>
       <select name="lote" id="lote" class="form-select form-select-sm border-0 fw-bold shadow-none"
         style="width: 220px;">
         <option value="">-- Seleccione --</option>
@@ -85,7 +83,6 @@
     title="Clic para ocultar/mostrar">
 
     <span>
-      <!-- La flecha giratoria reemplazó al icono de info -->
       <i class='bx bx-chevron-down fs-5 me-1 icono-colapso'></i>
       Información General del Lote
     </span>
@@ -93,7 +90,6 @@
   </div>
 
   <!-- 2. CONTENEDOR COLAPSABLE -->
-  <!-- Mantiene la tabla abierta por defecto con la clase 'show' -->
   <div class="collapse show" id="collapseInfoGeneral">
     <div class="card-body p-0">
       <table class="table table-bordered table-sm mb-0">
@@ -476,6 +472,37 @@
       if (v !== '' && !isNaN(parseFloat(v)) && parseFloat(v) === 0) {
         input.value = '';
       }
+    });
+  });
+
+  // --- TOGGLE HÍBRIDO CON LOCALSTORAGE ---
+  document.addEventListener("DOMContentLoaded", function () {
+    const headerInfo = document.querySelector('[data-bs-target="#collapseInfoGeneral"]');
+    const collapseInfo = document.getElementById('collapseInfoGeneral');
+    const storageKey = 'infoLote_primera_semana_expandido';
+
+    if (!headerInfo || !collapseInfo) return;
+
+    // Cargar estado desde localStorage al iniciar
+    const estadoGuardado = localStorage.getItem(storageKey);
+    if (estadoGuardado === 'false') {
+      collapseInfo.classList.remove('show');
+      headerInfo.classList.add('collapsed');
+      headerInfo.setAttribute('aria-expanded', 'false');
+    }
+
+    // Guardar estado cuando se muestra
+    headerInfo.addEventListener('shown.bs.collapse', function () {
+      localStorage.setItem(storageKey, 'true');
+      headerInfo.classList.remove('collapsed');
+      headerInfo.setAttribute('aria-expanded', 'true');
+    });
+
+    // Guardar estado cuando se oculta
+    headerInfo.addEventListener('hidden.bs.collapse', function () {
+      localStorage.setItem(storageKey, 'false');
+      headerInfo.classList.add('collapsed');
+      headerInfo.setAttribute('aria-expanded', 'false');
     });
   });
 </script>

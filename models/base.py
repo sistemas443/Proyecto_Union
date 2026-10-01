@@ -1,7 +1,19 @@
 # models/base.py
+import subprocess
 import psycopg2
 import psycopg2.extras
 from config import Config
+
+
+def obtener_hash_git():
+    """Obtiene el hash corto del commit actual de Git."""
+    try:
+        return subprocess.check_output(
+            ['git', 'rev-parse', '--short', 'HEAD'],
+            stderr=subprocess.DEVNULL
+        ).decode('utf-8').strip()
+    except Exception:
+        return 'unknown'
 
 def get_db_connection():
     return psycopg2.connect(

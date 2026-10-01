@@ -3,3 +3,7 @@ env/
 __pycache__/
 *.pyc
 .env
+
+# Archivos de configuración de OpenCode (no subir a producción)
+AGENTS.md
+opencode.json

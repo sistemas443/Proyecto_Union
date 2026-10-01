@@ -1,4 +1,4 @@
-{% extends 'layout.html' %}
+{% extends 'generales/layout.html' %}
 {% block title %}Gráfico Primera Semana – Avícola San Martín{% endblock %}
 {% block content %}
 <style>
@@ -90,8 +90,9 @@
                 name: '-10%',
                 type: 'bar',
                 marker: { color: '#C00000', line: { color: '#FFFFFF', width: 1 } },
-                yaxis: 'y2',
-                hovertemplate: 'Serie "-10%" Punto "%{x}"<br>Valor: %{y:.2f}%<extra></extra>'
+                yaxis: 'y',
+                hovertemplate: '%{fullData.name}: %{y:.2f}<extra></extra>',
+                hoverinfo: 'y'
             },
             {
                 x: etiquetas,
@@ -99,8 +100,9 @@
                 name: 'Uniformidad',
                 type: 'bar',
                 marker: { color: '#CCFFCC', line: { color: '#FFFFFF', width: 1 } },
-                yaxis: 'y2',
-                hovertemplate: 'Serie "Uniformidad" Punto "%{x}"<br>Valor: %{y:.2f}%<extra></extra>'
+                yaxis: 'y',
+                hovertemplate: '%{fullData.name}: %{y:.2f}<extra></extra>',
+                hoverinfo: 'y'
             },
             {
                 x: etiquetas,
@@ -108,8 +110,9 @@
                 name: '10%',
                 type: 'bar',
                 marker: { color: '#FFFFCC', line: { color: '#FFFFFF', width: 1 } },
-                yaxis: 'y2',
-                hovertemplate: 'Serie "10%" Punto "%{x}"<br>Valor: %{y:.2f}%<extra></extra>'
+                yaxis: 'y',
+                hovertemplate: '%{fullData.name}: %{y:.2f}<extra></extra>',
+                hoverinfo: 'y'
             },
             {
                 x: etiquetas,
@@ -120,7 +123,7 @@
                 line: { color: '#000000', width: 3, shape: 'spline' },
                 connectgaps: true,
                 yaxis: 'y2',
-                hovertemplate: 'Serie "Peso tabla" Punto "%{x}"<br>Valor: %{y:.2f}<extra></extra>'
+                hovertemplate: '%{fullData.name}: %{y:.2f}<extra></extra>'
             },
             {
                 x: etiquetas,
@@ -132,7 +135,7 @@
                 marker: { color: '#FF0000', symbol: 'diamond', size: 7 },
                 connectgaps: false,
                 yaxis: 'y2',
-                hovertemplate: 'Serie "Peso real" Punto "%{x}"<br>Valor: %{y:.2f}<extra></extra>'
+                hovertemplate: '%{fullData.name}: %{y:.2f}<extra></extra>'
             },
             {
                 x: etiquetas,
@@ -143,7 +146,7 @@
                 line: { color: '#006100', width: 4, shape: 'spline' },
                 connectgaps: true,
                 yaxis: 'y2',
-                hovertemplate: 'Serie "Consumo acumulado tabla" Punto "%{x}"<br>Valor: %{y:.2f}<extra></extra>'
+                hovertemplate: '%{fullData.name}: %{y:.0f}<extra></extra>'
             },
             {
                 x: etiquetas,
@@ -155,7 +158,7 @@
                 marker: { color: '#9DC3E6', symbol: 'cross-thin', size: 8, line: { width: 1, color: '#9DC3E6' } },
                 connectgaps: false,
                 yaxis: 'y2',
-                hovertemplate: 'Serie "Consumo acum. real" Punto "%{x}"<br>Valor: %{y:.2f}<extra></extra>'
+                hovertemplate: '%{fullData.name}: %{y:.0f}<extra></extra>'
             }
         ];
         const layout = {
@@ -174,39 +177,28 @@
                 showgrid: false
             },
             hovermode: 'closest',
-            hoverlabel: { bgcolor: '#F5F5F0', bordercolor: '#999999', font: { size: 12, color: '#333333' } },
+            hoverlabel: { bgcolor: '#F5F5F0', bordercolor: '#999999', font: { size: 12, color: '#333333', family: 'Arial' } },
             yaxis: {
                 title: { text: 'Porcentaje' },
-                rangemode: 'tozero',
-                autorange: true,
+                range: [0, 100],
                 dtick: 10,
+                tickmode: 'linear',
                 side: 'right',
                 ticksuffix: '%',
                 showgrid: false,
-                zeroline: false,
-                showspikes: true,
-                spikemode: 'toaxis+marker',
-                spikesnap: 'cursor',
-                spikedash: 'dot',
-                spikecolor: '#1a73e8',
-                spikethickness: 1
+                showspikes: false,
+                zeroline: false
             },
             yaxis2: {
                 title: { text: 'Gramos de peso' },
-                rangemode: 'tozero',
-                autorange: true,
+                range: [0, 90],
                 dtick: 10,
                 side: 'left',
                 overlaying: 'y',
                 showgrid: true,
                 gridcolor: '#E5E5E5',
-                zeroline: false,
-                showspikes: true,
-                spikemode: 'toaxis+marker',
-                spikesnap: 'cursor',
-                spikedash: 'dot',
-                spikecolor: '#1a73e8',
-                spikethickness: 1
+                showspikes: false,
+                zeroline: false
             },
             legend: {
                 orientation: 'h',

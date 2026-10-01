@@ -1,4 +1,4 @@
-from flask import request, jsonify
+from flask import request, jsonify, session
 from routes.semanal.vistas import semanal_bp
 from routes.routes import login_requerido, editor_requerido
 from models.semanal.services import update_semanal_field as update_produccion_field
@@ -13,14 +13,25 @@ def actualizar_semanal():
     data = request.get_json(silent=True) or {}
     id_reg, columna, valor = data.get('id'), data.get('columna', '').strip(), data.get('valor', '')
     pantalla = data.get('pantalla', 'produccion')
+    
+    user_id = session.get('user_id')
+    user_nombre = session.get('user_nombre', 'Desconocido')
 
     if not id_reg or not columna:
         return jsonify({'status': 'error', 'msg': 'Parámetros incompletos'}), 400
     try:
         if pantalla == 'levante':
-            ok, campos_actualizados, msg = update_levante_field(int(id_reg), columna, valor)
+            ok, campos_actualizados, msg = update_levante_field(
+                int(id_reg), columna, valor,
+                usuario_id=user_id,
+                usuario_nombre=user_nombre
+            )
         else:
-            ok, campos_actualizados, msg = update_produccion_field(int(id_reg), columna, valor)
+            ok, campos_actualizados, msg = update_produccion_field(
+                int(id_reg), columna, valor,
+                usuario_id=user_id,
+                usuario_nombre=user_nombre
+            )
 
         if ok:
             return jsonify({'status': 'ok', 'updated_data': campos_actualizados})
