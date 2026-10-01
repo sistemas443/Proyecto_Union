@@ -39,6 +39,22 @@ def modificar_fecha_receta():
 from models.planta_alimentos.formulas import FormulaDetalle, FormulaProduccion
 # Asegúrate de que MateriaPrima y CatalogoAlimento estén importados arriba
 
+from flask import request, flash, redirect, url_for, render_template
+
+def parse_float(val_str, default=0.0):
+    if not val_str:
+        return default
+    val_str = str(val_str).strip()
+    if ',' in val_str and '.' in val_str:
+        val_str = val_str.replace('.', '').replace(',', '.')
+    else:
+        val_str = val_str.replace(',', '.')
+    try:
+        return float(val_str)
+    except ValueError:
+        return default
+
+
 @planta_bp.route('/planta_alimentos/editar-receta/<int:item_id>/<string:lote_id>', methods=['GET', 'POST'])
 @login_requerido
 def editar_receta(item_id, lote_id):
@@ -48,162 +64,88 @@ def editar_receta(item_id, lote_id):
     lotes = get_todos_los_lotes()
     materias_primas = MateriaPrima.get_all()
 
-    # 1. Obtener la versión seleccionada en la URL (si no viene, será None)
+    empresas = []
+    try:
+        conn = get_db_connection()
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, nombre FROM empresas ORDER BY nombre ASC;")
+            empresas = cur.fetchall()
+        conn.close()
+    except Exception as e:
+        print(f"Error al cargar empresas: {e}")
+
+    # Manejo de Versiones
     version_solicitada = request.args.get('version', type=int)
-    
-    # 2. Consultar las versiones existentes
     info_versiones = FormulaDetalle.obtener_info_versiones(item_id, lote_id)
     lista_versiones = [v['version'] for v in info_versiones]
     ultima_version_existente = max(lista_versiones) if lista_versiones else 1
     
-    # 3. Determinar qué versión vamos a mostrar en pantalla
     version_actual = version_solicitada if version_solicitada else ultima_version_existente
     es_ultima_version = (version_actual == ultima_version_existente)
-    
-    # 4. Obtener la fecha de vencimiento de la versión actual
     fecha_vencimiento = next((v['fecha_vencimiento'] for v in info_versiones if v['version'] == version_actual), '')
 
     # ==========================================
-    # 3. PROCESAMIENTO DE FORMULARIOS (POST)
+    # 1. PROCESAMIENTO DE FORMULARIOS (POST)
     # ==========================================
     if request.method == 'POST':
-        
-        # --- CASO A: GUARDAR PRODUCCIÓN DIARIA (CUADRO VERDE) ---
-        if 'guardar_produccion' in request.form:
-            fecha = request.form.get('fecha')
-            
-            # Manejo seguro del número de toneladas
-            toneladas_raw = request.form.get('toneladas', '0').strip()
-            if ',' in toneladas_raw and '.' in toneladas_raw:
-                toneladas_raw = toneladas_raw.replace('.', '').replace(',', '.')
-            else:
-                toneladas_raw = toneladas_raw.replace(',', '.')
-                
-            try:
-                toneladas = float(toneladas_raw) if toneladas_raw else 0.0
-            except ValueError:
-                toneladas = 0.0
+        print(f"--- DATOS RECIBIDOS EN POST: {request.form} ---")
 
+        # --- CASO A: GUARDAR PRODUCCIÓN DIARIA ---
+        if 'guardar_produccion' in request.form or request.form.get('fecha'):
+            fecha = request.form.get('fecha')
+            toneladas = parse_float(request.form.get('toneladas'))
             novedad = request.form.get('novedad', '')
 
+            es_venta = request.form.get('es_venta') == '1'
+            empresa_cliente = request.form.get('empresa_cliente', '').strip() if es_venta else None
+            remision = request.form.get('remision', '').strip() if es_venta else None
+            cal_kg = parse_float(request.form.get('cal_kg')) if es_venta else 0
+            calcio_kg = parse_float(request.form.get('calcio_kg')) if es_venta else 0
+
             if fecha and toneladas > 0:
-                # 1. Guardar producción por día
-                FormulaProduccion.registrar_produccion(item_id, lote_id, fecha, toneladas, novedad, version_actual)
-                
-                # 2. DESCUENTO AUTOMÁTICO DE INVENTARIO (KÁRDEX)
                 try:
-                    receta_base = FormulaDetalle.obtener_receta(item_id, lote_id, version_actual)
+                    # Guardar Producción por Día (incluye descuento de receta base + CAL/CALCIO en modelo)
+                    exito = FormulaProduccion.registrar_produccion(
+                        item_id, lote_id, fecha, toneladas, novedad, version_actual,
+                        es_venta, empresa_cliente, remision, cal_kg, calcio_kg
+                    )
                     
-                    conn = get_db_connection()
-                    cursor = conn.cursor()
-                    
-                    for insumo in receta_base:
-                        item = dict(insumo)
-                        mp_id = item.get('materia_prima_id') or item.get('id_materia_prima')
-                        cant_kg = float(item.get('cantidad_kg') or 0)
-                        
-                        if mp_id is not None and cant_kg > 0:
-                            gramos_descontar = (toneladas * cant_kg) * 1000
-                            
-                            cursor.execute("""
-                                INSERT INTO movimientos_inventario 
-                                (materia_prima_id, tipo_movimiento, cantidad, fecha, observacion)
-                                VALUES (%s, 'SALIDA_PRODUCCION', %s, %s, %s);
-                            """, (mp_id, gramos_descontar, fecha, f"Producción Dieta {item_id} | Lote {lote_id} | {toneladas} Ton"))
-                            
-                    conn.commit()
-                    cursor.close()
-                    conn.close()
-                    flash('Producción registrada y descontada del inventario correctamente.', 'success')
+                    if exito:
+                        flash('Producción registrada y descontada del inventario correctamente.', 'success')
+                    else:
+                        flash('Error al guardar la producción.', 'danger')
                 except Exception as e:
-                    print(f"Error detallado al descontar Kárdex: {e}")
-                    flash(f'Se guardó la producción pero falló el Kárdex: {str(e)}', 'warning')
+                    print(f"Error al registrar producción/kárdex: {e}")
+                    flash(f'Error al guardar la producción: {str(e)}', 'danger')
             else:
                 flash('Por favor ingrese una fecha válida y una cantidad de toneladas mayor a 0.', 'warning')
 
             return redirect(url_for('planta_alimentos.editar_receta', item_id=item_id, lote_id=lote_id, version=version_actual))
 
-        # --- CASO B: AGREGAR INSUMO / MATERIA PRIMA A LA RECETA (MODAL INSUMO +) ---
-        materia_prima_id = request.form.get('materia_prima_id') or request.form.get('materia_prima') or request.form.get('insumo_id')
-        
-        # Limpieza segura de Kg / Bache
-        cantidad_raw = request.form.get('cantidad_kg', '0').strip()
-        if ',' in cantidad_raw and '.' in cantidad_raw:
-            cantidad_raw = cantidad_raw.replace('.', '').replace(',', '.')
-        else:
-            cantidad_raw = cantidad_raw.replace(',', '.')
-            
-        try:
-            cantidad_kg = float(cantidad_raw) if cantidad_raw else 0.0
-        except ValueError:
-            cantidad_kg = 0.0
+        # --- CASO B: AGREGAR INSUMO / MATERIA PRIMA ---
+        elif 'materia_prima_id' in request.form or 'materia_prima' in request.form or 'insumo_id' in request.form:
+            materia_prima_id = request.form.get('materia_prima_id') or request.form.get('materia_prima') or request.form.get('insumo_id')
+            cantidad_kg = parse_float(request.form.get('cantidad_kg'))
 
-        if materia_prima_id and cantidad_kg > 0:
-            exito = FormulaDetalle.agregar_insumo(item_id, lote_id, materia_prima_id, cantidad_kg, version_actual)
-            if exito:
-                flash('Insumo agregado a la receta exitosamente.', 'success')
+            if materia_prima_id and cantidad_kg > 0:
+                exito = FormulaDetalle.agregar_insumo(item_id, lote_id, materia_prima_id, cantidad_kg, version_actual)
+                if exito:
+                    flash('Insumo agregado a la receta exitosamente.', 'success')
+                else:
+                    flash('Error al guardar el insumo en la base de datos.', 'danger')
             else:
-                flash('Error al guardar el insumo en la base de datos.', 'danger')
-        else:
-            flash('Por favor seleccione una materia prima y especifique una cantidad mayor a 0 Kg.', 'warning')
+                flash('Por favor seleccione una materia prima y especifique una cantidad mayor a 0 Kg.', 'warning')
 
-        return redirect(url_for('planta_alimentos.editar_receta', item_id=item_id, lote_id=lote_id, version=version_actual))
+            return redirect(url_for('planta_alimentos.editar_receta', item_id=item_id, lote_id=lote_id, version=version_actual))
 
     # ==========================================
-    # 4. CARGA DE DATOS PARA UN LOTE ESPECÍFICO (GET)
+    # 2. CARGA DE DATOS PARA VISTA (GET)
     # ==========================================
     insumos_receta = FormulaDetalle.obtener_receta(item_id, lote_id, version_actual)
     resumen_totales = FormulaDetalle.obtener_resumen_totales(item_id, lote_id, version_actual)
     registros_produccion = FormulaProduccion.obtener_produccion_por_lote(item_id, lote_id, version_actual)
     total_toneladas_lote = float(sum([r['toneladas'] for r in registros_produccion])) if registros_produccion else 0.0
 
-    receta_calculada = []
-    for insumo in insumos_receta:
-        cant_kg = float(insumo['cantidad_kg']) if insumo['cantidad_kg'] else 0.0
-        consumos_diarios = [cant_kg * float(reg['toneladas']) for reg in registros_produccion]
-        
-        receta_calculada.append({
-            'id': insumo['id'],
-            'insumo': insumo['insumo'],
-            'cantidad_kg': cant_kg,
-            'consumos_diarios': consumos_diarios,
-            'total_consumo_kg': cant_kg * total_toneladas_lote,
-            'es_nucleo': insumo.get('es_nucleo', True) if dict(insumo).get('es_nucleo') is not None else True,
-            'baches_nucleo': float(insumo.get('baches_nucleo', 6)) if dict(insumo).get('baches_nucleo') is not None else 6.0
-        })
-
-    insumos_nucleo = [i for i in receta_calculada if i['es_nucleo']]
-
-    return render_template(
-        '/planta_alimentos/editar_receta.html',
-        item_id=item_id,
-        lote_id=lote_id,
-        version_actual=version_actual,
-        lista_versiones=lista_versiones,
-        es_ultima_version=es_ultima_version,
-        fecha_vencimiento=fecha_vencimiento,
-        insumos_receta=receta_calculada,
-        totales=resumen_totales,
-        materias_primas=materias_primas,  
-        lotes=lotes,                      
-        registros_produccion=registros_produccion,
-        total_toneladas=total_toneladas_lote,
-        insumos_nucleo=insumos_nucleo
-    )
-
-    # ==========================================
-    # 4. CARGA DE DATOS PARA UN LOTE ESPECÍFICO (GET)
-    # ==========================================
-    
-    # [!] MUY IMPORTANTE: Ahora estas funciones reciben version_actual para no mezclar recetas viejas con nuevas
-    insumos_receta = FormulaDetalle.obtener_receta(item_id, lote_id, version_actual)
-    resumen_totales = FormulaDetalle.obtener_resumen_totales(item_id, lote_id, version_actual)
-    
-    # Registros de Producción por Día filtrados por versión
-    registros_produccion = FormulaProduccion.obtener_produccion_por_lote(item_id, lote_id, version_actual)
-    total_toneladas_lote = float(sum([r['toneladas'] for r in registros_produccion])) if registros_produccion else 0.0
-
-    # Cálculo dinámico de Consumo Total por Materia Prima y Núcleos
     receta_calculada = []
     for insumo in insumos_receta:
         cant_kg = float(insumo['cantidad_kg']) if insumo['cantidad_kg'] else 0.0
@@ -225,26 +167,22 @@ def editar_receta(item_id, lote_id):
 
     insumos_nucleo = [i for i in receta_calculada if i['es_nucleo']]
 
-    # ==========================================
-    # 5. RETORNO FINAL CON TODAS LAS VARIABLES
-    # ==========================================
     return render_template(
-        '/planta_alimentos/editar_receta.html',
+        'planta_alimentos/editar_receta.html',
         item_id=item_id,
         lote_id=lote_id,
         version_actual=version_actual,
         lista_versiones=lista_versiones,
         es_ultima_version=es_ultima_version,
         fecha_vencimiento=fecha_vencimiento,
-        
-        # Aquí van todas las variables de tu tabla y producción
         insumos_receta=receta_calculada,
         totales=resumen_totales,
         materias_primas=materias_primas,  
         lotes=lotes,                      
         registros_produccion=registros_produccion,
         total_toneladas=total_toneladas_lote,
-        insumos_nucleo=insumos_nucleo
+        insumos_nucleo=insumos_nucleo,
+        empresas=empresas
     )
     
     
@@ -267,14 +205,20 @@ def actualizar_baches_nucleo(id_registro):
 def actualizar_produccion_diaria(id_registro):
     item_id = request.form.get('item_id')
     lote_id = request.form.get('lote_id')
-    toneladas = request.form.get('toneladas')
+    toneladas = parse_float(request.form.get('toneladas'))
     novedad = request.form.get('novedad', '')
-    FormulaProduccion.actualizar_produccion(id_registro, toneladas, novedad)
+    cal_kg = parse_float(request.form.get('cal_kg'))
+    calcio_kg = parse_float(request.form.get('calcio_kg'))
+
     try:
-        toneladas = float(toneladas_raw) if toneladas_raw else 0.0
         if toneladas > 0:
-            FormulaProduccion.actualizar_produccion(id_registro, toneladas)
-            flash('Toneladas actualizadas correctamente.', 'success')
+            exito = FormulaProduccion.actualizar_produccion(
+                id_registro, toneladas, novedad, cal_kg, calcio_kg
+            )
+            if exito:
+                flash('Producción actualizada correctamente.', 'success')
+            else:
+                flash('Error al actualizar la producción.', 'danger')
         else:
             flash('Las toneladas deben ser mayor a cero.', 'warning')
     except Exception as e:
@@ -465,4 +409,7 @@ def reabrir_mes():
             flash(f'Error al reabrir el mes: {mensaje}', 'danger')
             
     return redirect(url_for('planta_alimentos.resumen_inventario', mes=mes, anio=anio))
+
+
+
 
