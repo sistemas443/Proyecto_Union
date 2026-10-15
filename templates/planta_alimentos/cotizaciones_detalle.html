@@ -1,0 +1,2470 @@
+{% extends 'generales/layout.html' %}
+
+{% block extra_css %}
+<style>
+/* ========== COTIZACIÓN GRID - ESTILOS MEJORADOS ========== */
+
+:root {
+    --color-best: #198754;
+    --color-worst: #dc3545;
+    --color-warning: #ffc107;
+    --color-info: #0dcaf0;
+    --color-historical: #6f42c1;
+    --bg-row-even: #f8f9fa;
+    --bg-row-odd: #ffffff;
+    --bg-hover: #eef5ff;
+    --bg-editing: #fffbe6;
+    --border-color: #dee2e6;
+    --shadow-input: 0 0 0 0.15rem rgba(13, 110, 253, 0.25);
+}
+
+#tablaCotizacion {
+    border-collapse: separate;
+    border-spacing: 0;
+    width: 100%;
+}
+
+#tablaCotizacion thead th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
+    border-bottom: 2px solid var(--border-color);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #495057;
+    font-weight: 600;
+    white-space: nowrap;
+    padding: 0.5rem 0.25rem;
+}
+
+#tablaCotizacion thead th:first-child {
+    left: 0;
+    z-index: 20;
+    box-shadow: 2px 0 4px -2px rgba(0,0,0,0.1);
+}
+
+#tablaCotizacion thead th:nth-child(2) {
+    left: 200px;
+    z-index: 15;
+    box-shadow: 2px 0 4px -2px rgba(0,0,0,0.1);
+}
+
+.producto-header {
+    background: linear-gradient(90deg, #f1f3f5 0%, #e9ecef 100%) !important;
+    border-top: 2px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.producto-header td {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #343a40;
+    padding: 0.5rem 0.75rem;
+}
+
+.producto-header td:first-child {
+    border-left: 3px solid var(--color-info);
+    position: sticky;
+    left: 0;
+    z-index: 5;
+    background: inherit;
+}
+
+.proveedor-row {
+    transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.proveedor-row:nth-child(even) {
+    background-color: var(--bg-row-even);
+}
+
+.proveedor-row:nth-child(odd) {
+    background-color: var(--bg-row-odd);
+}
+
+.proveedor-row:hover {
+    background-color: var(--bg-hover) !important;
+    box-shadow: inset 3px 0 0 var(--color-info);
+}
+
+.proveedor-row.editing {
+    background-color: var(--bg-editing) !important;
+}
+
+.proveedor-row td:first-child,
+.proveedor-row td:nth-child(2) {
+    position: sticky;
+    background: inherit;
+    z-index: 2;
+}
+
+.proveedor-row td:first-child {
+    left: 0;
+    border-left: 3px solid transparent;
+    font-weight: 500;
+    font-size: 0.75rem;
+}
+
+.proveedor-row td:nth-child(2) {
+    left: 200px;
+    font-size: 0.75rem;
+    color: #6c757d;
+    min-width: 120px;
+}
+
+.proveedor-row.best-row td:first-child {
+    border-left-color: var(--color-best);
+}
+
+.proveedor-row.best-row td:nth-child(2) {
+    border-left-color: var(--color-best);
+}
+
+/* Inputs de precio */
+.precio-input {
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    transition: all 0.15s ease;
+    background: #fff;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.precio-input:focus {
+    outline: none;
+    border-color: #86b7fe;
+    box-shadow: var(--shadow-input);
+    background: #fff;
+    z-index: 5;
+    position: relative;
+}
+
+.precio-input.has-value {
+    background: #f8fff8;
+}
+
+.precio-input.has-value:focus {
+    background: #fff;
+}
+
+.precio-input.changed {
+    border-color: var(--color-warning);
+    background: #fffef5;
+}
+
+.precio-input.best-week {
+    background: #e8f8ee !important;
+    border-color: var(--color-best);
+}
+
+.precio-input.worst-week {
+    background: #fdeaea !important;
+    border-color: var(--color-worst);
+}
+
+/* Validación visual */
+.precio-input.is-valid {
+    border-color: #198754 !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3e%3cpath fill='%23198754' d='M2.3 6.73L.6 4.53c-.4-1.04.46-1.4 1.1-.8l1.1 1.4 3.4-3.8c.6-.63 1.6-.27 1.2.7l-4 4.6c-.43.5-.8.4-1.1.1z'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 0.5rem center;
+    background-size: 1rem 1rem;
+    border-color: #198754 !important;
+}
+
+.precio-input.is-invalid {
+    border-color: #dc3545 !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath stroke-linejoin='round' d='M5.8 3.6h.4L6 6.5z'/%3e%3ccircle cx='6' cy='8.2' r='.6' fill='%23dc3545' stroke='none'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 0.5rem center;
+    background-size: 1rem 1rem;
+    border-color: #dc3545 !important;
+}
+
+.precio-input.is-invalid:focus {
+    box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25) !important;
+}
+
+.precio-input.is-valid:focus {
+    box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.25) !important;
+}
+
+/* Celdas de promedio */
+.promedio-cell {
+    font-variant-numeric: tabular-nums;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+}
+
+.promedio-cell.best-avg {
+    color: var(--color-best);
+    font-weight: 600;
+}
+
+.promedio-cell.worst-avg {
+    color: var(--color-worst);
+}
+
+/* MEJOR consolidado */
+.mejor-consolidado {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    min-height: 48px;
+}
+
+.mejor-historico,
+.mejor-actual {
+    display: none;
+    animation: fadeIn 0.3s ease;
+}
+
+.mejor-historico.visible,
+.mejor-actual.visible {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.mejor-actual .mejor-proveedor {
+    font-size: 0.75rem;
+}
+
+.mejor-actual .mejor-precio {
+    font-size: 0.7rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.mejor-historico {
+    font-size: 0.65rem;
+    line-height: 1.3;
+}
+
+.mejor-historico .text-success {
+    font-variant-numeric: tabular-nums;
+}
+
+/* Badges de semana */
+.semana-badge {
+    display: inline-block;
+    min-width: 1.5rem;
+    text-align: center;
+    font-size: 0.6rem;
+    font-weight: 600;
+    border-radius: 3px;
+    padding: 1px 4px;
+}
+
+.semana-badge.best-week {
+    background: var(--color-best);
+    color: white;
+}
+
+.semana-badge.worst-week {
+    background: var(--color-worst);
+    color: white;
+}
+
+/* Loading skeleton */
+.skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 4px;
+}
+
+@keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* Scrollbar personalizada */
+.table-responsive::-webkit-scrollbar {
+    height: 8px;
+}
+
+.table-responsive::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb:hover {
+    background: #a1a1a1;
+}
+
+/* Responsive */
+@media (max-width: 992px) {
+    #tablaCotizacion thead th:nth-child(2),
+    .proveedor-row td:nth-child(2) {
+        left: 180px;
+    }
+}
+
+/* Focus visible para accesibilidad */
+.precio-input:focus-visible,
+button:focus-visible,
+a:focus-visible {
+    outline: 2px solid #0d6efd;
+    outline-offset: 2px;
+}
+
+/* Indicador de cambio no guardado */
+.unsaved-indicator {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--color-warning);
+    margin-left: 4px;
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* ========== ESTADO SEMANAS - BADGES VISUALES ========== */
+.estado-celda {
+    vertical-align: middle !important;
+}
+
+.estado-semanas {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 2px;
+    min-height: 20px;
+}
+
+.semana-badge-container {
+    display: none;
+}
+
+.semana-badge-container.visible {
+    display: inline-block;
+    animation: popIn 0.2s ease;
+}
+
+@keyframes popIn {
+    0% { transform: scale(0.5); opacity: 0; }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.semana-badge-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+}
+
+.semana-badge-pill.best {
+    background: linear-gradient(135deg, #198754 0%, #157347 100%);
+    color: white;
+}
+
+.semana-badge-pill.worst {
+    background: linear-gradient(135deg, #dc3545 0%, #bb2d3b 100%);
+    color: white;
+}
+
+.semana-badge-pill.best .semana-num {
+    background: rgba(255,255,255,0.2);
+    padding: 1px 5px;
+    border-radius: 8px;
+    font-size: 0.55rem;
+}
+
+.semana-badge-pill.worst .semana-num {
+    background: rgba(255,255,255,0.2);
+    padding: 1px 5px;
+    border-radius: 8px;
+    font-size: 0.55rem;
+}
+
+/* Input mejorado */
+.precio-input.editing {
+    background: #fffef5 !important;
+    border-color: #ffc107 !important;
+    box-shadow: 0 0 0 3px rgba(255,193,7,0.2) !important;
+    z-index: 10;
+    position: relative;
+}
+
+/* Resaltado de columna de semana */
+.semana-col-resaltada .precio-input {
+    background: #f0f7ff !important;
+    border-color: #0d6efd !important;
+}
+
+.semana-col-resaltada .precio-input:not(:focus) {
+    box-shadow: 0 0 0 2px rgba(13,110,253,0.15) !important;
+}
+
+/* Fila resaltada */
+.proveedor-row.editing-row {
+    background: #fffef5 !important;
+}
+
+.proveedor-row.best-row td:first-child,
+.proveedor-row.best-row td:nth-child(2) {
+    border-left-color: var(--color-best);
+    background: #f0fff4;
+}
+
+/* Responsive para nueva columna */
+@media (max-width: 992px) {
+    #tablaCotizacion thead th:nth-child(2),
+    .proveedor-row td:nth-child(2) {
+        left: 180px;
+    }
+    
+    #tablaCotizacion thead th:last-child,
+    .proveedor-row td:last-child {
+        min-width: 80px;
+    }
+}
+
+/* Print styles */
+@media print {
+    .card-header, .btn, .form-check, #resumenRapido {
+        display: none !important;
+    }
+    .table-responsive {
+        max-height: none !important;
+        overflow: visible !important;
+    }
+    #tablaCotizacion thead th,
+    #tablaConsolidado thead th {
+        position: static !important;
+    }
+    .consolidado-row td:first-child,
+    .consolidado-row td:nth-child(2),
+    .proveedor-row td:first-child,
+    .proveedor-row td:nth-child(2) {
+        position: static !important;
+    }
+    .semana-badge-pill {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+}
+
+/* ========== TABLA 2: CONSOLIDADO MEJOR PRECIO ========== */
+#tablaConsolidado {
+    border-collapse: separate;
+    border-spacing: 0;
+    width: 100%;
+}
+
+#tablaConsolidado thead th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: linear-gradient(180deg, #fff3cd 0%, #ffeeba 100%);
+    border-bottom: 2px solid #ffc107;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #856404;
+    font-weight: 600;
+    white-space: nowrap;
+    padding: 0.5rem 0.25rem;
+}
+
+#tablaConsolidado thead th:first-child {
+    left: 0;
+    z-index: 20;
+    box-shadow: 2px 0 4px -2px rgba(0,0,0,0.1);
+}
+
+#tablaConsolidado thead th:nth-child(2) {
+    left: 200px;
+    z-index: 15;
+    box-shadow: 2px 0 4px -2px rgba(0,0,0,0.1);
+}
+
+.consolidado-row {
+    transition: background-color 0.15s ease;
+}
+
+.consolidado-row.even {
+    background-color: #fffdf5;
+}
+
+.consolidado-row.odd {
+    background-color: #ffffff;
+}
+
+.consolidado-row:hover {
+    background-color: #fff8e1 !important;
+    box-shadow: inset 3px 0 0 #ffc107;
+}
+
+.consolidado-row td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 5;
+    background: inherit;
+    border-left: 3px solid #ffc107;
+    font-weight: 600;
+    font-size: 0.8rem;
+}
+
+.consolidado-row td:nth-child(2) {
+    position: sticky;
+    left: 200px;
+    z-index: 4;
+    background: inherit;
+    font-size: 0.75rem;
+    min-width: 150px;
+}
+
+/* Ahorro badge */
+.badge.bg-success .fas.fa-arrow-down,
+.badge.bg-danger .fas.fa-arrow-up {
+    font-size: 0.55rem;
+}
+
+/* Total row */
+#tablaConsolidado tbody tr.table-active {
+    background: linear-gradient(90deg, #fff8e1 0%, #fff3cd 100%) !important;
+    border-top: 2px solid #ffc107;
+}
+
+#tablaConsolidado tbody tr.table-active td {
+    font-size: 0.8rem;
+}
+
+/* Responsive para tabla consolidado */
+@media (max-width: 992px) {
+    #tablaConsolidado thead th:nth-child(2),
+    .consolidado-row td:nth-child(2) {
+        left: 180px;
+    }
+}
+
+/* Animación de entrada para filas */
+.consolidado-row {
+    animation: fadeInRow 0.3s ease forwards;
+    opacity: 0;
+    transform: translateY(10px);
+}
+
+.consolidado-row:nth-child(1) { animation-delay: 0.05s; }
+.consolidado-row:nth-child(2) { animation-delay: 0.1s; }
+.consolidado-row:nth-child(3) { animation-delay: 0.15s; }
+.consolidado-row:nth-child(4) { animation-delay: 0.2s; }
+.consolidado-row:nth-child(5) { animation-delay: 0.25s; }
+.consolidado-row:nth-child(6) { animation-delay: 0.3s; }
+.consolidado-row:nth-child(7) { animation-delay: 0.35s; }
+.consolidado-row:nth-child(8) { animation-delay: 0.4s; }
+.consolidado-row:nth-child(9) { animation-delay: 0.45s; }
+.consolidado-row:nth-child(10) { animation-delay: 0.5s; }
+
+@keyframes fadeInRow {
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Mejoras de espaciado vertical y transiciones */
+section.mb-4 {
+    margin-bottom: 1.5rem !important;
+}
+
+section.mb-4:last-child {
+    margin-bottom: 0 !important;
+}
+
+/* Transición suave para collapse */
+#collapseConsolidado {
+    transition: height 0.3s ease, opacity 0.3s ease;
+}
+
+#collapseConsolidado.collapsing {
+    min-height: 0;
+}
+
+/* Espaciado entre secciones */
+section[aria-labelledby="tabla1-title"],
+section[aria-labelledby="tabla2-title"] {
+    margin-bottom: 1.5rem;
+}
+
+/* ============================================================
+     LAYOUT & CENTERING IMPROVEMENTS
+     ============================================================ */
+
+    /* Contenedor principal centrado con max-width controlado */
+    .container-fluid.mt-4 {
+        max-width: 100%;
+        padding-left: 1.5rem;
+        padding-right: 1.5rem;
+    }
+
+    /* Wrapper para centrar contenido en pantallas ultra-anchas */
+    @media (min-width: 1400px) {
+        .container-fluid.mt-4 {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding-left: 2rem;
+            padding-right: 2rem;
+        }
+    }
+
+    /* Distribución vertical equilibrada */
+    .container-fluid.mt-4 > * {
+        margin-bottom: 1rem;
+    }
+
+    .container-fluid.mt-4 > .row:first-child {
+        margin-bottom: 1.5rem;
+    }
+
+    .container-fluid.mt-4 > .row.g-2 {
+        margin-bottom: 1rem;
+    }
+
+    .container-fluid.mt-4 > .card {
+        margin-bottom: 1rem;
+    }
+
+    /* Secciones con mejor distribución */
+    section[aria-labelledby="tabla1-title"],
+    section[aria-labelledby="tabla2-title"] {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+    }
+
+    section[aria-labelledby="tabla1-title"] > .card,
+    section[aria-labelledby="tabla2-title"] > .card {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+
+    section[aria-labelledby="tabla1-title"] > .card .card-body {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+    }
+
+    /* Tabla 1 - Grid de Captura */
+    section[aria-labelledby="tabla1-title"] .table-responsive {
+        flex: 1;
+        min-height: 0;
+        overflow: auto;
+    }
+
+    section[aria-labelledby="tabla1-title"] .card {
+        min-height: 500px;
+        max-height: calc(100vh - 300px);
+    }
+
+    section[aria-labelledby="tabla1-title"] .card-body {
+        overflow: hidden;
+    }
+
+    /* Tabla 2 - Consolidado */
+    section[aria-labelledby="tabla2-title"] .card {
+        max-height: 50vh;
+    }
+
+    section[aria-labelledby="tabla2-title"] .table-responsive {
+        max-height: 50vh;
+        overflow: auto;
+    }
+
+    /* Distribución en pantallas grandes */
+    @media (min-width: 1200px) {
+        section[aria-labelledby="tabla1-title"] > .card {
+            min-height: 550px;
+        }
+        
+        section[aria-labelledby="tabla2-title"] > .card {
+            min-height: 300px;
+        }
+    }
+
+    /* Centrado de cards en contenedor */
+    .card.shadow-sm.border-0 {
+        box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075) !important;
+        border: 1px solid rgba(0,0,0,0.05) !important;
+    }
+
+    /* Mejor distribución de KPIs */
+    #resumenRapido .card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    #resumenRapido .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.1) !important;
+    }
+
+    /* Header principal con mejor espaciado */
+    .d-flex.justify-content-between.align-items-center.mb-4 {
+        padding-bottom: 1rem;
+        border-bottom: 1px solid rgba(0,0,0,0.05);
+        margin-bottom: 1.5rem;
+    }
+
+    /* Equal height para KPIs */
+    #resumenRapido .row {
+        display: flex;
+        flex-wrap: wrap;
+    }
+
+    #resumenRapido .col-6 {
+        display: flex;
+    }
+
+    #resumenRapido .col-6 .card {
+        width: 100%;
+        height: 100%;
+    }
+
+    /* Tablas con mejor ancho mínimo */
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Botones de acción centrados en header */
+    .card-header .d-flex.gap-2 {
+        align-items: center;
+    }
+
+    /* Botón collapse en header */
+@media print {
+    .card-header, .btn, .form-check, #resumenRapido {
+        display: none !important;
+    }
+    .table-responsive {
+        max-height: none !important;
+        overflow: visible !important;
+    }
+    #tablaCotizacion thead th,
+    #tablaConsolidado thead th {
+        position: static !important;
+    }
+    .consolidado-row td:first-child,
+    .consolidado-row td:nth-child(2),
+    .proveedor-row td:first-child,
+    .proveedor-row td:nth-child(2) {
+        position: static !important;
+    }
+}
+
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Template version: 2026-10-12-v16 - Fixed SyntaxError: Unexpected end of input, fixed save with direct data-attributes, COP format with $ suffix, added safety checks -->
+{# Macro para formatear COP con $ al final #}
+{% macro to_cop_with_suffix(val) %}
+    {% if val is none or val == '' or val == 0 %}—{% else %}
+        ${{ ('%.2f' % (val | float)) | replace('.',',') }}$
+    {% endif %}
+{% endmacro %}
+
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+        <div class="d-flex flex-column">
+            <h1 class="h4 fw-bold text-dark mb-1">
+                <i class="fas fa-tag text-primary me-2"></i>
+                Cotización {{ mes_nombre }} {{ cotizacion.anio }}
+            </h1>
+            <p class="text-muted small mb-0">
+                <i class="fas fa-edit me-1"></i>
+                Editar precios por producto, proveedor y semana
+            </p>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="{{ url_for('planta_alimentos.cotizaciones.cotizaciones_list') }}" class="btn btn-sm btn-outline-secondary" title="Volver a la lista">
+                <i class="fas fa-arrow-left me-1"></i> Volver
+            </a>
+            <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalAgregarFila" title="Agregar nueva materia prima (Alt+N)">
+                <i class="fas fa-plus me-1"></i> Agregar Fila
+            </button>
+            <a href="{{ url_for('planta_alimentos.cotizaciones.exportar_cotizacion', mes=cotizacion.mes, anio=cotizacion.anio) }}" 
+               class="btn btn-sm btn-success" title="Exportar a Excel (Alt+E)">
+                <i class="fas fa-file-excel me-1"></i> Exportar Excel
+            </a>
+            <button type="button" class="btn btn-sm btn-outline-info" onclick="window.toggleColumnas()" title="Mostrar/ocultar columnas (Alt+C)">
+                <i class="fas fa-columns me-1"></i> Columnas
+            </button>
+        </div>
+
+    <!-- Info Cotización - MOVIDO ARRIBA -->
+    <div class="card shadow-sm mb-3 border-0">
+        <div class="card-body py-2">
+            <div class="row g-2 align-items-center">
+                <div class="col-md-3 col-6">
+                    <span class="text-muted small d-block">Mes</span>
+                    <strong>{{ mes_nombres[cotizacion.mes] if cotizacion.mes else 'N/A' }}</strong>
+                </div>
+                <div class="col-md-2 col-6">
+                    <span class="text-muted small d-block">Año</span>
+                    <strong>{{ cotizacion.anio }}</strong>
+                </div>
+                <div class="col-md-3 col-6">
+                    <span class="text-muted small d-block">Estado</span>
+                    <span class="badge bg-success">{{ cotizacion.estado }}</span>
+                </div>
+                <div class="col-md-4 col-6">
+                    <span class="text-muted small d-block">Creada</span>
+                    <strong>{{ cotizacion.fecha_registro.strftime('%d/%m/%Y %H:%M') if cotizacion.fecha_registro else 'N/A' }}</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         TABLA 1: GRID DE CAPTURA (Editor principal)
+         ============================================================ -->
+    <section class="mb-4" aria-labelledby="tabla1-title">
+        <div class="card shadow-sm border-0 h-100" style="min-height: 500px;">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center flex-wrap gap-2 py-3 border-bottom">
+                <div class="d-flex align-items-center gap-3">
+                    <h5 class="fw-bold fs-6 mb-0 d-flex align-items-center gap-2">
+                        <i class="fas fa-table me-2 text-primary"></i>
+                        <span class="d-none d-md-inline">Grid de Captura - </span>{{ mes_nombre }} {{ cotizacion.anio }}
+                    </h5>
+                    <span class="badge bg-light text-dark small px-3 py-2" id="estadoGuardado">
+                        <i class="fas fa-check-circle text-success me-1"></i>
+                        <span class="d-none d-sm-inline">Sin cambios</span>
+                    </span>
+                </div>
+                <div class="d-flex gap-2 flex-wrap">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="filtroSoloConPrecio" onchange="window.filtrarTabla()" title="Filtrar solo filas con precio (Alt+F)">
+                        <label class="form-check-label small fw-medium" for="filtroSoloConPrecio">
+                            <i class="fas fa-filter me-1"></i> <span class="d-none d-sm-inline">Solo con precio</span>
+                        </label>
+                    </div>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="filtroMejorPrecio" onchange="window.filtrarTabla()" title="Mostrar solo el mejor precio por producto (Alt+M)">
+                        <label class="form-check-label small fw-medium" for="filtroMejorPrecio">
+                            <i class="fas fa-trophy me-1 text-warning"></i> <span class="d-none d-sm-inline">Solo mejor</span>
+                        </label>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-success" onclick="window.guardarTodo(event)" id="btnGuardarTodo" title="Guardar todos los cambios (Ctrl+S)">
+                        <i class="fas fa-save me-1"></i> <span class="d-none d-sm-inline">Guardar Todo</span>
+                    </button>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive" style="height: calc(100vh - 420px); min-height: 400px; max-height: 70vh;">
+                    <table class="table table-bordered table-hover align-middle mb-0" id="tablaCotizacion" style="font-size: 0.8rem;">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 28%; min-width: 200px; position: sticky; left: 0; z-index: 1;">PRODUCTO</th>
+                            <th style="width: 14%; min-width: 120px; position: sticky; left: 200px; z-index: 1;">PROVEEDOR</th>
+                            <th style="width: 12%; text-align: center;">SEMANA 1</th>
+                            <th style="width: 12%; text-align: center;">SEMANA 2</th>
+                            <th style="width: 12%; text-align: center;">SEMANA 3</th>
+                            <th style="width: 12%; text-align: center;">SEMANA 4</th>
+                            <th style="width: 11%; text-align: center;">PROMEDIO</th>
+                            <th style="width: 11%; text-align: center;">ESTADO</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyCotizacion">
+                        {% set productos_agrupados = {} %}
+                        {% for d in data.detalles %}
+                            {% if d.producto_nombre not in productos_agrupados %}
+                                {% set _ = productos_agrupados.__setitem__(d.producto_nombre, {}) %}
+                            {% endif %}
+                            {% if d.proveedor_nombre not in productos_agrupados[d.producto_nombre] %}
+                                {% set _ = productos_agrupados[d.producto_nombre].__setitem__(d.proveedor_nombre, {'precios': {}, 'sum': 0, 'count': 0}) %}
+                            {% endif %}
+                            {% set _ = productos_agrupados[d.producto_nombre][d.proveedor_nombre].precios.__setitem__(d.semana, d.precio) %}
+                            {% set _ = productos_agrupados[d.producto_nombre][d.proveedor_nombre].__setitem__('sum', productos_agrupados[d.producto_nombre][d.proveedor_nombre].sum + d.precio) %}
+                            {% set _ = productos_agrupados[d.producto_nombre][d.proveedor_nombre].__setitem__('count', productos_agrupados[d.producto_nombre][d.proveedor_nombre].count + 1) %}
+                        {% endfor %}
+                        
+                        {% for producto, proveedores_data in productos_agrupados.items() %}
+                            {% set mejor_precio = 999999 %}
+                            {% set mejor_proveedor = '' %}
+                            {% for prov, data in proveedores_data.items() %}
+                                {% set prov_promedio = ((data.sum | float) / (data.count | int)) if (data.count | int) > 0 else 0 %}
+                                {% if prov_promedio < mejor_precio %}
+                                    {% set mejor_precio = prov_promedio %}
+                                    {% set mejor_proveedor = prov %}
+                                {% endif %}
+                            {% endfor %}
+                            
+                            <tr class="producto-header">
+                                <td class="fw-bold" colspan="8">{{ producto }}</td>
+                            </tr>
+                            {% for prov, data in proveedores_data.items() %}
+                                {% set precios = data.precios %}
+                                {% set promedio = ((data.sum | float) / (data.count | int)) if (data.count | int) > 0 else 0 %}
+                                <tr class="proveedor-row" data-producto="{{ producto }}" data-proveedor="{{ prov }}">
+                                    <td class="fw-bold">{% if loop.first %}{{ producto }}{% else %}{% endif %}</td>
+                                    <td>{{ prov }}</td>
+                                    <td class="text-center">
+                                        <input type="text" 
+                                               class="form-control form-control-sm text-end precio-input" 
+                                               step="0.01" min="0" max="9999999999.99"
+                                               pattern="^([1-9]\d{0,2}(\.\d{3})*|0)(,\d{1,2})?$"
+                                               value="{{ (precios[1] | float | string) | replace('.', ',') if precios[1] else '' }}"
+                                               data-producto="{{ producto }}"
+                                               data-proveedor="{{ prov }}"
+                                               data-semana="1"
+                                               data-materia-prima-id="{{ data.precios.get('materia_prima_id', 0) if data.precios else 0 }}"
+                                               data-proveedor-id="{{ data.precios.get('proveedor_id', 0) if data.precios else 0 }}"
+                                               data-precio-original="{{ precios[1] if precios[1] else '' }}"
+                                               style="width: 95px; padding: 0.2rem 0.35rem; font-size: 0.8rem;"
+                                               placeholder="$ 0,00"
+                                               title="Semana 1 | Enter: siguiente fila | ↑↓: navegar | Formato: 1.000.000,00"
+                                               autocomplete="off"
+                                               inputmode="decimal"
+                                               aria-label="Precio Semana 1 para {{ producto }} - {{ prov }}"
+                                               oninput="window.formatearNumero(this); window.calcularFila(this); window.validarInput(this);"
+                                               onfocus="this.classList.add('editing'); window.resaltarSemana(this, 1);"
+                                               onblur="this.classList.remove('editing'); window.marcarCambio(this); window.quitarResalteSemana(1); window.validarInput(this);"
+                                               onkeydown="window.navegarTabla(event, this);">
+                                    </td>
+                                    <td class="text-center">
+                                        <input type="text" 
+                                               class="form-control form-control-sm text-end precio-input" 
+                                               step="0.01" min="0" max="9999999999.99"
+                                               pattern="^([1-9]\d{0,2}(\.\d{3})*|0)(,\d{1,2})?$"
+                                               value="{{ (precios[2] | float | string) | replace('.', ',') if precios[2] else '' }}"
+                                               data-producto="{{ producto }}"
+                                               data-proveedor="{{ prov }}"
+                                               data-semana="2"
+                                               data-materia-prima-id="{{ data.precios.get('materia_prima_id', 0) if data.precios else 0 }}"
+                                               data-proveedor-id="{{ data.precios.get('proveedor_id', 0) if data.precios else 0 }}"
+                                               data-precio-original="{{ precios[2] if precios[2] else '' }}"
+                                               style="width: 95px; padding: 0.2rem 0.35rem; font-size: 0.8rem;"
+                                               placeholder="$ 0,00"
+                                               autocomplete="off"
+                                               inputmode="decimal"
+                                               aria-label="Precio Semana 2 para {{ producto }} - {{ prov }}"
+                                               oninput="window.formatearNumero(this); window.calcularFila(this); window.validarInput(this);"
+                                               onfocus="this.classList.add('editing'); window.resaltarSemana(this, 2);"
+                                               onblur="this.classList.remove('editing'); window.marcarCambio(this); window.quitarResalteSemana(2); window.validarInput(this);"
+                                               onkeydown="window.navegarTabla(event, this);">
+                                    </td>
+                                    <td class="text-center">
+                                        <input type="text" 
+                                               class="form-control form-control-sm text-end precio-input" 
+                                               step="0.01" min="0" max="9999999999.99"
+                                               pattern="^([1-9]\d{0,2}(\.\d{3})*|0)(,\d{1,2})?$"
+                                               value="{{ (precios[3] | float | string) | replace('.', ',') if precios[3] else '' }}"
+                                               data-producto="{{ producto }}"
+                                               data-proveedor="{{ prov }}"
+                                               data-semana="3"
+                                               data-materia-prima-id="{{ data.precios.get('materia_prima_id', 0) if data.precios else 0 }}"
+                                               data-proveedor-id="{{ data.precios.get('proveedor_id', 0) if data.precios else 0 }}"
+                                               data-precio-original="{{ precios[3] if precios[3] else '' }}"
+                                               style="width: 95px; padding: 0.2rem 0.35rem; font-size: 0.8rem;"
+                                               placeholder="$ 0,00"
+                                               autocomplete="off"
+                                               inputmode="decimal"
+                                               aria-label="Precio Semana 3 para {{ producto }} - {{ prov }}"
+                                               oninput="window.formatearNumero(this); window.calcularFila(this); window.validarInput(this);"
+                                               onfocus="this.classList.add('editing'); window.resaltarSemana(this, 3);"
+                                               onblur="this.classList.remove('editing'); window.marcarCambio(this); window.quitarResalteSemana(3); window.validarInput(this);"
+                                               onkeydown="window.navegarTabla(event, this);">
+                                    </td>
+                                    <td class="text-center">
+                                        <input type="text" 
+                                               class="form-control form-control-sm text-end precio-input" 
+                                               step="0.01" min="0" max="9999999999.99"
+                                               pattern="^([1-9]\d{0,2}(\.\d{3})*|0)(,\d{1,2})?$"
+                                               value="{{ (precios[4] | float | string) | replace('.', ',') if precios[4] else '' }}"
+                                               data-producto="{{ producto }}"
+                                               data-proveedor="{{ prov }}"
+                                               data-semana="4"
+                                               data-materia-prima-id="{{ data.precios.get('materia_prima_id', 0) if data.precios else 0 }}"
+                                               data-proveedor-id="{{ data.precios.get('proveedor_id', 0) if data.precios else 0 }}"
+                                               data-precio-original="{{ precios[4] if precios[4] else '' }}"
+                                               style="width: 95px; padding: 0.2rem 0.35rem; font-size: 0.8rem;"
+                                               placeholder="$ 0,00"
+                                               autocomplete="off"
+                                               inputmode="decimal"
+                                               aria-label="Precio Semana 4 para {{ producto }} - {{ prov }}"
+                                               oninput="window.formatearNumero(this); window.calcularFila(this); window.validarInput(this);"
+                                               onfocus="this.classList.add('editing'); window.resaltarSemana(this, 4);"
+                                               onblur="this.classList.remove('editing'); window.marcarCambio(this); window.quitarResalteSemana(4); window.validarInput(this);"
+                                               onkeydown="window.navegarTabla(event, this);">
+                                    </td>
+                                    {% set promedio_val = ((data.sum | float) / (data.count | int)) if (data.count | int) > 0 else 0 %}
+                                    <td class="text-end fw-bold text-primary promedio-cell" style="font-size: 0.85rem; font-family: 'SF Mono', monospace;" data-promedio="{{ '%.2f' % promedio_val }}">
+                                        {% if promedio_val > 0 %}
+                                            {{ to_cop_with_suffix(promedio_val) }}
+                                        {% else %}-{% endif %}
+                                    </td>
+                                    <td class="text-center estado-celda" style="min-width: 90px;">
+                                        <div class="estado-semanas d-flex flex-wrap justify-content-center gap-1" style="min-height: 20px;">
+                                            <span class="semana-badge-container" data-semana="1" style="display: none;"></span>
+                                            <span class="semana-badge-container" data-semana="2" style="display: none;"></span>
+                                            <span class="semana-badge-container" data-semana="3" style="display: none;"></span>
+                                            <span class="semana-badge-container" data-semana="4" style="display: none;"></span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    </section>
+
+    <!-- ============================================================
+         TABLA 2: CONSOLIDADO MEJOR PRECIO (Solo lectura)
+         ============================================================ -->
+    <section class="mb-4" aria-labelledby="tabla2-title">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center flex-wrap gap-2 py-3 border-bottom">
+                <h5 class="fw-bold fs-6 mb-0 d-flex align-items-center gap-2" id="tabla2-title">
+                    <i class="fas fa-trophy text-warning me-2"></i>
+                    <span class="d-none d-md-inline">Consolidado Mejor Precio por Producto</span>
+                    <button class="btn btn-link btn-sm p-0 ms-2 text-muted" type="button" data-bs-toggle="collapse" data-bs-target="#collapseConsolidado" aria-expanded="true" aria-controls="collapseConsolidado" title="Expandir/Colapsar">
+                        <i class="fas fa-chevron-up" id="iconCollapseConsolidado"></i>
+                    </button>
+                </h5>
+                <div class="d-flex gap-2">
+                    <span class="badge bg-light text-dark small px-3 py-2 align-self-center">
+                        <i class="fas fa-info-circle me-1"></i> Solo lectura - Calculado automáticamente
+                    </span>
+                    <button type="button" class="btn btn-sm btn-outline-success" onclick="window.exportarConsolidadoExcel()" title="Exportar consolidado a Excel (Alt+X)">
+                        <i class="fas fa-file-excel me-1"></i> <span class="d-none d-sm-inline">Exportar</span>
+                    </button>
+                </div>
+            </div>
+            <div class="collapse show" id="collapseConsolidado">
+                <div class="card-body p-0">
+                    <div class="table-responsive" style="max-height: 50vh;">
+                        <table class="table table-bordered table-hover align-middle mb-0" id="tablaConsolidado" style="font-size: 0.8rem;">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 35%; min-width: 200px; position: sticky; left: 0; z-index: 1;">PRODUCTO</th>
+                            <th style="width: 20%; min-width: 150px; text-align: center;">MEJOR PROVEEDOR</th>
+                            <th style="width: 13%; text-align: center;">SEMANA 1</th>
+                            <th style="width: 13%; text-align: center;">SEMANA 2</th>
+                            <th style="width: 13%; text-align: center;">SEMANA 3</th>
+                            <th style="width: 13%; text-align: center;">SEMANA 4</th>
+                            <th style="width: 13%; text-align: center;">PROMEDIO (COP)</th>
+                            <th style="width: 10%; text-align: center;">AHORRO vs PROMEDIO</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyConsolidado">
+                        {% for producto, proveedores_data in productos_agrupados.items() %}
+                            {% set mejor_precio = 999999999999 %}
+                            {% set mejor_proveedor = '' %}
+                            {% set mejor_precios_semana = {} %}
+                            {% for prov, data in proveedores_data.items() %}
+                                {% set prov_promedio = ((data.sum | float) / (data.count | int)) if (data.count | int) > 0 else 0 %}
+                                {% if prov_promedio < mejor_precio %}
+                                    {% set mejor_precio = prov_promedio %}
+                                    {% set mejor_proveedor = prov %}
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {# Solo renderizar si hay un mejor proveedor válido #}
+                            {% if mejor_proveedor %}
+                                {% set precios_mejor = proveedores_data[mejor_proveedor].precios if mejor_proveedor in proveedores_data else {} %}
+                                {% set promedio_general = ((proveedores_data[mejor_proveedor].sum | float) / (proveedores_data[mejor_proveedor].count | int)) if (proveedores_data[mejor_proveedor].count | int) > 0 else 0 %}
+                                
+                                {# Calcular promedio de todos los proveedores para el ahorro #}
+                                {% set total_suma_todos = 0 %}
+                                {% set total_count_todos = 0 %}
+                                {% for prov, data in proveedores_data.items() %}
+                                    {% set total_suma_todos = total_suma_todos + (data.sum | float) %}
+                                    {% set total_count_todos = total_count_todos + (data.count | int) %}
+                                {% endfor %}
+                                {% set promedio_todos = (total_suma_todos / total_count_todos) if total_count_todos > 0 else 0 %}
+                                {% set ahorro = (promedio_todos - promedio_general) if promedio_general > 0 and promedio_todos > 0 else 0 %}
+                                
+                                {# Extraer precios semanales del mejor proveedor con claves string #}
+                                {% set p1 = precios_mejor.get('1') %}
+                                {% set p2 = precios_mejor.get('2') %}
+                                {% set p3 = precios_mejor.get('3') %}
+                                {% set p4 = precios_mejor.get('4') %}
+                                
+                                <tr class="consolidado-row {% if loop.index0 % 2 == 0 %}even{% else %}odd{% endif %}" data-producto="{{ producto }}">
+                                    <td class="fw-bold" style="position: sticky; left: 0; z-index: 2; background: white;">
+                                        {{ producto }}
+                                    </td>
+                                    <td class="text-center fw-medium text-success" style="position: sticky; left: 200px; z-index: 1; background: white;">
+                                        <i class="fas fa-trophy text-warning me-1"></i>
+                                        {{ mejor_proveedor or '—' }}
+                                    </td>
+                                    <td class="text-center fw-bold text-success">
+                                        {% if p1 %}{{ to_cop_with_suffix(p1 | float) }}{% else %}—{% endif %}
+                                    </td>
+                                    <td class="text-center fw-bold text-success">
+                                        {% if p2 %}{{ to_cop_with_suffix(p2 | float) }}{% else %}—{% endif %}
+                                    </td>
+                                    <td class="text-center fw-bold text-success">
+                                        {% if p3 %}{{ to_cop_with_suffix(p3 | float) }}{% else %}—{% endif %}
+                                    </td>
+                                    <td class="text-center fw-bold text-success">
+                                        {% if p4 %}{{ to_cop_with_suffix(p4 | float) }}{% else %}—{% endif %}
+                                    </td>
+                                    <td class="text-end fw-bold text-primary" style="font-family: 'SF Mono', monospace; font-size: 0.85rem;">
+                                        {% if promedio_general > 0 %}{{ to_cop_with_suffix(promedio_general) }}{% else %}-{% endif %}
+                                    </td>
+                                    <td class="text-center">
+                                        {% if ahorro > 0 %}
+                                            <span class="badge bg-success fw-normal" style="font-size: 0.7rem;">
+                                                <i class="fas fa-arrow-down me-1"></i>
+                                                {{ to_cop_with_suffix(ahorro) }}
+                                            </span>
+                                        {% elif ahorro < 0 %}
+                                            <span class="badge bg-danger fw-normal" style="font-size: 0.7rem;">
+                                                <i class="fas fa-arrow-up me-1"></i>
+                                                {{ to_cop_with_suffix(ahorro * -1) }}
+                                            </span>
+                                        {% else %}
+                                            <span class="text-muted small">—</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        {% endfor %}
+                        {# Fila de totales #}
+                        {% if productos_agrupados %}
+                        <tr class="table-active fw-bold">
+                            <td>TOTAL GENERAL</td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td class="text-end text-primary">
+                                {% set gran_total_suma = 0 %}
+                                {% set gran_total_count = 0 %}
+                                {% for producto, proveedores_data in productos_agrupados.items() %}
+                                    {% for prov, data in proveedores_data.items() %}
+                                        {% set gran_total_suma = gran_total_suma + (data.sum | float) %}
+                                        {% set gran_total_count = gran_total_count + (data.count | int) %}
+                                    {% endfor %}
+                                {% endfor %}
+                                {% if gran_total_count > 0 %}
+                                    {% if gran_total_count > 0 %}{{ to_cop_with_suffix(gran_total_suma / gran_total_count) }}{% else %}-{% endif %}
+                                {% else %}-{% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% set gran_ahorro = 0 %}
+                                {% for producto, proveedores_data in productos_agrupados.items() %}
+                                    {% set mejor_precio = 999999999999 %}
+                                    {% for prov, data in proveedores_data.items() %}
+                                        {% set prov_promedio = ((data.sum | float) / (data.count | int)) if (data.count | int) > 0 else 0 %}
+                                        {% if prov_promedio < mejor_precio %}
+                                            {% set mejor_precio = prov_promedio %}
+                                        {% endif %}
+                                    {% endfor %}
+                                    {% set total_suma_todos = 0 %}
+                                    {% set total_count_todos = 0 %}
+                                    {% for prov, data in proveedores_data.items() %}
+                                        {% set total_suma_todos = total_suma_todos + (data.sum | float) %}
+                                        {% set total_count_todos = total_count_todos + (data.count | int) %}
+                                    {% endfor %}
+                                    {% set promedio_todos = (total_suma_todos / total_count_todos) if total_count_todos > 0 else 0 %}
+                                    {% if mejor_precio != 999999999999 and promedio_todos > mejor_precio %}
+                                        {% set gran_ahorro = gran_ahorro + ((promedio_todos - mejor_precio) * 4) %}
+                                    {% endif %}
+                                {% endfor %}
+                                {% if gran_ahorro > 0 %}
+                                    <span class="badge bg-success">
+                                        {{ to_cop_with_suffix(gran_ahorro) }}
+                                    </span>
+                                {% else %}—{% endif %}
+                            </td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+<script>
+    const cotizacionId = {{ cotizacion.id }};
+    let proyeccionesData = [];
+
+    // Crear mapas de lookup para obtener IDs desde nombres
+    // data.productos: [{id, nombre}, ...]
+    // data.proveedores: [{id, nombre}, ...]
+    const productoLookup = {};
+    {% for p in data.productos %}
+    productoLookup["{{ p.nombre }}"] = {{ p.id }};
+    {% endfor %}
+
+    const proveedorLookup = {};
+    {% for p in data.proveedores %}
+    proveedorLookup["{{ p.nombre }}"] = {{ p.id }};
+    {% endfor %}
+
+    function getIdsFromNames(producto, proveedor, semana) {
+        return {
+            materia_prima_id: productoLookup[producto] || null,
+            proveedor_id: proveedorLookup[proveedor] || null
+        };
+    }
+
+    // Toggle sección "Otras materias primas" (ahora es un tbody con collapse)
+    function toggleOtrasMaterias() {
+        const collapse = document.getElementById('tbodyOtras');
+        const btn = document.getElementById('btnToggleOtras');
+        const icon = btn.querySelector('i');
+        
+        if (collapse.classList.contains('show')) {
+            collapse.classList.remove('show');
+            icon.classList.remove('fa-chevron-up');
+            icon.classList.add('fa-chevron-down');
+            btn.innerHTML = '<i class="fas fa-chevron-down me-1"></i> Ver otras (<span id="countOtras">{{ materias_otras|length }}</span>)';
+        } else {
+            collapse.classList.add('show');
+            icon.classList.remove('fa-chevron-down');
+            icon.classList.add('fa-chevron-up');
+            btn.innerHTML = '<i class="fas fa-chevron-up me-1"></i> Ocultar otras';
+        }
+    }
+
+    // Toggle estrella (destacada) - AJAX
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.toggle-destacada').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const mpId = this.dataset.mpId;
+                const nuevoEstado = this.dataset.estado === '1' ? '0' : '1';
+                const icon = this.querySelector('i');
+                const row = this.closest('tr');
+                
+                fetch(`/planta_alimentos/materia-prima/${mpId}/toggle-destacada`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ destacada: nuevoEstado === '1' })
+                })
+                .then(async res => {
+                    const contentType = res.headers.get('content-type');
+                    let data;
+                    if (contentType && contentType.includes('application/json')) {
+                        data = await res.json();
+                    } else {
+                        const text = await res.text();
+                        console.error('Respuesta no JSON:', text);
+                        throw new Error('Respuesta del servidor inválida: ' + text.substring(0, 200));
+                    }
+                    
+                    if (!res.ok) {
+                        throw new Error(data.msg || `Error HTTP ${res.status}`);
+                    }
+                    return data;
+                })
+                .then(data => {
+                    if (data.success) {
+                        // Actualizar UI
+                        this.dataset.estado = nuevoEstado;
+                        if (nuevoEstado === '1') {
+                            icon.classList.remove('far');
+                            icon.classList.add('fas');
+                            this.classList.remove('btn-outline-warning');
+                            this.classList.add('btn-warning');
+                            this.title = 'Quitar de destacadas';
+                            // Mover a tabla destacadas si estaba en otras
+                            if (row.closest('#tbodyOtras')) {
+                                row.remove();
+                                document.getElementById('tbodyDestacadas').appendChild(row);
+                            }
+                        } else {
+                            icon.classList.remove('fas');
+                            icon.classList.add('far');
+                            this.classList.remove('btn-warning');
+                            this.classList.add('btn-outline-warning');
+                            this.title = 'Agregar a destacadas';
+                            // Mover a tabla otras si estaba en destacadas
+                            if (row.closest('#tbodyDestacadas')) {
+                                row.remove();
+                                document.getElementById('tbodyOtras').appendChild(row);
+                            }
+                        }
+                        // Actualizar contador
+                        actualizarContadorOtras();
+                    } else {
+                        alert('Error: ' + (data.msg || 'No se pudo actualizar'));
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert('Error de conexión');
+                });
+            });
+        });
+
+        function actualizarContadorOtras() {
+            const count = document.querySelectorAll('#tbodyOtras tr').length;
+            const countEl = document.getElementById('countOtras');
+            if (countEl) countEl.textContent = count;
+        }
+    });
+// Force parser completion
+void 0;
+</script>
+
+<script>
+// Función para guardar una nueva fila en la cotización (fuera de DOMContentLoaded para ser accesible globalmente)
+async function guardarNuevaFila(event) {
+    const form = document.getElementById('formAgregarFila');
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+
+    const items = [];
+
+    // Obtener IDs del formulario
+    const productoId = document.getElementById('selectProducto').value;
+    const proveedorId = document.getElementById('selectProveedor').value;
+
+    if (!productoId || !proveedorId) {
+        alert('Debe seleccionar una materia prima y un proveedor');
+        return;
+    }
+
+    // Crear items para cada semana que tenga precio (usando querySelector directamente)
+    for (let i = 1; i <= 4; i++) {
+        const input = document.querySelector(`[name="precio_semana_${i}"]`);
+        const valor = getValorNumerico(input);
+        if (input && valor > 0) {
+            items.push({
+                materia_prima_id: parseInt(document.getElementById('selectProducto').value),
+                proveedor_id: parseInt(document.getElementById('selectProveedor').value),
+                semana: i,
+                precio: valor,
+                observaciones: document.querySelector('[name="observaciones"]').value || ''
+            });
+        }
+    }
+
+    if (items.length === 0) {
+        alert('Debe ingresar al menos un precio para alguna semana');
+        return;
+    }
+
+    console.log('Enviando items (nueva fila):', items);
+
+    const btn = event.target;
+    const originalHtml = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Guardando...';
+    btn.disabled = true;
+
+    try {
+        const response = await fetch('{{ url_for("planta_alimentos.cotizaciones.api_guardar_cotizacion") }}', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                cotizacion_id: cotizacionId, 
+                items: items 
+            })
+        });
+
+        const responseText = await response.text();
+        console.log('Respuesta servidor (raw):', responseText);
+        
+        let data;
+        try {
+            data = JSON.parse(responseText);
+        } catch (e) {
+            console.error('Error parsing JSON:', e, responseText);
+            throw new Error('Respuesta del servidor no es JSON válido');
+        }
+        console.log('Respuesta servidor (parsed):', data);
+
+        if (data.success) {
+            // Recargar la página para ver los cambios
+            window.location.reload();
+        } else {
+            alert('Error: ' + (data.msg || 'No se pudo guardar'));
+        }
+    } catch (err) {
+        console.error(err);
+        alert('Error de conexión: ' + err.message);
+    } finally {
+        btn.innerHTML = '<i class="fas fa-plus me-1"></i> Agregar a la Cotización';
+        btn.disabled = false;
+        // Cerrar modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('modalAgregarFila'));
+        if (modal) modal.hide();
+    }
+}
+
+// Función para guardar todos los cambios del grid (Guardar Todo)
+async function guardarTodo(event) {
+    const btn = event.target;
+    const originalHtml = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Guardando...';
+    btn.disabled = true;
+
+    const items = [];
+
+    // Recopilar todos los inputs de precio editados
+    document.querySelectorAll('.precio-input').forEach(input => {
+        const value = getValorNumerico(input);
+        if (value > 0) {
+            // Usar IDs directos de los atributos data-*
+            const materia_prima_id = parseInt(input.dataset.materiaPrimaId) || 0;
+            const proveedor_id = parseInt(input.dataset.proveedorId) || 0;
+            const semana = parseInt(input.dataset.semana);
+            
+            if (materia_prima_id && proveedor_id) {
+                items.push({
+                    materia_prima_id: materia_prima_id,
+                    proveedor_id: proveedor_id,
+                    semana: semana,
+                    precio: value,
+                    observaciones: ''
+                });
+            } else {
+                console.warn('No se encontraron IDs para:', { 
+                    materia_prima_id, 
+                    proveedor_id, 
+                    semana, 
+                    dataset: input.dataset 
+                });
+            }
+        }
+    });
+
+    console.log('Enviando items:', items);
+
+    if (items.length === 0) {
+        alert('No hay cambios para guardar');
+        btn.innerHTML = originalHtml;
+        btn.disabled = false;
+        return;
+    }
+
+    try {
+        const response = await fetch('{{ url_for("planta_alimentos.cotizaciones.api_guardar_cotizacion") }}', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                cotizacion_id: cotizacionId, 
+                items: items 
+            })
+        });
+
+        const responseText = await response.text();
+        console.log('Respuesta servidor (raw):', responseText);
+        
+        let data;
+        try {
+            data = JSON.parse(responseText);
+        } catch (e) {
+            console.error('Error parsing JSON:', e, responseText);
+            throw new Error('Respuesta del servidor no es JSON válido');
+        }
+        console.log('Respuesta servidor (parsed):', data);
+
+        if (data.success) {
+            // Recargar la página para ver los cambios
+            window.location.reload();
+        } else {
+            alert('Error: ' + (data.msg || 'No se pudo guardar'));
+        }
+    } catch (err) {
+        console.error(err);
+        alert('Error de conexión: ' + err.message);
+    } finally {
+        btn.innerHTML = originalHtml;
+        btn.disabled = false;
+    }
+}
+
+// ========== FUNCIONES DE CÁLCULO EN TIEMPO REAL ==========
+
+// Formatear número con formato colombiano (miles: punto, decimales: coma)
+// Ejemplo: 1000000.50 → 1.000.000,50
+function formatearNumero(input) {
+    // Guardar posición del cursor
+    const start = input.selectionStart;
+    const end = input.selectionEnd;
+    const oldLength = input.value.length;
+    
+    // Obtener valor numérico limpio (quitar todo excepto dígitos, punto y coma)
+    let valor = input.value.replace(/[^\d.,]/g, '').replace(/\$/g, '');
+    
+    // Normalizar: convertir coma decimal a punto para procesamiento interno
+    // Si hay coma y punto, la coma es decimal (formato colombiano)
+    if (valor.includes(',') && valor.includes('.')) {
+        // Ambos existen: el último separador es el decimal
+        const ultimaComa = valor.lastIndexOf(',');
+        const ultimoPunto = valor.lastIndexOf('.');
+        if (ultimaComa > ultimoPunto) {
+            // Coma es decimal, puntos son miles
+            valor = valor.replace(/\./g, '').replace(',', '.');
+        } else {
+            // Punto es decimal, comas son miles
+            valor = valor.replace(/,/g, '');
+        }
+    } else if (valor.includes(',')) {
+        // Solo coma: puede ser decimal o miles
+        // Si coma seguida de 3 dígitos al final → decimal
+        if (/,\d{1,2}$/.test(valor)) {
+            valor = valor.replace(',', '.');
+        } else {
+            // Es separador de miles
+            valor = valor.replace(/,/g, '');
+        }
+    }
+    // Si solo puntos: asumir que son miles (formato colombiano estándar)
+    else if (valor.includes('.')) {
+        const partes = valor.split('.');
+        if (partes.length > 1 && partes[partes.length - 1].length === 3 && partes.length > 2) {
+            // Múltiples puntos con grupos de 3 → miles
+            valor = valor.replace(/\./g, '');
+        } else if (partes.length === 2 && partes[1].length <= 2) {
+            // Un punto con 1-2 dígitos al final → decimal
+            // mantener como está
+        } else {
+            // Múltiples puntos → miles
+            valor = valor.replace(/\./g, '');
+        }
+    }
+    
+    // Permitir solo un punto decimal
+    const partes = valor.split('.');
+    if (partes.length > 2) {
+        valor = partes[0] + '.' + partes.slice(1).join('');
+    }
+    
+    // Formatear con separadores colombianos (miles: punto, decimales: coma) y agregar $ al final
+    if (valor !== '') {
+        const [entera, decimal] = valor.split('.');
+        if (entera !== undefined && entera !== '') {
+            // Formatear parte entera con separadores de miles (punto)
+            const enteraFormateada = parseInt(entera).toLocaleString('es-CO'); // 1.000.000
+            valor = decimal !== undefined ? enteraFormateada + ',' + decimal : enteraFormateada;
+        } else if (decimal !== undefined) {
+            // Caso: .50 (empieza con decimal)
+            valor = '0,' + decimal;
+        }
+        // Agregar $ al final
+        valor = valor + '$';
+    }
+    
+    input.value = valor;
+    
+    // Restaurar posición del cursor aproximada
+    const newLength = input.value.length;
+    const diff = newLength - oldLength;
+    input.setSelectionRange(start + diff, end + diff);
+}
+
+// Validar input con formato COP y mostrar feedback visual
+function validarInput(input) {
+    const valor = input.value.trim();
+    // Remover $ al final para validación
+    const valorSinPeso = valor.replace(/\$/g, '');
+    const pattern = /^([1-9]\d{0,2}(\.\d{3})*|0)(,\d{1,2})?$/;
+    const isValid = valorSinPeso === '' || pattern.test(valorSinPeso);
+    
+    // Remover clases de validación previas
+    input.classList.remove('is-valid', 'is-invalid');
+    
+    if (valorSinPeso === '') {
+        // Vacío es válido (opcional)
+        input.classList.remove('is-invalid');
+        return true;
+    }
+    
+    if (isValid) {
+        // Validar rango
+        const valorNum = getValorNumerico(input);
+        if (valorNum > 9999999999.99) {
+            input.classList.add('is-invalid');
+            input.setCustomValidity('El valor excede el máximo permitido (9.999.999.999,99)');
+            return false;
+        }
+        input.classList.add('is-valid');
+        input.setCustomValidity('');
+        return true;
+    } else {
+        input.classList.add('is-invalid');
+        input.setCustomValidity('Formato inválido. Use: 1.000.000,00');
+        return false;
+    }
+}
+
+// Obtener valor numérico sin formato (parsea formato colombiano)
+// Ejemplo: "1.000.000,50" → 1000000.50
+function getValorNumerico(input) {
+    let valor = input.value.replace(/[^\d.,]/g, '').replace(/\$/g, '');
+    
+    // Normalizar formato colombiano a número JS
+    if (valor.includes(',') && valor.includes('.')) {
+        const ultimaComa = valor.lastIndexOf(',');
+        const ultimoPunto = valor.lastIndexOf('.');
+        if (ultimaComa > ultimoPunto) {
+            // Coma es decimal
+            valor = valor.replace(/\./g, '').replace(',', '.');
+        } else {
+            // Punto es decimal
+            valor = valor.replace(/,/g, '');
+        }
+    } else if (valor.includes(',')) {
+        // Solo coma: si al final tiene 1-2 dígitos → decimal
+        if (/,\d{1,2}$/.test(valor)) {
+            valor = valor.replace(',', '.');
+        } else {
+            valor = valor.replace(/,/g, '');
+        }
+    } else if (valor.includes('.')) {
+        const partes = valor.split('.');
+        if (partes.length > 1 && partes[partes.length - 1].length <= 2 && partes.length === 2) {
+            // Un punto con 1-2 dígitos al final → decimal (ya está bien)
+        } else {
+            // Múltiples puntos o grupo de 3 → miles
+            valor = valor.replace(/\./g, '');
+        }
+    }
+    
+    return parseFloat(valor) || 0;
+}
+
+// Calcular promedio y actualizar MEJOR para una fila
+function calcularFila(input) {
+    const row = input.closest('tr.proveedor-row');
+    if (!row) return;
+    
+    const producto = row.dataset.producto;
+    const proveedor = row.dataset.proveedor;
+    
+    // Obtener todos los inputs de esta fila
+    const inputs = row.querySelectorAll('.precio-input');
+    let suma = 0;
+    let count = 0;
+    
+    inputs.forEach(inp => {
+        const val = getValorNumerico(inp);
+        if (val > 0) {
+            suma += val;
+            count++;
+        }
+    });
+    
+    // Actualizar celda PROMEDIO (en COP completo)
+    const promedioCell = row.querySelector('.promedio-cell');
+    if (promedioCell) {
+        if (count > 0) {
+            const promedio = suma / count;
+            // Formatear en COP completo con separadores colombianos (miles: punto, decimales: coma) y $ al final
+            promedioCell.textContent = promedio.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '$';
+            promedioCell.dataset.promedio = promedio.toFixed(2);
+        } else {
+            promedioCell.textContent = '-';
+            promedioCell.dataset.promedio = '0';
+        }
+    }
+    
+    // Actualizar MEJOR para todas las filas del mismo producto
+    actualizarMejor(producto);
+}
+
+// Actualizar badges MEJOR para un producto
+function actualizarMejor(producto) {
+    const filas = document.querySelectorAll(`tr.proveedor-row[data-producto="${producto}"]`);
+    let mejorPromedio = Infinity;
+    let mejorProveedor = '';
+    
+    // Encontrar el mejor promedio
+    filas.forEach(fila => {
+        const promedioCell = fila.querySelector('.promedio-cell');
+        if (promedioCell) {
+            const promedio = parseFloat(promedioCell.dataset.promedio) || 0;
+            if (promedio > 0 && promedio < mejorPromedio) {
+                mejorPromedio = promedio;
+                mejorProveedor = fila.dataset.proveedor;
+            }
+        }
+    });
+    
+    // Actualizar MEJOR consolidado en el header del producto (cotización actual)
+    const header = document.querySelector(`tr.producto-header .mejor-consolidado[data-producto="${producto}"]`);
+    if (header) {
+        const actualDiv = header.querySelector('.mejor-actual');
+        const proveedorSpan = actualDiv?.querySelector('.mejor-proveedor');
+        const precioSpan = actualDiv?.querySelector('.mejor-precio');
+        
+        if (mejorProveedor && mejorPromedio !== Infinity) {
+            proveedorSpan.textContent = mejorProveedor;
+            proveedorSpan.className = 'mejor-proveedor fw-bold text-success';
+            precioSpan.textContent = '(' + mejorPromedio.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '$)';
+            precioSpan.className = 'mejor-precio ms-2 text-success';
+            actualDiv.style.display = 'block';
+        } else {
+            proveedorSpan.textContent = '—';
+            proveedorSpan.className = 'mejor-proveedor text-muted';
+            precioSpan.textContent = '($0,00$)';
+            precioSpan.className = 'mejor-precio ms-2 text-muted';
+            actualDiv.style.display = 'block';
+        }
+    }
+}
+
+// Inicializar cálculos al cargar
+document.addEventListener('DOMContentLoaded', function() {
+    // Calcular promedios iniciales para todas las filas
+    document.querySelectorAll('tr.proveedor-row').forEach(fila => {
+        const inputs = fila.querySelectorAll('.precio-input');
+        let suma = 0;
+        let count = 0;
+        
+        inputs.forEach(inp => {
+            const val = getValorNumerico(inp);
+            if (val > 0) {
+                suma += val;
+                count++;
+            }
+        });
+        
+        const promedioCell = fila.querySelector('.promedio-cell');
+        if (promedioCell && count > 0) {
+            const promedio = suma / count;
+            // Formatear en COP completo con separadores colombianos (miles: punto, decimales: coma) y $ al final
+            promedioCell.textContent = promedio.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '$';
+            promedioCell.dataset.promedio = promedio.toFixed(2);
+        }
+    });
+    
+    // Actualizar MEJOR para cada producto (actual cotización)
+    const productos = new Set();
+    document.querySelectorAll('tr.proveedor-row').forEach(fila => {
+        productos.add(fila.dataset.producto);
+    });
+    productos.forEach(producto => actualizarMejor(producto));
+    
+    // Actualizar resumen global y KPIs
+    actualizarResumenRapido();
+    
+    // Inicializar badges MEJOR/PEOR por producto
+    const productosInit = new Set();
+    document.querySelectorAll('tr.proveedor-row').forEach(fila => {
+        productosInit.add(fila.dataset.producto);
+    });
+    productosInit.forEach(producto => actualizarResumenProducto(producto));
+    
+    // Formatear inputs existentes
+    document.querySelectorAll('.precio-input').forEach(input => {
+        if (input.value) {
+            formatearNumero(input);
+        }
+    });
+    
+    // Toggle icono collapse consolidado
+    const collapseConsolidado = document.getElementById('collapseConsolidado');
+    const iconCollapse = document.getElementById('iconCollapseConsolidado');
+    if (collapseConsolidado && iconCollapse) {
+        collapseConsolidado.addEventListener('shown.bs.collapse', () => {
+            iconCollapse.classList.remove('fa-chevron-down');
+            iconCollapse.classList.add('fa-chevron-up');
+        });
+        collapseConsolidado.addEventListener('hidden.bs.collapse', () => {
+            iconCollapse.classList.remove('fa-chevron-up');
+            iconCollapse.classList.add('fa-chevron-down');
+        });
+    }
+// Estado global de la tabla
+let tablaState = {
+    hasUnsavedChanges: false,
+    originalValues: new Map(),
+    filtros: { soloConPrecio: false, soloMejor: false }
+};
+
+// ========== FUNCIONES UX MEJORADAS ==========
+
+// Marcar campo como cambiado
+function marcarCambio(input) {
+    const original = input.dataset.precioOriginal || '';
+    const actual = getValorNumerico(input);
+    const originalNum = original ? parseFloat(original) : 0;
+    
+    if (actual !== originalNum && actual > 0) {
+        input.classList.add('changed');
+        tablaState.hasUnsavedChanges = true;
+        actualizarEstadoGuardado();
+    } else {
+        input.classList.remove('changed');
+        verificarCambiosPendientes();
+    }
+    
+    // Actualizar resumen del producto
+    actualizarResumenProducto(input.dataset.producto);
+}
+
+// Verificar si hay cambios pendientes
+function verificarCambiosPendientes() {
+    const changedInputs = document.querySelectorAll('.precio-input.changed');
+    tablaState.hasUnsavedChanges = changedInputs.length > 0;
+    actualizarEstadoGuardado();
+}
+
+// Actualizar estado visual del botón guardar
+function actualizarEstadoGuardado() {
+    const badge = document.getElementById('estadoGuardado');
+    const btn = document.getElementById('btnGuardarTodo');
+    if (badge) {
+        if (tablaState.hasUnsavedChanges) {
+            badge.innerHTML = '<i class="fas fa-exclamation-circle text-warning me-1"></i> <span class="unsaved-indicator"></span> Cambios sin guardar';
+            badge.className = 'badge bg-warning text-dark small px-3 py-2';
+        } else {
+            badge.innerHTML = '<i class="fas fa-check-circle text-success me-1"></i> Sin cambios';
+            badge.className = 'badge bg-light text-dark small px-3 py-2';
+        }
+    }
+    if (btn) {
+        btn.disabled = !tablaState.hasUnsavedChanges;
+    }
+}
+
+// Actualizar resumen rápido
+function actualizarResumenRapido() {
+    const productos = new Set();
+    const proveedores = new Set();
+    let totalPrecios = 0;
+    let totalFilas = 0;
+    
+    // Para mejor proveedor global y ahorro
+    const productosData = {};
+    
+    document.querySelectorAll('tr.proveedor-row:not([style*="display: none"])').forEach(fila => {
+        const producto = fila.dataset.producto;
+        const proveedor = fila.dataset.proveedor;
+        productos.add(producto);
+        proveedores.add(proveedor);
+        totalFilas++;
+        
+        // Acumular datos por producto
+        if (!productosData[producto]) {
+            productosData[producto] = { proveedores: {}, totalSuma: 0, totalCount: 0 };
+        }
+        if (!productosData[producto].proveedores[proveedor]) {
+            productosData[producto].proveedores[proveedor] = { suma: 0, count: 0 };
+        }
+        
+        fila.querySelectorAll('.precio-input').forEach(inp => {
+            const val = getValorNumerico(inp);
+            if (val > 0) {
+                totalPrecios++;
+                productosData[producto].proveedores[proveedor].suma += val;
+                productosData[producto].proveedores[proveedor].count++;
+                productosData[producto].totalSuma += val;
+                productosData[producto].totalCount++;
+            }
+        });
+    });
+    
+    // Calcular mejor proveedor global y ahorro potencial
+    let mejorProveedorGlobal = '—';
+    let mejorPromedioGlobal = Infinity;
+    let ahorroTotal = 0;
+    
+    Object.entries(productosData).forEach(([producto, data]) => {
+        // Encontrar mejor proveedor del producto
+        let mejorProv = '';
+        let mejorProm = Infinity;
+        let promedioTodos = 0;
+        let countTodos = 0;
+        
+        Object.entries(data.proveedores).forEach(([prov, vals]) => {
+            if (vals.count > 0) {
+                const prom = vals.suma / vals.count;
+                if (prom < mejorProm) {
+                    mejorProm = prom;
+                    mejorProv = prov;
+                }
+            }
+            countTodos += vals.count;
+            promedioTodos += vals.suma;
+        });
+        
+        if (countTodos > 0) {
+            const promTodos = promedioTodos / countTodos;
+            // Ahorro si compramos todo al mejor precio
+            ahorroTotal += (promTodos - mejorProm) * countTodos;
+        }
+        
+        if (mejorProm < mejorPromedioGlobal) {
+            mejorPromedioGlobal = mejorProm;
+            mejorProveedorGlobal = mejorProv;
+        }
+    });
+    
+    }
+
+// Actualizar resumen por producto (badges mejor/peor semana)
+function actualizarResumenProducto(producto) {
+    const filas = document.querySelectorAll(`tr.proveedor-row[data-producto="${producto}"]:not([style*="display: none"])`);
+    if (filas.length === 0) return;
+    
+    // Por cada semana, encontrar mejor y peor
+    for (let semana = 1; semana <= 4; semana++) {
+        let mejorValor = Infinity;
+        let peorValor = -Infinity;
+        let mejorProveedor = '';
+        let peorProveedor = '';
+        
+        filas.forEach(fila => {
+            const input = fila.querySelector(`.precio-input[data-semana="${semana}"]`);
+            if (input) {
+                const val = getValorNumerico(input);
+                if (val > 0) {
+                    if (val < mejorValor) {
+                        mejorValor = val;
+                        mejorProveedor = fila.dataset.proveedor;
+                    }
+                    if (val > peorValor) {
+                        peorValor = val;
+                        peorProveedor = fila.dataset.proveedor;
+                    }
+                }
+            }
+        });
+        
+        // Actualizar badges en estado column de la tabla principal
+        filas.forEach(fila => {
+            const container = fila.querySelector(`.semana-badge-container[data-semana="${semana}"]`);
+            if (!container) return;
+            
+            const input = fila.querySelector(`.precio-input[data-semana="${semana}"]`);
+            const val = getValorNumerico(input);
+            
+            // Limpiar badges anteriores
+            container.innerHTML = '';
+            container.classList.remove('visible');
+            container.style.display = 'none';
+            
+            if (val > 0) {
+                let badgeHtml = '';
+                const isMejor = (mejorValor !== Infinity && val === mejorValor);
+                const isPeor = (peorValor !== -Infinity && val === peorValor && peorValor !== mejorValor);
+                
+                if (isMejor) {
+                    badgeHtml = `
+                        <span class="semana-badge-pill best">
+                            <span class="semana-num">S${semana}</span>
+                            <i class="fas fa-trophy"></i> MEJOR
+                        </span>`;
+                } else if (isPeor) {
+                    badgeHtml = `
+                        <span class="semana-badge-pill worst">
+                            <span class="semana-num">S${semana}</span>
+                            <i class="fas fa-arrow-up"></i> PEOR
+                        </span>`;
+                }
+                
+                if (badgeHtml) {
+                    container.innerHTML = badgeHtml;
+                    container.classList.add('visible');
+                    container.style.display = 'inline-block';
+                }
+            }
+        });
+        
+        // Actualizar celdas en filas de proveedor (highlight visual)
+        filas.forEach(fila => {
+            const input = fila.querySelector(`.precio-input[data-semana="${semana}"]`);
+            const val = getValorNumerico(input);
+            if (val > 0) {
+                input.classList.remove('best-week', 'worst-week');
+                if (val === mejorValor && val === peorValor) {
+                    // Solo un proveedor con precio
+                } else if (val === mejorValor) {
+                    input.classList.add('best-week');
+                } else if (val === peorValor) {
+                    input.classList.add('worst-week');
+                }
+            }
+        });
+    }
+}
+
+// ========== RESALTADO DE COLUMNA SEMANA ==========
+
+// Resaltar columna de semana al enfocar
+function resaltarSemana(input, semana) {
+    // Resaltar todos los inputs de la misma semana
+    document.querySelectorAll(`.precio-input[data-semana="${semana}"]`).forEach(inp => {
+        inp.closest('td').classList.add('semana-col-resaltada');
+    });
+    
+    // Resaltar header de la semana
+    const headers = document.querySelectorAll('#tablaCotizacion thead th');
+    headers.forEach((th, idx) => {
+        if (idx >= 2 && idx <= 5) { // Columnas 3-6 son las semanas
+            const semanaHeader = idx - 1;
+            if (semanaHeader === semana) {
+                th.classList.add('semana-col-resaltada');
+                th.style.background = 'linear-gradient(180deg, #e7f1ff 0%, #d0e7ff 100%)';
+            }
+        }
+    });
+    
+    // Resaltar fila actual
+    const row = input.closest('tr');
+    if (row) row.classList.add('editing-row');
+}
+
+// Quitar resaltado de columna de semana
+function quitarResalteSemana(semana) {
+    // Quitar resaltado de todos los inputs de la semana
+    document.querySelectorAll(`.precio-input[data-semana="${semana}"]`).forEach(inp => {
+        inp.closest('td').classList.remove('semana-col-resaltada');
+    });
+    
+    // Quitar resaltado de headers
+    const headers = document.querySelectorAll('#tablaCotizacion thead th');
+    headers.forEach((th, idx) => {
+        if (idx >= 2 && idx <= 5) {
+            th.classList.remove('semana-col-resaltada');
+            th.style.background = '';
+        }
+    });
+    
+    // Quitar resaltado de fila
+    document.querySelectorAll('tr.proveedor-row.editing-row').forEach(row => {
+        row.classList.remove('editing-row');
+    });
+}
+
+// Navegación por teclado en la tabla
+function navegarTabla(event, input) {
+    const filas = Array.from(document.querySelectorAll('tr.proveedor-row:not([style*="display: none"]) .precio-input'));
+    const idx = filas.indexOf(input);
+    if (idx === -1) return;
+    
+    let target = null;
+    
+    switch(event.key) {
+        case 'Enter':
+            event.preventDefault();
+            // Enter: siguiente fila, misma columna
+            const nextRowInput = document.querySelector(`tr.proveedor-row:not([style*="display: none"]):nth-of-type(${Math.floor(idx / 4) + 2}) .precio-input[data-semana="${input.dataset.semana}"]`);
+            if (nextRowInput) nextRowInput.focus();
+            break;
+            
+        case 'ArrowDown':
+            event.preventDefault();
+            const downInput = filas[idx + 4];
+            if (downInput) downInput.focus();
+            break;
+            
+        case 'ArrowUp':
+            event.preventDefault();
+            const upInput = filas[idx - 4];
+            if (upInput) upInput.focus();
+            break;
+            
+        case 'ArrowRight':
+            event.preventDefault();
+            if (parseInt(input.dataset.semana) < 4) {
+                const rightInput = input.closest('td').nextElementSibling?.querySelector('.precio-input');
+                if (rightInput) rightInput.focus();
+            }
+            break;
+            
+        case 'ArrowLeft':
+            event.preventDefault();
+            if (parseInt(input.dataset.semana) > 1) {
+                const leftInput = input.closest('td').previousElementSibling?.querySelector('.precio-input');
+                if (leftInput) leftInput.focus();
+            }
+            break;
+            
+        case 'Tab':
+            // Tab normal behavior, pero prevenir en última celda
+            if (!event.shiftKey && parseInt(input.dataset.semana) === 4) {
+                const nextRow = input.closest('tr').nextElementSibling;
+                if (nextRow && nextRow.classList.contains('proveedor-row')) {
+                    event.preventDefault();
+                    const firstInput = nextRow.querySelector('.precio-input[data-semana="1"]');
+                    if (firstInput) firstInput.focus();
+                }
+            } else if (event.shiftKey && parseInt(input.dataset.semana) === 1) {
+                const prevRow = input.closest('tr').previousElementSibling;
+                if (prevRow && prevRow.classList.contains('proveedor-row')) {
+                    event.preventDefault();
+                    const lastInput = prevRow.querySelector('.precio-input[data-semana="4"]');
+                    if (lastInput) lastInput.focus();
+                }
+            }
+            break;
+    }
+}
+
+// Toggle columnas
+function toggleColumnas() {
+    const cols = ['SEMANA 1', 'SEMANA 2', 'SEMANA 3', 'SEMANA 4', 'PROMEDIO', 'MEJOR'];
+    // Simple toggle - could be enhanced with a dropdown menu
+    alert('Función de toggle de columnas - usar menú contextual en headers');
+}
+
+// Filtros de tabla
+function filtrarTabla() {
+    const soloConPrecio = document.getElementById('filtroSoloConPrecio').checked;
+    const soloMejor = document.getElementById('filtroMejorPrecio').checked;
+    
+    tablaState.filtros.soloConPrecio = soloConPrecio;
+    tablaState.filtros.soloMejor = soloMejor;
+    
+    document.querySelectorAll('tr.proveedor-row').forEach(fila => {
+        let mostrar = true;
+        
+        if (soloConPrecio) {
+            const tienePrecio = Array.from(fila.querySelectorAll('.precio-input'))
+                .some(inp => getValorNumerico(inp) > 0);
+            mostrar = mostrar && tienePrecio;
+        }
+        
+        if (soloMejor) {
+            const esMejor = fila.classList.contains('best-row');
+            mostrar = mostrar && esMejor;
+        }
+        
+        fila.style.display = mostrar ? '' : 'none';
+    });
+    
+    // Actualizar filas de resumen
+    document.querySelectorAll('tr.producto-summary').forEach(summary => {
+        const producto = summary.dataset.producto;
+        const filasVisibles = document.querySelectorAll(`tr.proveedor-row[data-producto="${producto}"]:not([style*="display: none"])`);
+        summary.style.display = filasVisibles.length > 0 ? '' : 'none';
+    });
+    
+    actualizarResumenRapido();
+    actualizarTodosLosMejores();
+}
+
+// Actualizar TODOS los mejores (después de filtrar)
+function actualizarTodosLosMejores() {
+    const productos = new Set();
+    document.querySelectorAll('tr.proveedor-row:not([style*="display: none"])').forEach(fila => {
+        productos.add(fila.dataset.producto);
+    });
+    productos.forEach(producto => {
+        actualizarMejor(producto);
+        actualizarResumenProducto(producto);
+    });
+}
+
+// Guardar estado original al enfocar
+document.addEventListener('focusin', function(e) {
+    if (e.target.classList.contains('precio-input') && !e.target.dataset.precioOriginalGuardado) {
+        e.target.dataset.precioOriginalGuardado = e.target.value;
+    }
+});
+
+// Shortcuts de teclado globales
+document.addEventListener('keydown', function(e) {
+    // Ctrl+S para guardar
+    if (e.ctrlKey && e.key === 's') {
+        e.preventDefault();
+        const btn = document.getElementById('btnGuardarTodo');
+        if (btn && !btn.disabled) btn.click();
+    }
+    // Alt+N para nueva fila
+    if (e.altKey && e.key === 'n') {
+        e.preventDefault();
+        const modal = new bootstrap.Modal(document.getElementById('modalAgregarFila'));
+        modal.show();
+    }
+    // Alt+E para exportar
+    if (e.altKey && e.key === 'e') {
+        e.preventDefault();
+        window.location.href = '{{ url_for("planta_alimentos.cotizaciones.exportar_cotizacion", mes=cotizacion.mes, anio=cotizacion.anio) }}';
+    }
+    // Escape para cerrar modales
+    if (e.key === 'Escape') {
+        document.querySelectorAll('.modal.show').forEach(modal => {
+            bootstrap.Modal.getInstance(modal)?.hide();
+        });
+    }
+});
+
+// Prevenir envío de formulario con Enter en inputs
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && e.target.tagName === 'INPUT' && e.target.type === 'text') {
+        // Permitir navegación personalizada, no submit
+        if (e.target.classList.contains('precio-input')) {
+            e.preventDefault();
+        }
+    }
+});
+
+// Exportar tabla consolidado a Excel
+function exportarConsolidadoExcel() {
+    const tabla = document.getElementById('tablaConsolidado');
+    if (!tabla) return;
+    
+    // Crear workbook
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.table_to_sheet(tabla, {
+        raw: false,
+        dateNF: 'dd/mm/yyyy'
+    });
+    
+    // Ajustar anchos de columna
+    const cols = [
+        { wch: 35 }, // PRODUCTO
+        { wch: 25 }, // MEJOR PROVEEDOR
+        { wch: 15 }, // SEMANA 1
+        { wch: 15 }, // SEMANA 2
+        { wch: 15 }, // SEMANA 3
+        { wch: 15 }, // SEMANA 4
+        { wch: 18 }, // PROMEDIO
+        { wch: 20 }  // AHORRO
+    ];
+    ws['!cols'] = cols;
+    
+    // Estilo header
+    const range = XLSX.utils.decode_range(ws['!ref']);
+    for (let C = range.s.c; C <= range.e.c; ++C) {
+        const cellRef = XLSX.utils.encode_cell({ r: 0, c: C });
+        if (ws[cellRef]) {
+            ws[cellRef].s = {
+                font: { bold: true, color: { rgb: 'FFFFFF' } },
+                fill: { fgColor: { rgb: 'FFC107' } },
+                alignment: { horizontal: 'center', vertical: 'center' },
+                border: { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } }
+            };
+        }
+    }
+    
+    // Formato número para columnas de precio
+    for (let R = 1; R <= range.e.r; ++R) {
+        for (let C = 2; C <= 7; ++C) { // Columnas de precios (índice 2-7)
+            const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
+            if (ws[cellRef] && ws[cellRef].v) {
+                ws[cellRef].z = '#,##0.00';
+            }
+        }
+        // Formato ahorro
+        const ahorroRef = XLSX.utils.encode_cell({ r: R, c: 7 });
+        if (ws[ahorroRef] && ws[ahorroRef].v) {
+            ws[ahorroRef].z = '#,##0.00';
+        }
+    }
+    
+    XLSX.utils.book_append_sheet(wb, ws, 'Consolidado_Mejor_Precio');
+    
+    const fecha = new Date().toISOString().split('T')[0];
+    const mes = '{{ cotizacion.mes }}' || '';
+    const anio = '{{ cotizacion.anio }}' || '';
+    const nombreArchivo = 'Consolidado_Mejor_Precio_' + mes + '_' + anio + '_' + fecha + '.xlsx';
+    
+    XLSX.writeFile(wb, nombreArchivo);
+    
+    // Toast de éxito
+    mostrarToast('Consolidado exportado a Excel', 'success');
+}
+
+// Función auxiliar para toast
+function mostrarToast(mensaje, tipo = 'info') {
+    // Crear toast container si no existe
+    let toastContainer = document.getElementById('toastContainer');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toastContainer';
+        toastContainer.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+        toastContainer.style.zIndex = '9999';
+        document.body.appendChild(toastContainer);
+    }
+    
+    const toastId = 'toast-' + Date.now();
+    const bgClass = tipo === 'success' ? 'bg-success' : tipo === 'error' ? 'bg-danger' : 'bg-info';
+    const icon = tipo === 'success' ? 'fa-check-circle' : tipo === 'error' ? 'fa-times-circle' : 'fa-info-circle';
+    
+    const toastHtml = `
+        <div id="${toastId}" class="toast align-items-center text-white ${bgClass} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">
+                    <i class="fas ${icon} me-2"></i>${mensaje}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+    `;
+    
+    toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+    const toastEl = document.getElementById(toastId);
+    const toast = new bootstrap.Toast(toastEl, { delay: 3000 });
+    toast.show();
+    
+    toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
+}
+
+// Force parser completion - prevents "Unexpected end of input" in some browsers
+void 0;
+
+// Explicitly attach all functions to window to ensure global availability
+window.formatearNumero = formatearNumero;
+window.getValorNumerico = getValorNumerico;
+window.calcularFila = calcularFila;
+window.actualizarMejor = actualizarMejor;
+window.marcarCambio = marcarCambio;
+window.verificarCambiosPendientes = verificarCambiosPendientes;
+window.actualizarEstadoGuardado = actualizarEstadoGuardado;
+window.actualizarResumenRapido = actualizarResumenRapido;
+window.actualizarResumenProducto = actualizarResumenProducto;
+window.resaltarSemana = resaltarSemana;
+window.quitarResalteSemana = quitarResalteSemana;
+window.navegarTabla = navegarTabla;
+window.toggleColumnas = toggleColumnas;
+window.filtrarTabla = filtrarTabla;
+window.exportarConsolidadoExcel = exportarConsolidadoExcel;
+window.mostrarToast = mostrarToast;
+window.guardarNuevaFila = guardarNuevaFila;
+window.guardarTodo = guardarTodo;
+window.toggleColumnas = toggleColumnas;
+window.getIdsFromNames = getIdsFromNames;
+window.actualizarContadorOtras = actualizarContadorOtras;
+
+// Verify all functions are defined
+console.log('[cotizaciones_detalle] Functions loaded:', {
+    formatearNumero: typeof formatearNumero,
+    getValorNumerico: typeof getValorNumerico,
+    calcularFila: typeof calcularFila,
+    actualizarMejor: typeof actualizarMejor,
+    marcarCambio: typeof marcarCambio,
+    actualizarResumenRapido: typeof actualizarResumenRapido,
+    actualizarResumenProducto: typeof actualizarResumenProducto,
+    resaltarSemana: typeof resaltarSemana,
+    quitarResalteSemana: typeof quitarResalteSemana,
+    navegarTabla: typeof navegarTabla,
+    toggleColumnas: typeof toggleColumnas,
+    filtrarTabla: typeof filtrarTabla,
+    exportarConsolidadoExcel: typeof exportarConsolidadoExcel,
+    mostrarToast: typeof mostrarToast,
+    guardarNuevaFila: typeof guardarNuevaFila,
+    guardarTodo: typeof guardarTodo,
+    actualizarContadorOtras: typeof actualizarContadorOtras,
+    getIdsFromNames: typeof getIdsFromNames,
+    toggleColumnas: typeof toggleColumnas,
+    filtrarTabla: typeof filtrarTabla,
+    actualizarContadorOtras: typeof actualizarContadorOtras,
+});
+
+// Force parser completion - prevents "Unexpected end of input" in some browsers
+void 0;
+
+// Safety check: verify all critical functions are defined
+(function() {
+    const requiredFunctions = [
+        'formatearNumero', 'getValorNumerico', 'calcularFila', 'actualizarMejor',
+        'marcarCambio', 'actualizarResumenRapido', 'actualizarResumenProducto',
+        'resaltarSemana', 'quitarResalteSemana', 'navegarTabla', 'toggleColumnas',
+        'filtrarTabla', 'exportarConsolidadoExcel', 'mostrarToast',
+        'guardarNuevaFila', 'guardarTodo', 'actualizarContadorOtras', 'getIdsFromNames'
+    ];
+    
+    const missing = requiredFunctions.filter(fn => typeof window[fn] !== 'function');
+    if (missing.length > 0) {
+        console.error('[cotizaciones_detalle] Missing functions:', missing);
+    } else {
+        console.log('[cotizaciones_detalle] All functions loaded successfully');
+    }
+})();
+
+// Force parser completion - prevents "Unexpected end of input" in some browsers
+void 0;
+</script>
+
+<!-- Modal Agregar Fila -->
+<div class="modal fade" id="modalAgregarFila" tabindex="-1" aria-labelledby="modalAgregarFilaLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="modalAgregarFilaLabel"><i class="fas fa-plus me-2"></i>Agregar Materia Prima con Precios</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formAgregarFila">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Materia Prima <span class="text-danger">*</span></label>
+                            <select class="form-select form-select-sm" id="selectProducto" name="materia_prima_id" required>
+                                <option value="" disabled selected>Seleccionar materia prima...</option>
+                                {% for mp in data.productos %}
+                                <option value="{{ mp.id }}">{{ mp.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Proveedor <span class="text-danger">*</span></label>
+                            <select class="form-select form-select-sm" id="selectProveedor" name="proveedor_id" required>
+                                <option value="" disabled selected>Seleccionar proveedor...</option>
+                                {% for p in data.proveedores %}
+                                <option value="{{ p.id }}">{{ p.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <hr class="my-3">
+                    <h6 class="fw-bold text-primary">Precios por Semana (COP)</h6>
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold small">Semana 1</label>
+                            <input type="text" class="form-control form-control-sm text-end precio-input" name="precio_semana_1" step="0.01" min="0" max="9999999999.99" pattern="^([1-9]\d{0,2}(\.\d{3})*|0)(,\d{1,2})?$" placeholder="$ 0,00" title="Formato: 1.000.000,00" oninput="window.formatearNumero(this); window.validarInput(this);">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold small">Semana 2</label>
+                            <input type="text" class="form-control form-control-sm text-end precio-input" name="precio_semana_2" step="0.01" min="0" max="9999999999.99" pattern="^([1-9]\d{0,2}(\.\d{3})*|0)(,\d{1,2})?$" placeholder="$ 0,00" title="Formato: 1.000.000,00" oninput="window.formatearNumero(this); window.validarInput(this);">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold small">Semana 3</label>
+                            <input type="text" class="form-control form-control-sm text-end precio-input" name="precio_semana_3" step="0.01" min="0" max="9999999999.99" pattern="^([1-9]\d{0,2}(\.\d{3})*|0)(,\d{1,2})?$" placeholder="$ 0,00" title="Formato: 1.000.000,00" oninput="window.formatearNumero(this); window.validarInput(this);">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold small">Semana 4</label>
+                            <input type="text" class="form-control form-control-sm text-end precio-input" name="precio_semana_4" step="0.01" min="0" max="9999999999.99" pattern="^([1-9]\d{0,2}(\.\d{3})*|0)(,\d{1,2})?$" placeholder="$ 0,00" title="Formato: 1.000.000,00" oninput="window.formatearNumero(this); window.validarInput(this);">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Observaciones</label>
+                        <textarea class="form-control form-control-sm" name="observaciones" rows="2" placeholder="Observaciones opcionales..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="window.guardarNuevaFila(event)">
+                    <i class="fas fa-plus me-1"></i> Agregar a la Cotización
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

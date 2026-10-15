@@ -1,4 +1,5 @@
-from flask import render_template, request, redirect, url_for, flash
+from flask import render_template, request, redirect, url_for, flash, jsonify, session
+from models.base import get_db_connection
 from routes.planta_alimentos.catalogo_a import planta_bp  # O la ruta donde tengas definido el Blueprint
 from routes.routes import login_requerido
 from models.planta_alimentos.maestros import MateriaPrima
@@ -56,22 +57,50 @@ def revision_costos(item_id, lote_id):
 @planta_bp.route('/consolidado-precios')
 @login_requerido
 def consolidado_precios():
-    # 1. Obtenemos las materias primas para la tabla izquierda
-    precios_mp = MateriaPrima.get_all() 
+    # 1. Precios materias primas - separar destacadas vs otras
+    precios_mp_todas = MateriaPrima.get_all()
+    materias_destacadas = [mp for mp in precios_mp_todas if mp.get('destacada_en_consolidado')]
+    materias_otras = [mp for mp in precios_mp_todas if not mp.get('destacada_en_consolidado')]
     
-    # 2. Obtenemos toda la matemática procesada
+    # 2. Costos consolidados ya calculados (modelo)
     costos_dietas = FormulaDetalle.obtener_consolidado_costos()
     
-    # 3. Agrupamos por empresa (San Martín, Country, etc.)
-    costos_agrupados = {}
-    for dieta in costos_dietas:
-        empresa = dieta['nombre_empresa']
-        if empresa not in costos_agrupados:
-            costos_agrupados[empresa] = []
-        costos_agrupados[empresa].append(dieta)
-
+    # 3. Filtrar en 3 grupos fijos por empresa
+    dietas_san_martin = [d for d in costos_dietas if d['nombre_empresa'] == 'SAN MARTIN']
+    dietas_country = [d for d in costos_dietas if d['nombre_empresa'] == 'COUNTRY']
+    dietas_dos_crestas = [d for d in costos_dietas if d['nombre_empresa'] == 'DOS CRESTAS SANTUARIO']
+    
     return render_template(
-        '/planta_alimentos/consolidado_precios.html',
-        precios_mp=precios_mp,
-        costos_agrupados=costos_agrupados
+        'planta_alimentos/consolidado_precios.html',
+        materias_destacadas=materias_destacadas,
+        materias_otras=materias_otras,
+        dietas_san_martin=dietas_san_martin,
+        dietas_country=dietas_country,
+        dietas_dos_crestas=dietas_dos_crestas
     )
+
+
+@planta_bp.route('/materia-prima/<int:mp_id>/toggle-destacada', methods=['POST'])
+@login_requerido
+def toggle_materia_destacada(mp_id):
+    """Toggle materia prima como destacada en consolidado"""
+    data = request.get_json(silent=True) or {}
+    destacada = data.get('destacada', False)
+    
+    print(f"[DEBUG toggle] mp_id={mp_id}, destacada={destacada}, session_user={session.get('user_id')}")
+    
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE materias_primas SET destacada_en_consolidado = %s WHERE id = %s",
+                (destacada, mp_id)
+            )
+            conn.commit()
+        print(f"[DEBUG toggle] OK mp_id={mp_id}")
+        return jsonify({'success': True})
+    except Exception as e:
+        print(f"Error toggle destacada: {e}")
+        return jsonify({'success': False, 'msg': str(e)}), 500
+    finally:
+        conn.close()

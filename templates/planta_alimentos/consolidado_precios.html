@@ -8,8 +8,11 @@
         <!-- TABLA IZQUIERDA: PRECIOS MATERIAS PRIMAS -->
         <div class="col-md-4">
             <div class="card shadow-sm mb-4">
-                <div class="card-header bg-success text-white text-center fw-bold">
-                    PRECIOS MATERIAS PRIMAS + FLETE
+                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                    <span class="fw-bold">PRECIOS MATERIAS PRIMAS + FLETE</span>
+                    <button type="button" class="btn btn-sm btn-outline-light" onclick="toggleOtrasMaterias()" id="btnToggleOtras">
+                        <i class="fas fa-chevron-down me-1"></i> Ver otras (<span id="countOtras">{{ materias_otras|length }}</span>)
+                    </button>
                 </div>
                 <div class="card-body p-0">
                     <table class="table table-bordered table-striped table-hover mb-0">
@@ -19,17 +22,39 @@
                                 <th>PRECIO NETO</th>
                                 <th>FLETE</th>
                                 <th>TOTAL</th>
+                                <th style="width: 40px; text-align: center; color: #ffd700;">★</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            {% for mp in precios_mp %}
-                            <tr>
+                        <!-- TBODY 1: Materias Destacadas -->
+                        <tbody id="tbodyDestacadas">
+                            {% for mp in materias_destacadas %}
+                            <tr class="table-light" data-mp-id="{{ mp['id'] }}">
                                 <td>{{ mp['nombre'] }}</td>
-                                <td class="text-end">$ {{ "{:,.0f}".format(mp['precio_actual_kg'] | default(0) | float)
-                                    }}</td>
+                                <td class="text-end">$ {{ "{:,.0f}".format(mp['precio_actual_kg'] | default(0) | float) }}</td>
                                 <td class="text-end">$ {{ "{:,.0f}".format(mp['flete'] | default(0) | float) }}</td>
-                                <td class="text-end fw-bold; "style="font-size: 12px;">$ {{ "{:,.0f}".format((mp['precio_actual_kg'] | default(0)
-                                    | float) + (mp['flete'] | default(0) | float)) }}</td>
+                                <td class="text-end fw-bold" style="font-size: 12px;">$ {{ "{:,.0f}".format((mp['precio_actual_kg'] | default(0) | float) + (mp['flete'] | default(0) | float)) }}</td>
+                                <td class="text-center" style="width: 40px;">
+                                    <button type="button" class="btn btn-sm btn-warning toggle-destacada" data-mp-id="{{ mp['id'] }}" data-estado="1" title="Quitar de destacadas" style="background: linear-gradient(135deg, #ffd700, #ffaa00); border: none; box-shadow: 0 2px 4px rgba(255, 170, 0, 0.4);">
+                                        <i class="fas fa-star" style="color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.3);"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        
+                        <!-- TBODY 2: Otras Materias Primas (colapsable) -->
+                        <tbody id="tbodyOtras" class="collapse border-top">
+                            {% for mp in materias_otras %}
+                            <tr data-mp-id="{{ mp['id'] }}">
+                                <td>{{ mp['nombre'] }}</td>
+                                <td class="text-end">$ {{ "{:,.0f}".format(mp['precio_actual_kg'] | default(0) | float) }}</td>
+                                <td class="text-end">$ {{ "{:,.0f}".format(mp['flete'] | default(0) | float) }}</td>
+                                <td class="text-end fw-bold" style="font-size: 12px;">$ {{ "{:,.0f}".format((mp['precio_actual_kg'] | default(0) | float) + (mp['flete'] | default(0) | float)) }}</td>
+                                <td class="text-center" style="width: 40px;">
+                                    <button type="button" class="btn btn-sm toggle-destacada" data-mp-id="{{ mp['id'] }}" data-estado="0" title="Agregar a destacadas" style="background: linear-gradient(135deg, #fff8e1, #ffecb3); border: 2px solid #ffd700; color: #b8860b;">
+                                        <i class="far fa-star" style="font-size: 1.1em; color: #ffd700;"></i>
+                                    </button>
+                                </td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -38,34 +63,38 @@
             </div>
         </div>
 
-        <!-- TABLA DERECHA: COSTO DIETAS POR EMPRESA -->
+        <!-- TABLA DERECHA: 3 TABLAS FIJAS POR EMPRESA -->
         <div class="col-md-8">
-            {% for empresa, dietas in costos_agrupados.items() %}
+            
+            {# =============================================
+                 TABLA 1: COSTO DIETAS SAN MARTIN
+                 ============================================= #}
+            {% if dietas_san_martin %}
             <div class="card shadow-sm mb-4">
-                <div class="card-header bg-secondary text-white text-center fw-bold">
-                    COSTO DIETAS {{ empresa | upper }}
+                <div class="card-header bg-danger text-white text-center fw-bold">
+                    COSTO DIETAS SAN MARTIN
                 </div>
                 <div class="card-body p-0">
                     <table class="table table-bordered table-striped table-hover mb-0">
-                        <thead class="table-light">
-                            <tr class="text-center" style="font-size: 0.9em;">
-                                <th>LOTE</th>
-                                <th>ETAPA</th>
-                                <th>PRECIO + FLETE + MAQ.</th>
-                                <th>PRECIO + IVA + MAQ.</th>
-                                <th>PRECIO + FLETE + IVA + MAQ.</th>
+                        <thead>
+                            <tr class="text-center" style="font-size: 0.85em;">
+                                <th style="background-color: #f8d7da;">LOTE</th>
+                                <th style="background-color: #f8d7da;">ETAPA</th>
+                                <th style="background-color: #f8d7da;">PRECIO + FLETE + MAQ.</th>
+                                <th style="background-color: #cff4fc;">PRECIO + IVA + MAQ.</th>
+                                <th style="background-color: #d1e7dd;">PRECIO + FLETE + IVA + MAQ.</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {% for dieta in dietas %}
+                            {% for dieta in dietas_san_martin %}
                             <tr>
-                                <td class="fw-bold" style="font-size: 12px;">{{ dieta['lote'] }}</td>
-                                <td>{{ dieta['etapa'] }}</td>
-                                <td class="text-end" style="background-color: #f8d7da;">$ {{
+                                <td class="fw-bold" style="font-size: 0.85em;">{{ dieta['lote'] }}</td>
+                                <td style="font-size: 0.85em;">{{ dieta['etapa'] }}</td>
+                                <td class="text-end" style="background-color: #f8d7da; font-size: 0.85em;">$ {{
                                     "{:,.0f}".format(dieta['precio_flete_maquila'] | default(0) | float) }}</td>
-                                <td class="text-end" style="background-color: #cff4fc;">$ {{
+                                <td class="text-end" style="background-color: #cff4fc; font-size: 0.85em;">$ {{
                                     "{:,.0f}".format(dieta['precio_iva_maquila'] | default(0) | float) }}</td>
-                                <td class="text-end fw-bold" style="background-color: #d1e7dd;">$ {{
+                                <td class="text-end fw-bold" style="background-color: #d1e7dd; font-size: 0.85em;">$ {{
                                     "{:,.0f}".format(dieta['precio_flete_iva_maquila'] | default(0) | float) }}</td>
                             </tr>
                             {% endfor %}
@@ -73,8 +102,188 @@
                     </table>
                 </div>
             </div>
-            {% endfor %}
+            {% endif %}
+
+            {# =============================================
+                 TABLA 2: COSTO DIETAS COUNTRY
+                 ============================================= #}
+            {% if dietas_country %}
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-white text-center fw-bold">
+                    COSTO DIETAS COUNTRY
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-bordered table-striped table-hover mb-0">
+                        <thead>
+                            <tr class="text-center" style="font-size: 0.85em;">
+                                <th style="background-color: #f8d7da;">DIETAS COUNTRY</th>
+                                <th style="background-color: #f8d7da;">PRECIO + FLETE + MAQ.</th>
+                                <th style="background-color: #cff4fc;">PRECIO + IVA + MAQ.</th>
+                                <th style="background-color: #d1e7dd;">PRECIO + FLETE + IVA + MAQ.</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for dieta in dietas_country %}
+                            <tr>
+                                <td class="fw-bold" style="font-size: 0.85em;">{{ dieta['etapa'] }}</td>
+                                <td class="text-end" style="background-color: #f8d7da; font-size: 0.85em;">$ {{
+                                    "{:,.0f}".format(dieta['precio_flete_maquila'] | default(0) | float) }}</td>
+                                <td class="text-end" style="background-color: #cff4fc; font-size: 0.85em;">$ {{
+                                    "{:,.0f}".format(dieta['precio_iva_maquila'] | default(0) | float) }}</td>
+                                <td class="text-end fw-bold" style="background-color: #d1e7dd; font-size: 0.85em;">$ {{
+                                    "{:,.0f}".format(dieta['precio_flete_iva_maquila'] | default(0) | float) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+
+            {# =============================================
+                 TABLA 3: COSTO DIETAS DOS CRESTAS
+                 ============================================= #}
+            {% if dietas_dos_crestas %}
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-warning text-dark text-center fw-bold">
+                    COSTO DIETAS DOS CRESTAS
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-bordered table-striped table-hover mb-0">
+                        <thead>
+                            <tr class="text-center" style="font-size: 0.85em;">
+                                <th style="background-color: #f8d7da;">DIETAS DOS CRESTAS</th>
+                                <th style="background-color: #f8d7da;">PRECIO + FLETE + MAQ.</th>
+                                <th style="background-color: #cff4fc;">PRECIO + IVA + MAQ.</th>
+                                <th style="background-color: #d1e7dd;">PRECIO + FLETE + IVA + MAQ.</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for dieta in dietas_dos_crestas %}
+                            <tr>
+                                <td class="fw-bold" style="font-size: 0.85em;">{{ dieta['etapa'] }}</td>
+                                <td class="text-end" style="background-color: #f8d7da; font-size: 0.85em;">$ {{
+                                    "{:,.0f}".format(dieta['precio_flete_maquila'] | default(0) | float) }}</td>
+                                <td class="text-end" style="background-color: #cff4fc; font-size: 0.85em;">$ {{
+                                    "{:,.0f}".format(dieta['precio_iva_maquila'] | default(0) | float) }}</td>
+                                <td class="text-end fw-bold" style="background-color: #d1e7dd; font-size: 0.85em;">$ {{
+                                    "{:,.0f}".format(dieta['precio_flete_iva_maquila'] | default(0) | float) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+
         </div>
     </div>
 </div>
+
+<script>
+    // Toggle sección "Otras materias primas" (ahora es un tbody con collapse)
+    function toggleOtrasMaterias() {
+        const collapse = document.getElementById('tbodyOtras');
+        const btn = document.getElementById('btnToggleOtras');
+        const icon = btn.querySelector('i');
+        
+        if (collapse.classList.contains('show')) {
+            collapse.classList.remove('show');
+            icon.classList.remove('fa-chevron-up');
+            icon.classList.add('fa-chevron-down');
+            btn.innerHTML = '<i class="fas fa-chevron-down me-1"></i> Ver otras (<span id="countOtras">{{ materias_otras|length }}</span>)';
+        } else {
+            collapse.classList.add('show');
+            icon.classList.remove('fa-chevron-down');
+            icon.classList.add('fa-chevron-up');
+            btn.innerHTML = '<i class="fas fa-chevron-up me-1"></i> Ocultar otras';
+        }
+    }
+
+    // Toggle estrella (destacada) - AJAX
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.toggle-destacada').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const mpId = this.dataset.mpId;
+                const nuevoEstado = this.dataset.estado === '1' ? '0' : '1';
+                const icon = this.querySelector('i');
+                const row = this.closest('tr');
+                
+                console.log('[DEBUG] Toggle click:', { mpId, nuevoEstado, cookie: document.cookie });
+                
+                fetch(`/materia-prima/${mpId}/toggle-destacada`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ destacada: nuevoEstado === '1' }),
+                    redirect: 'manual'
+                })
+                .then(async res => {
+                    const contentType = res.headers.get('content-type');
+                    console.log('[DEBUG] Response:', res.status, res.statusText, contentType);
+                    // Handle redirect (302 = session expired, redirect to login)
+                    if (res.status === 302 || res.redirected) {
+                        throw new Error('Sesión expirada. Por favor recarga la página e inicia sesión nuevamente.');
+                    }
+                    let data;
+                    if (contentType && contentType.includes('application/json')) {
+                        data = await res.json();
+                    } else {
+                        const text = await res.text();
+                        console.error('Respuesta no JSON:', text);
+                        throw new Error('Respuesta del servidor inválida: ' + text.substring(0, 200));
+                    }
+                    
+                    if (!res.ok) {
+                        throw new Error(data.msg || `Error HTTP ${res.status}`);
+                    }
+                    return data;
+                })
+                .then(data => {
+                    if (data.success) {
+                        // Actualizar UI
+                        this.dataset.estado = nuevoEstado;
+                        if (nuevoEstado === '1') {
+                            icon.classList.remove('far');
+                            icon.classList.add('fas');
+                            this.classList.remove('btn-outline-warning');
+                            this.classList.add('btn-warning');
+                            this.title = 'Quitar de destacadas';
+                            // Mover a tabla destacadas si estaba en otras
+                            if (row.closest('#tbodyOtras')) {
+                                row.remove();
+                                document.getElementById('tbodyDestacadas').appendChild(row);
+                            }
+                        } else {
+                            icon.classList.remove('fas');
+                            icon.classList.add('far');
+                            this.classList.remove('btn-warning');
+                            this.classList.add('btn-outline-warning');
+                            this.title = 'Agregar a destacadas';
+                            // Mover a tabla otras si estaba en destacadas
+                            if (row.closest('#tbodyDestacadas')) {
+                                row.remove();
+                                document.getElementById('tbodyOtras').appendChild(row);
+                            }
+                        }
+                        // Actualizar contador
+                        actualizarContadorOtras();
+                    } else {
+                        alert('Error: ' + (data.msg || 'No se pudo actualizar'));
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert('Error de conexión: ' + err.message);
+                });
+            });
+        });
+
+        function actualizarContadorOtras() {
+            const count = document.querySelectorAll('#tbodyOtras tr').length;
+            const countEl = document.getElementById('countOtras');
+            if (countEl) countEl.textContent = count;
+        }
+    });
+</script>
 {% endblock %}

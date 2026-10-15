@@ -544,54 +544,67 @@ class FormulaProduccion:
         try:
             with conn.cursor() as cur:
                 # Obtener valores actuales para calcular diferencias de inventario
-                cur.execute("SELECT cal_kg, calcio_kg, fecha, empresa_cliente, remision, es_venta FROM formula_produccion_diaria WHERE id = %s", (id_registro,))
+                cur.execute("""
+                    SELECT cal_kg, calcio_kg, fecha, empresa_cliente, remision, es_venta 
+                    FROM formula_produccion_diaria 
+                    WHERE id = %s
+                """, (id_registro,))
                 row = cur.fetchone()
-                if row:
-                    cal_kg_actual = float(row[0] or 0)
-                    calcio_kg_actual = float(row[1] or 0)
-                    fecha = row[2]
-                    empresa_cliente = row[3]
-                    remision = row[4]
-                    es_venta = row[5]
+                
+                # Debug: imprimir lo que devuelve la consulta
+                print(f"[DEBUG actualizar_produccion] id_registro={id_registro}, row={row}, len={len(row) if row else 'None'}")
+                
+                if not row:
+                    print(f"[ERROR] No se encontró registro con id={id_registro}")
+                    return False
+                
+                # Acceso seguro por índice con valores por defecto
+                cal_kg_actual = float(row[0]) if row[0] is not None else 0.0
+                calcio_kg_actual = float(row[1]) if row[1] is not None else 0.0
+                fecha = row[2]
+                empresa_cliente = row[3] if row[3] else ''
+                remision = row[4] if row[4] else ''
+                es_venta = bool(row[5]) if row[5] is not None else False
+                
+                cal_kg_nuevo = float(cal_kg or 0)
+                calcio_kg_nuevo = float(calcio_kg or 0)
+                
+                # Actualizar registro
+                consulta = """
+                    UPDATE formula_produccion_diaria 
+                    SET toneladas = %s, novedad = %s, cal_kg = %s, calcio_kg = %s 
+                    WHERE id = %s;
+                """
+                cur.execute(consulta, (toneladas, novedad, cal_kg_nuevo, calcio_kg_nuevo, id_registro))
+                
+                # Ajustar inventario si es venta y hay cambios en cal/calcio
+                if es_venta:
+                    # CAL (ID=7)
+                    diff_cal = (cal_kg_nuevo - cal_kg_actual) * 1000
+                    if diff_cal != 0:
+                        tipo = 'SALIDA_VENTA_CAL' if diff_cal > 0 else 'ENTRADA_AJUSTE_CAL'
+                        cur.execute("""
+                            INSERT INTO movimientos_inventario 
+                            (materia_prima_id, tipo_movimiento, cantidad, fecha, observacion)
+                            VALUES (%s, %s, %s, %s, %s);
+                        """, (7, tipo, abs(diff_cal), fecha, f"Ajuste Cal venta {empresa_cliente} (Rem. {remision}) | Diff {diff_cal/1000} Kg"))
                     
-                    cal_kg_nuevo = float(cal_kg or 0)
-                    calcio_kg_nuevo = float(calcio_kg or 0)
-                    
-                    # Actualizar registro
-                    consulta = """
-                        UPDATE formula_produccion_diaria 
-                        SET toneladas = %s, novedad = %s, cal_kg = %s, calcio_kg = %s 
-                        WHERE id = %s;
-                    """
-                    cur.execute(consulta, (toneladas, novedad, cal_kg_nuevo, calcio_kg_nuevo, id_registro))
-                    
-                    # Ajustar inventario si es venta y hay cambios en cal/calcio
-                    if es_venta:
-                        # CAL (ID=7)
-                        diff_cal = (cal_kg_nuevo - cal_kg_actual) * 1000
-                        if diff_cal != 0:
-                            tipo = 'SALIDA_VENTA_CAL' if diff_cal > 0 else 'ENTRADA_AJUSTE_CAL'
-                            cur.execute("""
-                                INSERT INTO movimientos_inventario 
-                                (materia_prima_id, tipo_movimiento, cantidad, fecha, observacion)
-                                VALUES (%s, %s, %s, %s, %s);
-                            """, (7, abs(diff_cal), fecha, f"Ajuste Cal venta {empresa_cliente} (Rem. {remision}) | Diff {diff_cal/1000} Kg"))
-                        
-                        # CALCIO (ID=4)
-                        diff_calcio = (calcio_kg_nuevo - calcio_kg_actual) * 1000
-                        if diff_calcio != 0:
-                            tipo = 'SALIDA_VENTA_CALCIO' if diff_calcio > 0 else 'ENTRADA_AJUSTE_CALCIO'
-                            cur.execute("""
-                                INSERT INTO movimientos_inventario 
-                                (materia_prima_id, tipo_movimiento, cantidad, fecha, observacion)
-                                VALUES (%s, %s, %s, %s, %s);
-                            """, (4, abs(diff_calcio), fecha, f"Ajuste Calcio venta {empresa_cliente} (Rem. {remision}) | Diff {diff_calcio/1000} Kg"))
-                    
-                    conn.commit()
-                    return True
-                return False
+                    # CALCIO (ID=4)
+                    diff_calcio = (calcio_kg_nuevo - calcio_kg_actual) * 1000
+                    if diff_calcio != 0:
+                        tipo = 'SALIDA_VENTA_CALCIO' if diff_calcio > 0 else 'ENTRADA_AJUSTE_CALCIO'
+                        cur.execute("""
+                            INSERT INTO movimientos_inventario 
+                            (materia_prima_id, tipo_movimiento, cantidad, fecha, observacion)
+                            VALUES (%s, %s, %s, %s, %s);
+                        """, (4, tipo, abs(diff_calcio), fecha, f"Ajuste Calcio venta {empresa_cliente} (Rem. {remision}) | Diff {diff_calcio/1000} Kg"))
+                
+                conn.commit()
+                return True
         except Exception as e:
             print(f"Error al actualizar BD: {e}")
+            import traceback
+            traceback.print_exc()
             conn.rollback()
             return False
         finally:

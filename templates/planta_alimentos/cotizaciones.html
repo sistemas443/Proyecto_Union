@@ -1,0 +1,79 @@
+{% extends 'generales/layout.html' %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h4 fw-bold text-dark mb-0">Cotizaciones de Productos</h1>
+        <a href="{{ url_for('planta_alimentos.cotizaciones.cotizacion_nueva') }}" class="btn btn-sm btn-primary">
+            <i class="fas fa-plus me-1"></i> Nueva Cotización
+        </a>
+    </div>
+
+    <!-- Tabla de Cotizaciones -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <span class="fw-bold">Historial de Cotizaciones</span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 80px;">MES</th>
+                            <th style="width: 80px;">AÑO</th>
+                            <th>FECHA REGISTRO</th>
+                            <th>USUARIO</th>
+                            <th style="width: 100px;">ESTADO</th>
+                            <th style="width: 100px;">ITEMS</th>
+                            <th style="width: 150px;">ACCIONES</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cot in cotizaciones %}
+                        <tr>
+                            <td class="fw-bold text-center">
+                                {% set mes_nombres = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'] %}
+                                {{ mes_nombres[cot.mes] if cot.mes else '' }}
+                            </td>
+                            <td class="text-center">{{ cot.anio }}</td>
+                            <td class="text-center">
+                                {% if cot.fecha_registro %}
+                                    {{ cot.fecha_registro.strftime('%d/%m/%Y %H:%M') if cot.fecha_registro is not string else cot.fecha_registro }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>{{ cot.usuario_nombre or 'N/A' }}</td>
+                            <td class="text-center">
+                                {% if cot.estado == 'ACTIVA' %}
+                                    <span class="badge bg-success">Activa</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ cot.estado }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">{{ cot.total_items or 0 }}</td>
+                            <td>
+                                <div class="d-flex gap-1 justify-content-center">
+                                    <a href="{{ url_for('planta_alimentos.cotizaciones.cotizacion_detalle', cotizacion_id=cot.id) }}" 
+                                       class="btn btn-sm btn-outline-primary" title="Editar">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="{{ url_for('planta_alimentos.cotizaciones.exportar_cotizacion', mes=cot.mes, anio=cot.anio) }}" 
+                                       class="btn btn-sm btn-outline-success" title="Exportar Excel">
+                                        <i class="fas fa-file-excel"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="7" class="text-center py-4 text-muted">No hay cotizaciones registradas</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
