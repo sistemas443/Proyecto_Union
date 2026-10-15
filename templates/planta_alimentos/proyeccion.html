@@ -1,0 +1,252 @@
+{% extends 'generales/layout.html' %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+        <div class="d-flex flex-column">
+            <h1 class="h4 fw-bold text-dark mb-1">Proyección de Costos e Inventario</h1>
+            <p class="text-muted small mb-0">
+                Proyección de consumo y stock de materias primas basado en producción histórica
+            </p>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <span class="badge bg-light text-dark border px-3 py-2 small d-flex align-items-center" id="badgeAlertas">
+                <i class="fas fa-exclamation-triangle text-warning me-1"></i>
+                <span id="countAlertas">Cargando...</span>
+            </span>
+            <button type="button" class="btn btn-sm btn-outline-primary" onclick="exportarExcel()">
+                <i class="fas fa-file-excel me-1"></i> Exportar Excel
+            </button>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body py-3">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold small">Buscar Materia Prima</label>
+                    <input type="text" class="form-control form-control-sm" id="filtroBusqueda" placeholder="Escribe para filtrar...">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold small">Ventana de Consumo</label>
+                    <select class="form-select form-select-sm" id="filtroDias">
+                        <option value="7">Últimos 7 días</option>
+                        <option value="15">Últimos 15 días</option>
+                        <option value="30" selected>Últimos 30 días</option>
+                        <option value="60">Últimos 60 días</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold small">Filtro</label>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="filtroSoloAlertas">
+                        <label class="form-check-label small" for="filtroSoloAlertas">Solo con alertas</label>
+                    </div>
+                </div>
+                <div class="col-md-3 text-md-end">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="recargarDatos()">
+                        <i class="fas fa-sync-alt me-1"></i> Actualizar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla Principal -->
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" id="tablaProyeccion" style="font-size: 0.85rem;">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 35%;">MATERIA PRIMA</th>
+                            <th class="text-end" style="width: 12%;">STOCK ACTUAL (Ton)</th>
+                            <th class="text-end" style="width: 12%;">CONSUMO DIARIO (Ton/día)</th>
+                            <th class="text-end" style="width: 12%;">CONSUMO SEMANAL (Ton/sem)</th>
+                            <th class="text-end" style="width: 12%;">CONSUMO MENSUAL (Ton/mes)</th>
+                            <th class="text-center" style="width: 10%;">DÍAS STOCK</th>
+                            <th style="width: 7%;">ALERTAS</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyProyeccion">
+                        <tr>
+                            <td colspan="7" class="text-center py-4 text-muted">Cargando proyecciones...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let proyeccionesData = [];
+
+    // Cargar datos al iniciar
+    document.addEventListener('DOMContentLoaded', function() {
+        cargarProyecciones();
+        // Actualizar cada 60 segundos
+        setInterval(cargarProyecciones, 60000);
+    });
+
+    async function cargarProyecciones() {
+        const dias = document.getElementById('filtroDias').value;
+        const soloAlertas = document.getElementById('filtroSoloAlertas').checked;
+        const busqueda = document.getElementById('filtroBusqueda').value.toLowerCase();
+        
+        try {
+            const url = `/proyeccion/api/stock?dias=${dias}&alertas=${soloAlertas}`;
+            const response = await fetch(url, {
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const result = await response.json();
+            
+            if (!result.success) throw new Error(result.msg || 'Error en respuesta');
+            
+            proyeccionesData = result.data || [];
+            renderTabla(proyeccionesData, busqueda);
+            actualizarBadge(proyeccionesData);
+            
+        } catch (error) {
+            console.error('Error cargando proyecciones:', error);
+            document.getElementById('tbodyProyeccion').innerHTML = 
+                `<tr><td colspan="7" class="text-center py-4 text-danger">Error: ${error.message}</td></tr>`;
+        }
+    }
+
+    function renderTabla(data, busqueda = '') {
+        const tbody = document.getElementById('tbodyProyeccion');
+        
+        if (!data || data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted">Sin datos disponibles</td></tr>';
+            return;
+        }
+
+        // Filtrar por búsqueda
+        const filtrados = data.filter(p => 
+            p.nombre.toLowerCase().includes(busqueda)
+        );
+
+        if (filtrados.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted">No coinciden con la búsqueda</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = filtrados.map(p => {
+            const alertaHtml = p.alertas && p.alertas.length > 0 
+                ? p.alertas.map(a => 
+                    `<span class="badge ${a.tipo === 'critica' ? 'bg-danger' : 'bg-warning text-dark'} me-1" style="font-size: 0.7rem;">
+                        ${a.mensaje}
+                    </span>`
+                ).join(' ')
+                : '<span class="badge bg-success" style="font-size: 0.7rem;">OK</span>';
+
+            const filaClass = p.tiene_alerta_critica ? 'table-danger' : (p.tiene_alerta ? 'table-warning' : '');
+
+            return `
+                <tr class="${filaClass}" style="cursor: pointer;">
+                    <td class="fw-bold">${p.nombre}</td>
+                    <td class="text-end fw-bold">${p.stock_actual.toLocaleString('es-ES', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                    <td class="text-end">${p.consumo_diario.toLocaleString('es-ES', {minimumFractionDigits: 3, maximumFractionDigits: 3})}</td>
+                    <td class="text-end">${p.consumo_semanal.toLocaleString('es-ES', {minimumFractionDigits: 3, maximumFractionDigits: 3})}</td>
+                    <td class="text-end">${p.consumo_mensual.toLocaleString('es-ES', {minimumFractionDigits: 3, maximumFractionDigits: 3})}</td>
+                    <td class="text-center fw-bold ${p.dias_stock !== 'N/A' && p.dias_stock < 7 ? 'text-danger' : (p.dias_stock !== 'N/A' && p.dias_stock < 15 ? 'text-warning' : '')}">
+                        ${p.dias_stock === 'N/A' ? '∞' : p.dias_stock}
+                    </td>
+                    <td>${alertaHtml}</td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    function actualizarBadge(data) {
+        const badge = document.getElementById('badgeAlertas');
+        const countEl = document.getElementById('countAlertas');
+        
+        if (!data || !Array.isArray(data)) {
+            countEl.textContent = '0';
+            badge.className = 'badge bg-light text-dark border px-3 py-2 small d-flex align-items-center';
+            return;
+        }
+
+        const criticas = data.filter(p => p.tiene_alerta_critica).length;
+        const total = data.filter(p => p.tiene_alerta).length;
+
+        if (criticas > 0) {
+            badge.className = 'badge bg-danger px-3 py-2 small d-flex align-items-center';
+            countEl.innerHTML = `<i class="fas fa-exclamation-circle me-1"></i>${criticas} críticas / ${total} alertas`;
+        } else if (total > 0) {
+            badge.className = 'badge bg-warning text-dark px-3 py-2 small d-flex align-items-center';
+            countEl.innerHTML = `<i class="fas fa-exclamation-triangle me-1"></i>${total} alertas`;
+        } else {
+            badge.className = 'badge bg-success px-3 py-2 small d-flex align-items-center';
+            countEl.innerHTML = '<i class="fas fa-check-circle me-1"></i>Todo OK';
+        }
+    }
+
+    function recargarDatos() {
+        const btn = event.target.closest('button');
+        const originalHtml = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Actualizando...';
+        btn.disabled = true;
+        
+        cargarProyecciones().finally(() => {
+            btn.innerHTML = originalHtml;
+            btn.disabled = false;
+        });
+    }
+
+    function exportarExcel() {
+        const btn = event.target.closest('button');
+        const originalHtml = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Generando...';
+        btn.disabled = true;
+
+        fetch('/proyeccion/costos/exportar', {
+            credentials: 'include'
+        })
+        .then(res => {
+            if (!res.ok) throw new Error('Error generando Excel');
+            return res.blob();
+        })
+        .then(blob => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `proyeccion_inventario_${new Date().toISOString().split('T')[0]}.xlsx`;
+            a.click();
+            window.URL.revokeObjectURL(url);
+        })
+        .catch(err => {
+            console.error(err);
+            alert('Error exportando: ' + err.message);
+        })
+        .finally(() => {
+            btn.innerHTML = originalHtml;
+            btn.disabled = false;
+        });
+    }
+
+    // Event listeners para filtros
+    document.getElementById('filtroDias').addEventListener('change', cargarProyecciones);
+    document.getElementById('filtroSoloAlertas').addEventListener('change', cargarProyecciones);
+    document.getElementById('filtroBusqueda').addEventListener('input', debounce(() => {
+        if (proyeccionesData.length) {
+            const busqueda = document.getElementById('filtroBusqueda').value.toLowerCase();
+            renderTabla(proyeccionesData, busqueda);
+        }
+    }, 300));
+
+    function debounce(fn, delay) {
+        let timeoutId;
+        return (...args) => {
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(() => fn(...args), delay);
+        };
+    }
+</script>
+{% endblock %}

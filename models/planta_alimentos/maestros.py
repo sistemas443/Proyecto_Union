@@ -20,6 +20,7 @@ class MateriaPrima:
                         COALESCE(iva, 1.00) AS iva, 
                         COALESCE(flete, 0.00) AS flete,
                         COALESCE(es_maquila, FALSE) AS es_maquila,
+                        COALESCE(destacada_en_consolidado, FALSE) AS destacada_en_consolidado,
                         
                         -- Cálculos de Columnas Financieras
                         (precio_actual_kg * COALESCE(iva, 1.00)) AS p_iva,

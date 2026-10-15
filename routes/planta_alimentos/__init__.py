@@ -6,4 +6,6 @@ from . import costos
 from . import general
 from . import empresas
 from . import compras
+from . import proyecciones
+from . import cotizaciones
 

@@ -23,7 +23,7 @@ def resumen_lote_formulas():
         formulas=formulas
     )
     
-
+    
 @planta_bp.route('/kardex-inventario')
 @login_requerido
 def kardex_inventario():
@@ -33,11 +33,6 @@ def kardex_inventario():
 @login_requerido
 def control_silos():
     return "Módulo de Control de Silos en construcción"
-
-@planta_bp.route('/proyeccion-costos')
-@login_requerido
-def proyeccion_costos():
-    return "Módulo de Proyección y Costos en construcción"
 
 
 
