@@ -203,3 +203,10 @@ input[type="number"] {
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-15px); }
 }
+
+/* Ocultar el nombre de la empresa en pantallas < 1300px (todas las vistas) */
+@media (max-width: 1299.98px) {
+  nav.navbar .navbar-brand span {
+    display: none !important;
+  }
+}

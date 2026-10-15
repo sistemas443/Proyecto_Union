@@ -166,7 +166,8 @@ def fetch_opciones_dinamicas():
     opciones = {}
     
     # Lista de columnas de las cuales queremos extraer el historial de respuestas
-    columnas = ['cliente', 'ciudad', 'clima', 'responsable_tecnico', 'nutricionista', 'granja_lev', 'variedad', 'granja_prod', 'tipo_galpon', 'marca_galpon']
+    # 'variedad' y 'marca_galpon' ahora vienen de sus tablas de catálogo con foto
+    columnas = ['cliente', 'ciudad', 'clima', 'responsable_tecnico', 'nutricionista', 'granja_lev', 'granja_prod', 'tipo_galpon']
     
     try:
         for col in columnas:

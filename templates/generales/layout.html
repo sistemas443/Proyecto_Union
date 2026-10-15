@@ -460,6 +460,33 @@
   </script>
   {% endif %}
 
+  <!-- ATAJOS DE NAVEGACIÓN (SOLO SUPERADMIN ID=1; borrar este bloque para desactivar) -->
+  {% if session.get('user_rol') == 'Superadmin' and session.get('user_id')|string == '1' %}
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const ATAJOS = {
+        'L': "{{ url_for('lotes.vista_lotes') }}",
+        '!': "{{ url_for('primera_semana.primera_semana') }}",
+        'S': "{{ url_for('semanal_levante.semanal_levante') }}",
+        'D': "{{ url_for('diario.diario') }}",
+        'P': "{{ url_for('semanal.semanal') }}",
+        'C': "{{ url_for('clasificacion.clas_prod') }}",
+        'G': "{{ url_for('primera_semana.grafico_primera_semana') }}",
+        'V': "{{ url_for('semanal_levante.grafico_semanal_levante') }}",
+        'N': "{{ url_for('semanal.grafico_general') }}",
+        'O': "{{ url_for('semanal.grafico_conversion') }}"
+      };
+      document.addEventListener("keydown", function (event) {
+        if (!event.shiftKey || event.ctrlKey || event.altKey || event.metaKey) return;
+        const tag = (document.activeElement || {}).tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+        const destino = ATAJOS[event.key.toUpperCase()];
+        if (destino) { event.preventDefault(); window.location.href = destino; }
+      });
+    });
+  </script>
+  {% endif %}
+
   {% block scripts %}{% endblock %}
 </body>
 
