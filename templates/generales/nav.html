@@ -26,13 +26,17 @@
 
             <!-- BOTÓN INTERRUPTOR PARA LA BARRA LATERAL (LIMPIO SIN SUBMENÚS) -->
             <li>
-              <a class="dropdown-item fw-bold" href="#" onclick="toggleSidebarLotes(event)">
+              <a class="dropdown-item fw-bold" href="{{ url_for('lotes.vista_lotes') }}" onclick="toggleSidebarLotes(event)">
                 Lotes
               </a>
             </li>
-
-            <li><a class="dropdown-item disabled" href="#">Reportes</a></li>
           </ul>
+        </li>
+
+        <li class="nav-item">
+          <a class="nav-link" href="{{ url_for('main.index') }}">
+            <i class='bx bx-file-blank me-1'></i> Reportes
+          </a>
         </li>
 
         <li class="nav-item dropdown px-2">
