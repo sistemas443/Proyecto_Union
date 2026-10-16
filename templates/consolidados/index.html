@@ -1,0 +1,40 @@
+{% extends 'generales/layout.html' %}
+{% block title %}Consolidados L+P – Avícola San Martín{% endblock %}
+{% block content %}
+<div class="container-fluid px-4 py-3 h-100 d-flex flex-column">
+  <div class="d-flex flex-wrap align-items-center mb-3 px-3 py-2 rounded shadow-sm" style="background-color: #212529;">
+    <h5 class="mb-0 fw-bold text-uppercase text-white" style="letter-spacing: 0.5px;">
+      <i class='bx bx-grid-alt me-2'></i>CONSOLIDADOS L+P
+    </h5>
+  </div>
+  <div class="row row-cols-2 row-cols-md-3 row-cols-xl-6 g-3">
+    {% for b in botones %}
+    <div class="col">
+      {% if b.endpoint %}
+      <a href="{{ url_for(b.endpoint) }}" class="card h-100 text-center shadow-sm bg-secondary-subtle text-decoration-none text-dark">
+        <div class="card-body">
+          <div style="font-size: 2rem;">{{ b.icono }}</div>
+          <div class="fw-bold small">{{ b.titulo }}</div>
+        </div>
+      </a>
+      {% elif b.url %}
+      <a href="{{ b.url }}" class="card h-100 text-center shadow-sm bg-secondary-subtle text-decoration-none text-dark">
+        <div class="card-body">
+          <div style="font-size: 2rem;">{{ b.icono }}</div>
+          <div class="fw-bold small">{{ b.titulo }}</div>
+        </div>
+      </a>
+      {% else %}
+      <div class="card h-100 text-center shadow-sm bg-secondary-subtle opacity-75">
+        <div class="card-body">
+          <div style="font-size: 2rem;">{{ b.icono }}</div>
+          <div class="fw-bold small">{{ b.titulo }}</div>
+          <span class="badge bg-warning text-dark mt-1">Próximamente</span>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
