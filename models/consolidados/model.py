@@ -96,6 +96,20 @@ def fetch_matriz_dias(dia_min: int, dia_max: int) -> list:
         conn.close()
 
 
+def fetch_variedades_por_lote(lotes: list) -> dict:
+    """Devuelve {lote: variedad} consultando la cabecera de lotes."""
+    if not lotes:
+        return {}
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT lote, variedad FROM cabecera_lotes WHERE lote = ANY(%s)", (lotes,))
+        return {r[0]: r[1] for r in cur.fetchall()}
+    finally:
+        cur.close()
+        conn.close()
+
+
 def fetch_huevos_semanal() -> list:
     """Devuelve sem_prod, lote y prod_huevo_sem ordenado por semana y lote."""
     conn = get_db_connection()

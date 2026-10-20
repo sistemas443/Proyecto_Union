@@ -22,11 +22,6 @@
     flex: 1 1 auto;
     padding: 10px;
   }
-  /* Navbar compacto SOLO en vistas de gráficos (sin zoom: no rompe tooltips Plotly) */
-  nav.navbar { padding-top: 0.25rem; padding-bottom: 0.25rem; }
-  nav.navbar .navbar-brand img { height: 28px !important; }
-  nav.navbar .navbar-brand span { font-size: 0.8rem !important; }
-  nav.navbar .nav-link { font-size: 0.85rem; padding-top: 0.25rem; padding-bottom: 0.25rem; }
   /* Sidebar compacto SOLO en vistas de gráficos */
   .sidebar-rapido { width: 40px !important; }
   .sidebar-rapido:hover { width: 170px !important; }
@@ -39,9 +34,19 @@
     .sidebar-rapido.expandido-tactil { width: 170px !important; }
     .sidebar-rapido.expandido-tactil span { opacity: 1 !important; }
   }
+  /* Franja de fotos del lote (siempre visible, no colapsable) */
+  .franja-lote { flex-shrink: 0; }
+  .foto-lote { width: 40px; height: 40px; object-fit: cover; border-radius: 50%; border: 2px solid #dee2e6; }
+  .etiqueta-lote { font-size: 0.65rem; color: #6c757d; text-transform: uppercase; }
+  .nombre-lote { font-size: 0.85rem; font-weight: 700; }
+  @media (max-width: 767.98px) {
+    .texto-lote { display: none; }
+    .franja-lote { gap: 1rem !important; }
+    .card-filtro h5 { font-size: 0.9rem; }
+  }
 </style>
 <div class="container-fluid px-4 py-3 h-100 d-flex flex-column">
-    <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 px-3 py-2 rounded shadow-sm card-filtro" style="background-color: #212529;">
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-1 px-3 py-1 rounded shadow-sm card-filtro" style="background-color: #212529;">
       <h5 class="mb-0 fw-bold text-uppercase text-white" style="letter-spacing: 0.5px;">
         <i class='bx bx-line-chart-down me-2'></i>GRÁFICO DE LEVANTE HY LINE BROWN
       </h5>
@@ -60,6 +65,20 @@
       <div style="width: 320px;" class="d-none d-lg-block"></div>
     </div>
     {% if lote_seleccionado %}
+    {% if info_lote %}
+    <div class="franja-lote d-flex justify-content-center gap-3 py-1 mb-1 rounded shadow-sm bg-white">
+      {% for clave in ['nutricionista', 'variedad', 'marca'] %}
+      {% set item = info_lote[clave] %}
+      <div class="tarjeta-lote d-flex align-items-center gap-2">
+        <img src="{{ item.foto }}" alt="{{ item.etiqueta }}" class="foto-lote">
+        <div class="texto-lote">
+          <div class="etiqueta-lote">{{ item.etiqueta }}</div>
+          <div class="nombre-lote">{{ item.nombre }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
         <div class="card shadow border-0 card-grafico">
             <div class="card-body d-flex flex-column p-2">
                 {% if datos_grafico and datos_grafico.etiquetas|length > 0 %}

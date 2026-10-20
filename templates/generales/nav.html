@@ -30,6 +30,11 @@
                 Lotes
               </a>
             </li>
+            <li>
+              <a class="dropdown-item fw-bold" href="{{ url_for('consolidados.vista_consolidados') }}">
+                Consolidados
+              </a>
+            </li>
           </ul>
         </li>
 
@@ -164,7 +169,7 @@
             class="rounded-circle overflow-hidden bg-secondary d-flex align-items-center justify-content-center me-2 shadow-sm"
             style="width: 38px; height: 38px; border: 2px solid #ffffff;">
             {% if session.get('user_foto') %}
-            <img src="{{ url_for('static', filename='uploads/usuarios/' + session.get('user_foto')) }}"
+            <img src="{{ url_for('main.foto_usuario', id=session.get('user_id')) }}"
               alt="Foto Perfil" style="width: 100%; height: 100%; object-fit: cover;">
             {% else %}
             <i class='bx bxs-user text-white fs-4'></i>

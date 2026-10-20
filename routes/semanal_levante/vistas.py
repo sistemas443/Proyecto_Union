@@ -3,6 +3,7 @@ from routes.routes import login_requerido
 from models.semanal_levante.services import get_semanal_levante_all
 from models.cabecera.services import get_cabecera_info
 from models.lotes.services import get_lotes_distintos
+from models.catalogos import services as catalogos_services
 
 semanal_levante_bp = Blueprint('semanal_levante', __name__)
 
@@ -45,6 +46,7 @@ def grafico_semanal_levante():
         lote_seleccionado = session.get('ultimo_lote', '')
 
     datos_grafico = None
+    info_lote = None
     if lote_seleccionado and lote_seleccionado != 'VACIO':
         filas = get_semanal_levante_all(lote_seleccionado)
         # Filtrar solo semanas 1-18
@@ -83,10 +85,13 @@ def grafico_semanal_levante():
             'peso_tab': peso_tab,
             'lineal_peso_tab': lineal_peso_tab
         }
+        cab = get_cabecera_info(lote_seleccionado) or {}
+        info_lote = catalogos_services.info_lote_para_grafico(cab, 'nutricionista', 'Nutricionista Levante')
 
     return render_template(
         'graficas/grafico_sem_lev.html',
         lotes=get_lotes_distintos(),
         lote_seleccionado=lote_seleccionado,
-        datos_grafico=datos_grafico
+        datos_grafico=datos_grafico,
+        info_lote=info_lote
     )

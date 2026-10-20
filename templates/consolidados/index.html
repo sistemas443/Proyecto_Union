@@ -1,39 +1,126 @@
 {% extends 'generales/layout.html' %}
 {% block title %}Consolidados L+P – Avícola San Martín{% endblock %}
 {% block content %}
-<div class="container-fluid px-4 py-3 h-100 d-flex flex-column">
-  <div class="d-flex flex-wrap align-items-center mb-3 px-3 py-2 rounded shadow-sm" style="background-color: #212529;">
+<style>
+  /* Layout que llena el alto disponible bajo la navbar, sin scroll vertical.
+     Offset = navbar (77px) + padding vertical del <main> (16px + 16px). */
+  .consolidados-layout {
+    height: calc(100vh - 112px);
+    height: calc(100dvh - 112px);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    padding: 0.75rem 1rem;
+  }
+
+  .consolidados-header {
+    flex: 0 0 auto;
+    margin-bottom: 0.75rem;
+  }
+
+  /* Grilla tipo dashboard: columnas responsivas y filas auto (1fr) que
+     reparten el alto disponible entre todas las filas generadas. */
+  .consolidados-grid {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: grid;
+    grid-auto-rows: 1fr;
+    gap: 0.75rem;
+  }
+
+  /* 22 tarjetas: columnas segun ancho de pantalla */
+  @media (min-width: 1200px) {
+    .consolidados-grid { grid-template-columns: repeat(6, 1fr); }
+  }
+  @media (max-width: 1199.98px) and (min-width: 992px) {
+    .consolidados-grid { grid-template-columns: repeat(5, 1fr); }
+  }
+  @media (max-width: 991.98px) and (min-width: 768px) {
+    .consolidados-grid { grid-template-columns: repeat(4, 1fr); }
+  }
+  @media (max-width: 767.98px) {
+    .consolidados-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+
+  .consolidados-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    text-decoration: none;
+    color: #212529;
+    background-color: #e9ecef;
+    border-radius: 10px;
+    padding: 0.5rem 0.25rem;
+    overflow: hidden;
+    min-height: 0;
+    min-width: 0;
+    transition: transform 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+  }
+
+  .consolidados-card:hover,
+  .consolidados-card:focus {
+    background-color: #97271C;
+    color: #ffffff;
+    transform: translateY(-2px);
+  }
+
+  .consolidados-card .icono {
+    font-size: clamp(1.1rem, 2.4vw, 2rem);
+    line-height: 1.1;
+  }
+
+  .consolidados-card .titulo {
+    font-size: clamp(0.58rem, 0.85vw, 0.85rem);
+    font-weight: 700;
+    line-height: 1.15;
+    margin-top: 0.35rem;
+  }
+
+  .consolidados-card.desactivada {
+    opacity: 0.7;
+    cursor: default;
+  }
+
+  .consolidados-card.desactivada:hover {
+    background-color: #e9ecef;
+    color: #212529;
+    transform: none;
+  }
+
+  .consolidados-card .badge-prox {
+    font-size: 0.6rem;
+    margin-top: 0.35rem;
+  }
+</style>
+
+<div class="consolidados-layout">
+  <div class="consolidados-header d-flex flex-wrap align-items-center px-3 py-2 rounded shadow-sm" style="background-color: #212529;">
     <h5 class="mb-0 fw-bold text-uppercase text-white" style="letter-spacing: 0.5px;">
       <i class='bx bx-grid-alt me-2'></i>CONSOLIDADOS L+P
     </h5>
   </div>
-  <div class="row row-cols-2 row-cols-md-3 row-cols-xl-6 g-3">
+
+  <div class="consolidados-grid">
     {% for b in botones %}
-    <div class="col">
-      {% if b.endpoint %}
-      <a href="{{ url_for(b.endpoint) }}" class="card h-100 text-center shadow-sm bg-secondary-subtle text-decoration-none text-dark">
-        <div class="card-body">
-          <div style="font-size: 2rem;">{{ b.icono }}</div>
-          <div class="fw-bold small">{{ b.titulo }}</div>
-        </div>
-      </a>
-      {% elif b.url %}
-      <a href="{{ b.url }}" class="card h-100 text-center shadow-sm bg-secondary-subtle text-decoration-none text-dark">
-        <div class="card-body">
-          <div style="font-size: 2rem;">{{ b.icono }}</div>
-          <div class="fw-bold small">{{ b.titulo }}</div>
-        </div>
-      </a>
-      {% else %}
-      <div class="card h-100 text-center shadow-sm bg-secondary-subtle opacity-75">
-        <div class="card-body">
-          <div style="font-size: 2rem;">{{ b.icono }}</div>
-          <div class="fw-bold small">{{ b.titulo }}</div>
-          <span class="badge bg-warning text-dark mt-1">Próximamente</span>
-        </div>
-      </div>
-      {% endif %}
+    {% if b.endpoint %}
+    <a href="{{ url_for(b.endpoint) }}" class="consolidados-card">
+      <span class="icono">{{ b.icono }}</span>
+      <span class="titulo">{{ b.titulo }}</span>
+    </a>
+    {% elif b.url %}
+    <a href="{{ b.url }}" class="consolidados-card">
+      <span class="icono">{{ b.icono }}</span>
+      <span class="titulo">{{ b.titulo }}</span>
+    </a>
+    {% else %}
+    <div class="consolidados-card desactivada">
+      <span class="icono">{{ b.icono }}</span>
+      <span class="titulo">{{ b.titulo }}</span>
+      <span class="badge bg-warning text-dark badge-prox">Próximamente</span>
     </div>
+    {% endif %}
     {% endfor %}
   </div>
 </div>

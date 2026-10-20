@@ -14,19 +14,26 @@
 
   <style>
     .modal-backdrop.show {
-      backdrop-filter: blur(5px) !important;
-      -webkit-backdrop-filter: blur(5px) !important;
-      background-color: rgba(0, 0, 0, 0.6) !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+      background-color: rgba(0, 0, 0, 0.5) !important;
       opacity: 1 !important;
+      /* Cobertura total bajo zoom CSS (0.8 → 1/0.8 = 125%) */
+      width: 125vw !important;
+      height: 125vh !important;
+    }
+    /* Cierre instantáneo del velo (evita flash de recorte bajo zoom) */
+    .modal-backdrop.fade {
+      transition: none !important;
     }
 
     .sidebar-rapido {
       position: fixed;
-      top: 64px;
+      top: 48px;
       left: 0;
       width: 50px;
       height: auto;
-      max-height: calc(100vh - 60px);
+      max-height: calc(100vh - 48px);
       background-color: #212529;
       border-bottom-right-radius: 10px;
       box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.35);
@@ -460,8 +467,8 @@
   </script>
   {% endif %}
 
-  <!-- ATAJOS DE NAVEGACIÓN (SOLO SUPERADMIN ID=1; borrar este bloque para desactivar) -->
-  {% if session.get('user_rol') == 'Superadmin' and session.get('user_id')|string == '1' %}
+  <!-- ATAJOS DE NAVEGACIÓN (todos los usuarios logueados; borrar este bloque para desactivar) -->
+  {% if session.get('user_id') %}
   <script>
     document.addEventListener("DOMContentLoaded", function () {
       const ATAJOS = {
@@ -480,11 +487,53 @@
         if (!event.shiftKey || event.ctrlKey || event.altKey || event.metaKey) return;
         const tag = (document.activeElement || {}).tagName;
         if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+        if (event.key.toUpperCase() === 'H') {
+          event.preventDefault();
+          bootstrap.Modal.getOrCreateInstance(document.getElementById('modalAtajos')).show();
+          return;
+        }
         const destino = ATAJOS[event.key.toUpperCase()];
         if (destino) { event.preventDefault(); window.location.href = destino; }
       });
     });
   </script>
+  {% endif %}
+
+  <!-- MODAL DE AYUDA: atajos de teclado (todos los usuarios logueados) -->
+  {% if session.get('user_id') %}
+  <div class="modal fade" id="modalAtajos" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm modal-dialog-scrollable">
+      <div class="modal-content border-0 shadow-lg">
+        <div class="modal-header text-white border-0" style="background-color: #343a40;">
+          <h5 class="modal-title fw-bold"><i class='bx bx-keyboard me-2'></i>Atajos de teclado</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body p-4 bg-light small">
+          <h6 class="fw-bold text-secondary text-uppercase">Navegación</h6>
+          <ul class="list-unstyled">
+            <li><kbd>Shift</kbd> + <kbd>L</kbd> → Lotes</li>
+            <li><kbd>Shift</kbd> + <kbd>1</kbd> → 1era Semana</li>
+            <li><kbd>Shift</kbd> + <kbd>S</kbd> → Semanal Levante</li>
+            <li><kbd>Shift</kbd> + <kbd>D</kbd> → Diario</li>
+            <li><kbd>Shift</kbd> + <kbd>P</kbd> → Semanal Prod.</li>
+            <li><kbd>Shift</kbd> + <kbd>C</kbd> → Clasificación Prod.</li>
+          </ul>
+          <h6 class="fw-bold text-secondary text-uppercase">Gráficos</h6>
+          <ul class="list-unstyled">
+            <li><kbd>Shift</kbd> + <kbd>G</kbd> → Gráfico 1era Semana</li>
+            <li><kbd>Shift</kbd> + <kbd>V</kbd> → Gráfico Levante</li>
+            <li><kbd>Shift</kbd> + <kbd>N</kbd> → Gráfico General</li>
+            <li><kbd>Shift</kbd> + <kbd>O</kbd> → Gráfico Conversión</li>
+          </ul>
+          <h6 class="fw-bold text-secondary text-uppercase">Ayuda</h6>
+          <ul class="list-unstyled mb-0">
+            <li><kbd>Shift</kbd> + <kbd>H</kbd> → Mostrar esta ayuda</li>
+            <li><kbd>Esc</kbd> → Cerrar</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
   {% endif %}
 
   {% block scripts %}{% endblock %}

@@ -32,14 +32,14 @@ def vista_lotes():
     cat_variedades = catalogos_services.listar_catalogo('variedad')
     cat_marcas = catalogos_services.listar_catalogo('marca_galpon')
 
-    def _fotos(items):
-        return {i['nombre']: catalogos_services.url_foto(i['foto']) for i in items}
+    def _fotos(tipo, items):
+        return {i['nombre']: catalogos_services.url_foto_por_id(tipo, i['id']) for i in items}
 
     fotos_catalogo = {
-        'f_nutricionista': _fotos(cat_nutr_lev),
-        'f_nutricionista_prod': _fotos(cat_nutr_prod),
-        'f_variedad': _fotos(cat_variedades),
-        'f_marca_galpon': _fotos(cat_marcas),
+        'f_nutricionista': _fotos('nutricionista_lev', cat_nutr_lev),
+        'f_nutricionista_prod': _fotos('nutricionista_prod', cat_nutr_prod),
+        'f_variedad': _fotos('variedad', cat_variedades),
+        'f_marca_galpon': _fotos('marca_galpon', cat_marcas),
     }
 
     return render_template(

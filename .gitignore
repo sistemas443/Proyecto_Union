@@ -26,6 +26,3 @@ fix-*.png
 # Entornos virtuales
 .venv/
 
-# Fotos subidas por usuarios (contenido dinámico, no versionar)
-static/uploads/catalogos/
-static/uploads/usuarios/

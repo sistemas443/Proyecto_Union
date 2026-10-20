@@ -5,6 +5,19 @@ from models.consolidados import model
 from models.consolidados import guias
 
 
+def _clase_variedad(variedad) -> str:
+    """Clase CSS segun la variedad del lote (para pintar el encabezado).
+
+    LOHMANN -> naranja, HY LINE -> azul, cualquier otra -> sin clase.
+    """
+    v = (variedad or '').upper()
+    if 'LOHMANN' in v:
+        return 'lote-lohmann'
+    if 'HY LINE' in v:
+        return 'lote-hyline'
+    return ''
+
+
 def _a_num(valor):
     """Normaliza a float aceptando numeric, texto con coma o punto, o None."""
     if valor is None:
@@ -121,11 +134,32 @@ def get_matriz_primer_huevo() -> dict:
         {'nombre': 'Mortalidad', 'sufijo': '%', 'valores': col_ind('porcentaje_mort_acum_graf')},
     ]
 
+    filas_raw = [por_dia[d] for d in sorted(por_dia.keys())]
+
+    # Agrupar por semana para calcular rowspan y numero de semana
+    from collections import OrderedDict
+    semanas_ordenadas = OrderedDict()
+    for f in filas_raw:
+        # Extraer numero de semana entero de "14 + 5/7" -> 14
+        sem_str = str(f['semana'])
+        sem_num = int(sem_str.split(' ')[0]) if ' ' in sem_str else int(sem_str)
+        f['sem_num'] = sem_num
+        semanas_ordenadas.setdefault(sem_num, []).append(f)
+
+    # Asignar span_sem (rowspan) a la primera fila de cada bloque
+    for sem_num, filas_sem in semanas_ordenadas.items():
+        filas_sem[0]['span_sem'] = len(filas_sem)
+
+    # Clase de color por variedad (para pintar el nombre del lote)
+    variedades = model.fetch_variedades_por_lote(lotes)
+    clases = {l: _clase_variedad(variedades.get(l)) for l in lotes}
+
     return {
         'lotes': lotes,
         'indicadores': indicadores,
-        'filas': [por_dia[d] for d in sorted(por_dia.keys())],
+        'filas': filas_raw,
         'rango': {'min': dia_min, 'max': dia_max},
+        'clases': clases,
     }
 
 

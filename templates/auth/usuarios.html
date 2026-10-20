@@ -136,7 +136,7 @@
                             <div class="rounded-circle overflow-hidden bg-light d-flex align-items-center justify-content-center shadow-sm"
                                 style="width: 40px; height: 40px; border: 1px solid #dee2e6;">
                                 {% if u[6] %}
-                                <img src="{{ url_for('static', filename='uploads/usuarios/' + u[6]) }}"
+                                <img src="{{ url_for('main.foto_usuario', id=u[0]) }}"
                                     style="width: 100%; height: 100%; object-fit: cover;">
                                 {% else %}
                                 <i class='bx bxs-user text-secondary fs-4'></i>
@@ -449,7 +449,7 @@
         const previewImg = document.getElementById('preview_foto');
         const previewIcon = document.getElementById('preview_icon');
         if (foto && foto.trim() !== '') {
-            previewImg.src = "/static/uploads/usuarios/" + foto;
+            previewImg.src = "/api/usuarios/" + id + "/foto";
             previewImg.style.display = 'block';
             previewIcon.style.display = 'none';
         } else {

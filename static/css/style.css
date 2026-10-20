@@ -210,3 +210,9 @@ input[type="number"] {
     display: none !important;
   }
 }
+
+/* Navbar compacto en todas las vistas (sin zoom: no rompe tooltips Plotly) */
+nav.navbar { padding-top: 0.25rem; padding-bottom: 0.25rem; }
+nav.navbar .navbar-brand img { height: 28px !important; }
+nav.navbar .navbar-brand span { font-size: 0.8rem !important; }
+nav.navbar .nav-link { font-size: 0.85rem; padding-top: 0.25rem; padding-bottom: 0.25rem; }
