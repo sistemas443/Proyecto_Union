@@ -1,223 +1,441 @@
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
-  <div class="container-fluid px-3">
+<nav class="navbar navbar-expand-lg navbar-dark app-navbar">
+  <div class="container-fluid px-3 px-xl-4">
 
-    <a class="navbar-brand d-flex align-items-center gap-2" href="{{ url_for('main.pantalla_principal') }}">
-      <img src="{{ url_for('static', filename='img/LOGO_AVICOLA_SAN_MARTIN.svg') }}" alt="Logo"
-        style="height:38px; width:auto;">
-      <span class="fw-semibold" style="font-size:.95rem; letter-spacing:.03em;">AVÍCOLA SAN MARTÍN S.A</span>
+    <a class="navbar-brand app-brand" href="{{ url_for('main.index') }}">
+      <img src="{{ url_for('static', filename='img/LOGO_AVICOLA_SAN_MARTIN.svg') }}" alt="Avícola San Martín" class="app-brand-logo">
+      <span class="app-brand-name">AVÍCOLA SAN MARTÍN <span class="app-brand-suffix">S.A.</span></span>
     </a>
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMain"
-      aria-controls="navMain" aria-expanded="false" aria-label="Toggle navigation">
+      aria-controls="navMain" aria-expanded="false" aria-label="Abrir menú">
       <span class="navbar-toggler-icon"></span>
     </button>
 
     <div class="collapse navbar-collapse" id="navMain">
+      {% set ep = request.endpoint or '' %}
 
-      <!-- Bloqueo condicional de renderizado del menu principal en ausencia de token de sesion -->
+      <!-- MENÚ SEGÚN ROL -->
       {% if session.get('user_id') %}
-      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
 
-        <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-            Producción
-          </a>
-          <ul class="dropdown-menu dropdown-menu-dark">
+        <!-- ROL: TALENTO HUMANO - SOLO ve su módulo -->
+        {% if session.get('user_rol') == 'Talento humano' %}
+        <ul class="navbar-nav app-nav me-auto mb-2 mb-lg-0">
+          <li class="nav-item">
+            <a class="nav-link{{ ' is-current' if ep.startswith('talento_humano.') }}" href="#" onclick="toggleSidebarTH(event)">
+              <i class='bx bx-sidebar'></i> Talento Humano
+            </a>
+          </li>
+        </ul>
 
-            <!-- BOTÓN INTERRUPTOR PARA LA BARRA LATERAL (LIMPIO SIN SUBMENÚS) -->
-            <li>
-              <a class="dropdown-item fw-bold" href="{{ url_for('lotes.vista_lotes') }}" onclick="toggleSidebarLotes(event)">
-                Lotes
-              </a>
-            </li>
-            <li>
-              <a class="dropdown-item fw-bold" href="{{ url_for('consolidados.vista_consolidados') }}">
-                Consolidados
-              </a>
-            </li>
-          </ul>
-        </li>
+        <!-- ROLES: DIRECTOR DE PLANTA - Ven módulos: Producción, Clasificación, Planta de Alimentos -->
+        {% elif session.get('user_rol') == 'Director de Planta' %}
+        {% set en_produccion = ep.startswith('lotes.') or ep.startswith('diario.') or ep.startswith('semanal.') or ep.startswith('semanal_levante.') or ep.startswith('primera_semana.') %}
+        {% set en_planta = ep.startswith('planta_alimentos.') %}
+        {% set en_clasificacion = ep.startswith('clasificacion.') %}
+        <ul class="navbar-nav app-nav me-auto mb-2 mb-lg-0">
 
-        <li class="nav-item">
-          <a class="nav-link" href="{{ url_for('main.index') }}">
-            <i class='bx bx-file-blank me-1'></i> Reportes
-          </a>
-        </li>
+          <!-- PRODUCCIÓN -->
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle{{ ' is-current' if en_produccion }}" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              Producción
+            </a>
+            <ul class="dropdown-menu dropdown-menu-dark">
+              <li>
+                <a class="dropdown-item fw-semibold" href="#" onclick="toggleSidebarLotes(event)">
+                  <i class='bx bx-sidebar'></i> Lotes
+                </a>
+              </li>
+              <li><a class="dropdown-item disabled" href="#" aria-disabled="true">Reportes</a></li>
+            </ul>
+          </li>
 
-        <li class="nav-item dropdown px-2">
-          <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="plantaDropdown"
-            role="button" data-bs-toggle="dropdown" aria-expanded="false">
-            <i class="fas fa-industry me-2"></i> Planta de Alimentos
-          </a>
-          <ul class="dropdown-menu dropdown-menu-dark shadow-sm border-0" aria-labelledby="plantaDropdown">
+          <!-- PLANTA DE ALIMENTOS -->
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle{{ ' is-current' if en_planta }}" href="#" id="plantaDropdown"
+              role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="fas fa-industry"></i> Planta de Alimentos
+            </a>
+            <ul class="dropdown-menu dropdown-menu-dark planta-menu" aria-labelledby="plantaDropdown">
+              <li><h6 class="dropdown-header">Configuración</h6></li>
+              <li><a class="dropdown-item{{ ' active' if ep == 'planta_alimentos.materias_primas' }}" href="{{ url_for('planta_alimentos.materias_primas') }}"><i class="fas fa-seedling"></i> Materias Primas</a></li>
+              <li><a class="dropdown-item{{ ' active' if ep == 'planta_alimentos.catalogo_alimentos' }}" href="{{ url_for('planta_alimentos.catalogo_alimentos') }}"><i class="fas fa-book-open"></i> Catálogo de Dietas</a></li>
+              <li><a class="dropdown-item{{ ' active' if ep == 'planta_alimentos.empresas_maquila' }}" href="{{ url_for('planta_alimentos.empresas_maquila') }}"><i class="fas fa-building"></i> Clientes / Maquilas</a></li>
+              <li><a class="dropdown-item{{ ' active' if ep == 'planta_alimentos.proveedores' }}" href="{{ url_for('planta_alimentos.proveedores') }}"><i class="fas fa-truck"></i> Proveedores</a></li>
+              <li><h6 class="dropdown-header">Operación</h6></li>
+              <li><a class="dropdown-item{{ ' active' if ep == 'planta_alimentos.resumen_lote_formulas' }}" href="{{ url_for('planta_alimentos.resumen_lote_formulas') }}"><i class="fas fa-layer-group"></i> Fórmulas por Lote</a></li>
+              <li><a class="dropdown-item{{ ' active' if ep.startswith('planta_alimentos.cotizaciones') }}" href="{{ url_for('planta_alimentos.cotizaciones.cotizaciones_list') }}"><i class="fas fa-file-invoice-dollar"></i> Cotizaciones</a></li>
+              <li><a class="dropdown-item{{ ' active' if ep.startswith('planta_alimentos.proyecciones') }}" href="{{ url_for('planta_alimentos.proyecciones.proyeccion_costos') }}"><i class="fas fa-chart-line"></i> Proyección y Costos</a></li>
+              <li><a class="dropdown-item{{ ' active' if ep == 'planta_alimentos.matriz_mensual_compras' }}" href="{{ url_for('planta_alimentos.matriz_mensual_compras') }}"><i class="fas fa-table"></i> Compras de Materias Primas</a></li>
+              <li class="dropdown-submenu">
+                <a class="dropdown-item{{ ' active' if ep == 'planta_alimentos.resumen_inventario' or ep == 'planta_alimentos.inventario_dietas' }}" href="#" role="button"><i class="fas fa-boxes"></i> Inventarios</a>
+                <ul class="dropdown-menu dropdown-menu-dark planta-submenu">
+                  <li><a class="dropdown-item{{ ' active' if ep == 'planta_alimentos.resumen_inventario' }}" href="{{ url_for('planta_alimentos.resumen_inventario') }}"><svg class="nav-ico" viewBox="-1 -1 26 26" aria-hidden="true" focusable="false"><path d="M7.4 0h9.2l-1.6 4.5H9L7.4 0ZM9 6c-5.2 3.1-9 8.4-9 13.5 0 2.5 2 4.5 4.5 4.5h15c2.5 0 4.5-2 4.5-4.5C24 14.4 20.2 9.1 15 6H9Z"/></svg> Inventario Materias Primas</a></li>
+                  <li><a class="dropdown-item{{ ' active' if ep == 'planta_alimentos.inventario_dietas' }}" href="{{ url_for('planta_alimentos.inventario_dietas') }}"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill-rule="evenodd" d="M12 2.2 19.8 8.2H4.2L12 2.2ZM6.6 8.2h10.8v11.9l-2.7 2.3H9.3l-2.7-2.3V8.2ZM7.6 11.9h8.8v.9H7.6ZM7.6 15.9h8.8v.9H7.6Z"/></svg> Inventario Dietas</a></li>
+                </ul>
+              </li>
+            </ul>
+          </li>
 
-            <!-- Configuración / Maestros -->
-            <li>
-              <h6 class="dropdown-header text-uppercase text-primary fw-bold">Configuración</h6>
-            </li>
-            <li>
-              <a class="dropdown-item d-flex align-items-center"
-                href="{{ url_for('planta_alimentos.materias_primas') }}">
-                <i class="fas fa-seedling fa-fw me-2"></i> Materias Primas
-              </a>
-            </li>
-            <li>
-              <a class="dropdown-item d-flex align-items-center"
-                href="{{ url_for('planta_alimentos.catalogo_alimentos') }}">
-                <i class="fas fa-book-open fa-fw me-2"></i> Catálogo de Dietas
-              </a>
-            </li>
-            <li>
-              <a class="dropdown-item d-flex align-items-center"
-                href="{{ url_for('planta_alimentos.empresas_maquila') }}">
-                <i class="fas fa-building fa-fw me-2"></i> Clientes / Maquilas
-              </a>
-            </li>
-            <li>
-              <a class="dropdown-item d-flex align-items-center" href="{{ url_for('planta_alimentos.proveedores') }}">
-                <i class="fas fa-truck fa-fw me-2"></i> Proveedores
-              </a>
-            </li>
+          <!-- CLASIFICACIÓN -->
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle{{ ' is-current' if en_clasificacion }}" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              Clasificación
+            </a>
+            <ul class="dropdown-menu dropdown-menu-dark">
+              <li class="dropdown-submenu">
+                <a class="dropdown-item dropdown-toggle" href="#">Lotes</a>
+                <ul class="dropdown-menu dropdown-menu-dark">
+                  <li><a class="dropdown-item disabled" href="#" aria-disabled="true">Diario</a></li>
+                  <li><a class="dropdown-item disabled" href="#" aria-disabled="true">Semanal</a></li>
+                  <li><a class="dropdown-item disabled" href="#" aria-disabled="true">Mensual</a></li>
+                </ul>
+              </li>
+              <li><a class="dropdown-item disabled" href="#" aria-disabled="true">Reportes</a></li>
+            </ul>
+          </li>
 
-            <!-- Operación Diaria -->
-            <li>
-              <h6 class="dropdown-header text-uppercase text-primary fw-bold">Operación</h6>
-            </li>
-            <li>
-              <a class="dropdown-item d-flex align-items-center"
-                href="{{ url_for('planta_alimentos.resumen_lote_formulas') }}">
-                <i class="fas fa-layer-group fa-fw me-2"></i> Fórmulas por Lote
-              </a>
-            </li>
-            <li>
-              <a class="dropdown-item d-flex align-items-center"
-                href="{{ url_for('planta_alimentos.cotizaciones.cotizaciones_list') }}">
-                <i class="fas fa-file-invoice-dollar fa-fw me-2 text-success"></i> Cotizaciones
-              </a>
-            </li>
-            <li>
-              <a class="dropdown-item d-flex align-items-center"
-                href="{{ url_for('planta_alimentos.proyecciones.proyeccion_costos') }}">
-                <i class="fas fa-chart-line fa-fw me-2"></i> Proyección y Costos
-              </a>
-            </li>
-            <li>
-              <a class="dropdown-item d-flex align-items-center"
-                href="{{ url_for('planta_alimentos.matriz_mensual_compras') }}">
-                <i class="fas fa-table fa-fw me-2 text-primary"></i> Compras de Materias Primas
-              </a>
-            </li>
-            <li>
-              <a class="dropdown-item d-flex align-items-center"
-                href="{{ url_for('planta_alimentos.resumen_inventario') }}">
-                <i class="fas fa-boxes fa-fw me-2 text-info"></i> Inventarios
-              </a>
-            </li>
-          </ul>
-        </li>
-        <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-            Clasificación
-          </a>
-          <ul class="dropdown-menu dropdown-menu-dark">
-            <li class="dropdown-submenu">
-              <a class="dropdown-item dropdown-toggle" href="#">Lotes</a>
-              <ul class="dropdown-menu dropdown-menu-dark">
-                <li><a class="dropdown-item disabled" href="#">Diario</a></li>
-                <li><a class="dropdown-item disabled" href="#">Semanal</a></li>
-                <li><a class="dropdown-item disabled" href="#">Mensual</a></li>
-              </ul>
-            </li>
-            <li><a class="dropdown-item disabled" href="#">Reportes</a></li>
-          </ul>
-        </li>
+        </ul>
 
-        <!-- ENLACE EXCLUSIVO PARA EL SUPERADMIN CON ESTILO NAV-LINK ESTÁNDAR -->
-        {% if session.get('user_rol') == 'Superadmin' %}
-        <li class="nav-item">
-          <a class="nav-link" href="{{ url_for('main.gestion_usuarios') }}">
-            Usuarios
-          </a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link d-flex align-items-center" href="{{ url_for('carga_datos.carga_datos_vista') }}">
-            <i class='bx bx-cloud-upload me-1 fs-5'></i>
-            Carga de Datos
-          </a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link d-flex align-items-center" href="{{ url_for('main.ver_historial') }}">
-            Ver Historial
-          </a>
-        </li>
+        <!-- ROLES: SUPERADMIN, EDITOR, LECTOR - Ven módulos operativos + extras Superadmin -->
+        {% else %}
+        {% set en_produccion = ep.startswith('lotes.') or ep.startswith('diario.') or ep.startswith('semanal.') or ep.startswith('semanal_levante.') or ep.startswith('primera_semana.') %}
+        {% set en_planta = ep.startswith('planta_alimentos.') %}
+        {% set en_clasificacion = ep.startswith('clasificacion.') %}
+        <ul class="navbar-nav app-nav me-auto mb-2 mb-lg-0">
+
+          <!-- PRODUCCIÓN -->
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle{{ ' is-current' if en_produccion }}" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              Producción
+            </a>
+            <ul class="dropdown-menu dropdown-menu-dark">
+              <li>
+                <a class="dropdown-item fw-semibold" href="#" onclick="toggleSidebarLotes(event)">
+                  <i class='bx bx-sidebar'></i> Lotes
+                </a>
+              </li>
+              <li><a class="dropdown-item disabled" href="#" aria-disabled="true">Reportes</a></li>
+            </ul>
+          </li>
+
+          <!-- PLANTA DE ALIMENTOS -->
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle{{ ' is-current' if en_planta }}" href="#" id="plantaDropdown"
+              role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="fas fa-industry"></i> Planta de Alimentos
+            </a>
+            <ul class="dropdown-menu dropdown-menu-dark planta-menu" aria-labelledby="plantaDropdown">
+              <li><h6 class="dropdown-header">Configuración</h6></li>
+              <li><a class="dropdown-item{{ ' active' if ep == 'planta_alimentos.materias_primas' }}" href="{{ url_for('planta_alimentos.materias_primas') }}"><i class="fas fa-seedling"></i> Materias Primas</a></li>
+              <li><a class="dropdown-item{{ ' active' if ep == 'planta_alimentos.catalogo_alimentos' }}" href="{{ url_for('planta_alimentos.catalogo_alimentos') }}"><i class="fas fa-book-open"></i> Catálogo de Dietas</a></li>
+              <li><a class="dropdown-item{{ ' active' if ep == 'planta_alimentos.empresas_maquila' }}" href="{{ url_for('planta_alimentos.empresas_maquila') }}"><i class="fas fa-building"></i> Clientes / Maquilas</a></li>
+              <li><a class="dropdown-item{{ ' active' if ep == 'planta_alimentos.proveedores' }}" href="{{ url_for('planta_alimentos.proveedores') }}"><i class="fas fa-truck"></i> Proveedores</a></li>
+              <li><h6 class="dropdown-header">Operación</h6></li>
+              <li><a class="dropdown-item{{ ' active' if ep == 'planta_alimentos.resumen_lote_formulas' }}" href="{{ url_for('planta_alimentos.resumen_lote_formulas') }}"><i class="fas fa-layer-group"></i> Fórmulas por Lote</a></li>
+              <li><a class="dropdown-item{{ ' active' if ep.startswith('planta_alimentos.cotizaciones') }}" href="{{ url_for('planta_alimentos.cotizaciones.cotizaciones_list') }}"><i class="fas fa-file-invoice-dollar"></i> Cotizaciones</a></li>
+              <li><a class="dropdown-item{{ ' active' if ep.startswith('planta_alimentos.proyecciones') }}" href="{{ url_for('planta_alimentos.proyecciones.proyeccion_costos') }}"><i class="fas fa-chart-line"></i> Proyección y Costos</a></li>
+              <li><a class="dropdown-item{{ ' active' if ep == 'planta_alimentos.matriz_mensual_compras' }}" href="{{ url_for('planta_alimentos.matriz_mensual_compras') }}"><i class="fas fa-table"></i> Compras de Materias Primas</a></li>
+              <li class="dropdown-submenu">
+                <a class="dropdown-item{{ ' active' if ep == 'planta_alimentos.resumen_inventario' or ep == 'planta_alimentos.inventario_dietas' }}" href="#" role="button"><i class="fas fa-boxes"></i> Inventarios</a>
+                <ul class="dropdown-menu dropdown-menu-dark planta-submenu">
+                  <li><a class="dropdown-item{{ ' active' if ep == 'planta_alimentos.resumen_inventario' }}" href="{{ url_for('planta_alimentos.resumen_inventario') }}"><svg class="nav-ico" viewBox="-1 -1 26 26" aria-hidden="true" focusable="false"><path d="M7.4 0h9.2l-1.6 4.5H9L7.4 0ZM9 6c-5.2 3.1-9 8.4-9 13.5 0 2.5 2 4.5 4.5 4.5h15c2.5 0 4.5-2 4.5-4.5C24 14.4 20.2 9.1 15 6H9Z"/></svg> Inventario Materias Primas</a></li>
+                  <li><a class="dropdown-item{{ ' active' if ep == 'planta_alimentos.inventario_dietas' }}" href="{{ url_for('planta_alimentos.inventario_dietas') }}"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill-rule="evenodd" d="M12 2.2 19.8 8.2H4.2L12 2.2ZM6.6 8.2h10.8v11.9l-2.7 2.3H9.3l-2.7-2.3V8.2ZM7.6 11.9h8.8v.9H7.6ZM7.6 15.9h8.8v.9H7.6Z"/></svg> Inventario Dietas</a></li>
+                </ul>
+              </li>
+            </ul>
+          </li>
+
+          <!-- CLASIFICACIÓN -->
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle{{ ' is-current' if en_clasificacion }}" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              Clasificación
+            </a>
+            <ul class="dropdown-menu dropdown-menu-dark">
+              <li class="dropdown-submenu">
+                <a class="dropdown-item dropdown-toggle" href="#">Lotes</a>
+                <ul class="dropdown-menu dropdown-menu-dark">
+                  <li><a class="dropdown-item disabled" href="#" aria-disabled="true">Diario</a></li>
+                  <li><a class="dropdown-item disabled" href="#" aria-disabled="true">Semanal</a></li>
+                  <li><a class="dropdown-item disabled" href="#" aria-disabled="true">Mensual</a></li>
+                </ul>
+              </li>
+              <li><a class="dropdown-item disabled" href="#" aria-disabled="true">Reportes</a></li>
+            </ul>
+          </li>
+
+          <!-- SUPERADMIN: Enlaces exclusivos -->
+          {% if session.get('user_rol') == 'Superadmin' %}
+          <li class="nav-item">
+            <a class="nav-link{{ ' is-current' if ep == 'main.gestion_usuarios' }}" href="{{ url_for('main.gestion_usuarios') }}">Usuarios</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link{{ ' is-current' if ep.startswith('carga_datos.') }}" href="{{ url_for('carga_datos.carga_datos_vista') }}">
+              <i class='bx bx-cloud-upload'></i> Carga de Datos
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link{{ ' is-current' if ep == 'main.ver_historial' }}" href="{{ url_for('main.ver_historial') }}">
+              <i class='bx bx-history'></i> Ver Historial
+            </a>
+          </li>
+          {% endif %}
+
+        </ul>
         {% endif %}
 
-      </ul>
       {% else %}
-      <!-- Espaciador estructural flexbox para empujar el area de login a la derecha -->
+      <!-- Sin sesión: espaciador -->
       <ul class="navbar-nav me-auto mb-2 mb-lg-0"></ul>
       {% endif %}
 
-      <!-- SECCIÓN DE PERFIL Y LOGIN EN NAVBAR -->
-      <ul class="navbar-nav ms-auto align-items-center mt-3 mt-lg-0">
-        {% if session.get('user_id') %}
-        <!-- Vista de usuario autenticado con diseño actualizado -->
-        <li class="nav-item me-3 d-flex align-items-center mb-2 mb-lg-0">
-
-          <!-- Círculo para foto de perfil -->
-          <div
-            class="rounded-circle overflow-hidden bg-secondary d-flex align-items-center justify-content-center me-2 shadow-sm"
-            style="width: 38px; height: 38px; border: 2px solid #ffffff;">
-            {% if session.get('user_foto') %}
-            <img src="{{ url_for('main.foto_usuario', id=session.get('user_id')) }}"
-              alt="Foto Perfil" style="width: 100%; height: 100%; object-fit: cover;">
-            {% else %}
-            <i class='bx bxs-user text-white fs-4'></i>
-            {% endif %}
-          </div>
-
-          <!-- Nombre del usuario en color blanco -->
-          <span class="fw-bold text-white fs-6">{{ session.get('user_nombre') }}</span>
-
-          <!-- Insignia del Rol en color vinotinto -->
-          <span class="badge ms-2 shadow-sm" style="background-color: #97271C; font-size: 0.75rem;">
-            {{ session.get('user_rol') }}
-          </span>
-        </li>
-        <li class="nav-item">
-          <!-- Botón de salir estilizado -->
-          <a href="{{ url_for('main.logout') }}" class="btn btn-sm fw-bold shadow-sm w-100"
-            style="color: #dc3545; border: 1px solid #dc3545; background-color: transparent;"
-            onmouseover="this.style.backgroundColor='#dc3545'; this.style.color='white';"
-            onmouseout="this.style.backgroundColor='transparent'; this.style.color='#dc3545';">
-            <i class='bx bx-log-out-circle align-middle me-1'></i>Salir
-          </a>
-        </li>
-        {% endif %}
-      </ul>
+      <!-- PERFIL Y SALIDA (todos los roles logueados) -->
+      {% if session.get('user_id') %}
+      <div class="d-flex align-items-center app-user ms-lg-auto mt-3 mt-lg-0">
+        <div class="app-avatar">
+          {% if session.get('user_foto') %}
+          <img src="{{ url_for('static', filename='uploads/usuarios/' + session.get('user_foto')) }}" alt="Foto de perfil">
+          {% else %}
+          <i class='bx bxs-user'></i>
+          {% endif %}
+        </div>
+        <div class="app-user-meta d-flex">
+          <span class="app-user-name">{{ session.get('user_nombre') }}</span>
+          <span class="app-user-role">{{ session.get('user_rol') }}</span>
+        </div>
+        <a href="{{ url_for('main.logout') }}" class="app-logout">
+          <i class='bx bx-log-out-circle'></i> Salir
+        </a>
+      </div>
+      {% endif %}
 
     </div>
   </div>
 </nav>
 
 <style>
-  /* Comportamiento anidado de submenus en cascada */
+  /* ============================================================
+     BARRA SUPERIOR
+     ============================================================ */
+  .app-navbar {
+    --nav-ink: #f3f2f0;
+    color: #e9e7e4;
+    min-height: 60px;
+    padding-top: 0;
+    padding-bottom: 0;
+    background: linear-gradient(180deg, #1d1e23 0%, #181519 100%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16);
+    z-index: 1050;
+  }
+
+  /* --- Marca --- */
+  .app-navbar .app-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.62rem;
+    padding: 0.3rem 0;
+    margin-right: 0.9rem;
+  }
+
+  .app-navbar .app-brand-logo {
+    height: 36px;
+    width: auto;
+    display: block;
+  }
+
+  .app-navbar .app-brand-name {
+    color: var(--nav-ink);
+    font-size: 0.90rem;
+    font-weight: 600;
+    letter-spacing: 0.045em;
+    white-space: nowrap;
+  }
+
+  .app-navbar .app-brand-suffix {
+    color: #a7adb7;
+    font-size: 0.78rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+  }
+
+  @media (min-width: 992px) {
+    .app-navbar .app-brand {
+      padding-right: 1.15rem;
+      border-right: 1px solid rgba(255, 255, 255, 0.10);
+      margin-right: 1.15rem;
+    }
+
+    /* Si el ancho aprieta, los módulos bajan de línea en lugar de desbordarse */
+    .app-navbar .navbar-nav {
+      flex-wrap: wrap;
+    }
+  }
+
+  /* Pantallas medianas: solo el símbolo de marca, para no partir el menú en dos filas */
+  @media (min-width: 992px) and (max-width: 1199.98px) {
+    .app-navbar .app-brand-name {
+      display: none;
+    }
+
+    .app-navbar .app-brand {
+      padding-right: 0;
+      border-right: 0;
+      margin-right: 0.95rem;
+    }
+  }
+
+  /* --- Enlaces principales --- */
+  .app-navbar .navbar-nav {
+    gap: 0.15rem;
+  }
+
+  .app-navbar .navbar-nav .nav-link {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    height: 37px;
+    padding: 0 0.78rem;
+    border-radius: 7px;
+    color: #c4c9d2;
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition: color 0.15s ease, background-color 0.15s ease;
+  }
+
+  .app-navbar .navbar-nav .nav-link:hover,
+  .app-navbar .navbar-nav .nav-link:focus-visible {
+    color: #ffffff;
+    background-color: rgba(255, 255, 255, 0.07);
+  }
+
+  .app-navbar .navbar-nav .nav-link:focus-visible {
+    outline: 2px solid #d9564a;
+    outline-offset: -2px;
+  }
+
+  .app-navbar .navbar-nav .nav-link.is-current {
+    color: #ffffff;
+    background-color: rgba(151, 39, 28, 0.30);
+  }
+
+  .app-navbar .navbar-nav .nav-link.is-current i {
+    color: #ffb3a8;
+  }
+
+  .app-navbar .navbar-nav .dropdown-toggle::after {
+    margin-left: 0.12rem;
+    vertical-align: 0.12em;
+    opacity: 0.65;
+  }
+
+  /* --- Menús desplegables --- */
+  .app-navbar .dropdown-menu {
+    margin-top: 0.3rem;
+    padding: 0.4rem;
+    min-width: 12.5rem;
+    background-color: #1f2026;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    box-shadow: 0 0.7rem 1.8rem rgba(0, 0, 0, 0.40);
+  }
+
+  /* Puente invisible para no perder el hover al cruzar el margen */
+  .app-navbar .dropdown-menu::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -0.35rem;
+    height: 0.35rem;
+  }
+
+  .app-navbar .dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.46rem 0.65rem;
+    border-radius: 6px;
+    color: #c7ccd4;
+    font-size: 0.875rem;
+    font-weight: 450;
+    transition: background-color 0.14s ease, color 0.14s ease;
+  }
+
+  .app-navbar .dropdown-item:hover,
+  .app-navbar .dropdown-item:focus {
+    background-color: rgba(255, 255, 255, 0.07);
+    color: #ffffff;
+  }
+
+  .app-navbar .dropdown-item:focus-visible {
+    outline: 2px solid #d9564a;
+    outline-offset: -2px;
+  }
+
+  .app-navbar .dropdown-item i {
+    width: 1rem;
+    text-align: center;
+    color: #8e959f;
+    transition: color 0.14s ease;
+  }
+
+  .app-navbar .dropdown-item:hover i,
+  .app-navbar .dropdown-item:focus i {
+    color: #ffffff;
+  }
+
+  .app-navbar .dropdown-item.active {
+    background-color: rgba(151, 39, 28, 0.30);
+    color: #ffffff;
+  }
+
+  .app-navbar .dropdown-item.active i {
+    color: #ffb3a8;
+  }
+
+  .app-navbar .dropdown-item.disabled {
+    color: #7f858f;
+  }
+
+  .app-navbar .dropdown-item.disabled i {
+    color: #6c727c;
+  }
+
+  /* Iconos SVG propios (bulto / silo) dentro de los menús */
+  .app-navbar .dropdown-item .nav-ico {
+    width: 1rem;
+    height: 1rem;
+    flex: 0 0 1rem;
+    fill: currentColor;
+    color: #8e959f;
+    transition: color 0.14s ease;
+  }
+
+  .app-navbar .dropdown-item:hover .nav-ico,
+  .app-navbar .dropdown-item:focus .nav-ico {
+    color: #ffffff;
+  }
+
+  .app-navbar .dropdown-item.active .nav-ico {
+    color: #ffb3a8;
+  }
+
   .dropdown-submenu {
     position: relative;
   }
 
-  .dropdown-submenu>.dropdown-menu {
+  .dropdown-submenu > .dropdown-menu {
     top: 0;
     left: 100%;
-    margin-top: -1px;
+    margin-top: -0.4rem;
     display: none;
   }
 
-  .dropdown-submenu:hover>.dropdown-menu {
+  .dropdown-submenu:hover > .dropdown-menu {
     display: block;
   }
 
-  .dropdown-submenu>a::after {
+  .dropdown-submenu > a::after {
     content: "";
     float: right;
     border-top: 4px solid transparent;
@@ -228,27 +446,211 @@
   }
 
   @media (min-width: 992px) {
-    .dropdown:hover>.dropdown-menu {
+    .app-navbar .dropdown:hover > .dropdown-menu {
       display: block;
     }
   }
 
-  .navbar {
-    z-index: 1050;
+  /* --- Submenú Planta de Alimentos --- */
+  .dropdown-menu.planta-menu {
+    min-width: 17.5rem;
+  }
+
+  .planta-menu .dropdown-header {
+    font-size: 0.70rem;
+    font-weight: 700;
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+    color: #9aa1ac !important;
+    padding: 0.7rem 0.65rem 0.1rem;
+  }
+
+  .planta-menu .dropdown-header::after {
+    content: "";
+    display: block;
+    height: 1px;
+    margin-top: 0.45rem;
+    background: rgba(255, 255, 255, 0.09);
+  }
+
+  /* --- Submenú anidado "Inventarios" --- */
+  .planta-menu .planta-submenu {
+    min-width: 16.5rem;
+    margin-top: -0.35rem;
+  }
+
+  .planta-menu .dropdown-submenu > a::after {
+    float: none;
+    margin-top: 0;
+    margin-left: auto;
+    opacity: 0.6;
+  }
+
+  .planta-menu .dropdown-submenu:hover > a::after,
+  .planta-menu .dropdown-submenu > a:focus::after {
+    opacity: 1;
+  }
+
+  .planta-menu .dropdown-submenu > .dropdown-menu .dropdown-item {
+    padding-left: 0.75rem;
+  }
+
+  /* --- Perfil --- */
+  .app-navbar .app-user {
+    gap: 0.6rem;
+    padding: 0.2rem 0 0.2rem 0.4rem;
+    flex-shrink: 0;
+  }
+
+  .app-navbar .app-avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 36px;
+    width: 36px;
+    height: 36px;
+    overflow: hidden;
+    border-radius: 50%;
+    background-color: #2b2d34;
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+  }
+
+  .app-navbar .app-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .app-navbar .app-avatar i {
+    color: #ffffff;
+    font-size: 1.15rem;
+  }
+
+  .app-navbar .app-user-meta {
+    flex-direction: column;
+    line-height: 1.15;
+  }
+
+  .app-navbar .app-user-name {
+    color: #f1f0ee;
+    font-size: 0.95rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .app-navbar .app-user-role {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.32rem;
+    margin-top: 0.16rem;
+    color: #ffc4bc;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
+
+  .app-navbar .app-user-role::before {
+    content: "";
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background-color: #e05a4c;
+  }
+
+  /* --- Salida --- */
+  .app-navbar .app-logout {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    height: 36px;
+    padding: 0 0.85rem;
+    border: 1px solid rgba(220, 53, 69, 0.45);
+    border-radius: 8px;
+    color: #f0b1aa;
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  }
+
+  .app-navbar .app-logout:hover {
+    background-color: rgba(220, 53, 69, 0.16);
+    border-color: rgba(220, 53, 69, 0.75);
+    color: #ffffff;
+  }
+
+  .app-navbar .app-logout:focus-visible {
+    outline: 2px solid #e05a4c;
+    outline-offset: 2px;
+  }
+
+  /* --- Botón móvil --- */
+  .app-navbar .navbar-toggler {
+    padding: 0.3rem 0.45rem;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 8px;
+  }
+
+  .app-navbar .navbar-toggler:focus {
+    box-shadow: 0 0 0 3px rgba(151, 39, 28, 0.35);
+  }
+
+  /* --- Móvil / tablet --- */
+  @media (max-width: 991.98px) {
+    .app-navbar {
+      min-height: 56px;
+    }
+
+    .app-navbar .navbar-collapse {
+      margin-top: 0.15rem;
+      padding: 0.55rem 0 0.85rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .app-navbar .navbar-nav .nav-link {
+      height: 42px;
+    }
+
+    .app-navbar .dropdown-menu {
+      margin-top: 0.2rem;
+      padding: 0.25rem;
+      background-color: rgba(255, 255, 255, 0.035);
+      border-color: rgba(255, 255, 255, 0.06);
+      box-shadow: none;
+    }
+
+    .app-navbar .app-user {
+      margin-top: 0.55rem;
+      padding-top: 0.7rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .app-navbar .app-logout {
+      margin-left: auto;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .app-navbar .nav-link,
+    .app-navbar .dropdown-item,
+    .app-navbar .app-logout {
+      transition: none !important;
+    }
   }
 </style>
 
 <script>
-  /* Controlador de propagacion de eventos para menus en dispositivos tactiles */
   document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.dropdown-submenu > a').forEach(function (el) {
       el.addEventListener('click', function (e) {
-        e.preventDefault();
-        e.stopPropagation();
+        e.preventDefault(); e.stopPropagation();
+        // En escritorio el submenú se abre con hover; el clic no navega.
+        if (window.matchMedia('(min-width: 992px)').matches) return;
         const sub = this.nextElementSibling;
-        this.closest('.dropdown-menu')
-          .querySelectorAll('.dropdown-menu')
-          .forEach(m => { if (m !== sub) m.style.display = 'none'; });
+        this.closest('.dropdown-menu').querySelectorAll('.dropdown-menu').forEach(m => { if (m !== sub) m.style.display = 'none'; });
         sub.style.display = sub.style.display === 'block' ? 'none' : 'block';
       });
     });

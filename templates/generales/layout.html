@@ -27,65 +27,268 @@
       transition: none !important;
     }
 
-    .sidebar-rapido {
+    /* ============================================================
+       RAIL LATERAL (Lotes / Talento Humano)
+       ============================================================ */
+    .sidebar-rapido,
+    .sidebar-th {
+      --rail-w: 60px;
+      --rail-w-open: 258px;
       position: fixed;
-      top: 48px;
+      top: var(--nav-h, 60px);
       left: 0;
-      width: 50px;
+      width: var(--rail-w);
       height: auto;
-      max-height: calc(100vh - 48px);
-      background-color: #212529;
-      border-bottom-right-radius: 10px;
-      box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.35);
+      max-height: calc(100vh - var(--nav-h, 60px) - 12px);
+      padding: 10px 0 12px;
+      background: linear-gradient(180deg, #1b1c21 0%, #171419 100%);
+      border-right: 1px solid rgba(255, 255, 255, 0.06);
+      border-bottom-right-radius: 14px;
+      box-shadow: 10px 0 30px rgba(0, 0, 0, 0.22);
       z-index: 1040;
       display: flex;
       flex-direction: column;
-      transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s ease;
-      overflow: hidden;
+      gap: 1px;
+      overflow-x: hidden;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
       transform: translateX(-100%);
+      visibility: hidden;
+      transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1), transform 0.28s ease,
+        visibility 0s linear 0.28s;
     }
 
-    body.sidebar-activa .sidebar-rapido {
+    /* Acento de marca: hilo vinotinto en el borde superior izquierdo */
+    .sidebar-rapido::before,
+    .sidebar-th::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 2px;
+      background: linear-gradient(180deg, #a52d22 0%, rgba(151, 39, 28, 0) 60%);
+      pointer-events: none;
+    }
+
+    .sidebar-rapido::-webkit-scrollbar,
+    .sidebar-th::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .sidebar-rapido::-webkit-scrollbar-thumb,
+    .sidebar-th::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.14);
+      border-radius: 8px;
+    }
+
+    body.sidebar-activa .sidebar-rapido,
+    body.sidebar-th-activa .sidebar-th {
+      transform: translateX(0);
+      visibility: visible;
+      transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1), transform 0.28s ease,
+        visibility 0s linear 0s;
+    }
+
+    .sidebar-rapido:hover,
+    .sidebar-th:hover,
+    .sidebar-rapido:focus-within,
+    .sidebar-th:focus-within {
+      width: var(--rail-w-open);
+    }
+
+    /* --- Enlaces --- */
+    .sidebar-rapido a,
+    .sidebar-th a {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      height: 40px;
+      margin: 0 8px;
+      padding: 0 12px;
+      border-radius: 8px;
+      color: #b9bec7;
+      font-size: 0.84rem;
+      font-weight: 500;
+      line-height: 1;
+      text-decoration: none;
+      white-space: nowrap;
+      overflow: hidden;
+      transition: background-color 0.16s ease, color 0.16s ease;
+    }
+
+    .sidebar-rapido a i,
+    .sidebar-th a i {
+      flex: 0 0 20px;
+      width: 20px;
+      font-size: 1.22rem;
+      text-align: center;
+      color: #8f949e;
+      transition: color 0.16s ease;
+    }
+
+    .sidebar-rapido a span,
+    .sidebar-th a span {
+      opacity: 0;
+      transform: translateX(-4px);
+      transition: opacity 0.16s ease 0.02s, transform 0.16s ease 0.02s;
+    }
+
+    .sidebar-rapido:hover a span,
+    .sidebar-th:hover a span,
+    .sidebar-rapido:focus-within a span,
+    .sidebar-th:focus-within a span {
+      opacity: 1;
       transform: translateX(0);
     }
 
-    .sidebar-rapido:hover {
-      width: 185px;
+    .sidebar-rapido a:hover,
+    .sidebar-th a:hover {
+      background-color: rgba(255, 255, 255, 0.055);
+      color: #ffffff;
     }
 
-    .sidebar-rapido a {
+    .sidebar-rapido a:hover i,
+    .sidebar-th a:hover i {
+      color: #ffffff;
+    }
+
+    .sidebar-rapido a:focus-visible,
+    .sidebar-th a:focus-visible {
+      outline: 2px solid #d9564a;
+      outline-offset: -2px;
+    }
+
+    /* --- Estado activo --- */
+    .sidebar-rapido a.is-active,
+    .sidebar-th a.is-active {
+      background: linear-gradient(90deg, rgba(151, 39, 28, 0.28) 0%, rgba(151, 39, 28, 0.06) 100%);
+      color: #ffffff;
+      font-weight: 600;
+    }
+
+    .sidebar-rapido a.is-active i,
+    .sidebar-th a.is-active i {
+      color: #ff9d92;
+    }
+
+    .sidebar-rapido a.is-active::before,
+    .sidebar-th a.is-active::before {
+      content: "";
+      position: absolute;
+      left: -8px;
+      top: 9px;
+      bottom: 9px;
+      width: 3px;
+      border-radius: 0 3px 3px 0;
+      background-color: #c33a2c;
+    }
+
+    /* --- Enlaces aún no disponibles --- */
+    .sidebar-rapido a.is-disabled,
+    .sidebar-th a.is-disabled {
+      color: #868b95;
+      cursor: default;
+    }
+
+    .sidebar-rapido a.is-disabled i,
+    .sidebar-th a.is-disabled i {
+      color: #6f747d;
+    }
+
+    .sidebar-rapido a.is-disabled:hover,
+    .sidebar-th a.is-disabled:hover {
+      background-color: rgba(255, 255, 255, 0.025);
+      color: #9aa0aa;
+    }
+
+    .sidebar-rapido a.is-disabled:hover i,
+    .sidebar-th a.is-disabled:hover i {
+      color: #858b95;
+    }
+
+    .sidebar-rapido .badge-soon,
+    .sidebar-th .badge-soon {
+      margin-left: auto;
+      padding: 3px 7px;
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      border-radius: 999px;
+      background-color: rgba(255, 255, 255, 0.06);
+      color: #9aa0ab;
+      font-size: 0.6875rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      opacity: 0;
+      transition: opacity 0.16s ease;
+    }
+
+    .sidebar-rapido:hover .badge-soon,
+    .sidebar-th:hover .badge-soon,
+    .sidebar-rapido:focus-within .badge-soon,
+    .sidebar-th:focus-within .badge-soon {
+      opacity: 1;
+    }
+
+    /* --- Separadores y títulos de sección --- */
+    .sidebar-divider {
+      height: 1px;
+      margin: 7px 14px;
+      background-color: rgba(255, 255, 255, 0.07);
+    }
+
+    .sidebar-header {
       display: flex;
       align-items: center;
-      color: #d1d5db;
-      padding: 10px 14px;
-      text-decoration: none;
-      white-space: nowrap;
-      transition: all 0.2s ease;
-      border-left: 3px solid transparent;
-    }
-
-    .sidebar-rapido a:hover {
-      color: #ffffff;
-      background-color: #97271C;
-      border-left: 3px solid #ffc107;
-    }
-
-    .sidebar-rapido i {
-      font-size: 1.3rem;
-      min-width: 24px;
-      text-align: center;
-    }
-
-    .sidebar-rapido span {
-      margin-left: 10px;
-      font-size: 0.85rem;
-      font-weight: 500;
+      height: 28px;
+      padding: 8px 18px 0;
+      color: #8b919c;
+      font-size: 0.6875rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
       opacity: 0;
-      transition: opacity 0.2s ease;
+      transition: opacity 0.16s ease;
     }
 
-    .sidebar-rapido:hover span {
+    .sidebar-rapido:hover .sidebar-header,
+    .sidebar-th:hover .sidebar-header,
+    .sidebar-rapido:focus-within .sidebar-header,
+    .sidebar-th:focus-within .sidebar-header {
       opacity: 1;
+    }
+
+    /* En pantallas táctiles no hay hover: el menú abierto muestra etiquetas */
+    @media (hover: none) {
+      body.sidebar-activa .sidebar-rapido,
+      body.sidebar-th-activa .sidebar-th {
+        width: var(--rail-w-open);
+      }
+
+      .sidebar-rapido a span,
+      .sidebar-th a span {
+        opacity: 1;
+        transform: none;
+      }
+
+      .sidebar-rapido .sidebar-header,
+      .sidebar-th .sidebar-header,
+      .sidebar-rapido .badge-soon,
+      .sidebar-th .badge-soon {
+        opacity: 1;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .sidebar-rapido,
+      .sidebar-th,
+      .sidebar-rapido a,
+      .sidebar-th a,
+      .sidebar-rapido a span,
+      .sidebar-th a span {
+        transition: none !important;
+      }
     }
 
     body {
@@ -96,8 +299,9 @@
       transition: padding-left 0.25s ease;
     }
 
-    body.sidebar-activa main.container-fluid {
-      padding-left: 65px;
+    body.sidebar-activa main.container-fluid,
+    body.sidebar-th-activa main.container-fluid {
+      padding-left: 72px;
     }
 
     /* Imágenes en toasts (pequeños) */
@@ -149,7 +353,7 @@
   <!-- BANNER DE SUPLANTACIÓN FLOTANTE -->
   {% if session.get('is_impersonating') %}
   <div class="shadow-lg rounded-pill px-4 py-2 d-flex align-items-center justify-content-between"
-    style="position: fixed; bottom: 25px; left: 50%; transform: translateX(-50%); z-index: 1050; background-color: #212529; border: 2px solid #97271C;">
+    style="position: fixed; bottom: 25px; left: 50%; transform: translateX(-50%); z-index: 1050; background-color: #212529; color: #ffffff; border: 2px solid #97271C;">
     <div class="text-white fw-bold d-flex align-items-center" style="font-size: 0.95rem;">
       <i class='bx bx-show fs-4 me-2 text-warning'></i>
       <span class="me-3">Navegando como <span class="text-warning">{{ session.get('user_nombre') }}</span> (Solo Lectura)</span>
@@ -161,44 +365,56 @@
   </div>
   {% endif %}
 
-  {# --- SIDEBAR --- #}
-  {% if session.get('user_id') %}
-  <div class="sidebar-rapido">
-    <a href="{{ url_for('lotes.vista_lotes') }}" title="Gestión de Lotes">
-      <i class='bx bx-list-ul'></i><span>Gestión de Lotes</span>
-    </a>
-    <a href="{{ url_for('primera_semana.primera_semana') }}" title="1era Semana">
-      <i class='bx bx-calendar-event'></i><span>1era Semana</span>
-    </a>
-    <a href="{{ url_for('semanal_levante.semanal_levante') }}" title="Semanal Levante">
-      <i class='bx bx-trending-up'></i><span>Semanal Levante</span>
-    </a>
-    <a href="{{ url_for('diario.diario') }}" title="Diario">
-      <i class='bx bx-sun'></i><span>Diario</span>
-    </a>
-    <a href="{{ url_for('semanal.semanal') }}" title="Semanal Producción">
-      <i class='bx bx-line-chart'></i><span>Semanal Prod.</span>
-    </a>
-    <a href="{{ url_for('clasificacion.clas_prod') }}" title="Clasificación Prod.">
-      <i class='bx bx-layer'></i><span>Clasificación Prod.</span>
-    </a>
-    <a href="{{ url_for('primera_semana.grafico_primera_semana') }}" class="nav-link text-white d-flex align-items-center gap-2">
-      <i class='bx bx-bar-chart-alt-2 fs-5'></i>
-      <span>Gráfico 1era Semana</span>
-    </a>
-    <a href="{{ url_for('semanal_levante.grafico_semanal_levante') }}" class="nav-link text-white d-flex align-items-center gap-2">
-      <i class='bx bx-bar-chart-alt-2 fs-5'></i>
-      <span>Gráfico Levante</span>
-    </a>
-    <a href="{{ url_for('semanal.grafico_general') }}" class="nav-link text-white d-flex align-items-center gap-2">
-      <i class='bx bx-bar-chart-alt-2 fs-5'></i>
-      <span>Gráfico General</span>
-    </a>
-    <li class="nav-item">
-      <a href="{{ url_for('semanal.grafico_conversion') }}" class="nav-link text-white d-flex align-items-center gap-2">
-        <i class='bx bx-pie-chart-alt-2 fs-5'></i>
-        <span>Gráfico Conversión</span>
-      </a>
+  {# --- MACRO: enlace del rail lateral --- #}
+  {% macro rail_link(href, icon, label, activo=False, disabled=False) -%}
+  <a href="{{ '#' if disabled else href }}"
+     class="{% if activo %}is-active {% endif %}{% if disabled %}is-disabled{% endif %}"
+     {% if activo %}aria-current="page"{% endif %}
+     {% if disabled %}aria-disabled="true" tabindex="-1" onclick="return false;"{% endif %}
+     title="{{ label }}{% if disabled %} (próximamente){% endif %}">
+    <i class='bx {{ icon }}'></i><span>{{ label }}</span>
+    {% if disabled %}<span class="badge-soon">Pronto</span>{% endif %}
+  </a>
+  {%- endmacro %}
+
+  {# --- SIDEBAR LOTES (roles operativos) --- #}
+  {% if session.get('user_id') and session.get('user_rol') != 'Talento humano' %}
+  {% set ep = request.endpoint or '' %}
+  <div class="sidebar-rapido" role="navigation" aria-label="Menú de producción">
+    <div class="sidebar-header">Registro</div>
+    {{ rail_link(url_for('lotes.vista_lotes'), 'bx-list-ul', 'Gestión de lotes', ep == 'lotes.vista_lotes') }}
+    {{ rail_link(url_for('primera_semana.primera_semana'), 'bx-calendar-event', '1era semana', ep == 'primera_semana.primera_semana') }}
+    {{ rail_link(url_for('semanal_levante.semanal_levante'), 'bx-trending-up', 'Semanal levante', ep == 'semanal_levante.semanal_levante') }}
+    {{ rail_link(url_for('diario.diario'), 'bx-sun', 'Diario', ep == 'diario.diario') }}
+    {{ rail_link(url_for('semanal.semanal'), 'bx-line-chart', 'Semanal producción', ep == 'semanal.semanal') }}
+    {{ rail_link(url_for('clasificacion.clas_prod'), 'bx-layer', 'Clasificación', ep == 'clasificacion.clas_prod') }}
+
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-header">Análisis</div>
+    {{ rail_link(url_for('primera_semana.grafico_primera_semana'), 'bx-bar-chart-alt-2', 'Gráfico 1era semana', ep == 'primera_semana.grafico_primera_semana') }}
+    {{ rail_link(url_for('semanal_levante.grafico_semanal_levante'), 'bx-bar-chart-alt-2', 'Gráfico levante', ep == 'semanal_levante.grafico_semanal_levante') }}
+    {{ rail_link(url_for('semanal.grafico_general'), 'bx-bar-chart-alt-2', 'Gráfico general', ep == 'semanal.grafico_general') }}
+    {{ rail_link(url_for('semanal.grafico_conversion'), 'bx-pie-chart-alt-2', 'Gráfico conversión', ep == 'semanal.grafico_conversion') }}
+  </div>
+  {% endif %}
+
+  {# --- SIDEBAR TALENTO HUMANO (solo rol Talento humano) --- #}
+  {% if session.get('user_rol') == 'Talento humano' %}
+  {% set ep = request.endpoint or '' %}
+  {% set en_documentos = ep == 'talento_humano.documentos_colaborador' %}
+  <div class="sidebar-th" role="navigation" aria-label="Menú de Talento Humano">
+    <div class="sidebar-header">Talento humano</div>
+    {{ rail_link(url_for('talento_humano.colaboradores'), 'bx-group', 'Colaboradores',
+                 ep in ('talento_humano.colaboradores', 'talento_humano.ficha_colaborador',
+                        'talento_humano.crear_colaborador', 'talento_humano.editar_colaborador')) }}
+
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-header">Documentos</div>
+    {{ rail_link(url_for('talento_humano.documentos_colaborador'), 'bx-file', 'Documentos', en_documentos) }}
+
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-header">Configuración</div>
+    {{ rail_link('#', 'bx-cog', 'Parámetros', False, True) }}
   </div>
   {% endif %}
 
@@ -218,9 +434,27 @@
 
   <!-- BARRA LATERAL -->
   <script>
+    // La altura del navbar puede variar (logo, zoom, menú móvil): el rail se ancla a ella.
+    function ajustarAlturaRail() {
+      const nav = document.querySelector('.navbar');
+      if (nav) {
+        document.documentElement.style.setProperty('--nav-h', nav.getBoundingClientRect().height + 'px');
+      }
+    }
+    document.addEventListener('DOMContentLoaded', ajustarAlturaRail);
+    window.addEventListener('load', ajustarAlturaRail);
+    window.addEventListener('resize', ajustarAlturaRail);
+    document.addEventListener('shown.bs.collapse', ajustarAlturaRail);
+    document.addEventListener('hidden.bs.collapse', ajustarAlturaRail);
+
     document.addEventListener("DOMContentLoaded", function () {
+      // Sidebar Lotes
       if (localStorage.getItem('estadoSidebarLotes') === 'abierta') {
         document.body.classList.add('sidebar-activa');
+      }
+      // Sidebar Talento Humano
+      if (localStorage.getItem('estadoSidebarTH') === 'abierta') {
+        document.body.classList.add('sidebar-th-activa');
       }
     });
 
@@ -233,6 +467,18 @@
         localStorage.setItem('estadoSidebarLotes', 'abierta');
       } else {
         localStorage.setItem('estadoSidebarLotes', 'cerrada');
+      }
+    }
+
+    function toggleSidebarTH(event) {
+      event.preventDefault();
+      const body = document.body;
+      body.classList.toggle('sidebar-th-activa');
+
+      if (body.classList.contains('sidebar-th-activa')) {
+        localStorage.setItem('estadoSidebarTH', 'abierta');
+      } else {
+        localStorage.setItem('estadoSidebarTH', 'cerrada');
       }
     }
   </script>

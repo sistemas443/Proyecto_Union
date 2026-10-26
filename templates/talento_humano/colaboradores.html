@@ -1,0 +1,536 @@
+<!-- templates/talento_humano/colaboradores.html -->
+{% extends 'generales/layout.html' %}
+
+{% block title %}Colaboradores - Talento Humano{% endblock %}
+
+{% block head %}
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
+<style>
+    /* 1. Escala normal (100%): antes estaba en zoom 80% */
+    body { overflow-y: hidden !important; }
+
+    main.container-fluid {
+        display: flex; flex-direction: column;
+        padding-bottom: 0 !important;
+        height: calc(100vh - var(--nav-h, 65px));
+    }
+
+    .header-colaboradores { flex-shrink: 0; }
+
+    .card-tabla-colaboradores {
+        flex: 1 1 auto; display: flex; flex-direction: column;
+        margin-bottom: 15px;
+        background: transparent;
+        border: 0;
+        box-shadow: none;
+    }
+
+    .table-responsive {
+        flex: 1 1 auto; overflow-y: auto; overflow-x: auto;
+        background: #fff;
+        border: 1px solid #e7e2dd;
+        border-radius: 12px;
+        box-shadow: 0 1px 2px rgba(24, 21, 25, .04), 0 12px 26px -20px rgba(24, 21, 25, .45);
+        scrollbar-width: thin;
+        scrollbar-color: #d8d2cd transparent;
+    }
+    .table-responsive::-webkit-scrollbar { width: 9px; height: 9px; }
+    .table-responsive::-webkit-scrollbar-track { background: transparent; }
+    .table-responsive::-webkit-scrollbar-thumb { background: #d8d2cd; border-radius: 999px; border: 2px solid #fff; }
+    .table-responsive::-webkit-scrollbar-thumb:hover { background: #c3bab3; }
+
+    /* ---- Tabla ---- */
+    .tabla-colaboradores {
+        width: 100%;
+        min-width: 1200px;
+        margin: 0;
+        table-layout: fixed;
+        border-collapse: separate;
+        border-spacing: 0;
+        font-size: 0.98rem;
+        color: #37332f;
+    }
+
+    .tabla-colaboradores thead th {
+        position: sticky; top: 0; z-index: 5;
+        padding: 0.72rem 0.8rem;
+        background: #1b1c21 !important;
+        color: #d9d4ce !important;
+        border: 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        font-size: 0.8rem;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+
+    .tabla-colaboradores thead th.col-foto { padding-left: 1rem; }
+    .tabla-colaboradores thead th.col-acciones { padding-right: 1rem; }
+
+    .tabla-colaboradores tbody td {
+        padding: 0.62rem 0.8rem;
+        border-bottom: 1px solid #efebe7;
+        background-color: #fff;
+        vertical-align: middle;
+    }
+    .tabla-colaboradores tbody td:first-child { padding-left: 1rem; }
+    .tabla-colaboradores tbody td:last-child { padding-right: 1rem; }
+    .tabla-colaboradores tbody tr:last-child td { border-bottom: 0; }
+    .tabla-colaboradores tbody tr { transition: background-color 0.12s ease; }
+    .tabla-colaboradores tbody tr:hover td { background-color: #fbf8f6; }
+
+    /* Anchos de columna */
+    .tabla-colaboradores .col-foto { width: 64px; }
+    .tabla-colaboradores .col-nombre { width: 186px; }
+    .tabla-colaboradores .col-doc { width: 108px; }
+    .tabla-colaboradores .col-cargo { width: 146px; }
+    .tabla-colaboradores .col-area { width: 116px; }
+    .tabla-colaboradores .col-eps { width: 106px; }
+    .tabla-colaboradores .col-arl { width: 116px; }
+    .tabla-colaboradores .col-tiempo { width: 96px; }
+    .tabla-colaboradores .col-estado { width: 94px; }
+    .tabla-colaboradores .col-docs { width: 60px; }
+    .tabla-colaboradores .col-acciones { width: 156px; }
+
+    /* Celdas */
+    .avatar-colab {
+        width: 38px; height: 38px; display: block;
+        object-fit: cover; border-radius: 50%;
+        border: 1px solid #e7e2dd; background: #f4f1ee;
+        box-shadow: 0 0 0 2px #fff;
+    }
+    .avatar-colab-fallback {
+        width: 38px; height: 38px;
+        display: inline-flex; align-items: center; justify-content: center;
+        border-radius: 50%;
+        background: #f7efed; color: #97271C;
+        border: 1px solid #eedcd8;
+        font-size: 1.1rem;
+    }
+    .colab-nombre { display: block; font-size: 1rem; font-weight: 600; color: #221f1d; line-height: 1.25; }
+    .colab-doc { font-size: 0.88rem; color: #7a736d; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .colab-txt { color: #45403c; }
+    .colab-muted { color: #a29b95; }
+    .cell-trunc { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .tiempo-chip {
+        display: inline-flex; align-items: center; gap: 0.32rem;
+        font-size: 0.86rem; color: #6d645e; white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+    }
+    .tiempo-chip i { color: #a79d96; font-size: 0.95rem; }
+
+    /* Estado vacío */
+    .tabla-vacia { padding: 3rem 1rem !important; text-align: center; border-bottom: 0 !important; }
+    .tabla-vacia .vacia-icon {
+        width: 52px; height: 52px; margin: 0 auto 0.6rem;
+        display: flex; align-items: center; justify-content: center;
+        border-radius: 50%; background: #f6f1ee; color: #b3a69d;
+        font-size: 1.55rem;
+    }
+    .tabla-vacia .vacia-title { font-size: 0.96rem; font-weight: 600; color: #3a3532; }
+    .tabla-vacia .vacia-sub { font-size: 0.84rem; color: #6f6862; }
+
+    /* Buscador estilo píldora */
+    .buscador-contenedor { border-radius: 50px; }
+    .buscador-contenedor .form-control,
+    .buscador-contenedor .input-group-text { border-color: #e3ded9; }
+    .buscador-input { border-radius: 50px 0 0 50px !important; padding-left: 20px; font-size: 0.85rem; height: 38px; }
+    .buscador-icono { border-radius: 0 50px 50px 0 !important; padding-right: 18px; }
+    .buscador-input:focus { box-shadow: none !important; border-color: #d9c9c3 !important; }
+    .buscador-contenedor:focus-within { box-shadow: 0 0 0 0.2rem rgba(151, 39, 28, 0.12) !important; }
+    .buscador-contenedor:focus-within .buscador-icono { border-color: #d9c9c3 !important; }
+
+    /* Filtros compactos */
+    .filtro-select {
+        min-width: 138px; height: 38px;
+        font-size: 0.84rem; color: #3f3b38;
+        border-color: #e3ded9; border-radius: 9px;
+    }
+    .filtro-select:focus { border-color: #d9c9c3; box-shadow: 0 0 0 0.2rem rgba(151, 39, 28, 0.12); }
+
+    /* Botón Nuevo */
+    .btn-nuevo {
+        min-height: 38px; padding: 0 1.1rem;
+        display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
+        background-color: #97271C; border: 1px solid #97271C; border-radius: 50px;
+        color: #fff; font-size: 0.86rem; font-weight: 600;
+        transition: background-color 0.15s ease, border-color 0.15s ease;
+    }
+    .btn-nuevo:hover, .btn-nuevo:focus { background-color: #7d1f16; border-color: #7d1f16; color: #fff; }
+    .btn-nuevo:focus-visible { outline: 2px solid #c9564a; outline-offset: 2px; }
+
+    /* ---- Estado ---- */
+    .badge-estado {
+        display: inline-flex; align-items: center; gap: 0.36rem;
+        padding: 0.28rem 0.62rem;
+        border: 1px solid transparent;
+        border-radius: 999px;
+        font-size: 0.8rem; font-weight: 600; line-height: 1.2;
+        letter-spacing: 0.01em;
+        white-space: nowrap;
+    }
+    .badge-estado::before {
+        content: ""; width: 6px; height: 6px; flex: 0 0 6px;
+        border-radius: 50%; background-color: currentColor; opacity: 0.9;
+    }
+    .estado-activo { background-color: #eaf5ee; border-color: #d3e9db; color: #1c6b43; }
+    .estado-inactivo { background-color: #fbeceb; border-color: #f2d7d4; color: #a12b22; }
+    .estado-licencia { background-color: #fdf4e3; border-color: #f3e3c6; color: #8a5a10; }
+    .estado-otro { background-color: #f3f1ef; border-color: #e6e1dd; color: #5f5a56; }
+
+    /* ---- Documentos ---- */
+    .docs-chip {
+        display: inline-flex; align-items: center; gap: 0.28rem;
+        padding: 0.22rem 0.5rem;
+        border: 1px solid #e9e4df; border-radius: 7px;
+        background-color: #f5f2ef; color: #55504b;
+        font-size: 0.82rem; font-weight: 600;
+        font-variant-numeric: tabular-nums;
+    }
+    .docs-chip i { font-size: 0.95rem; color: #8b837d; }
+    .docs-chip.is-warn { background-color: #fdf1ef; border-color: #f3d9d5; color: #a12b22; }
+    .docs-chip.is-warn i { color: #bf3a2c; }
+
+    /* ---- Acciones ---- */
+    .acciones-group { display: inline-flex; align-items: center; gap: 4px; flex-wrap: nowrap; }
+
+    .btn-accion {
+        width: 30px; height: 30px; padding: 0;
+        display: inline-flex; align-items: center; justify-content: center;
+        border: 1px solid #e6e1dd; border-radius: 8px;
+        background-color: #fff; color: #736c66;
+        line-height: 1; cursor: pointer;
+        transition: background-color 0.13s ease, border-color 0.13s ease, color 0.13s ease;
+    }
+    .btn-accion i { font-size: 1.05rem; }
+    .btn-accion:hover { background-color: #f7f3f0; border-color: #d9d1cb; color: #2c2825; }
+    .btn-accion:focus-visible { outline: 2px solid #c9564a; outline-offset: 1px; }
+    .btn-accion.accion-editar:hover { color: #97271C; border-color: #e4c9c4; background-color: #fbf3f1; }
+    .btn-accion.accion-ver:hover { color: #2f2b28; border-color: #d8d2cd; background-color: #f4f1ef; }
+    .btn-accion.accion-off:hover { color: #a12b22; border-color: #eccfca; background-color: #fdf1ef; }
+    .btn-accion.accion-on:hover { color: #1c6b43; border-color: #cfe5d8; background-color: #eef7f1; }
+    .btn-accion.accion-eliminar:hover { color: #a12b22; border-color: #eccfca; background-color: #fdf1ef; }
+
+    /* Modal accordion */
+    .accordion-button { font-size: 0.85rem; font-weight: 600; }
+    .accordion-body { padding: 1rem; }
+    .form-label { font-size: 0.8rem; margin-bottom: 0.25rem; }
+    .form-control, .form-select { font-size: 0.85rem; padding: 0.375rem 0.75rem; }
+
+    /* Preview foto */
+    .foto-preview { width: 75px; height: 75px; border: 2px dashed #97271C; object-fit: cover; }
+    .foto-preview-placeholder { width: 75px; height: 75px; border: 2px dashed #97271C; display: flex; align-items: center; justify-content: center; color: #97271C; }
+
+    /* Tabla en móvil -> cards */
+    @media (max-width: 767.98px) {
+        .table-responsive { display: none !important; }
+        .card-tabla-colaboradores { display: none !important; }
+        .mobile-cards { display: block; }
+    }
+    @media (min-width: 768px) { .mobile-cards { display: none; } }
+
+    .colab-card {
+        background: #fff;
+        border: 1px solid #e7e2dd;
+        border-radius: 12px;
+        padding: 0.9rem;
+        margin-bottom: 0.65rem;
+        box-shadow: 0 1px 2px rgba(24, 21, 25, .04);
+    }
+    .colab-card-header { display: flex; align-items: center; gap: 0.7rem; margin-bottom: 0.55rem; }
+    .colab-card-avatar {
+        width: 44px; height: 44px; flex: 0 0 44px;
+        border-radius: 50%; object-fit: cover;
+        border: 1px solid #e7e2dd; background: #f7efed; color: #97271C;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.15rem;
+    }
+    .colab-card-info { min-width: 0; flex: 1 1 auto; }
+    .colab-card-nombre {
+        font-weight: 600; color: #221f1d; font-size: 0.95rem; line-height: 1.25;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .colab-card-meta {
+        font-size: 0.78rem; color: #7a736d;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .colab-card-body { font-size: 0.82rem; }
+    .colab-card-actions { display: flex; gap: 0.4rem; margin-top: 0.7rem; }
+    .colab-card-actions .btn {
+        font-size: 0.8rem; font-weight: 600;
+        border-radius: 8px;
+        padding: 0.35rem 0.5rem;
+    }
+
+    /* ---- Encabezado de página ---- */
+    .page-head-icon {
+        width: 38px; height: 38px; flex: 0 0 38px;
+        display: inline-flex; align-items: center; justify-content: center;
+        border-radius: 10px;
+        background: rgba(151, 39, 28, .10);
+        color: #97271C; font-size: 1.25rem;
+    }
+    .page-title { font-size: 1.4rem; font-weight: 700; color: #1f2024; letter-spacing: -0.01em; line-height: 1.2; }
+    .page-sub { font-size: 0.88rem; color: #7c7570; }
+    .count-chip {
+        display: inline-flex; align-items: center;
+        padding: 0.18rem 0.55rem;
+        border: 1px solid #ece4df; border-radius: 999px;
+        background: #f6f1ee; color: #7b4b43;
+        font-size: 0.76rem; font-weight: 600;
+        white-space: nowrap;
+    }
+
+    /* ---- Paginación ---- */
+    .pagination { gap: 2px; }
+    .pagination .page-item .page-link {
+        min-width: 32px; padding: 0.3rem 0.5rem;
+        border: 1px solid #e6e1dd; border-radius: 8px;
+        color: #55504b; font-size: 0.84rem; text-align: center;
+        background: #fff;
+    }
+    .pagination .page-item .page-link:hover { background: #f7f1ee; border-color: #e0d6d0; color: #7d1f16; }
+    .pagination .page-item.active .page-link { background: #97271C; border-color: #97271C; color: #fff; }
+    .pagination .page-item.disabled .page-link { background: #fbf9f7; border-color: #eee9e4; color: #b9b2ac; }
+    .pagination .page-item .page-link:focus { box-shadow: 0 0 0 0.2rem rgba(151, 39, 28, .15); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-3 h-100 d-flex flex-column">
+
+    <!-- HEADER -->
+    <div class="d-flex justify-content-between align-items-end mb-3 flex-wrap gap-2 header-colaboradores px-2">
+        <div class="d-flex align-items-start gap-2">
+            <span class="page-head-icon"><i class='bx bx-group'></i></span>
+            <div>
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <h3 class="page-title mb-0">Panel de Colaboradores</h3>
+                    <span class="count-chip">{{ total }} {{ 'colaborador' if total == 1 else 'colaboradores' }}</span>
+                </div>
+                <p class="page-sub mb-0 mt-1">Gestión integral de fichas, documentos, estudios y capacitaciones</p>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+            <!-- FILTROS RÁPIDOS -->
+            <div class="d-none d-md-flex gap-2 align-items-center">
+                <select class="form-select form-select-sm filtro-select" id="filtroEstado" title="Filtrar por estado">
+                    <option value="">Todos los estados</option>
+                    {% for e in estados %}<option value="{{e}}" {% if filtros.estado == e %}selected{% endif %}>{{e}}</option>{% endfor %}
+                </select>
+                <select class="form-select form-select-sm filtro-select" id="filtroArea" title="Filtrar por área">
+                    <option value="">Todas las áreas</option>
+                    {% for a in areas %}<option value="{{a}}" {% if filtros.area == a %}selected{% endif %}>{{a}}</option>{% endfor %}
+                </select>
+                <select class="form-select form-select-sm filtro-select" id="filtroCargo" title="Filtrar por cargo">
+                    <option value="">Todos los cargos</option>
+                    {% for c in cargos %}<option value="{{c}}" {% if filtros.cargo == c %}selected{% endif %}>{{c}}</option>{% endfor %}
+                </select>
+            </div>
+
+            <!-- BUSCADOR PÍLDORA -->
+            <div class="input-group buscador-contenedor" style="width: 300px; max-width: 100%;">
+                <input type="text" class="form-control form-control-sm border-end-0 buscador-input" id="buscadorColaboradores"
+                    placeholder="Buscar nombre o documento" value="{{ filtros.busqueda }}">
+                <span class="input-group-text bg-white border-start-0 buscador-icono">
+                    <i class='bx bx-search text-muted fs-5'></i>
+                </span>
+            </div>
+
+            <!-- BTN NUEVO -->
+            <button class="btn btn-nuevo shadow-sm text-nowrap d-none d-sm-inline-flex" onclick="abrirModalNuevo()">
+                <i class='bx bx-user-plus'></i> Nuevo Colaborador
+            </button>
+            <button class="btn btn-nuevo shadow-sm d-sm-none w-100" onclick="abrirModalNuevo()">
+                <i class='bx bx-user-plus'></i> Nuevo
+            </button>
+        </div>
+    </div>
+
+    <!-- TARJETA TABLA -->
+    <div class="card shadow-sm border-0 card-tabla-colaboradores" id="contenedorTablaColaboradores">
+        <div class="card-body p-0 table-responsive" id="scrollTablaColaboradores">
+            <table class="table table-hover align-middle mb-0 tabla-colaboradores">
+                <thead>
+                    <tr>
+                        <th class="col-foto">Foto</th>
+                        <th class="col-nombre">Nombre completo</th>
+                        <th class="col-doc">Documento</th>
+                        <th class="col-cargo">Cargo</th>
+                        <th class="col-area">Área</th>
+                        <th class="col-eps">EPS</th>
+                        <th class="col-arl">ARL</th>
+                        <th class="col-tiempo">Antigüedad</th>
+                        <th class="col-estado">Estado</th>
+                        <th class="col-docs text-center">Docs</th>
+                        <th class="col-acciones text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in colaboradores %}
+                    {% set estado_clase = 'estado-activo' if c.estado == 'Activo' else 'estado-inactivo' if c.estado == 'Inactivo' else 'estado-licencia' if c.estado == 'Licencia' else 'estado-otro' %}
+                    <tr data-id="{{ c.id }}">
+                        <!-- Foto -->
+                        <td>
+                            {% if c.foto_perfil %}
+                            <img src="{{ url_for('static', filename=c.foto_perfil) }}" class="avatar-colab" alt="{{ c.nombre_completo }}">
+                            {% else %}
+                            <span class="avatar-colab-fallback"><i class='bx bxs-user'></i></span>
+                            {% endif %}
+                        </td>
+                        <!-- Nombre -->
+                        <td><span class="colab-nombre">{{ c.nombre_completo }}</span></td>
+                        <!-- Documento -->
+                        <td><span class="colab-doc">{{ c.tipo_doc }} {{ c.num_doc }}</span></td>
+                        <!-- Cargo -->
+                        <td><span class="colab-txt">{{ c.cargo or '—' }}</span></td>
+                        <!-- Área -->
+                        <td><span class="colab-txt">{{ c.area or '—' }}</span></td>
+                        <!-- EPS -->
+                        <td class="cell-trunc"{% if c.eps %} title="{{ c.eps }}"{% endif %}>
+                            {% if c.eps %}<span class="colab-txt">{{ c.eps }}</span>{% else %}<span class="colab-muted">—</span>{% endif %}
+                        </td>
+                        <!-- ARL -->
+                        <td class="cell-trunc"{% if c.arl %} title="{{ c.arl }}"{% endif %}>
+                            {% if c.arl %}<span class="colab-txt">{{ c.arl }}</span>{% else %}<span class="colab-muted">—</span>{% endif %}
+                        </td>
+                        <!-- Antigüedad -->
+                        <td>
+                            {% if c.fecha_ingreso %}
+                            <span class="tiempo-chip" title="Ingreso: {{ c.fecha_ingreso.strftime('%d/%m/%Y') }}">
+                                <i class='bx bx-calendar'></i>{{ c.fecha_ingreso | tiempo_transcurrido }}
+                            </span>
+                            {% else %}
+                            <span class="colab-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <!-- Estado -->
+                        <td>
+                            <span class="badge-estado {{ estado_clase }}">{{ c.estado }}</span>
+                        </td>
+                        <!-- Docs -->
+                        <td class="text-center">
+                            {% if c.total_documentos > 0 %}
+                            <span class="docs-chip{% if c.docs_vencidos > 0 %} is-warn{% endif %}"
+                                title="{{ c.total_documentos }} documentos{% if c.docs_vencidos > 0 %} ({{ c.docs_vencidos }} vencidos){% endif %}">
+                                <i class='bx bx-file'></i>{{ c.total_documentos }}
+                                {% if c.docs_vencidos > 0 %}<i class='bx bx-error-circle'></i>{% endif %}
+                            </span>
+                            {% else %}
+                            <span class="colab-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <!-- Acciones -->
+                        <td class="text-center">
+                            <div class="acciones-group">
+                                <button class="btn btn-sm btn-accion accion-editar btn-editar-colab" data-id="{{ c.id }}"
+                                    title="Editar" aria-label="Editar">
+                                    <i class='bx bx-edit'></i>
+                                </button>
+                                <button class="btn btn-sm btn-accion {% if c.estado == 'Activo' %}accion-off{% else %}accion-on{% endif %}"
+                                    onclick="toggleEstado({{ c.id }})"
+                                    title="{% if c.estado == 'Activo' %}Desactivar{% else %}Activar{% endif %}"
+                                    aria-label="{% if c.estado == 'Activo' %}Desactivar{% else %}Activar{% endif %}">
+                                    <i class='bx {% if c.estado == 'Activo' %}bx-user-x{% else %}bx-user-check{% endif %}'></i>
+                                </button>
+                                <button class="btn btn-sm btn-accion accion-ver" onclick="verDetalle({{ c.id }})"
+                                    title="Ver ficha completa" aria-label="Ver ficha completa">
+                                    <i class='bx bx-show'></i>
+                                </button>
+                                <button class="btn btn-sm btn-accion accion-eliminar"
+                                    onclick="eliminarColaborador({{ c.id }}, {{ c.nombre_completo | tojson }})"
+                                    title="Eliminar (soft delete)" aria-label="Eliminar">
+                                    <i class='bx bx-trash'></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="11" class="tabla-vacia">
+                            <div class="vacia-icon"><i class='bx bx-folder-open'></i></div>
+                            <div class="vacia-title">No hay colaboradores registrados</div>
+                            <div class="vacia-sub">Usa «Nuevo Colaborador» para crear la primera ficha.</div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- MÓVIL: CARDS -->
+    <div class="mobile-cards px-2" id="mobileCardsContainer">
+        {% for c in colaboradores %}
+        {% set estado_clase = 'estado-activo' if c.estado == 'Activo' else 'estado-inactivo' if c.estado == 'Inactivo' else 'estado-licencia' if c.estado == 'Licencia' else 'estado-otro' %}
+        <div class="colab-card" data-id="{{ c.id }}">
+            <div class="colab-card-header">
+                {% if c.foto_perfil %}
+                <img src="{{ url_for('static', filename=c.foto_perfil) }}" class="colab-card-avatar" alt="{{ c.nombre_completo }}">
+                {% else %}
+                <div class="colab-card-avatar"><i class='bx bxs-user'></i></div>
+                {% endif %}
+                <div class="colab-card-info">
+                    <div class="colab-card-nombre">{{ c.nombre_completo }}</div>
+                    <div class="colab-card-meta">{{ c.tipo_doc }} {{ c.num_doc }} · {{ c.cargo or 'Sin cargo' }}</div>
+                </div>
+                <span class="badge-estado {{ estado_clase }}">{{ c.estado }}</span>
+            </div>
+            <div class="colab-card-body">
+                <div class="row g-1 text-muted small">
+                    <div class="col-6"><i class='bx bx-building me-1'></i>{{ c.area or '—' }}</div>
+                    <div class="col-6"><i class='bx bx-calendar me-1'></i>{{ c.fecha_ingreso.strftime('%d/%m/%Y') if c.fecha_ingreso else '—' }}</div>
+                </div>
+                {% if c.total_documentos > 0 %}
+                <div class="d-flex gap-2 mt-2">
+                    <span class="docs-chip{% if c.docs_vencidos > 0 %} is-warn{% endif %}">
+                        <i class='bx bx-file'></i>{{ c.total_documentos }} docs
+                    </span>
+                </div>
+                {% endif %}
+            </div>
+            <div class="colab-card-actions">
+                <button class="btn btn-sm btn-outline-secondary flex-fill btn-editar" data-id="{{ c.id }}"><i class='bx bx-edit me-1'></i>Editar</button>
+                <button class="btn btn-sm {% if c.estado=='Activo' %}btn-outline-danger{% else %}btn-outline-success{% endif %} flex-fill" onclick="toggleEstado({{ c.id }})">
+                    <i class='bx {% if c.estado=='Activo' %}bx-user-x{% else %}bx-user-check{% endif %} me-1'></i>{% if c.estado=='Activo' %}Desactivar{% else %}Activar{% endif %}
+                </button>
+                <button class="btn btn-sm btn-outline-dark flex-fill" onclick="verDetalle({{ c.id }})"><i class='bx bx-show me-1'></i>Ver</button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- PAGINACIÓN -->
+    {% if total_paginas > 1 %}
+    <nav aria-label="Paginación colaboradores" class="px-2">
+        <ul class="pagination pagination-sm justify-content-center mb-0">
+            <li class="page-item {% if pagina == 1 %}disabled{% endif %}">
+                <a class="page-link" href="{{ url_for('talento_humano.colaboradores', pagina=pagina-1, **request.args) }}">&laquo;</a>
+            </li>
+            {% for p in range(max(1, pagina-2), min(total_paginas, pagina+2)+1) %}
+            <li class="page-item {% if p == pagina %}active{% endif %}">
+                <a class="page-link" href="{{ url_for('talento_humano.colaboradores', pagina=p, **request.args) }}">{{ p }}</a>
+            </li>
+            {% endfor %}
+            <li class="page-item {% if pagina == total_paginas %}disabled{% endif %}">
+                <a class="page-link" href="{{ url_for('talento_humano.colaboradores', pagina=pagina+1, **request.args) }}">&raquo;</a>
+            </li>
+        </ul>
+        <small class="text-muted d-block text-center mt-1">Mostrando {{ ((pagina-1)*50)+1 }}–{{ [pagina*50, total]|min }} de {{ total }} colaboradores</small>
+    </nav>
+    {% endif %}
+
+</div>
+
+<!-- MODAL COLABORADOR (incluido como partial) -->
+{% include 'talento_humano/partials/_modal_colaborador.html' %}
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
+<script src="{{ url_for('static', filename='js/talento_humano/colaboradores.js') }}"></script>
+{% endblock %}

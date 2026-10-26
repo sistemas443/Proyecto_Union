@@ -2,7 +2,7 @@
 {% block title %}Gráfico Primera Semana – Avícola San Martín{% endblock %}
 {% block content %}
 <style>
-  /* 1. Bloqueamos el scroll general */
+  /* Escala normal (100%) */
   body {
     overflow-y: hidden !important;
   }
@@ -326,11 +326,8 @@
             }
             const observer = new ResizeObserver(() => {
                 const rect = graficoDiv.getBoundingClientRect();
-                const esMovil = window.innerWidth < 768;
-                const espacioLeyenda = esMovil ? 40 : 25;
-                const pixelesLibres = window.innerHeight - rect.top - espacioLeyenda;
-                const alturaMinima = esMovil ? 280 : 350;
-                const alturaPerfecta = Math.max(pixelesLibres, alturaMinima);
+                const pixelesLibres = window.innerHeight - rect.top;
+                const alturaPerfecta = pixelesLibres - 15;
                 graficoDiv.style.height = alturaPerfecta + "px";
                 if (window.Plotly) {
                     Plotly.Plots.resize(graficoDiv);

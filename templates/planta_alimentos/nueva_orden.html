@@ -1,37 +1,62 @@
 {% extends 'generales/layout.html' %}
 
+{% block head %}{% include 'planta_alimentos/_design_system.html' %}{% endblock %}
+
 {% block content %}
-<div class="container-fluid mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2><i class="fas fa-file-invoice me-2"></i>Nueva Orden de Compra</h2>
-        <a href="{{ url_for('planta_alimentos.listar_ordenes_compra') }}" class="btn btn-secondary">
+<div class="container-fluid py-4">
+
+    <!-- Encabezado -->
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">
+                <i class="fas fa-file-invoice me-2"></i>Nueva Orden de Compra
+            </h1>
+            <p class="page-subtitle">Genera una orden para un proveedor registrado</p>
+        </div>
+        <a href="{{ url_for('planta_alimentos.listar_ordenes_compra') }}" class="btn btn-sm btn-outline-secondary">
             <i class="fas fa-arrow-left me-1"></i> Cancelar
         </a>
     </div>
 
-    <div class="card shadow-sm col-md-8 mx-auto">
-        <div class="card-body">
-            <form method="POST" action="{{ url_for('planta_alimentos.nueva_orden_compra') }}">
-                <div class="mb-3">
-                    <label class="form-label font-weight-bold">Proveedor</label>
-                    <select name="proveedor_id" class="form-select" required>
-                        <option value="">Seleccione un proveedor...</option>
-                        {% for p in proveedores %}
-                        <option value="{{ p['id'] }}">{{ p['nombre'] }}</option>
-                        {% endfor %}
-                    </select>
+    <!-- Formulario -->
+    <div class="row">
+        <div class="col-lg-7 col-xl-6 mx-auto">
+            <div class="card card-clean">
+                <div class="card-header">
+                    <i class="fas fa-pen-to-square me-1"></i> Datos de la Orden
                 </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('planta_alimentos.nueva_orden_compra') }}">
 
-                <div class="mb-3">
-                    <label class="form-label">Observaciones / Notas</label>
-                    <textarea name="observaciones" class="form-control" rows="3"
-                        placeholder="Detalles de la orden, condiciones de pago, etc."></textarea>
+                        <div class="mb-3">
+                            <label class="form-label-design" for="proveedor_id">Proveedor</label>
+                            <select name="proveedor_id" id="proveedor_id" class="form-select" required>
+                                <option value="">Seleccione un proveedor...</option>
+                                {% for p in proveedores %}
+                                <option value="{{ p['id'] }}">{{ p['nombre'] }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text-muted mt-1">Solo se muestran proveedores activos.</div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label-design" for="observaciones">Observaciones / Notas</label>
+                            <textarea name="observaciones" id="observaciones" class="form-control" rows="4"
+                                placeholder="Detalles de la orden, condiciones de pago, etc."></textarea>
+                        </div>
+
+                        <div class="d-flex justify-content-end gap-2">
+                            <a href="{{ url_for('planta_alimentos.listar_ordenes_compra') }}"
+                                class="btn btn-outline-secondary">
+                                Descartar
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i> Generar Orden de Compra
+                            </button>
+                        </div>
+                    </form>
                 </div>
-
-                <button type="submit" class="btn btn-primary w-100">
-                    <i class="fas fa-save me-1"></i> Generar Orden de Compra
-                </button>
-            </form>
+            </div>
         </div>
     </div>
 </div>

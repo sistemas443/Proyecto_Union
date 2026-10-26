@@ -4,7 +4,7 @@
 
 {% block content %}
 <style>
-  /* 1. Bloqueamos el scroll general */
+  /* Escala normal (100%) */
   body {
     overflow-y: hidden !important;
   }
@@ -240,6 +240,7 @@
                 const rect = graficoDiv.getBoundingClientRect();
                 const pixelesLibres = window.innerHeight - rect.top;
                 
+                /* Escala normal (100%) */
                 const alturaPerfecta = pixelesLibres - 15;
                 
                 graficoDiv.style.height = alturaPerfecta + "px";

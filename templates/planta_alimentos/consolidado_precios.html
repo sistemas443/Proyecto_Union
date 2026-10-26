@@ -1,41 +1,331 @@
 {% extends 'generales/layout.html' %}
 
+{% block head %}
+<style>
+  /* ============================================================
+     CONSOLIDADO DE PRECIOS - DESIGN TOKENS (Impeccable: Operate + Quieter)
+     ============================================================ */
+  :root {
+    /* === CABECERA TABLA === */
+    --table-header-bg: #1a202c;
+    --table-header-text: #ffffff;
+
+    /* === ACCIONES === */
+    --action-primary: #2c3e50;
+    --action-primary-hover: #1a252f;
+    --action-primary-text: #ffffff;
+
+    --action-secondary: #6c757d;
+    --action-secondary-hover: #5a6268;
+    --action-secondary-text: #ffffff;
+
+    /* === SEMÁNTICOS (Solo estados/datos) === */
+    --success: #198754;
+    --info: #0d6efd;
+    --warning: #ffc107;
+    --warning-text: #212529;
+    --danger: #dc3545;
+
+    /* === SUPERFICIES === */
+    --surface: #ffffff;
+    --surface-alt: #f8f9fa;
+
+    /* === TEXTO === */
+    --text-primary: #212529;
+    --text-secondary: #495057;
+    --text-muted: #6c757d;
+
+    /* === ESTRUCTURA === */
+    --border: #dee2e6;
+
+    /* === ESPACIADO (base 4px) === */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+  }
+
+  /* ============================================================
+     BOTONES UNIFICADOS
+     ============================================================ */
+  .btn-primary {
+    background-color: var(--action-primary);
+    border-color: var(--action-primary);
+    color: var(--action-primary-text);
+  }
+  .btn-primary:hover,
+  .btn-primary:focus {
+    background-color: var(--action-primary-hover);
+    border-color: var(--action-primary-hover);
+  }
+
+  .btn-secondary {
+    background-color: var(--action-secondary);
+    border-color: var(--action-secondary);
+    color: var(--action-secondary-text);
+  }
+  .btn-secondary:hover,
+  .btn-secondary:focus {
+    background-color: var(--action-secondary-hover);
+    border-color: var(--action-secondary-hover);
+  }
+
+  .btn-outline-secondary {
+    color: var(--action-secondary);
+    border-color: var(--action-secondary);
+  }
+  .btn-outline-secondary:hover,
+  .btn-outline-secondary:focus {
+    background-color: var(--action-secondary);
+    color: var(--action-secondary-text);
+  }
+
+  .btn-outline-warning {
+    color: var(--warning);
+    border-color: var(--warning);
+  }
+  .btn-outline-warning:hover {
+    background-color: var(--warning);
+    color: var(--warning-text);
+  }
+
+  .btn-warning {
+    background-color: var(--warning);
+    border-color: var(--warning);
+    color: var(--warning-text);
+  }
+
+  .btn-outline-danger {
+    color: var(--danger);
+    border-color: var(--danger);
+  }
+  .btn-outline-danger:hover {
+    background-color: var(--danger);
+    color: #ffffff;
+  }
+
+  .btn-outline-light {
+    color: #ffffff;
+    border-color: #ffffff;
+  }
+  .btn-outline-light:hover {
+    background-color: #ffffff;
+    color: var(--action-primary);
+  }
+
+  /* ============================================================
+     TABLA: Cabecera unificada gris oscuro, centrada
+     ============================================================ */
+  .table-cons thead {
+    background-color: var(--table-header-bg) !important;
+    color: var(--table-header-text) !important;
+  }
+  .table-cons thead th {
+    background-color: var(--table-header-bg) !important;
+    color: var(--table-header-text) !important;
+    border-color: rgba(255,255,255,0.15);
+    border-bottom: 2px solid rgba(255,255,255,0.25) !important;
+    font-weight: 600;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: var(--space-2) var(--space-2);
+    white-space: nowrap;
+    text-align: center !important;
+    vertical-align: middle;
+  }
+
+  /* ============================================================
+     TABLA: Cuerpo - filas alternadas sutiles
+     ============================================================ */
+  .table-cons tbody tr:nth-child(odd) {
+    background-color: var(--surface);
+  }
+  .table-cons tbody tr:nth-child(even) {
+    background-color: var(--surface-alt);
+  }
+  .table-cons tbody tr:hover {
+    background-color: #eef1f4;
+  }
+  .table-cons tbody td {
+    font-size: 0.8rem;
+    padding: var(--space-2) var(--space-2);
+    vertical-align: middle;
+    border-color: var(--border);
+  }
+
+  /* Columna Materia Prima */
+  .table-cons .col-mp {
+    font-weight: 600;
+    color: var(--text-primary);
+    text-align: left;
+  }
+
+  /* Columna Precio */
+  .table-cons .col-precio {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 0.75rem;
+  }
+
+  /* Columna Estrella */
+  .table-cons .col-estrella {
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  /* Columna Lote */
+  .table-cons .col-lote {
+    font-weight: 600;
+    color: var(--text-primary);
+    text-align: center;
+  }
+
+  /* Columna Etapa */
+  .table-cons .col-etapa {
+    color: var(--text-secondary);
+    text-align: left;
+  }
+
+  /* Columna Precio Empresa */
+  .table-cons .col-precio-emp {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 0.75rem;
+  }
+
+  /* Columna Total Empresa */
+  .table-cons .col-total-emp {
+    text-align: right;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 0.75rem;
+  }
+
+  /* Badge estrella */
+  .btn-estrella {
+    padding: 0.15rem 0.3rem;
+    font-size: 0.7rem;
+  }
+  .btn-estrella .fas.fa-star {
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  }
+  .btn-estrella .far.fa-star {
+    color: var(--warning);
+    font-size: 1.1em;
+  }
+
+  /* Card sin borde, sombra sutil */
+  .card-cons {
+    box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
+    border: 1px solid var(--border);
+  }
+
+  /* Card headers neutros */
+  .card-cons .card-header {
+    background-color: var(--action-secondary) !important;
+    color: var(--action-secondary-text) !important;
+    border-bottom: none;
+    font-weight: 600;
+  }
+  .card-cons .card-header.text-white {
+    background-color: var(--action-primary) !important;
+    color: #ffffff !important;
+  }
+
+  /* Toggle button */
+  .btn-toggle {
+    background: none;
+    border: none;
+    color: var(--warning);
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+  .btn-toggle:hover {
+    color: var(--warning-hover);
+  }
+
+  /* Star buttons */
+  .btn-estrella-destacada {
+    background: linear-gradient(135deg, var(--warning), #ffaa00);
+    border: none;
+    box-shadow: 0 2px 4px rgba(255, 170, 0, 0.4);
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  }
+  .btn-estrella-otra {
+    background: linear-gradient(135deg, #fff8e1, #ffecb3);
+    border: 2px solid var(--warning);
+    color: #b8860b;
+  }
+  .btn-estrella-otra .far.fa-star {
+    color: var(--warning);
+    font-size: 1.1em;
+  }
+
+  /* Toggle button */
+  .btn-toggle {
+    background: none;
+    border: none;
+    color: var(--warning);
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0;
+  }
+  .btn-toggle:hover {
+    color: #e0a800;
+  }
+
+  /* Card sin borde, sombra sutil */
+  .card-cons {
+    box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
+    border: 1px solid var(--border);
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid mt-4">
-    <h2 class="text-primary mb-4">Consolidado de Costos y Precios</h2>
+    <h2 class="fw-bold mb-4" style="color: var(--text-primary);">
+        <i class="fas fa-layer-group me-2" style="color: var(--action-primary);"></i> Consolidado de Costos y Precios
+    </h2>
 
     <div class="row">
         <!-- TABLA IZQUIERDA: PRECIOS MATERIAS PRIMAS -->
         <div class="col-md-4">
-            <div class="card shadow-sm mb-4">
-                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+            <div class="card card-cons mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
                     <span class="fw-bold">PRECIOS MATERIAS PRIMAS + FLETE</span>
-                    <button type="button" class="btn btn-sm btn-outline-light" onclick="toggleOtrasMaterias()" id="btnToggleOtras">
+                    <button type="button" class="btn-toggle" onclick="toggleOtrasMaterias()" id="btnToggleOtras">
                         <i class="fas fa-chevron-down me-1"></i> Ver otras (<span id="countOtras">{{ materias_otras|length }}</span>)
                     </button>
                 </div>
                 <div class="card-body p-0">
-                    <table class="table table-bordered table-striped table-hover mb-0">
-                        <thead class="table-light">
+                    <table class="table table-bordered table-hover mb-0 table-cons" style="font-size: 0.8rem;">
+                        <thead>
                             <tr>
                                 <th>MATERIA PRIMA</th>
-                                <th>PRECIO NETO</th>
-                                <th>FLETE</th>
-                                <th>TOTAL</th>
-                                <th style="width: 40px; text-align: center; color: #ffd700;">★</th>
+                                <th class="col-precio">PRECIO NETO</th>
+                                <th class="col-precio">FLETE</th>
+                                <th class="col-precio">TOTAL</th>
+                                <th style="width: 40px;">★</th>
                             </tr>
                         </thead>
                         <!-- TBODY 1: Materias Destacadas -->
                         <tbody id="tbodyDestacadas">
                             {% for mp in materias_destacadas %}
                             <tr class="table-light" data-mp-id="{{ mp['id'] }}">
-                                <td>{{ mp['nombre'] }}</td>
-                                <td class="text-end">$ {{ "{:,.0f}".format(mp['precio_actual_kg'] | default(0) | float) }}</td>
-                                <td class="text-end">$ {{ "{:,.0f}".format(mp['flete'] | default(0) | float) }}</td>
-                                <td class="text-end fw-bold" style="font-size: 12px;">$ {{ "{:,.0f}".format((mp['precio_actual_kg'] | default(0) | float) + (mp['flete'] | default(0) | float)) }}</td>
-                                <td class="text-center" style="width: 40px;">
-                                    <button type="button" class="btn btn-sm btn-warning toggle-destacada" data-mp-id="{{ mp['id'] }}" data-estado="1" title="Quitar de destacadas" style="background: linear-gradient(135deg, #ffd700, #ffaa00); border: none; box-shadow: 0 2px 4px rgba(255, 170, 0, 0.4);">
-                                        <i class="fas fa-star" style="color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.3);"></i>
+                                <td class="col-mp">{{ mp['nombre'] }}</td>
+                                <td class="col-precio">$ {{ "{:,.0f}".format(mp['precio_actual_kg'] | default(0) | float) }}</td>
+                                <td class="col-precio">$ {{ "{:,.0f}".format(mp['flete'] | default(0) | float) }}</td>
+                                <td class="col-precio fw-bold" style="font-size: 11px;">$ {{ "{:,.0f}".format((mp['precio_actual_kg'] | default(0) | float) + (mp['flete'] | default(0) | float)) }}</td>
+                                <td class="col-estrella">
+                                    <button type="button" class="btn btn-sm btn-estrella-destacada btn-estrella toggle-destacada" data-mp-id="{{ mp['id'] }}" data-estado="1" title="Quitar de destacadas">
+                                        <i class="fas fa-star"></i>
                                     </button>
                                 </td>
                             </tr>
@@ -47,12 +337,12 @@
                             {% for mp in materias_otras %}
                             <tr data-mp-id="{{ mp['id'] }}">
                                 <td>{{ mp['nombre'] }}</td>
-                                <td class="text-end">$ {{ "{:,.0f}".format(mp['precio_actual_kg'] | default(0) | float) }}</td>
-                                <td class="text-end">$ {{ "{:,.0f}".format(mp['flete'] | default(0) | float) }}</td>
-                                <td class="text-end fw-bold" style="font-size: 12px;">$ {{ "{:,.0f}".format((mp['precio_actual_kg'] | default(0) | float) + (mp['flete'] | default(0) | float)) }}</td>
-                                <td class="text-center" style="width: 40px;">
-                                    <button type="button" class="btn btn-sm toggle-destacada" data-mp-id="{{ mp['id'] }}" data-estado="0" title="Agregar a destacadas" style="background: linear-gradient(135deg, #fff8e1, #ffecb3); border: 2px solid #ffd700; color: #b8860b;">
-                                        <i class="far fa-star" style="font-size: 1.1em; color: #ffd700;"></i>
+                                <td class="col-precio">$ {{ "{:,.0f}".format(mp['precio_actual_kg'] | default(0) | float) }}</td>
+                                <td class="col-precio">$ {{ "{:,.0f}".format(mp['flete'] | default(0) | float) }}</td>
+                                <td class="col-precio fw-bold" style="font-size: 11px;">$ {{ "{:,.0f}".format((mp['precio_actual_kg'] | default(0) | float) + (mp['flete'] | default(0) | float)) }}</td>
+                                <td class="col-estrella">
+                                    <button type="button" class="btn btn-sm btn-estrella-otra toggle-destacada" data-mp-id="{{ mp['id'] }}" data-estado="0" title="Agregar a destacadas">
+                                        <i class="far fa-star" style="font-size: 1.1em;"></i>
                                     </button>
                                 </td>
                             </tr>
@@ -70,32 +360,29 @@
                  TABLA 1: COSTO DIETAS SAN MARTIN
                  ============================================= #}
             {% if dietas_san_martin %}
-            <div class="card shadow-sm mb-4">
-                <div class="card-header bg-danger text-white text-center fw-bold">
+            <div class="card card-cons mb-4">
+                <div class="card-header text-white text-center fw-bold">
                     COSTO DIETAS SAN MARTIN
                 </div>
                 <div class="card-body p-0">
-                    <table class="table table-bordered table-striped table-hover mb-0">
+                    <table class="table table-bordered table-hover mb-0 table-cons" style="font-size: 0.8rem;">
                         <thead>
-                            <tr class="text-center" style="font-size: 0.85em;">
-                                <th style="background-color: #f8d7da;">LOTE</th>
-                                <th style="background-color: #f8d7da;">ETAPA</th>
-                                <th style="background-color: #f8d7da;">PRECIO + FLETE + MAQ.</th>
-                                <th style="background-color: #cff4fc;">PRECIO + IVA + MAQ.</th>
-                                <th style="background-color: #d1e7dd;">PRECIO + FLETE + IVA + MAQ.</th>
+                            <tr>
+                                <th style="width: 15%;">LOTE</th>
+                                <th style="width: 35%;">ETAPA</th>
+                                <th class="col-precio-emp" style="width: 25%;">PRECIO + FLETE + MAQ.</th>
+                                <th class="col-precio-emp" style="width: 25%;">PRECIO + IVA + MAQ.</th>
+                                <th class="col-total-emp" style="width: 25%;">PRECIO + FLETE + IVA + MAQ.</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for dieta in dietas_san_martin %}
                             <tr>
-                                <td class="fw-bold" style="font-size: 0.85em;">{{ dieta['lote'] }}</td>
-                                <td style="font-size: 0.85em;">{{ dieta['etapa'] }}</td>
-                                <td class="text-end" style="background-color: #f8d7da; font-size: 0.85em;">$ {{
-                                    "{:,.0f}".format(dieta['precio_flete_maquila'] | default(0) | float) }}</td>
-                                <td class="text-end" style="background-color: #cff4fc; font-size: 0.85em;">$ {{
-                                    "{:,.0f}".format(dieta['precio_iva_maquila'] | default(0) | float) }}</td>
-                                <td class="text-end fw-bold" style="background-color: #d1e7dd; font-size: 0.85em;">$ {{
-                                    "{:,.0f}".format(dieta['precio_flete_iva_maquila'] | default(0) | float) }}</td>
+                                <td class="col-lote" style="font-size: 0.85em;">{{ dieta['lote'] }}</td>
+                                <td class="col-etapa" style="font-size: 0.85em;">{{ dieta['etapa'] }}</td>
+                                <td class="col-precio-emp">$ {{ "{:,.0f}".format(dieta['precio_flete_maquila'] | default(0) | float) }}</td>
+                                <td class="col-precio-emp">$ {{ "{:,.0f}".format(dieta['precio_iva_maquila'] | default(0) | float) }}</td>
+                                <td class="col-total-emp">$ {{ "{:,.0f}".format(dieta['precio_flete_iva_maquila'] | default(0) | float) }}</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -108,30 +395,27 @@
                  TABLA 2: COSTO DIETAS COUNTRY
                  ============================================= #}
             {% if dietas_country %}
-            <div class="card shadow-sm mb-4">
-                <div class="card-header bg-primary text-white text-center fw-bold">
+            <div class="card card-cons mb-4">
+                <div class="card-header text-white text-center fw-bold">
                     COSTO DIETAS COUNTRY
                 </div>
                 <div class="card-body p-0">
-                    <table class="table table-bordered table-striped table-hover mb-0">
+                    <table class="table table-bordered table-hover mb-0 table-cons" style="font-size: 0.8rem;">
                         <thead>
-                            <tr class="text-center" style="font-size: 0.85em;">
-                                <th style="background-color: #f8d7da;">DIETAS COUNTRY</th>
-                                <th style="background-color: #f8d7da;">PRECIO + FLETE + MAQ.</th>
-                                <th style="background-color: #cff4fc;">PRECIO + IVA + MAQ.</th>
-                                <th style="background-color: #d1e7dd;">PRECIO + FLETE + IVA + MAQ.</th>
+                            <tr>
+                                <th style="width: 35%;">ETAPA</th>
+                                <th class="col-precio-emp" style="width: 25%;">PRECIO + FLETE + MAQ.</th>
+                                <th class="col-precio-emp" style="width: 20%;">PRECIO + IVA + MAQ.</th>
+                                <th class="col-total-emp" style="width: 20%;">PRECIO + FLETE + IVA + MAQ.</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for dieta in dietas_country %}
                             <tr>
-                                <td class="fw-bold" style="font-size: 0.85em;">{{ dieta['etapa'] }}</td>
-                                <td class="text-end" style="background-color: #f8d7da; font-size: 0.85em;">$ {{
-                                    "{:,.0f}".format(dieta['precio_flete_maquila'] | default(0) | float) }}</td>
-                                <td class="text-end" style="background-color: #cff4fc; font-size: 0.85em;">$ {{
-                                    "{:,.0f}".format(dieta['precio_iva_maquila'] | default(0) | float) }}</td>
-                                <td class="text-end fw-bold" style="background-color: #d1e7dd; font-size: 0.85em;">$ {{
-                                    "{:,.0f}".format(dieta['precio_flete_iva_maquila'] | default(0) | float) }}</td>
+                                <td class="col-etapa" style="font-size: 0.85em;">{{ dieta['etapa'] }}</td>
+                                <td class="col-precio-emp">$ {{ "{:,.0f}".format(dieta['precio_flete_maquila'] | default(0) | float) }}</td>
+                                <td class="col-precio-emp">$ {{ "{:,.0f}".format(dieta['precio_iva_maquila'] | default(0) | float) }}</td>
+                                <td class="col-total-emp">$ {{ "{:,.0f}".format(dieta['precio_flete_iva_maquila'] | default(0) | float) }}</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -144,30 +428,27 @@
                  TABLA 3: COSTO DIETAS DOS CRESTAS
                  ============================================= #}
             {% if dietas_dos_crestas %}
-            <div class="card shadow-sm mb-4">
-                <div class="card-header bg-warning text-dark text-center fw-bold">
+            <div class="card card-cons mb-4">
+                <div class="card-header text-white text-center fw-bold">
                     COSTO DIETAS DOS CRESTAS
                 </div>
                 <div class="card-body p-0">
-                    <table class="table table-bordered table-striped table-hover mb-0">
+                    <table class="table table-bordered table-hover mb-0 table-cons" style="font-size: 0.8rem;">
                         <thead>
-                            <tr class="text-center" style="font-size: 0.85em;">
-                                <th style="background-color: #f8d7da;">DIETAS DOS CRESTAS</th>
-                                <th style="background-color: #f8d7da;">PRECIO + FLETE + MAQ.</th>
-                                <th style="background-color: #cff4fc;">PRECIO + IVA + MAQ.</th>
-                                <th style="background-color: #d1e7dd;">PRECIO + FLETE + IVA + MAQ.</th>
+                            <tr>
+                                <th style="width: 35%;">ETAPA</th>
+                                <th class="col-precio-emp" style="width: 25%;">PRECIO + FLETE + MAQ.</th>
+                                <th class="col-precio-emp" style="width: 20%;">PRECIO + IVA + MAQ.</th>
+                                <th class="col-total-emp" style="width: 20%;">PRECIO + FLETE + IVA + MAQ.</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for dieta in dietas_dos_crestas %}
                             <tr>
-                                <td class="fw-bold" style="font-size: 0.85em;">{{ dieta['etapa'] }}</td>
-                                <td class="text-end" style="background-color: #f8d7da; font-size: 0.85em;">$ {{
-                                    "{:,.0f}".format(dieta['precio_flete_maquila'] | default(0) | float) }}</td>
-                                <td class="text-end" style="background-color: #cff4fc; font-size: 0.85em;">$ {{
-                                    "{:,.0f}".format(dieta['precio_iva_maquila'] | default(0) | float) }}</td>
-                                <td class="text-end fw-bold" style="background-color: #d1e7dd; font-size: 0.85em;">$ {{
-                                    "{:,.0f}".format(dieta['precio_flete_iva_maquila'] | default(0) | float) }}</td>
+                                <td class="col-etapa" style="font-size: 0.85em;">{{ dieta['etapa'] }}</td>
+                                <td class="col-precio-emp">$ {{ "{:,.0f}".format(dieta['precio_flete_maquila'] | default(0) | float) }}</td>
+                                <td class="col-precio-emp">$ {{ "{:,.0f}".format(dieta['precio_iva_maquila'] | default(0) | float) }}</td>
+                                <td class="col-total-emp">$ {{ "{:,.0f}".format(dieta['precio_flete_iva_maquila'] | default(0) | float) }}</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -221,7 +502,6 @@
                 .then(async res => {
                     const contentType = res.headers.get('content-type');
                     console.log('[DEBUG] Response:', res.status, res.statusText, contentType);
-                    // Handle redirect (302 = session expired, redirect to login)
                     if (res.status === 302 || res.redirected) {
                         throw new Error('Sesión expirada. Por favor recarga la página e inicia sesión nuevamente.');
                     }
@@ -241,7 +521,6 @@
                 })
                 .then(data => {
                     if (data.success) {
-                        // Actualizar UI
                         this.dataset.estado = nuevoEstado;
                         if (nuevoEstado === '1') {
                             icon.classList.remove('far');
@@ -249,7 +528,6 @@
                             this.classList.remove('btn-outline-warning');
                             this.classList.add('btn-warning');
                             this.title = 'Quitar de destacadas';
-                            // Mover a tabla destacadas si estaba en otras
                             if (row.closest('#tbodyOtras')) {
                                 row.remove();
                                 document.getElementById('tbodyDestacadas').appendChild(row);
@@ -260,13 +538,11 @@
                             this.classList.remove('btn-warning');
                             this.classList.add('btn-outline-warning');
                             this.title = 'Agregar a destacadas';
-                            // Mover a tabla otras si estaba en destacadas
                             if (row.closest('#tbodyDestacadas')) {
                                 row.remove();
                                 document.getElementById('tbodyOtras').appendChild(row);
                             }
                         }
-                        // Actualizar contador
                         actualizarContadorOtras();
                     } else {
                         alert('Error: ' + (data.msg || 'No se pudo actualizar'));

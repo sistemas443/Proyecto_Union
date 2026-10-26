@@ -1,66 +1,171 @@
 {% extends 'generales/layout.html' %}
 
+{% block head %}
+{% include 'planta_alimentos/_design_system.html' %}
+<style>
+  /* Acento sutil para insumos de maquila */
+  .tabla-costos tbody tr.row-maquila > td {
+    background-color: #f9fafb;
+  }
+  .tabla-costos tbody tr.row-maquila > td:first-child {
+    box-shadow: inset 3px 0 0 0 var(--action-secondary);
+  }
+  .tabla-costos tbody tr.row-maquila:hover > td {
+    background-color: #eef1f4;
+  }
+
+  .tabla-costos .col-costo {
+    text-align: right;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-secondary);
+  }
+  .tabla-costos .col-costo-fuerte {
+    text-align: right;
+    font-weight: 700;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-variant-numeric: tabular-nums;
+    color: var(--action-primary);
+  }
+  .tabla-costos .col-cantidad {
+    text-align: right;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-primary);
+  }
+
+  /* Footer oscuro */
+  .tabla-costos tfoot td {
+    background-color: var(--table-header-bg);
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.12);
+    font-weight: 700;
+    font-size: 0.82rem;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    padding: var(--space-3);
+    vertical-align: middle;
+  }
+  .tabla-costos tfoot .foot-label {
+    text-align: left;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 0.72rem;
+    color: #cbd5e1;
+  }
+  .tabla-costos tfoot .foot-total {
+    color: #ffffff;
+  }
+
+  /* Segunda fila del footer: sin maquila, tono más apagado */
+  .tabla-costos tfoot tr.foot-sin-maquila td {
+    background-color: #2d3748;
+    color: #e2e8f0;
+    font-weight: 600;
+  }
+  .tabla-costos tfoot tr.foot-sin-maquila .foot-label {
+    color: #a0aec0;
+    text-transform: none;
+    letter-spacing: 0;
+    font-family: inherit;
+    font-style: italic;
+  }
+
+  .badge-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.2rem 0.5rem;
+    border-radius: 0.25rem;
+    background-color: var(--surface-alt);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    text-transform: none;
+    letter-spacing: 0;
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid py-4">
+
     <!-- Encabezado -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="page-header">
         <div>
-            <h2 class="h4 text-uppercase fw-bold mb-0" style="color: #000; background-color: #c4ff4d; padding: 10px 20px; display: inline-block; border-radius: 5px;">
-                {{ nombre_dieta }}
-            </h2>
-            <p class="text-muted fw-bold ms-2 mb-0 mt-2">Lote: {{ lote_id }} | Item: {{ item_id }}</p>
+            <h1 class="page-title">
+                <i class="fas fa-calculator me-2"></i>Revisión de Costos
+            </h1>
+            <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
+                <span class="badge-chip">
+                    <i class="fas fa-utensils"></i> {{ nombre_dieta }}
+                </span>
+                <span class="badge-chip">
+                    <i class="fas fa-box"></i> Lote: {{ lote_id }}
+                </span>
+                <span class="badge-chip">
+                    <i class="fas fa-hashtag"></i> Item: {{ item_id }}
+                </span>
+            </div>
         </div>
-        <a href="{{ url_for('main.resumen_lote_formulas', lote_id=lote_id) }}" class="btn btn-outline-secondary">
+        <a href="{{ url_for('main.resumen_lote_formulas', lote_id=lote_id) }}" class="btn btn-sm btn-outline-secondary">
             <i class="fas fa-arrow-left me-1"></i> Volver a Fórmulas
         </a>
     </div>
 
     <!-- Tabla Detallada -->
-    <div class="card border-0 shadow-sm">
+    <div class="card card-clean">
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-bordered table-hover align-middle mb-0" style="font-size: 0.85rem;">
-                    <thead style="background-color: #b3d4ff; color: #003366;">
-                        <tr class="text-center">
-                            <th class="text-start">MATERIA PRIMA</th>
-                            <th>CANTIDAD</th>
-                            <th>COSTO P+IVA</th>
-                            <th>COSTO P+FLETE</th>
-                            <th>COSTO P+IVA+FLETE</th>
+                <table class="table align-middle table-design tabla-costos">
+                    <thead>
+                        <tr>
+                            <th style="width: 34%;">Materia Prima</th>
+                            <th style="width: 14%;">Cantidad</th>
+                            <th style="width: 17%;">Costo P+IVA</th>
+                            <th style="width: 17%;">Costo P+FLETE</th>
+                            <th style="width: 18%;">Costo P+IVA+FLETE</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for i in insumos %}
-                        <tr {% if i['es_maquila'] %}style="background-color: #f8f9fa;"{% endif %}>
-                            <td class="fw-bold text-dark text-uppercase">{{ i['insumo'] }}</td>
-                            <td class="text-end fw-semibold">{{ "{:,.0f}".format(i['cantidad']) }}</td>
-                            <td class="text-end">$ {{ "{:,.0f}".format(i['costo_iva']) }}</td>
-                            <td class="text-end">$ {{ "{:,.0f}".format(i['costo_flete']) }}</td>
-                            <td class="text-end fw-bold">$ {{ "{:,.0f}".format(i['costo_iva_flete']) }}</td>
+                        <tr class="{% if i['es_maquila'] %}row-maquila{% endif %}">
+                            <td class="col-text text-uppercase">
+                                {{ i['insumo'] }}
+                                {% if i['es_maquila'] %}
+                                <span class="badge-estado badge-neutro ms-1">Maquila</span>
+                                {% endif %}
+                            </td>
+                            <td class="col-cantidad">{{ "{:,.0f}".format(i['cantidad']) }}</td>
+                            <td class="col-costo">$ {{ "{:,.0f}".format(i['costo_iva']) }}</td>
+                            <td class="col-costo">$ {{ "{:,.0f}".format(i['costo_flete']) }}</td>
+                            <td class="col-costo-fuerte">$ {{ "{:,.0f}".format(i['costo_iva_flete']) }}</td>
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="5" class="text-center py-4 text-muted">No hay insumos para evaluar en esta dieta.</td>
+                            <td colspan="5" class="empty-state">
+                                <i class="fas fa-info-circle"></i> No hay insumos para evaluar en esta dieta.
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
-                    
-                    <!-- Fila de Total General -->
-                    <tfoot class="fw-bold fs-6">
-                        <tr class="text-end">
-                            <td class="text-center">TOTALES CON MAQUILA</td>
+
+                    <tfoot>
+                        <tr>
+                            <td class="foot-label">Totales con maquila</td>
                             <td>{{ "{:,.0f}".format(totales['cantidad']) }}</td>
-                            <td style="background-color: #00bfff; color: white;">$ {{ "{:,.0f}".format(totales['c_iva']) }}</td>
-                            <td style="background-color: #ff8080; color: white;">$ {{ "{:,.0f}".format(totales['c_flete']) }}</td>
-                            <td style="background-color: #99cc33; color: white;">$ {{ "{:,.0f}".format(totales['c_iva_flete']) }}</td>
+                            <td class="foot-total">$ {{ "{:,.0f}".format(totales['c_iva']) }}</td>
+                            <td class="foot-total">$ {{ "{:,.0f}".format(totales['c_flete']) }}</td>
+                            <td class="foot-total">$ {{ "{:,.0f}".format(totales['c_iva_flete']) }}</td>
                         </tr>
-                        <!-- Fila Sin Maquila -->
-                        <tr class="text-end">
-                            <td class="text-center text-muted">Sin maquila</td>
-                            <td class="bg-light"></td>
-                            <td style="background-color: #b3e6ff;">$ {{ "{:,.0f}".format(totales_sin_maquila['c_iva']) }}</td>
-                            <td style="background-color: #ffcccc;">$ {{ "{:,.0f}".format(totales_sin_maquila['c_flete']) }}</td>
-                            <td style="background-color: #d9f2a6;">$ {{ "{:,.0f}".format(totales_sin_maquila['c_iva_flete']) }}</td>
+                        <tr class="foot-sin-maquila">
+                            <td class="foot-label">Sin maquila</td>
+                            <td></td>
+                            <td>$ {{ "{:,.0f}".format(totales_sin_maquila['c_iva']) }}</td>
+                            <td>$ {{ "{:,.0f}".format(totales_sin_maquila['c_flete']) }}</td>
+                            <td>$ {{ "{:,.0f}".format(totales_sin_maquila['c_iva_flete']) }}</td>
                         </tr>
                     </tfoot>
                 </table>

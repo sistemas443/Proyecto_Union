@@ -2,9 +2,8 @@
 
 {% block content %}
 <style>
-    /* 1. Zoom global del 80% y bloqueo del scroll de toda la ventana (el scroll lo hará la tabla internamente) */
+    /* Escala normal (100%) */
     body {
-        zoom: 0.8;
         overflow-y: hidden !important;
     }
 
@@ -13,8 +12,8 @@
         display: flex;
         flex-direction: column;
         padding-bottom: 0px !important;
-        height: calc(125vh - 65px);
-        /* Compensamos el zoom de 0.8 */
+        height: calc(100vh - var(--nav-h, 65px));
+        /* Escala normal (100%) */
     }
 
     /* 3. Aseguramos que la cabecera y el botón no se encojan */
@@ -47,12 +46,7 @@
         box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
     }
 
-    /* 5. Corrección matemática para que los modales y el fondo borroso cubran el 100% de la pantalla bajo zoom */
-    .modal,
-    .modal-backdrop {
-        width: 125vw !important;
-        height: 125vh !important;
-    }
+    /* 5. Los modales y el fondo borroso cubren el 100% de la pantalla */
 </style>
 
 <div class="container-fluid mt-2 h-100 d-flex flex-column">
@@ -498,8 +492,8 @@
                 const rect = divCard.getBoundingClientRect();
                 const pixelesLibres = window.innerHeight - rect.top;
 
-                // Compensamos el zoom del 80% (0.8) y ajustamos un margen inferior de seguridad
-                const alturaPerfecta = (pixelesLibres / 0.8) - 15;
+                /* Escala normal (100%) */
+                const alturaPerfecta = pixelesLibres - 15;
 
                 divCard.style.height = alturaPerfecta + "px";
                 scrollDiv.style.maxHeight = alturaPerfecta + "px";

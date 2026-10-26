@@ -1,40 +1,299 @@
 {% extends 'generales/layout.html' %}
 
+{% block head %}
+<style>
+  /* ============================================================
+     CATÁLOGO DE DIETAS - DESIGN TOKENS (Impeccable: Operate + Quieter)
+     ============================================================ */
+  :root {
+    /* === CABECERA TABLA === */
+    --table-header-bg: #1a202c;
+    --table-header-text: #ffffff;
+
+    /* === ACCIONES === */
+    --action-primary: #2c3e50;
+    --action-primary-hover: #1a252f;
+    --action-primary-text: #ffffff;
+
+    --action-secondary: #6c757d;
+    --action-secondary-hover: #5a6268;
+    --action-secondary-text: #ffffff;
+
+    /* === SEMÁNTICOS (Solo estados/datos) === */
+    --success: #198754;
+    --info: #0d6efd;
+    --warning: #ffc107;
+    --warning-text: #212529;
+    --danger: #dc3545;
+
+    /* === SUPERFICIES === */
+    --surface: #ffffff;
+    --surface-alt: #f8f9fa;
+
+    /* === TEXTO === */
+    --text-primary: #212529;
+    --text-secondary: #495057;
+    --text-muted: #6c757d;
+
+    /* === ESTRUCTURA === */
+    --border: #dee2e6;
+
+    /* === ESPACIADO (base 4px) === */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+  }
+
+  /* ============================================================
+     BOTONES UNIFICADOS
+     ============================================================ */
+  .btn-primary {
+    background-color: var(--action-primary);
+    border-color: var(--action-primary);
+    color: var(--action-primary-text);
+  }
+  .btn-primary:hover,
+  .btn-primary:focus {
+    background-color: var(--action-primary-hover);
+    border-color: var(--action-primary-hover);
+  }
+
+  .btn-secondary {
+    background-color: var(--action-secondary);
+    border-color: var(--action-secondary);
+    color: var(--action-secondary-text);
+  }
+  .btn-secondary:hover,
+  .btn-secondary:focus {
+    background-color: var(--action-secondary-hover);
+    border-color: var(--action-secondary-hover);
+  }
+
+  .btn-outline-primary {
+    color: var(--action-primary);
+    border-color: var(--action-primary);
+  }
+  .btn-outline-primary:hover,
+  .btn-outline-primary:focus {
+    background-color: var(--action-primary);
+    color: var(--action-primary-text);
+  }
+
+  .btn-outline-secondary {
+    color: var(--action-secondary);
+    border-color: var(--action-secondary);
+  }
+  .btn-outline-secondary:hover,
+  .btn-outline-secondary:focus {
+    background-color: var(--action-secondary);
+    color: var(--action-secondary-text);
+  }
+
+  .btn-outline-danger {
+    color: var(--danger);
+    border-color: var(--danger);
+  }
+  .btn-outline-danger:hover {
+    background-color: var(--danger);
+    color: #ffffff;
+  }
+
+  .btn-danger {
+    background-color: var(--danger);
+    border-color: var(--danger);
+    color: #ffffff;
+  }
+
+  /* ============================================================
+     TABLA: Cabecera unificada gris oscuro, centrada
+     ============================================================ */
+  .table-diet thead {
+    background-color: var(--table-header-bg) !important;
+    color: var(--table-header-text) !important;
+  }
+  .table-diet thead th {
+    background-color: var(--table-header-bg) !important;
+    color: var(--table-header-text) !important;
+    border-color: rgba(255,255,255,0.15);
+    border-bottom: 2px solid rgba(255,255,255,0.25) !important;
+    font-weight: 600;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: var(--space-2) var(--space-2);
+    white-space: nowrap;
+    text-align: center !important;
+    vertical-align: middle;
+  }
+
+  /* ============================================================
+     TABLA: Cuerpo - filas alternadas sutiles
+     ============================================================ */
+  .table-diet tbody tr:nth-child(odd) {
+    background-color: var(--surface);
+  }
+  .table-diet tbody tr:nth-child(even) {
+    background-color: var(--surface-alt);
+  }
+  .table-diet tbody tr:hover {
+    background-color: #eef1f4;
+  }
+  .table-diet tbody td {
+    font-size: 0.8rem;
+    padding: var(--space-2) var(--space-2);
+    vertical-align: middle;
+    border-color: var(--border);
+  }
+
+  /* Columna ITEM */
+  .table-diet .col-item {
+    font-weight: 600;
+    color: var(--action-primary);
+    text-align: center;
+  }
+
+  /* Columna Nombre */
+  .table-diet .col-nombre {
+    font-weight: 600;
+    color: var(--text-primary);
+    text-align: left;
+  }
+
+  /* Columna Rango */
+  .table-diet .col-rango {
+    color: var(--text-muted);
+    text-align: center;
+  }
+
+  /* Acciones centradas */
+  .table-diet .col-acciones {
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  /* Card sin borde, sombra sutil */
+  .card-diet {
+    box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
+    border: 1px solid var(--border);
+  }
+
+  /* Formulario card */
+  .card-form-diet {
+    box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
+    border: 1px solid var(--border);
+  }
+
+  /* Modal header neutro */
+  .modal-header.bg-neutral {
+    background-color: var(--action-secondary) !important;
+    color: var(--action-secondary-text) !important;
+    border-bottom: none;
+  }
+  .modal-header.bg-neutral .btn-close {
+    filter: invert(1);
+  }
+
+  /* Card sin borde, sombra sutil */
+  .card-diet {
+    box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
+    border: 1px solid var(--border);
+  }
+
+  .card-form-diet {
+    box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
+    border: 1px solid var(--border);
+  }
+
+  /* Botones de acción en tabla */
+  .table-diet .btn-action {
+    padding: 0.2rem 0.5rem;
+    font-size: 0.75rem;
+  }
+  .table-diet .btn-action svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  /* ============================================================
+     CABECERA DE PÁGINA (icono profesional + títulos)
+     ============================================================ */
+  .page-icon {
+    width: 44px;
+    height: 44px;
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background-color: var(--action-primary);
+    color: #ffffff;
+    font-size: 1.1rem;
+    box-shadow: 0 2px 6px rgba(44, 62, 80, 0.25);
+  }
+  .page-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--text-primary);
+    line-height: 1.25;
+  }
+  .page-subtitle {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    line-height: 1.3;
+  }
+  @media print {
+    .page-icon {
+      background-color: transparent !important;
+      color: var(--text-primary) !important;
+      box-shadow: none !important;
+    }
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid py-4">
     <div class="row mb-4">
         <div class="col-12">
-            <h2 class="h4 text-primary fw-bold mb-0">
-                <i class="fas fa-list-ol me-2"></i> Catálogo de Alimentos
-            </h2>
+            <div class="d-flex align-items-center gap-3">
+                <div class="page-icon">
+                    <i class="fas fa-book-open"></i>
+                </div>
+                <div>
+                    <h2 class="page-title mb-0">Catálogo de Alimentos</h2>
+                    <p class="page-subtitle mb-0">Dietas registradas por código ITEM y rango de semanas</p>
+                </div>
+            </div>
         </div>
     </div>
 
     <div class="row">
         <!-- Formulario de Registro -->
         <div class="col-md-4 mb-4">
-            <div class="card border-0 shadow-sm">
+            <div class="card card-form-diet">
                 <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
                     <h6 class="fw-bold text-secondary">Nueva Dieta</h6>
                 </div>
                 <div class="card-body">
                     <form method="POST" action="{{ url_for('planta_alimentos.catalogo_alimentos') }}">
                         <div class="mb-3">
-                            <label class="form-label fw-bold text-muted small">Código ITEM</label>
+                            <label class="form-label fw-semibold text-muted small">Código ITEM</label>
                             <input type="number" name="item_id" class="form-control form-control-sm"
                                 placeholder="Ej. 218" required>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label fw-bold text-muted small">Nombre de la Dieta</label>
+                            <label class="form-label fw-semibold text-muted small">Nombre de la Dieta</label>
                             <input type="text" name="nombre" class="form-control form-control-sm"
                                 placeholder="Ej. ARRANQUE SAN MARTIN" required autocomplete="off">
                         </div>
                         <div class="mb-3">
-                            <label class="form-label fw-bold text-muted small">Rango de Semanas</label>
+                            <label class="form-label fw-semibold text-muted small">Rango de Semanas</label>
                             <input type="text" name="rango_semanas" class="form-control form-control-sm"
                                 placeholder="Ej. 1-4" required autocomplete="off">
                         </div>
-                        <button type="submit" class="btn btn-primary btn-sm w-100 fw-bold">
+                        <button type="submit" class="btn btn-primary btn-sm w-100 fw-semibold">
                             <i class="fas fa-save me-1"></i> Guardar Dieta
                         </button>
                     </form>
@@ -44,46 +303,54 @@
 
         <!-- Tabla de Catálogo -->
         <div class="col-md-8">
-            <div class="card border-0 shadow-sm">
+            <div class="card card-diet">
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
-                            <thead class="bg-light">
+                        <table class="table table-hover align-middle mb-0 table-diet" style="font-size: 0.8rem;">
+                            <thead>
                                 <tr>
-                                    <th class="text-secondary small fw-bold text-uppercase px-4">ITEM</th>
-                                    <th class="text-secondary small fw-bold text-uppercase">Nombre de Dieta</th>
-                                    <th class="text-secondary small fw-bold text-uppercase text-center">Rango Semanas</th>
-                                    <th class="text-secondary small fw-bold text-uppercase text-center px-4">Acciones</th>
+                                    <th style="width: 12%;">ITEM</th>
+                                    <th style="width: 55%;">NOMBRE DE DIETA</th>
+                                    <th class="col-numeric" style="width: 18%;">RANGO SEMANAS</th>
+                                    <th class="col-acciones" style="width: 15%;">ACCIONES</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for alimento in alimentos %}
                                 <tr>
-                                    <td class="px-4 fw-bold text-primary">{{ alimento['item_id'] }}</td>
-                                    <td class="fw-bold text-dark">{{ alimento['nombre'] }}</td>
-                                    <td class="text-center text-muted">{{ alimento['rango_semanas'] }}</td>
+                                    <td class="col-item px-3">{{ alimento['item_id'] }}</td>
+                                    <td class="col-nombre px-3">{{ alimento['nombre'] }}</td>
+                                    <td class="col-rango text-center">{{ alimento['rango_semanas'] }}</td>
                                     
-                                    <!-- NUEVA COLUMNA DE ACCIONES -->
-                                    <td class="text-center px-4">
+                                    <td class="col-acciones px-3">
                                         <div class="d-flex justify-content-center gap-1">
                                             
-                                            <!-- 1. Botón Original: Ver Fórmula -->
-                                            <a href="{{ url_for('planta_alimentos.editar_receta', item_id=alimento['item_id'], lote_id='0') }}" class="btn btn-sm btn-outline-primary p-1 px-2" title="Ver Fórmula">
-                                                Ver Fórmula
+                                            <!-- 1. Ver Fórmula -->
+                                            <a href="{{ url_for('planta_alimentos.editar_receta', item_id=alimento['item_id'], lote_id='0') }}" 
+                                               class="btn btn-outline-primary btn-action" title="Ver Fórmula">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14"
+                                                    fill="currentColor" class="bi bi-eye" viewBox="0 0 16 16">
+                                                    <path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13.133 13.133 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.11 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.172 8z"/>
+                                                    <path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z"/>
+                                                </svg>
                                             </a>
-                                    
-                                            <!-- 2. Botón Editar (Abre modal) -->
-                                            <button type="button" class="btn btn-sm btn-outline-secondary p-1 px-2" data-bs-toggle="modal" data-bs-target="#modalEditarDieta{{ alimento['item_id'] }}" title="Editar Dieta">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pencil-square" viewBox="0 0 16 16">
+                                            
+                                            <!-- 2. Editar -->
+                                            <button type="button" class="btn btn-outline-secondary btn-action" 
+                                                data-bs-toggle="modal" data-bs-target="#modalEditarDieta{{ alimento['item_id'] }}" 
+                                                title="Editar Dieta">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-pencil-square" viewBox="0 0 16 16">
                                                     <path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/>
                                                     <path fill-rule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5z"/>
                                                 </svg>
                                             </button>
-                                    
-                                            <!-- 3. Botón Eliminar -->
-                                            <form method="POST" action="{{ url_for('planta_alimentos.eliminar_dieta', item_id=alimento.item_id) }}" onsubmit="return confirm('¿Seguro que deseas eliminar la dieta {{ alimento.nombre }}? Esto podría afectar las fórmulas asociadas.');" class="d-inline">
-                                                <button type="submit" class="btn btn-sm btn-outline-danger p-1 px-2" title="Eliminar Dieta">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash3" viewBox="0 0 16 16">
+                                            
+                                            <!-- 3. Eliminar -->
+                                            <form method="POST" action="{{ url_for('planta_alimentos.eliminar_dieta', item_id=alimento.item_id) }}" 
+                                                onsubmit="return confirm('¿Seguro que deseas eliminar la dieta {{ alimento.nombre }}? Esto podría afectar las fórmulas asociadas.');" 
+                                                class="d-inline">
+                                                <button type="submit" class="btn btn-outline-danger btn-action" title="Eliminar Dieta">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-trash3" viewBox="0 0 16 16">
                                                         <path d="M6.5 1h3a.5.5 0 0 1 .5.5v1H6v-1a.5.5 0 0 1 .5-.5M11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3A1.5 1.5 0 0 0 5 1.5v1H1.5a.5.5 0 0 0 0 1h.538l.853 10.66A2 2 0 0 0 4.937 16h6.126a2 2 0 0 0 1.997-1.84l.853-10.66h.538a.5.5 0 0 0 0-1zm1.958 1-.846 10.58a1 1 0 0 1-.997.92H4.937a1 1 0 0 1-.997-.92L3.042 3.5zm-7.487 1a.5.5 0 0 1 .528.47l.5 8.5a.5.5 0 0 1-.998.06L5 5.03a.5.5 0 0 1 .47-.53Zm5.058 0a.5.5 0 0 1 .47.53l-.5 8.5a.5.5 0 1 1-.998-.06l.5-8.5a.5.5 0 0 1 .528-.47M8 4.5a.5.5 0 0 1 .5.5v8.5a.5.5 0 0 1-1 0V5a.5.5 0 0 1 .5-.5"/>
                                                     </svg>
                                                 </button>
@@ -96,24 +363,24 @@
                                 <div class="modal fade" id="modalEditarDieta{{ alimento['item_id'] }}" tabindex="-1" aria-hidden="true">
                                     <div class="modal-dialog modal-dialog-centered">
                                         <div class="modal-content border-0 shadow">
-                                            <div class="modal-header bg-primary text-white">
-                                                <h5 class="modal-title fw-bold fs-6">Editar Dieta: {{ alimento['item_id'] }}</h5>
+                                            <div class="modal-header bg-neutral">
+                                                <h5 class="modal-title fw-semibold fs-6">Editar Dieta: {{ alimento['item_id'] }}</h5>
                                                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                                             </div>
                                             <form method="POST" action="{{ url_for('planta_alimentos.editar_dieta', item_id=alimento['item_id']) }}">
                                                 <div class="modal-body text-start">
                                                     <div class="mb-3">
-                                                        <label class="form-label fw-bold text-muted small">Nombre de la Dieta</label>
+                                                        <label class="form-label fw-semibold text-muted small">Nombre de la Dieta</label>
                                                         <input type="text" name="nombre" class="form-control form-control-sm" value="{{ alimento['nombre'] }}" required>
                                                     </div>
                                                     <div class="mb-3">
-                                                        <label class="form-label fw-bold text-muted small">Rango de Semanas</label>
+                                                        <label class="form-label fw-semibold text-muted small">Rango de Semanas</label>
                                                         <input type="text" name="rango_semanas" class="form-control form-control-sm" value="{{ alimento['rango_semanas'] }}">
                                                     </div>
                                                 </div>
                                                 <div class="modal-footer bg-light">
                                                     <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                                    <button type="submit" class="btn btn-sm btn-primary fw-bold">Actualizar</button>
+                                                    <button type="submit" class="btn btn-sm btn-primary fw-semibold">Actualizar</button>
                                                 </div>
                                             </form>
                                         </div>

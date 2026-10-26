@@ -61,7 +61,24 @@ def editor_requerido(f):
                 return jsonify({'status': 'error', 'msg': 'Modo Lectura: No tienes permisos para modificar datos.'}), 403
             flash("Acceso denegado. Solo tienes permisos de lectura.", "error") # Si es una carga de pantalla normal, redirige al usuario a la vista principal de lotes
             return redirect(request.referrer or url_for('lotes.vista_lotes'))
-        return f(*args, **kwargs) # Si el rol es Editor o Superadmin, permite el acceso a la función
+        return f(*args, **kwargs) # Si el rol es Editor, Superadmin o Director de Planta, permite el acceso a la función
+    return decorated_function
+
+def director_planta_requerido(f):
+    """
+    Candado para rutas exclusivas de Director de Planta (y Superadmin).
+    Permite acceso a: Director de Planta, Superadmin.
+    Bloquea: Editor, Lector, Talento humano.
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        rol = session.get('user_rol')
+        if rol not in ['Director de Planta', 'Superadmin']:
+            if request.path.startswith('/api/'):
+                return jsonify({'status': 'error', 'msg': 'Acceso restringido a Director de Planta.'}), 403
+            flash("Acceso denegado. Esta área es exclusiva para Director de Planta.", "error")
+            return redirect(url_for('main.pantalla_principal'))
+        return f(*args, **kwargs)
     return decorated_function
 
 # ESCUDO ANTI FUERZA-BRUTA (MEMORIA RAM)

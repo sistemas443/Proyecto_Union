@@ -1,0 +1,460 @@
+{% extends 'generales/layout.html' %}
+
+{% block head %}
+{% include 'planta_alimentos/_design_system.html' %}
+<style>
+  /* ============================================================
+     INVENTARIO DE DIETAS - TABLA CORPORATIVA
+     ============================================================ */
+  :root {
+    --table-footer-bg: #151e2a;
+    --table-footer-text: #ffffff;
+  }
+
+  .table-dietas {
+    font-size: 0.78rem;
+    min-width: 1300px;
+    border-color: var(--border);
+    margin: 0;
+  }
+  .table-dietas thead th {
+    background-color: var(--table-header-bg);
+    color: var(--table-header-text);
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    padding: 0.58rem 0.5rem;
+    border-color: #2a3340;
+    vertical-align: bottom;
+    white-space: nowrap;
+  }
+  .table-dietas tbody td,
+  .table-dietas tbody th {
+    padding: 0.5rem;
+    border-color: #e9ecef;
+    color: var(--text-secondary);
+  }
+  .table-dietas tbody tr:nth-child(odd) > * { background-color: #fbfcfd; }
+  .table-dietas tbody tr:nth-child(even) > * { background-color: #ffffff; }
+  .table-dietas tbody tr:hover > * { background-color: #f1f4f7; }
+
+  /* Separador visual al cambiar de dieta (una dieta puede tener varios lotes) */
+  .table-dietas tbody tr.group-start > * { border-top: 2px solid #cfd6de; }
+
+  /* Primera columna fija al hacer scroll horizontal */
+  .table-dietas tbody th:first-child,
+  .table-dietas tbody td:first-child,
+  .table-dietas thead th:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    box-shadow: 1px 0 0 #e9ecef;
+  }
+  .table-dietas thead th:first-child {
+    background-color: var(--table-header-bg);
+    z-index: 3;
+  }
+
+  .table-dietas .col-alimento {
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+  }
+  .table-dietas .col-item {
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
+  .table-dietas thead th.col-item { text-align: center; }
+  .table-dietas .col-lote { text-align: center; }
+  .table-dietas .col-num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .table-dietas .col-real {
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+  .table-dietas .sin-dato { color: var(--text-muted); }
+
+  .btn-inicial {
+    border: 0;
+    background: none;
+    padding: 0;
+    font: inherit;
+    color: inherit;
+    font-variant-numeric: tabular-nums;
+    border-bottom: 1px dashed transparent;
+    cursor: pointer;
+  }
+  .btn-inicial:hover,
+  .btn-inicial:focus-visible {
+    border-bottom-color: #adb5bd;
+    outline: none;
+  }
+  .sin-registrar {
+    display: inline-block;
+    padding: 0.08rem 0.45rem;
+    border-radius: 999px;
+    background-color: #fff6da;
+    border: 1px solid #f0e0a8;
+    color: #7a5c00;
+    font-size: 0.68rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .sin-registrar:hover { background-color: #ffefc2; }
+
+  .badge-pendiente {
+    display: inline-block;
+    padding: 0.1rem 0.5rem;
+    border-radius: 999px;
+    background-color: #fff6da;
+    border: 1px solid #f0e0a8;
+    color: #7a5c00;
+    font-size: 0.68rem;
+    font-weight: 700;
+  }
+
+  .lote-chip {
+    display: inline-block;
+    padding: 0.08rem 0.38rem;
+    border-radius: 4px;
+    background-color: var(--surface-alt);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-size: 0.7rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .pill-dias {
+    display: inline-block;
+    min-width: 2.5rem;
+    padding: 0.12rem 0.4rem;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+  .pill-dias.ok { background-color: #e8f5ee; color: #12603e; }
+  .pill-dias.warn { background-color: #fff6da; color: #7a5c00; }
+  .pill-dias.critical { background-color: #fdeceb; color: #a1231a; }
+  .pill-dias.no-data { background-color: var(--surface-alt); color: var(--text-muted); }
+
+  .table-dietas tfoot th,
+  .table-dietas tfoot td {
+    background-color: var(--table-footer-bg);
+    color: var(--table-footer-text);
+    font-weight: 700;
+    font-size: 0.74rem;
+    padding: 0.58rem 0.5rem;
+    border-color: #2a3340;
+    white-space: nowrap;
+  }
+  .table-dietas tfoot th:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 3;
+    background-color: var(--table-footer-bg);
+  }
+  .table-dietas tfoot .col-num { font-variant-numeric: tabular-nums; }
+  .table-dietas tfoot .pill-dias.no-data { background-color: transparent; color: #cbd5e1; }
+  .table-dietas tfoot .sin-dato { color: #cbd5e1; }
+
+  .leyenda {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+  }
+  .leyenda .pill-dias { margin-right: 0.15rem; }
+
+  @media print {
+    .d-print-none { display: none !important; }
+    .table-dietas { min-width: 0; font-size: 0.7rem; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4 mb-5">
+
+    <!-- Cabecera -->
+    <div class="page-header">
+        <div class="d-flex align-items-center gap-3">
+            <div class="page-icon">
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill-rule="evenodd" d="M12 2.2 19.8 8.2H4.2L12 2.2ZM6.6 8.2h10.8v11.9l-2.7 2.3H9.3l-2.7-2.3V8.2ZM7.6 11.9h8.8v.9H7.6ZM7.6 15.9h8.8v.9H7.6Z"/></svg>
+            </div>
+            <div>
+                <h2 class="page-title mb-0">Inventario de Dietas</h2>
+                <p class="page-subtitle mb-0">Stock, producción y consumo por dieta y lote</p>
+            </div>
+        </div>
+        <button class="btn btn-outline-secondary btn-sm d-print-none" onclick="window.print()">
+            <i class="fas fa-print me-1"></i> Imprimir Reporte
+        </button>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card border-0 shadow-sm mb-3 d-print-none">
+        <div class="card-body py-2">
+            <form method="GET" action="{{ url_for('planta_alimentos.inventario_dietas') }}"
+                class="row align-items-center g-2 mb-0">
+                <div class="col-auto">
+                    <label class="form-label fw-semibold mb-0" style="font-size: 0.8rem; color: var(--text-secondary);">Mes:</label>
+                </div>
+                <div class="col-auto">
+                    <select name="mes" class="form-select form-select-sm" style="width: auto;">
+                        {% for m_num, m_nombre in meses_nombres %}
+                        <option value="{{ m_num }}" {% if m_num == mes %}selected{% endif %}>{{ m_nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <label class="form-label fw-semibold mb-0" style="font-size: 0.8rem; color: var(--text-secondary);">Año:</label>
+                </div>
+                <div class="col-auto">
+                    <select name="anio" class="form-select form-select-sm text-center" style="width: 100px;">
+                        {% for a in anios_disponibles %}
+                        <option value="{{ a }}" {% if a == anio %}selected{% endif %}>{{ a }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        <i class="fas fa-sync-alt me-1"></i> Actualizar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabla -->
+    <div class="card border-0 shadow-sm">
+        {% set pendientes = dietas|rejectattr('inicial_registrada')|list|length %}
+        <div class="card-header bg-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <span class="fw-semibold" style="font-size: 0.85rem; color: var(--text-primary);">Consolidado de dietas</span>
+            <div class="d-flex align-items-center gap-3 flex-wrap">
+                <span class="leyenda">{{ dietas|length }} registros · {{ dietas|map(attribute='item_id')|unique|list|length }} dietas · {{ meses_nombres[mes - 1][1] }} {{ anio }}</span>
+                {% if pendientes %}
+                <span class="badge-pendiente d-print-none" title="Dietas o lotes sin inventario inicial registrado">{{ pendientes }} sin registrar</span>
+                {% endif %}
+                {% if dietas %}
+                <button type="button" class="btn btn-outline-primary btn-sm d-print-none" data-bs-toggle="modal"
+                    data-bs-target="#modalInicial">
+                    <i class="fas fa-clipboard-list me-1"></i> Registrar inventario inicial
+                </button>
+                {% endif %}
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover align-middle table-dietas">
+                <caption class="visually-hidden">
+                    Inventario de dietas: una fila por número de item y lote, con stock inicial, producción, consumo, venta y días de cobertura.
+                </caption>
+                <thead>
+                    <tr>
+                        <th scope="col" style="min-width: 250px;">NOMBRE ALIMENTO</th>
+                        <th scope="col" class="col-item" style="width: 70px;">ITEM</th>
+                        <th scope="col" class="col-lote" style="width: 90px;">LOTE</th>
+                        <th scope="col" class="col-num" title="Kilogramos registrados por el usuario">INVENTARIO INICIAL (KG)</th>
+                        <th scope="col" class="col-num" title="Toneladas fabricadas del lote convertidas a kilogramos">PRODUCCION (KG)</th>
+                        <th scope="col" class="col-num" title="Inventario inicial (kg) + producción (kg)">TOTAL (KG)</th>
+                        <th scope="col" class="col-num" title="Despachos del mes convertidos a kilogramos">CONSUMO (KG)</th>
+                        <th scope="col" class="col-num" title="Toneladas vendidas del lote convertidas a kilogramos (venta externa registrada en Editar Receta)">VENTA (KG)</th>
+                        <th scope="col" class="col-num" title="TOTAL − CONSUMO − VENTA, en kilogramos">INVENTARIO REAL (KG)</th>
+                        <th scope="col" class="col-num">ALIMENTO DIAS</th>
+                        <th scope="col" class="col-num">CAPACIDAD DE SILOS (TON)</th>
+                        <th scope="col" class="col-num">TONELADAS SEMANAL</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for fila in dietas %}
+                    <tr{% if fila['group_start'] %} class="group-start"{% endif %}>
+                        <th scope="row" class="col-alimento">{{ fila['alimento'] }}</th>
+                        <td class="col-item">{{ fila['item_id'] }}</td>
+                        <td class="col-lote"><span class="lote-chip">{{ fila['lote'] }}</span></td>
+                        <td class="col-num">
+                            {% if fila['inicial_registrada'] %}
+                            <button type="button" class="btn-inicial" data-bs-toggle="modal" data-bs-target="#modalInicial"
+                                data-item="{{ fila['item_id'] }}" data-lote="{{ fila['lote'] }}"
+                                title="Editar inventario inicial"
+                                aria-label="Editar inventario inicial de {{ fila['alimento'] }} lote {{ fila['lote'] }}">
+                                {{ "{:,.1f}".format(fila['inventario_inicial']) }}
+                            </button>
+                            {% else %}
+                            <button type="button" class="sin-registrar" data-bs-toggle="modal" data-bs-target="#modalInicial"
+                                data-item="{{ fila['item_id'] }}" data-lote="{{ fila['lote'] }}"
+                                title="Registrar inventario inicial"
+                                aria-label="Registrar inventario inicial de {{ fila['alimento'] }} lote {{ fila['lote'] }}">
+                                Sin registrar
+                            </button>
+                            {% endif %}
+                        </td>
+                        <td class="col-num">{{ "{:,.1f}".format(fila['produccion']) }}</td>
+                        <td class="col-num">{{ "{:,.1f}".format(fila['total']) }}</td>
+                        <td class="col-num">{{ "{:,.1f}".format(fila['consumo']) }}</td>
+                        <td class="col-num">{{ "{:,.1f}".format(fila['venta']) }}</td>
+                        <td class="col-num col-real">{{ "{:,.1f}".format(fila['inventario_real']) }}</td>
+                        <td class="col-num">
+                            {% if fila['alimento_dias'] is not none %}
+                            <span class="pill-dias {% if fila['alimento_dias'] >= 7 %}ok{% elif fila['alimento_dias'] >= 3 %}warn{% else %}critical{% endif %}">
+                                {{ "{:,.1f}".format(fila['alimento_dias']) }}
+                            </span>
+                            {% else %}
+                            <span class="pill-dias no-data" title="Sin consumo semanal registrado">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="col-num">
+                            {% if fila['capacidad_silos'] is not none %}
+                            {{ "{:,.0f}".format(fila['capacidad_silos']) }}
+                            {% else %}
+                            <span class="sin-dato" title="Capacidad de silos sin configurar">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="col-num">{{ "{:,.1f}".format(fila['toneladas_semanal']) }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="12" class="text-center py-4" style="color: var(--text-muted);">
+                            No hay dietas con receta registrada.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th scope="row">TOTAL</th>
+                        <td></td>
+                        <td></td>
+                        <td class="col-num"
+                            {% if pendientes %}title="Suma solo las dietas con inventario inicial registrado ({{ pendientes }} sin registrar)"{% endif %}>
+                            {{ "{:,.1f}".format(totales['inventario_inicial']) }}
+                        </td>
+                        <td class="col-num">{{ "{:,.1f}".format(totales['produccion']) }}</td>
+                        <td class="col-num">{{ "{:,.1f}".format(totales['total']) }}</td>
+                        <td class="col-num">{{ "{:,.1f}".format(totales['consumo']) }}</td>
+                        <td class="col-num">{{ "{:,.1f}".format(totales['venta']) }}</td>
+                        <td class="col-num">{{ "{:,.1f}".format(totales['inventario_real']) }}</td>
+                        <td class="col-num">
+                            <span class="pill-dias no-data" title="Los días no se suman; se calculan por dieta y lote">—</span>
+                        </td>
+                        <td class="col-num">
+                            {% if totales['capacidad_silos'] is not none %}
+                            {{ "{:,.0f}".format(totales['capacidad_silos']) }}
+                            {% else %}
+                            <span class="sin-dato">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="col-num">{{ "{:,.1f}".format(totales['toneladas_semanal']) }}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+    <!-- Leyenda -->
+    <div class="d-flex gap-4 flex-wrap mt-3 leyenda">
+        <span><span class="pill-dias ok">≥ 7</span> cobertura suficiente</span>
+        <span><span class="pill-dias warn">3 – 7</span> atención</span>
+        <span><span class="pill-dias critical">&lt; 3</span> crítico</span>
+        <span class="ms-auto">Balance completo en <strong>kg</strong> (inicial + producción − consumo − venta) · Capacidad de silos y salida semanal en toneladas · Producción y venta: total acumulado del lote · Inicial y consumo: mes seleccionado.</span>
+    </div>
+
+    <!-- Modal: registro del inventario inicial -->
+    <div class="modal fade" id="modalInicial" tabindex="-1" aria-labelledby="modalInicialLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <form method="POST" action="{{ url_for('planta_alimentos.registrar_inventario_inicial_dieta') }}">
+                    <input type="hidden" name="mes" value="{{ mes }}">
+                    <input type="hidden" name="anio" value="{{ anio }}">
+
+                    <div class="modal-header">
+                        <div>
+                            <h5 class="modal-title" id="modalInicialLabel">Inventario inicial de dietas</h5>
+                            <div class="text-muted" style="font-size: 0.78rem;">
+                                {{ meses_nombres[mes - 1][1] }} {{ anio }} · kilogramos por dieta y lote
+                            </div>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                    </div>
+
+                    <div class="modal-body">
+                        <p class="text-muted mb-3" style="font-size: 0.78rem;">
+                            Registra los kilogramos disponibles al inicio del mes. Las filas que dejes vacías no se modifican.
+                        </p>
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Dieta</th>
+                                        <th scope="col">Lote</th>
+                                        <th scope="col" class="text-end" style="width: 160px;">Inicial (kg)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for fila in dietas %}
+                                    <tr>
+                                        <td>
+                                            {{ fila['alimento'] }}
+                                            <input type="hidden" name="item_id" value="{{ fila['item_id'] }}">
+                                            <input type="hidden" name="lote_id" value="{{ fila['lote'] }}">
+                                        </td>
+                                        <td><span class="lote-chip">{{ fila['lote'] }}</span></td>
+                                        <td>
+                                            <input type="text" inputmode="decimal" autocomplete="off"
+                                                class="form-control form-control-sm text-end" name="cantidad"
+                                                value="{% if fila['inicial_registrada'] %}{{ fila['inventario_inicial'] }}{% endif %}"
+                                                placeholder="0"
+                                                data-item="{{ fila['item_id'] }}" data-lote="{{ fila['lote'] }}"
+                                                aria-label="Inventario inicial en kilogramos de {{ fila['alimento'] }} lote {{ fila['lote'] }}">
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            <i class="fas fa-save me-1"></i> Guardar inventario inicial
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const modal = document.getElementById('modalInicial');
+        if (!modal) return;
+
+        modal.addEventListener('show.bs.modal', function (event) {
+            const trigger = event.relatedTarget;
+            if (!trigger || !trigger.dataset.item) return;
+
+            modal.addEventListener('shown.bs.modal', function onShown() {
+                modal.removeEventListener('shown.bs.modal', onShown);
+                const input = Array.from(modal.querySelectorAll('input[name="cantidad"]')).find(function (el) {
+                    return el.dataset.item === trigger.dataset.item && el.dataset.lote === trigger.dataset.lote;
+                });
+                if (input) {
+                    input.focus();
+                    input.select();
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

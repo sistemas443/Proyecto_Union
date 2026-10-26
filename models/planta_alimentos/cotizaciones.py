@@ -9,12 +9,22 @@ from datetime import datetime
 class CotizacionesModel:
     
     @staticmethod
-    def get_cotizaciones_list():
-        """Obtiene lista de cotizaciones agrupadas por mes/año"""
+    def get_cotizaciones_list(anio=None, estado=None):
+        """Obtiene lista de cotizaciones agrupadas por mes/año (con filtros opcionales)"""
         conn = get_db_connection()
         try:
             with conn.cursor() as cur:
-                query = """
+                condiciones = []
+                parametros = []
+                if anio:
+                    condiciones.append("c.anio = %s")
+                    parametros.append(anio)
+                if estado:
+                    condiciones.append("c.estado = %s")
+                    parametros.append(estado)
+                where = ("WHERE " + " AND ".join(condiciones)) if condiciones else ""
+
+                query = f"""
                     SELECT 
                         c.id, c.mes, c.anio, c.fecha_registro, c.estado,
                         u.nombre_completo as usuario_nombre,
@@ -22,12 +32,66 @@ class CotizacionesModel:
                     FROM cotizaciones c
                     LEFT JOIN usuarios u ON c.usuario_id = u.id
                     LEFT JOIN cotizacion_detalle cd ON c.id = cd.cotizacion_id
+                    {where}
                     GROUP BY c.id, c.mes, c.anio, c.fecha_registro, c.estado, u.nombre_completo
                     ORDER BY c.anio DESC, c.mes DESC
                 """
-                cur.execute(query)
+                cur.execute(query, tuple(parametros))
                 columnas = [desc[0] for desc in cur.description]
                 return [dict(zip(columnas, fila)) for fila in cur.fetchall()]
+        finally:
+            conn.close()
+
+    @staticmethod
+    def get_anios_registrados():
+        """Años con cotizaciones registradas, para el filtro de la lista"""
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("SELECT DISTINCT anio FROM cotizaciones ORDER BY anio DESC")
+                return [fila[0] for fila in cur.fetchall()]
+        finally:
+            conn.close()
+
+    @staticmethod
+    def get_estado(cotizacion_id):
+        """Devuelve el estado de una cotización ('ACTIVA', 'CERRADA' o None)"""
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("SELECT estado FROM cotizaciones WHERE id = %s", (cotizacion_id,))
+                fila = cur.fetchone()
+                return fila[0] if fila else None
+        finally:
+            conn.close()
+
+    @staticmethod
+    def cambiar_estado(cotizacion_id, estado):
+        """Cambia el estado de la cotización (ACTIVA / CERRADA)"""
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("UPDATE cotizaciones SET estado = %s WHERE id = %s", (estado, cotizacion_id))
+                conn.commit()
+                return cur.rowcount > 0
+        except Exception as e:
+            conn.rollback()
+            raise e
+        finally:
+            conn.close()
+
+    @staticmethod
+    def eliminar_cotizacion(cotizacion_id):
+        """Elimina la cotización y su detalle (ON DELETE CASCADE)"""
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM cotizaciones WHERE id = %s", (cotizacion_id,))
+                conn.commit()
+                return cur.rowcount > 0
+        except Exception as e:
+            conn.rollback()
+            raise e
         finally:
             conn.close()
     
@@ -133,48 +197,51 @@ class CotizacionesModel:
     @staticmethod
     def guardar_detalle_masivo(cotizacion_id, items, usuario_id):
         """
-        Guarda múltiples items de cotización (upsert masivo)
+        Guarda múltiples items de cotización (upsert masivo).
         items: lista de dicts {materia_prima_id, proveedor_id, semana, precio, observaciones}
+        Si el precio llega vacío o en 0, se elimina el registro (permite borrar un precio).
         """
         conn = get_db_connection()
         try:
             with conn.cursor() as cur:
                 for item in items:
-                    if not item.get('precio') or float(item['precio']) <= 0:
-                        print(f'[DEBUG MODELO] Saltando item sin precio válido: {item}')
+                    try:
+                        precio = float(item.get('precio') or 0)
+                    except (TypeError, ValueError):
+                        precio = 0.0
+
+                    if precio <= 0:
+                        # Sin precio: se borra la celda si existía
+                        cur.execute("""
+                            DELETE FROM cotizacion_detalle
+                            WHERE cotizacion_id = %s AND materia_prima_id = %s
+                              AND proveedor_id = %s AND semana = %s
+                        """, (cotizacion_id, item['materia_prima_id'],
+                              item['proveedor_id'], item['semana']))
                         continue
-                    
-                    print(f'[DEBUG MODELO] Procesando item: {item}')
-                    
-                    # Verificar si existe registro
+
                     cur.execute("""
-                        SELECT id FROM cotizacion_detalle 
+                        SELECT id FROM cotizacion_detalle
                         WHERE cotizacion_id = %s AND materia_prima_id = %s AND proveedor_id = %s AND semana = %s
                     """, (cotizacion_id, item['materia_prima_id'], item['proveedor_id'], item['semana']))
-                    
+
                     row = cur.fetchone()
-                    
+
                     if row:
-                        # Actualizar
-                        print(f'[DEBUG MODELO] Actualizando registro id={row[0]}')
                         cur.execute("""
-                            UPDATE cotizacion_detalle 
+                            UPDATE cotizacion_detalle
                             SET precio = %s, observaciones = %s
                             WHERE id = %s
-                        """, (item['precio'], item.get('observaciones', ''), row[0]))
+                        """, (precio, item.get('observaciones', ''), row[0]))
                     else:
-                        # Insertar
-                        print(f'[DEBUG MODELO] Insertando nuevo registro')
                         cur.execute("""
                             INSERT INTO cotizacion_detalle (cotizacion_id, materia_prima_id, proveedor_id, semana, precio, observaciones)
                             VALUES (%s, %s, %s, %s, %s, %s)
-                        """, (cotizacion_id, item['materia_prima_id'], item['proveedor_id'], item['semana'], item['precio'], item.get('observaciones', '')))
-                
-                print('[DEBUG MODELO] Commit ejecutado')
+                        """, (cotizacion_id, item['materia_prima_id'], item['proveedor_id'], item['semana'], precio, item.get('observaciones', '')))
+
                 conn.commit()
                 return True
         except Exception as e:
-            print(f'[ERROR MODELO] {e}')
             conn.rollback()
             raise e
         finally:
@@ -193,11 +260,11 @@ class CotizacionesModel:
     
     @staticmethod
     def get_productos_activos():
-        """Obtiene lista de materias primas activas"""
+        """Obtiene lista de materias primas (la tabla no tiene columna activo)"""
         conn = get_db_connection()
         try:
             with conn.cursor() as cur:
-                cur.execute("SELECT id, nombre FROM materias_primas WHERE activo = TRUE ORDER BY nombre")
+                cur.execute("SELECT id, nombre FROM materias_primas ORDER BY nombre")
                 return [dict(zip([d[0] for d in cur.description], row)) for row in cur.fetchall()]
         finally:
             conn.close()
@@ -271,57 +338,142 @@ class CotizacionesModel:
     
     @staticmethod
     def exportar_excel(mes, anio):
-        """Exporta cotización a Excel"""
+        """Exporta la cotización del mes/año a un libro de Excel con datos reales"""
         import io
+        from collections import OrderedDict
         import openpyxl
         from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-        
+        from openpyxl.utils import get_column_letter
+
+        meses_nombres = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+                         'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+
         conn = get_db_connection()
         try:
             with conn.cursor() as cur:
-                # Obtener cotización
-                cur.execute("SELECT id FROM cotizaciones WHERE mes = %s AND anio = %s", (mes, anio))
-                row = cur.fetchone()
-                if not row:
-                    return None
-                cotizacion_id = row[0]
-                
-                # Obtener detalles
                 cur.execute("""
-                    SELECT cd.*, mp.nombre as producto, p.nombre as proveedor
+                    SELECT mp.nombre AS producto,
+                           p.nombre AS proveedor,
+                           cd.semana,
+                           cd.precio
                     FROM cotizacion_detalle cd
-                    JOIN materias_primas mp ON cd.materia_prima_id = mp.id
-                    JOIN proveedores p ON cd.proveedor_id = p.id
-                    WHERE cd.cotizacion_id = %s
-                    ORDER BY mp.nombre, cd.semana, p.nombre
-                """, (cotizacion_id,))
-                
-                rows = cur.fetchall()
+                    JOIN cotizaciones c ON c.id = cd.cotizacion_id
+                    JOIN materias_primas mp ON mp.id = cd.materia_prima_id
+                    JOIN proveedores p ON p.id = cd.proveedor_id
+                    WHERE c.mes = %s AND c.anio = %s
+                    ORDER BY mp.nombre, p.nombre, cd.semana
+                """, (mes, anio))
+                filas = cur.fetchall()
         finally:
             conn.close()
-        
+
+        if not filas:
+            return None
+
+        # Agrupar por producto + proveedor para pintar una fila por combinación
+        datos = OrderedDict()
+        for producto, proveedor, semana, precio in filas:
+            clave = (producto, proveedor)
+            grupo = datos.setdefault(clave, {'semanas': {}, 'suma': 0.0, 'count': 0})
+            valor = float(precio or 0)
+            grupo['semanas'][int(semana)] = valor
+            grupo['suma'] += valor
+            grupo['count'] += 1
+
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = f"Cotizacion_{mes}_{anio}"
-        
-        # Headers
+
+        # --- Título ---
+        ws.merge_cells('A1:G1')
+        titulo = ws['A1']
+        titulo.value = f"COTIZACIÓN DE MATERIAS PRIMAS · {meses_nombres[mes]} {anio}".upper()
+        titulo.font = Font(bold=True, size=13, color='1A202C')
+        titulo.alignment = Alignment(horizontal='left', vertical='center')
+        ws.row_dimensions[1].height = 24
+
+        ws.merge_cells('A2:G2')
+        subtitulo = ws['A2']
+        subtitulo.value = 'Precios en pesos colombianos (COP). PROMEDIO = media de las semanas con precio registrado.'
+        subtitulo.font = Font(size=9, italic=True, color='6C757D')
+        subtitulo.alignment = Alignment(horizontal='left')
+
+        # --- Cabecera de tabla ---
         headers = ['PRODUCTO', 'PROVEEDOR', 'SEMANA 1', 'SEMANA 2', 'SEMANA 3', 'SEMANA 4', 'PROMEDIO']
-        
-        header_font = Font(bold=True, color='FFFFFF')
-        header_fill = PatternFill(start_color='2F5496', end_color='2F5496', fill_type='solid')
-        
+        header_font = Font(bold=True, color='FFFFFF', size=10)
+        header_fill = PatternFill(start_color='1A202C', end_color='1A202C', fill_type='solid')
+        thin = Side(style='thin', color='DEE2E6')
+        border = Border(left=thin, right=thin, top=thin, bottom=thin)
+
+        fila_actual = 4
         for col, header in enumerate(headers, 1):
-            cell = ws.cell(row=1, column=col, value=header)
+            cell = ws.cell(row=fila_actual, column=col, value=header)
             cell.font = header_font
             cell.fill = header_fill
-            cell.alignment = Alignment(horizontal='center')
-        
-        # Agrupar por producto
-        from collections import defaultdict
-        datos_agrupados = defaultdict(lambda: defaultdict(lambda: {'precios': {}, 'sum': 0, 'count': 0}))
-        
-        # ... lógica de llenado Excel ...
-        
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+            cell.border = border
+        ws.row_dimensions[fila_actual].height = 20
+        ws.freeze_panes = f'A{fila_actual + 1}'
+
+        # --- Datos ---
+        formatos = ['@', '@', '#,##0.00', '#,##0.00', '#,##0.00', '#,##0.00', '#,##0.00']
+        fila_actual += 1
+        producto_anterior = None
+
+        for (producto, proveedor), grupo in datos.items():
+            promedio = (grupo['suma'] / grupo['count']) if grupo['count'] else 0
+            valores = [
+                producto if producto != producto_anterior else '',
+                proveedor,
+                grupo['semanas'].get(1),
+                grupo['semanas'].get(2),
+                grupo['semanas'].get(3),
+                grupo['semanas'].get(4),
+                promedio,
+            ]
+            producto_anterior = producto
+
+            for col, valor in enumerate(valores, 1):
+                cell = ws.cell(row=fila_actual, column=col, value=valor)
+                cell.border = border
+                cell.number_format = formatos[col - 1]
+                if col <= 2:
+                    cell.alignment = Alignment(horizontal='left', vertical='center')
+                else:
+                    cell.alignment = Alignment(horizontal='right', vertical='center')
+                if col == 1:
+                    cell.font = Font(bold=True, size=10)
+                elif col == 7:
+                    cell.font = Font(bold=True, size=10, color='2C3E50')
+            fila_actual += 1
+
+        # --- Fila resumen ---
+        total_promedios = sum(
+            (g['suma'] / g['count']) for g in datos.values() if g['count']
+        )
+        promedio_general = (total_promedios / len(datos)) if datos else 0
+
+        resumen = ws.cell(row=fila_actual, column=1, value='PROMEDIO GENERAL')
+        resumen.font = Font(bold=True, size=10)
+        resumen.fill = PatternFill(start_color='F1F3F5', end_color='F1F3F5', fill_type='solid')
+        for col in range(1, 8):
+            cell = ws.cell(row=fila_actual, column=col)
+            cell.border = border
+            cell.fill = PatternFill(start_color='F1F3F5', end_color='F1F3F5', fill_type='solid')
+            if col > 2:
+                cell.number_format = '#,##0.00'
+        prom_cell = ws.cell(row=fila_actual, column=7, value=promedio_general)
+        prom_cell.font = Font(bold=True, size=10, color='2C3E50')
+        prom_cell.alignment = Alignment(horizontal='right')
+
+        # --- Anchos ---
+        anchos = [34, 28, 15, 15, 15, 15, 16]
+        for col, ancho in enumerate(anchos, 1):
+            ws.column_dimensions[get_column_letter(col)].width = ancho
+
+        # --- Autofiltro ---
+        ws.auto_filter.ref = f'A4:G{fila_actual - 1}'
+
         output = io.BytesIO()
         wb.save(output)
         output.seek(0)

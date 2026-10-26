@@ -1,19 +1,275 @@
 {% extends 'generales/layout.html' %}
 
+{% block head %}
+<style>
+  /* ============================================================
+     RESUMEN LOTE FÓRMULAS - DESIGN TOKENS (Impeccable: Operate + Quieter)
+     ============================================================ */
+  :root {
+    /* === CABECERA TABLA === */
+    --table-header-bg: #1a202c;
+    --table-header-text: #ffffff;
+
+    /* === ACCIONES === */
+    --action-primary: #2c3e50;
+    --action-primary-hover: #1a252f;
+    --action-primary-text: #ffffff;
+
+    --action-secondary: #6c757d;
+    --action-secondary-hover: #5a6268;
+    --action-secondary-text: #ffffff;
+
+    --success: #198754;
+    --info: #0d6efd;
+    --warning: #ffc107;
+    --warning-text: #212529;
+    --danger: #dc3545;
+
+    /* === SUPERFICIES === */
+    --surface: #ffffff;
+    --surface-alt: #f8f9fa;
+
+    /* === TEXTO === */
+    --text-primary: #212529;
+    --text-secondary: #495057;
+    --text-muted: #6c757d;
+
+    /* === ESTRUCTURA === */
+    --border: #dee2e6;
+
+    /* === ESPACIADO (base 4px) === */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+  }
+
+  /* ============================================================
+     BOTONES UNIFICADOS
+     ============================================================ */
+  .btn-primary {
+    background-color: var(--action-primary);
+    border-color: var(--action-primary);
+    color: var(--action-primary-text);
+  }
+  .btn-primary:hover,
+  .btn-primary:focus {
+    background-color: var(--action-primary-hover);
+    border-color: var(--action-primary-hover);
+  }
+
+  .btn-secondary {
+    background-color: var(--action-secondary);
+    border-color: var(--action-secondary);
+    color: var(--action-secondary-text);
+  }
+  .btn-secondary:hover,
+  .btn-secondary:focus {
+    background-color: var(--action-secondary-hover);
+    border-color: var(--action-secondary-hover);
+  }
+
+  .btn-outline-primary {
+    color: var(--action-primary);
+    border-color: var(--action-primary);
+  }
+  .btn-outline-primary:hover,
+  .btn-outline-primary:focus {
+    background-color: var(--action-primary);
+    color: var(--action-primary-text);
+  }
+
+  .btn-outline-secondary {
+    color: var(--action-secondary);
+    border-color: var(--action-secondary);
+  }
+  .btn-outline-secondary:hover,
+  .btn-outline-secondary:focus {
+    background-color: var(--action-secondary);
+    color: var(--action-secondary-text);
+  }
+
+  .btn-outline-success {
+    color: var(--success);
+    border-color: var(--success);
+  }
+  .btn-outline-success:hover {
+    background-color: var(--success);
+    color: #ffffff;
+  }
+
+  .btn-outline-danger {
+    color: var(--danger);
+    border-color: var(--danger);
+  }
+  .btn-outline-danger:hover {
+    background-color: var(--danger);
+    color: #ffffff;
+  }
+
+  .btn-danger {
+    background-color: var(--danger);
+    border-color: var(--danger);
+    color: #ffffff;
+  }
+
+  /* ============================================================
+     TABLA: Cabecera unificada gris oscuro, centrada
+     ============================================================ */
+  .table-form thead {
+    background-color: var(--table-header-bg) !important;
+    color: var(--table-header-text) !important;
+  }
+  .table-form thead th {
+    background-color: var(--table-header-bg) !important;
+    color: var(--table-header-text) !important;
+    border-color: rgba(255,255,255,0.15);
+    border-bottom: 2px solid rgba(255,255,255,0.25) !important;
+    font-weight: 600;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: var(--space-2) var(--space-2);
+    white-space: nowrap;
+    text-align: center !important;
+    vertical-align: middle;
+  }
+
+  /* ============================================================
+     TABLA: Cuerpo - filas alternadas sutiles
+     ============================================================ */
+  .table-form tbody tr:nth-child(odd) {
+    background-color: var(--surface);
+  }
+  .table-form tbody tr:nth-child(even) {
+    background-color: var(--surface-alt);
+  }
+  .table-form tbody tr:hover {
+    background-color: #eef1f4;
+  }
+  .table-form tbody td {
+    font-size: 0.8rem;
+    padding: var(--space-2) var(--space-2);
+    vertical-align: middle;
+    border-color: var(--border);
+  }
+
+  /* Columna ITEM */
+  .table-form .col-item {
+    font-weight: 600;
+    color: var(--action-primary);
+    text-align: center;
+  }
+
+  /* Columna Nombre Dieta */
+  .table-form .col-nombre {
+    font-weight: 600;
+    color: var(--text-primary);
+    text-align: left;
+  }
+
+  /* Columna Insumos */
+  .table-form .col-insumos {
+    text-align: center;
+  }
+
+  /* Columna Peso */
+  .table-form .col-peso {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+  }
+
+  /* Columna Costo Bache */
+  .table-form .col-costo {
+    text-align: right;
+    font-weight: 600;
+    color: var(--success);
+    font-variant-numeric: tabular-nums;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+  }
+
+  /* Acciones centradas */
+  .table-form .col-acciones {
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  /* Card sin borde, sombra sutil */
+  .card-formula {
+    box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
+    border: 1px solid var(--border);
+  }
+
+  /* Alert de espera */
+  .alert-wait {
+    background-color: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    color: var(--text-secondary);
+  }
+  .alert-wait .bi-cursor {
+    color: var(--action-primary);
+  }
+  .alert-wait h4 {
+    color: var(--text-primary);
+  }
+
+  /* ============================================================
+     CABECERA DE PÁGINA (icono profesional + títulos)
+     ============================================================ */
+  .page-icon {
+    width: 44px;
+    height: 44px;
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background-color: var(--action-primary);
+    color: #ffffff;
+    font-size: 1.1rem;
+    box-shadow: 0 2px 6px rgba(44, 62, 80, 0.25);
+  }
+  .page-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--text-primary);
+    line-height: 1.25;
+  }
+  .page-subtitle {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    line-height: 1.3;
+  }
+  @media print {
+    .page-icon {
+      background-color: transparent !important;
+      color: var(--text-primary) !important;
+      box-shadow: none !important;
+    }
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid py-4">
-    <div class="row mb-4 align-items-center">
-        <div class="col-md-6">
-            <h2 class="h4 text-primary fw-bold mb-0">
-                <i class="fas fa-layer-group me-2"></i> Fórmulas Configuradas por Lote
-            </h2>
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+        <div class="d-flex align-items-center gap-3">
+            <div class="page-icon">
+                <i class="fas fa-layer-group"></i>
+            </div>
+            <div>
+                <h2 class="page-title mb-0">Fórmulas Configuradas por Lote</h2>
+                <p class="page-subtitle mb-0">Recetas, núcleos y producción por lote</p>
+            </div>
         </div>
         <!-- Selector de Lote -->
-        <div class="col-md-6 d-flex justify-content-end align-items-center gap-2">
-            <label class="fw-bold text-muted small mb-0">Seleccionar Lote:</label>
-            <!-- Mantenemos tu formulario GET -->
+        <div class="d-flex align-items-center gap-2">
+            <label class="fw-semibold text-muted small mb-0">Seleccionar Lote:</label>
             <form method="GET" action="{{ url_for('planta_alimentos.resumen_lote_formulas') }}" class="d-inline-block">
-                <select name="lote_id" class="form-select form-select-sm fw-bold text-primary"
+                <select name="lote_id" class="form-select form-select-sm fw-semibold" style="color: var(--action-primary);"
                     onchange="this.form.submit()">
                     <option value="0" {% if lote_id=='0' or not lote_id %}selected{% endif %} disabled>Seleccione un
                         lote...</option>
@@ -39,87 +295,91 @@
          ========================================== -->
     {% if lote_id == '0' or not lote_id %}
 
-    <!-- Pantalla azul de espera -->
-    <div class="alert alert-info text-center mt-5 shadow-sm border-0 py-5"
-        style="background-color: #e3f2fd; color: #052c65; border-radius: 10px;">
+    <!-- Pantalla de espera -->
+    <div class="alert alert-wait text-center mt-5 shadow-sm border-0 py-5 rounded-3">
         <svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" fill="currentColor" class="bi bi-cursor mb-3"
             viewBox="0 0 16 16">
             <path
                 d="M14.082 2.182a.5.5 0 0 1 .103.557L8.528 15.467a.5.5 0 0 1-.917-.007L5.57 10.694.803 8.652a.5.5 0 0 1-.006-.916l12.728-5.657a.5.5 0 0 1 .556.103zM2.25 8.184l3.897 1.67a.5.5 0 0 1 .262.263l1.67 3.897L12.743 3.52z" />
         </svg>
-        <h4 class="fw-bold">Esperando selección de Lote</h4>
-        <p class="mb-0 fs-5 text-muted">Por favor, selecciona un lote en el menú desplegable de arriba para ver las
+        <h4 class="fw-bold" style="color: var(--text-primary);">Esperando selección de Lote</h4>
+        <p class="mb-0" style="color: var(--text-muted);">Por favor, selecciona un lote en el menú desplegable de arriba para ver las
             fórmulas configuradas.</p>
     </div>
 
     {% else %}
 
     <!-- Tabla Resumen (Solo se muestra si hay un lote seleccionado) -->
-    <div class="card border-0 shadow-sm">
+    <div class="card card-formula">
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="bg-light">
+                <table class="table table-hover align-middle mb-0 table-form" style="font-size: 0.8rem;">
+                    <thead>
                         <tr>
-                            <th class="text-secondary small fw-bold text-uppercase px-4">ITEM</th>
-                            <th class="text-secondary small fw-bold text-uppercase">Nombre de la Dieta</th>
-                            <th class="text-secondary small fw-bold text-uppercase text-center">N° Insumos</th>
-                            <th class="text-secondary small fw-bold text-uppercase text-end">Total Peso</th>
-                            <th class="text-secondary small fw-bold text-uppercase text-end">Costo Bache</th>
-                            <th class="text-secondary small fw-bold text-uppercase text-center px-4">Acción</th>
+                            <th style="width: 10%;">ITEM</th>
+                            <th style="width: 35%;">NOMBRE DE LA DIETA</th>
+                            <th class="col-insumos" style="width: 15%;">N° INSUMOS</th>
+                            <th class="col-peso" style="width: 12%;">TOTAL PESO</th>
+                            <th class="col-costo" style="width: 15%;">COSTO BACHE</th>
+                            <th class="col-acciones" style="width: 13%;">ACCIÓN</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for formula in formulas %}
                         <tr class="align-middle">
                             <!-- 1. ITEM -->
-                            <td class="fw-bold text-primary">{{ formula['item_id'] }}</td>
+                            <td class="col-item px-3">{{ formula['item_id'] }}</td>
 
                             <!-- 2. NOMBRE DE LA DIETA -->
-                            <td class="fw-bold">{{ formula['nombre_dieta'] }}</td>
+                            <td class="col-nombre px-3">{{ formula['nombre_dieta'] }}</td>
 
                             <!-- 3. N° INSUMOS -->
-                            <td>{{ formula['resumen_insumos_html'] | safe }}</td>
+                            <td class="col-insumos">{{ formula['resumen_insumos_html'] | safe }}</td>
 
                             <!-- 4. TOTAL PESO -->
-                            <td>{{ "{:,.2f}".format(formula['total_peso'] | default(0) | float) }} kg</td>
+                            <td class="col-peso px-3">{{ "{:,.2f}".format(formula['total_peso'] | default(0) | float) }} kg</td>
 
-                            <!-- 5. COSTO BACHE (Faltaba esta celda en la plantilla) -->
-                            <td class="fw-bold text-success">
+                            <!-- 5. COSTO BACHE -->
+                            <td class="col-costo px-3">
                                 $ {{ "{:,.2f}".format(formula['costo_bache'] | default(0) | float) }}
                             </td>
 
                             <!-- 6. ACCIONES -->
-                            <td class="text-center">
-                                <!-- Botón Editar -->
-                                <a href="{{ url_for('planta_alimentos.recetario_formulas', item_id=formula['item_id'], lote_id=lote_seleccionado, version=formula['ultima_version']) }}"
-                                    class="btn btn-sm btn-outline-primary me-1">
-                                    Editar
-                                </a>
+                            <td class="col-acciones px-3">
+                                <div class="d-flex justify-content-center gap-1">
+                                    <!-- Botón Editar -->
+                                    <a href="{{ url_for('planta_alimentos.recetario_formulas', item_id=formula['item_id'], lote_id=lote_seleccionado, version=formula['ultima_version']) }}"
+                                        class="btn btn-outline-primary btn-sm" title="Editar Fórmula">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-pencil-square" viewBox="0 0 16 16">
+                                            <path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/>
+                                            <path fill-rule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5z"/>
+                                        </svg>
+                                    </a>
 
-                                <!-- Botón Costos -->
-                                <a href="{{ url_for('planta_alimentos.consolidado_precios') }}"
-                                    class="btn btn-sm btn-outline-success me-1">
-                                    Costos
-                                </a>
+                                    <!-- Botón Costos -->
+                                    <a href="{{ url_for('planta_alimentos.consolidado_precios') }}"
+                                        class="btn btn-outline-success btn-sm" title="Ver Costos"
+                                        style="font-weight: 700; font-size: 0.75rem; padding: 0.2rem 0.5rem;">
+                                        $
+                                    </a>
 
-                                <!-- Botón Borrar -->
-                                <form
-                                    action="{{ url_for('planta_alimentos.eliminar_formula_lote', item_id=formula['item_id'], lote_id=lote_seleccionado) }}"
-                                    method="POST" class="d-inline"
-                                    onsubmit="return confirm('¿Estás seguro de que deseas eliminar esta fórmula?');">
-                                    <button type="submit" class="btn btn-sm btn-outline-danger">
-                                        Borrar
-                                    </button>
-                                </form>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                                    <!-- Botón Borrar -->
+                                    <form action="{{ url_for('planta_alimentos.eliminar_formula_lote', item_id=formula['item_id'], lote_id=lote_seleccionado) }}" method="POST" class="d-inline"
+                                        onsubmit="return confirm('¿Estás seguro de que deseas eliminar esta fórmula?');">
+                                        <button type="submit" class="btn btn-outline-danger btn-sm" title="Eliminar Fórmula">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-trash3" viewBox="0 0 16 16">
+                                                <path d="M6.5 1h3a.5.5 0 0 1 .5.5v1H6v-1a.5.5 0 0 1 .5-.5M11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3A1.5 1.5 0 0 0 5 1.5v1H1.5a.5.5 0 0 0 0 1h.538l.853 10.66A2 2 0 0 0 4.937 16h6.126a2 2 0 0 0 1.997-1.84l.853-10.66h.538a.5.5 0 0 0 0-1zm1.958 1-.846 10.58a1 1 0 0 1-.997.92H4.937a1 1 0 0 1-.997-.92L3.042 3.5zm-7.487 1a.5.5 0 0 1 .528.47l.5 8.5a.5.5 0 0 1-.998.06L5 5.03a.5.5 0 0 1 .47-.53Zm5.058 0a.5.5 0 0 1 .47.53l-.5 8.5a.5.5 0 1 1-.998-.06l.5-8.5a.5.5 0 0 1 .528-.47M8 4.5a.5.5 0 0 1 .5.5v8.5a.5.5 0 0 1-1 0V5a.5.5 0 0 1 .5-.5"/>
+                                            </svg>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
-    </div>
 
     {% endif %}
 </div>

@@ -3,10 +3,9 @@
 
 {% block content %}
 <style>
-    /* 1. Bloqueamos el scroll general y aplicamos zoom global del 80% */
+    /* Escala normal (100%) */
     body {
         overflow-y: hidden !important;
-        zoom: 0.8;
     }
 
     /* --- ZONA DE SOLTURA (DROP ZONE) --- */
@@ -197,7 +196,7 @@
             const observer = new ResizeObserver(() => {
                 const rect = tabla.getBoundingClientRect();
                 const pixelesLibres = window.innerHeight - rect.top;
-                const alturaPerfecta = (pixelesLibres / 0.8) - 10;
+                const alturaPerfecta = pixelesLibres - 10;
                 tabla.style.height = alturaPerfecta + "px";
                 tabla.style.maxHeight = alturaPerfecta + "px";
             });

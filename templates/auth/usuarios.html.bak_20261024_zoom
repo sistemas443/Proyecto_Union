@@ -1,0 +1,555 @@
+<!-- Heredamos toda la estructura base (barra superior, pie de pagina, librerias) del archivo layout.html -->
+{% extends 'generales/layout.html' %}
+
+<!-- Definimos el titulo que aparecera en la pestaña del navegador -->
+{% block title %}Gestión de Usuarios - Avícola San Martín{% endblock %}
+
+<!-- INICIO DEL BLOQUE DE CONTENIDO PRINCIPAL -->
+{% block content %}
+<style>
+/* 1. Zoom global del 80% para estandarizar diseño */
+    body {
+        zoom: 0.8;
+        overflow-y: hidden !important; /* <--- Esta es la línea que elimina el scroll exterior */
+    }
+
+    /* 2. Contenedor principal sin paddings inferiores para maximizar la pantalla */
+    main.container-fluid {
+        display: flex;
+        flex-direction: column;
+        padding-bottom: 0px !important;
+        height: calc(125vh - 65px); /* Compensamos el zoom de 0.8 */
+    }
+
+    /* 3. Aseguramos que la cabecera no se encoja */
+    .header-usuarios {
+        flex-shrink: 0;
+    }
+
+    /* 4. Contenedor de la tabla, con scroll interno */
+    .card-tabla-usuarios {
+        flex: 1 1 auto;
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 25px;
+    }
+
+    .table-responsive {
+        flex: 1 1 auto;
+        overflow-y: auto;
+        overflow-x: auto;
+        border-bottom: 1px solid #dee2e6;
+    }
+
+    /* Encabezados de la tabla congelados */
+    .table-responsive thead th {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        box-shadow: 0 2px 2px -1px rgba(0,0,0,0.1);
+    }
+
+    /* 5. Corrección matemática para modales y fondos bajo zoom de 0.8 */
+    .modal, .modal-backdrop {
+        width: 125vw !important;
+        height: 125vh !important;
+    }
+
+    /* 6. CSS PARA LA BARRA ESTILO PÍLDORA PERFECTA */
+    .buscador-contenedor {
+        border-radius: 50px;
+    }
+
+    .buscador-input {
+        border-radius: 50px 0 0 50px !important;
+        padding-left: 22px;
+    }
+
+    .buscador-icono {
+        border-radius: 0 50px 50px 0 !important;
+        padding-right: 20px;
+    }
+
+    .buscador-input:focus {
+        box-shadow: none !important;
+        border-color: #86b7fe !important;
+    }
+
+    .buscador-contenedor:focus-within {
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important;
+    }
+
+    .buscador-contenedor:focus-within .buscador-icono {
+        border-color: #86b7fe !important;
+    }
+</style>
+
+<div class="container-fluid mt-4 h-100 d-flex flex-column">
+
+    <!-- CABECERA DE LA PANTALLA -->
+    <div class="d-flex justify-content-between align-items-end mb-4 flex-wrap gap-3 header-usuarios px-2">
+        <div>
+            <h3 class="fw-bold mb-0 text-dark">Panel de Usuarios</h3>
+        </div>
+
+        <!-- BOTONERA: Buscador y Boton de Nuevo Usuario -->
+        <div class="d-flex gap-3 align-items-center">
+
+            <!-- BARRA DE BÚSQUEDA ESTILO PÍLDORA -->
+            <div class="input-group shadow-sm buscador-contenedor" style="width: 280px;">
+                <input type="text" class="form-control border-end-0 buscador-input" id="buscadorUsuarios"
+                    placeholder="Search...">
+                <span class="input-group-text bg-white border-start-0 buscador-icono">
+                    <i class='bx bx-search text-muted fs-5'></i>
+                </span>
+            </div>
+
+            <!-- Botón para abrir el modal -->
+            <button class="btn fw-bold px-4 shadow-sm text-white text-nowrap"
+                style="background-color: #97271C; border: none; border-radius: 50px;" onclick="abrirModalNuevo()">
+                <i class='bx bx-user-plus'></i> Nuevo Usuario
+            </button>
+        </div>
+    </div>
+
+    <!-- TARJETA CON LA TABLA DE USUARIOS -->
+    <div class="card shadow-sm border-0 card-tabla-usuarios" id="contenedorTablaUsuarios">
+        <div class="card-body p-0 table-responsive" id="scrollTablaUsuarios">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th class="ps-4">Foto</th>
+                        <th>Nombre Completo</th>
+                        <th>Usuario (Login)</th>
+                        <th>Rol</th>
+                        <th>Estado</th>
+                        <th class="text-center pe-4">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    <!-- BUCLE JINJA: Recorre la lista de 'usuarios' que Python nos envia desde la BD -->
+                    {% for u in usuarios %}
+                    <tr>
+                        <!-- Avatar en la tabla -->
+                        <td class="ps-4">
+                            <div class="rounded-circle overflow-hidden bg-light d-flex align-items-center justify-content-center shadow-sm"
+                                style="width: 40px; height: 40px; border: 1px solid #dee2e6;">
+                                {% if u[6] %}
+                                <img src="{{ url_for('static', filename='uploads/usuarios/' + u[6]) }}"
+                                    style="width: 100%; height: 100%; object-fit: cover;">
+                                {% else %}
+                                <i class='bx bxs-user text-secondary fs-4'></i>
+                                {% endif %}
+                            </div>
+                        </td>
+
+                        <!-- Nombre completo del usuario -->
+                        <td class="fw-bold">{{ u[1] }}</td>
+
+                        <!-- Nombre de usuario (Login) con un '@' decorativo -->
+                        <td><span class="text-secondary">@{{ u[2] }}</span></td>
+
+                        <!-- Insignia del Rol (Todos Vinotinto) -->
+                        <td>
+                            <span class="badge" style="background-color: #97271C;">
+                                {{ u[4] }}
+                            </span>
+                        </td>
+
+                        <!-- Columna Estado -->
+                        <td>
+                            {% if u[3] %}
+                            <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1">
+                                <i class='bx bx-check-circle'></i> Activo
+                            </span>
+                            {% else %}
+                            <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 px-2 py-1">
+                                <i class='bx bx-block'></i> Inactivo
+                            </span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Columna de Botones de Accion -->
+                        <td class="text-center pe-4">
+                            <!-- BOTON EDITAR -->
+                            <button class="btn btn-sm btn-outline-secondary shadow-sm btn-editar-usuario" data-id="{{ u[0] }}"
+                                data-nombre="{{ u[1] }}" data-user="{{ u[2] }}" data-rol="{{ u[5] }}"
+                                data-foto="{{ u[6] if u[6] else '' }}" data-correo="{{ u[7] if u[7] else '' }}"
+                                title="Editar Usuario">
+                                <i class='bx bx-edit-alt'></i>
+                            </button>
+
+                            <!-- BOTON BLOQUEAR/DESBLOQUEAR -->
+                            {% if session.get('user_id') != u[0] %}
+                            <button class="btn btn-sm shadow-sm {% if u[3] %}btn-outline-danger{% else %}btn-outline-success{% endif %}"
+                                onclick="toggleUsuario('{{ u[0] }}')"
+                                title="{% if u[3] %}Desactivar Acceso{% else %}Reactivar Acceso{% endif %}">
+                                <i class='bx {% if u[3] %}bx-user-x{% else %}bx-user-check{% endif %}'></i>
+                            </button>
+                            {% else %}
+                            <button class="btn btn-sm btn-outline-secondary disabled shadow-sm"
+                                title="No puedes desactivarte a ti mismo">
+                                <i class='bx bx-shield-quarter'></i>
+                            </button>
+                            {% endif %}
+                            
+                            <!-- BOTON LOGIN AS (SUPLANTAR) -->
+                            <button class="btn btn-sm btn-outline-dark shadow-sm" title="Ingresar como este usuario"
+                                onclick="suplantarUsuario('{{ u[0] }}', '{{ u[1] }}')">
+                                <i class='bx bx-user-circle'></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center py-4 text-muted">No hay usuarios registrados.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL 1: FORMULARIO PRINCIPAL DE USUARIO -->
+<div class="modal fade" id="modalUsuario" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+
+            <!-- Encabezado del modal en color vinotinto -->
+            <div class="modal-header text-white border-0" style="background-color: #343a40;">
+                <h5 class="modal-title fw-bold" id="modalTitulo"><i class='bx bx-user-plus me-2'></i>Registrar Usuario</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <form action="{{ url_for('main.guardar_usuario') }}" method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="id" id="form_id">
+                <div class="modal-body p-4 bg-light">
+
+                    <div class="d-flex align-items-center gap-3 mb-4 p-3 bg-white rounded shadow-sm">
+                        <div class="rounded-circle overflow-hidden bg-light d-flex align-items-center justify-content-center shadow-sm flex-shrink-0"
+                            style="width: 75px; height: 75px; border: 2px dashed #97271C;">
+                            <img id="preview_foto" src="" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+                            <i id="preview_icon" class='bx bxs-user-plus text-secondary fs-1'></i>
+                        </div>
+                        <div class="w-100">
+                            <label class="form-label fw-bold text-secondary mb-1">Foto de Perfil</label>
+                            <input type="file" class="form-control form-control-sm shadow-sm" name="foto_perfil"
+                                id="form_foto" accept="image/*" onchange="previsualizarFoto(this)">
+                            <small class="text-muted d-block mt-1">Formato JPG, PNG o WEBP.</small>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-secondary">Nombre Completo</label>
+                        <input type="text" class="form-control shadow-sm" name="nombre_completo" id="form_nombre" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-secondary">Correo Electrónico (Para recuperar clave)</label>
+                        <input type="email" class="form-control shadow-sm" name="correo" id="form_correo" placeholder="ejemplo@gmail.com">
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="form_username" class="form-label fw-bold text-secondary">Usuario (Login):</label>
+                            <input type="text" class="form-control shadow-sm" name="username" id="form_username" required>
+                            <div class="invalid-feedback fw-bold">
+                                <i class='bx bx-error-circle'></i> Sin espacios ni mayúsculas.
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold text-secondary">Rol del Sistema</label>
+                            <div class="input-group shadow-sm">
+                                <select class="form-select border-end-0" name="rol_id" id="form_rol" required>
+                                    {% for r in roles %}
+                                    <option value="{{ r[0] }}">{{ r[1] }}</option>
+                                    {% endfor %}
+                                </select>
+                                <button type="button" class="btn fw-bold text-white shadow-sm"
+                                    style="background-color: #97271C; border: none;" onclick="abrirModalRol()"
+                                    title="Crear un nuevo Rol en la BD">
+                                    <i class='bx bx-plus'></i> Nuevo
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-secondary">Contraseña <small class="text-muted fw-normal"
+                                id="pass_hint"></small></label>
+                        <input type="password" class="form-control shadow-sm" name="password" id="form_password">
+                    </div>
+                </div>
+
+                <div class="modal-footer bg-white border-0">
+                    <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn fw-bold px-4 text-white shadow-sm"
+                        style="background-color: #97271C;">Guardar Usuario</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL 2: FORMULARIO SECUNDARIO (CREACION RAPIDA DE ROL) -->
+<div class="modal fade" id="modalRol" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header text-white border-0" style="background-color: #343a40;">
+                <h5 class="modal-title fw-bold"><i class='bx bx-briefcase-alt-2 me-2'></i>Nuevo Rol</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body p-4 bg-light">
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-secondary">Nombre del Rol</label>
+                    <input type="text" class="form-control shadow-sm" id="nuevo_rol_nombre" placeholder="Ej: Supervisor" required>
+                </div>
+                <div class="mb-4">
+                    <label class="form-label fw-bold text-secondary">Descripción</label>
+                    <textarea class="form-control shadow-sm" id="nuevo_rol_desc" rows="2" placeholder="Ej: Solo lectura de reportes"></textarea>
+                </div>
+                <button type="button" class="btn w-100 fw-bold text-white shadow-sm" style="background-color: #97271C;"
+                    onclick="guardarRolNuevo()">Crear Rol</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+<!-- BLOQUE DE SCRIPTS -->
+{% block scripts %}
+<script>
+    // --- MOTOR INTELIGENTE DE ALTURA PERFECTA PARA LA TABLA DE USUARIOS ---
+    document.addEventListener("DOMContentLoaded", function() {
+        const divCard = document.getElementById('contenedorTablaUsuarios');
+        const scrollDiv = document.getElementById('scrollTablaUsuarios');
+        
+        if (divCard && scrollDiv) {
+            const observer = new ResizeObserver(() => {
+                const rect = divCard.getBoundingClientRect();
+                const pixelesLibres = window.innerHeight - rect.top;
+                
+                // Compensamos el zoom del 80% (0.8) y ajustamos un margen inferior de seguridad
+                const alturaPerfecta = (pixelesLibres / 0.8) - 15;
+                
+                divCard.style.height = alturaPerfecta + "px";
+                scrollDiv.style.maxHeight = alturaPerfecta + "px";
+            });
+
+            observer.observe(document.body);
+        }
+    });
+
+    let modalUser;
+    let modalRolUI;
+
+    document.addEventListener("DOMContentLoaded", function () {
+        modalUser = new bootstrap.Modal(document.getElementById('modalUsuario'));
+        modalRolUI = new bootstrap.Modal(document.getElementById('modalRol'));
+
+        // BUSCADOR EN TIEMPO REAL DE USUARIOS
+        const buscador = document.getElementById('buscadorUsuarios');
+        if (buscador) {
+            buscador.addEventListener('input', function () {
+                const textoFiltro = this.value.toLowerCase();
+                const filas = document.querySelectorAll('table tbody tr');
+
+                filas.forEach(fila => {
+                    if (fila.querySelector('td') && fila.querySelector('td').colSpan === 6) return;
+                    const textoFila = fila.textContent.toLowerCase();
+
+                    if (textoFila.includes(textoFiltro)) {
+                        fila.style.display = '';
+                    } else {
+                        fila.style.display = 'none';
+                    }
+                });
+            });
+        }
+
+        // ESCUCHADOR DE EVENTOS PARA BOTONES DE EDICIÓN
+        document.querySelectorAll('.btn-editar-usuario').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const id = this.getAttribute('data-id');
+                const nombre = this.getAttribute('data-nombre');
+                const user = this.getAttribute('data-user');
+                const rol = this.getAttribute('data-rol');
+                const foto = this.getAttribute('data-foto');
+                const correo = this.getAttribute('data-correo');
+
+                editarUsuario(id, nombre, user, rol, foto, correo);
+            });
+        });
+
+        // VALIDACIÓN EN TIEMPO REAL: USUARIO (LOGIN)
+        const inputUsername = document.getElementById('form_username');
+        if (inputUsername) {
+            inputUsername.addEventListener('input', function (e) {
+                let valorActual = e.target.value;
+                let tieneErrores = /[A-Z\s]/.test(valorActual);
+
+                if (tieneErrores) {
+                    e.target.classList.add('is-invalid'); 
+                    e.target.value = valorActual.toLowerCase().replace(/\s/g, '');
+                    setTimeout(() => { e.target.classList.remove('is-invalid'); }, 1500);
+                } else {
+                    e.target.classList.remove('is-invalid');
+                }
+            });
+        }
+    });
+
+    function previsualizarFoto(input) {
+        const previewImg = document.getElementById('preview_foto');
+        const previewIcon = document.getElementById('preview_icon');
+
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                previewImg.src = e.target.result;
+                previewImg.style.display = 'block';
+                previewIcon.style.display = 'none';
+            }
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    function abrirModalNuevo() {
+        document.getElementById('form_id').value = '';
+        document.getElementById('form_nombre').value = '';
+        document.getElementById('form_username').value = '';
+        document.getElementById('form_password').value = '';
+        document.getElementById('form_foto').value = '';
+        document.getElementById('form_correo').value = '';
+        document.getElementById('form_username').classList.remove('is-invalid');
+
+        document.getElementById('preview_foto').style.display = 'none';
+        document.getElementById('preview_icon').style.display = 'block';
+
+        document.getElementById('form_password').required = true;
+        document.getElementById('pass_hint').innerText = '(Obligatorio)';
+        document.getElementById('modalTitulo').innerHTML = "Registrar Nuevo Usuario";
+
+        modalUser.show();
+    }
+
+    function editarUsuario(id, nombre, user, rol, foto, correo) {
+        document.getElementById('form_id').value = id;
+        document.getElementById('form_nombre').value = nombre;
+        document.getElementById('form_username').value = user;
+        document.getElementById('form_rol').value = rol;
+        document.getElementById('form_foto').value = '';
+        document.getElementById('form_correo').value = correo;
+        document.getElementById('form_username').classList.remove('is-invalid');
+
+        const previewImg = document.getElementById('preview_foto');
+        const previewIcon = document.getElementById('preview_icon');
+        if (foto && foto.trim() !== '') {
+            previewImg.src = "/static/uploads/usuarios/" + foto;
+            previewImg.style.display = 'block';
+            previewIcon.style.display = 'none';
+        } else {
+            previewImg.style.display = 'none';
+            previewIcon.style.display = 'block';
+        }
+
+        document.getElementById('form_password').value = '';
+        document.getElementById('form_password').required = false;
+        document.getElementById('pass_hint').innerText = '(Dejar en blanco para conservar la actual)';
+
+        document.getElementById('modalTitulo').innerHTML = "<i class='bx bx-edit me-2'></i>Editar Usuario";
+        modalUser.show();
+    }
+
+    function toggleUsuario(id) {
+        if (confirm("¿Estás seguro de cambiar el estado de acceso de este usuario?")) {
+            fetch(`/api/usuarios/toggle/${id}`, { method: 'POST' })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'ok') {
+                        window.location.reload();
+                    } else {
+                        alert('Error: ' + data.msg);
+                    }
+                });
+        }
+    }
+
+    function abrirModalRol() {
+        document.getElementById('nuevo_rol_nombre').value = '';
+        document.getElementById('nuevo_rol_desc').value = '';
+        modalRolUI.show();
+    }
+
+    function guardarRolNuevo() {
+        const nombreRol = document.getElementById('nuevo_rol_nombre').value.trim();
+        const descRol = document.getElementById('nuevo_rol_desc').value.trim();
+
+        if (!nombreRol) {
+            alert("El nombre del rol es obligatorio.");
+            return;
+        }
+
+        fetch("{{ url_for('main.crear_rol') }}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nombre: nombreRol, descripcion: descRol })
+        })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'ok') {
+                    const select = document.getElementById('form_rol');
+                    const nuevaOpcion = new Option(data.nombre, data.id);
+                    select.add(nuevaOpcion);
+                    select.value = data.id;
+                    modalRolUI.hide();
+                    alert("¡Rol '" + data.nombre + "' creado exitosamente!");
+                } else {
+                    alert("Atención: " + data.msg);
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert("Error de conexión al crear el rol.");
+            });
+    }
+
+    // --- SISTEMA DE SUPLANTACIÓN (LOGIN AS) ---
+    function suplantarUsuario(id, nombre) {
+        Swal.fire({
+            title: '¿Supervisar a ' + nombre + '?',
+            text: "Ingresarás a su cuenta en modo 'Solo Lectura' para proteger los datos.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#212529',
+            cancelButtonColor: '#97271C',
+            confirmButtonText: 'Sí, ingresar',
+            cancelButtonText: 'Cancelar',
+            reverseButtons: true
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch(`/api/usuarios/suplantar/${id}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.status === 'ok') {
+                            window.location.href = "{{ url_for('main.index') }}";
+                        } else {
+                            Swal.fire('Atención', data.msg, 'error');
+                        }
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        Swal.fire('Error', 'Error de conexión al intentar suplantar la identidad.', 'error');
+                    });
+            }
+        });
+    }
+</script>
+{% endblock %}

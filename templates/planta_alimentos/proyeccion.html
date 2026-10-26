@@ -1,51 +1,411 @@
 {% extends 'generales/layout.html' %}
 
+{% block head %}
+<style>
+  /* ============================================================
+     PROYECCIÓN DE COSTOS - DESIGN TOKENS
+     ============================================================ */
+  :root {
+    /* === CABECERA TABLA === */
+    --table-header-bg: #1a202c;
+    --table-header-text: #ffffff;
+
+    /* === ACCIONES === */
+    --action-primary: #2c3e50;
+    --action-primary-hover: #1a252f;
+    --action-primary-text: #ffffff;
+
+    --action-secondary: #6c757d;
+    --action-secondary-hover: #5a6268;
+    --action-secondary-text: #ffffff;
+
+    /* === SEMÁNTICOS (Solo estados/datos) === */
+    --success: #198754;
+    --success-hover: #157347;
+    --info: #0d6efd;
+    --warning: #ffc107;
+    --warning-text: #212529;
+    --danger: #dc3545;
+
+    /* === SUPERFICIES === */
+    --surface: #ffffff;
+    --surface-alt: #f8f9fa;
+
+    /* === TEXTO === */
+    --text-primary: #212529;
+    --text-secondary: #495057;
+    --text-muted: #6c757d;
+
+    /* === ESTRUCTURA === */
+    --border: #dee2e6;
+
+    /* === ESPACIADO (base 4px) === */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+  }
+
+  /* ============================================================
+     BOTONES UNIFICADOS
+     ============================================================ */
+  .btn-primary {
+    background-color: var(--action-primary);
+    border-color: var(--action-primary);
+    color: var(--action-primary-text);
+  }
+  .btn-primary:hover,
+  .btn-primary:focus {
+    background-color: var(--action-primary-hover);
+    border-color: var(--action-primary-hover);
+    color: var(--action-primary-text);
+  }
+
+  .btn-secondary {
+    background-color: var(--action-secondary);
+    border-color: var(--action-secondary);
+    color: var(--action-secondary-text);
+  }
+  .btn-secondary:hover,
+  .btn-secondary:focus {
+    background-color: var(--action-secondary-hover);
+    border-color: var(--action-secondary-hover);
+    color: var(--action-secondary-text);
+  }
+
+  .btn-outline-primary {
+    color: var(--action-primary);
+    border-color: var(--action-primary);
+  }
+  .btn-outline-primary:hover,
+  .btn-outline-primary:focus {
+    background-color: var(--action-primary);
+    border-color: var(--action-primary);
+    color: var(--action-primary-text);
+  }
+
+  .btn-outline-secondary {
+    color: var(--action-secondary);
+    border-color: var(--action-secondary);
+  }
+  .btn-outline-secondary:hover,
+  .btn-outline-secondary:focus {
+    background-color: var(--action-secondary);
+    border-color: var(--action-secondary);
+    color: var(--action-secondary-text);
+  }
+
+  .btn-outline-success {
+    color: var(--success);
+    border-color: var(--success);
+  }
+  .btn-outline-success:hover,
+  .btn-outline-success:focus {
+    background-color: var(--success);
+    border-color: var(--success);
+    color: #ffffff;
+  }
+
+  .btn-outline-danger {
+    color: var(--danger);
+    border-color: var(--danger);
+  }
+  .btn-outline-danger:hover,
+  .btn-outline-danger:focus {
+    background-color: var(--danger);
+    border-color: var(--danger);
+    color: #ffffff;
+  }
+
+  /* ============================================================
+     ENCABEZADO DE PÁGINA
+     ============================================================ */
+  .page-icon {
+    width: 44px;
+    height: 44px;
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background-color: var(--action-primary);
+    color: #ffffff;
+    font-size: 1.1rem;
+    box-shadow: 0 2px 6px rgba(44, 62, 80, 0.25);
+  }
+  .page-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--text-primary);
+    margin-bottom: 0.15rem;
+  }
+  .page-subtitle {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-bottom: 0;
+  }
+  @media print {
+    .page-icon {
+      background-color: transparent !important;
+      color: var(--text-primary) !important;
+      box-shadow: none !important;
+    }
+  }
+
+  /* ============================================================
+     TARJETAS
+     ============================================================ */
+  .card-clean {
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  }
+
+  /* ============================================================
+     TABLA PRINCIPAL
+     ============================================================ */
+  .table-proyeccion {
+    margin-bottom: 0;
+    border-color: var(--border);
+  }
+
+  .table-proyeccion thead th {
+    background-color: var(--table-header-bg) !important;
+    color: var(--table-header-text) !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.25) !important;
+    font-weight: 600;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: var(--space-3) var(--space-3);
+    white-space: nowrap;
+    text-align: center;
+    vertical-align: middle;
+  }
+
+  .table-proyeccion tbody td {
+    font-size: 0.82rem;
+    padding: var(--space-2) var(--space-3);
+    vertical-align: middle;
+    border-color: var(--border);
+    background-color: transparent;
+  }
+
+  .table-proyeccion tbody tr:nth-child(odd) > td {
+    background-color: var(--surface);
+  }
+  .table-proyeccion tbody tr:nth-child(even) > td {
+    background-color: var(--surface-alt);
+  }
+  .table-proyeccion tbody tr:hover > td {
+    background-color: #eef1f4;
+  }
+
+  /* Fila con alerta (tinte sutil + acento lateral, no fondo saturado) */
+  .table-proyeccion tbody tr.row-warning > td:first-child {
+    box-shadow: inset 3px 0 0 0 var(--warning);
+  }
+  .table-proyeccion tbody tr.row-critical > td:first-child {
+    box-shadow: inset 3px 0 0 0 var(--danger);
+  }
+  .table-proyeccion tbody tr.row-warning > td {
+    background-color: #fffdf5;
+  }
+  .table-proyeccion tbody tr.row-critical > td {
+    background-color: #fdf6f6;
+  }
+  .table-proyeccion tbody tr.row-warning:hover > td {
+    background-color: #fdf8e8;
+  }
+  .table-proyeccion tbody tr.row-critical:hover > td {
+    background-color: #fbeeee;
+  }
+
+  /* Columnas */
+  .col-num {
+    text-align: center;
+    font-weight: 600;
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .col-name {
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+  .col-num-data {
+    text-align: right;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+  }
+  .col-num-data.is-semanal {
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+  .col-num-data.is-menor {
+    font-weight: 600;
+    color: var(--action-primary);
+  }
+  .col-dias {
+    text-align: center;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .col-dias.is-critico {
+    color: var(--danger);
+  }
+  .col-dias.is-bajo {
+    color: #b8860b;
+  }
+  .col-dias.is-ok {
+    color: var(--success);
+  }
+
+  /* ============================================================
+     BADGES
+     ============================================================ */
+  .badge-estado {
+    font-size: 0.68rem;
+    font-weight: 600;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    letter-spacing: 0.2px;
+  }
+  .badge-ok {
+    background-color: var(--success);
+    color: #ffffff;
+  }
+  .badge-critica {
+    background-color: var(--danger);
+    color: #ffffff;
+  }
+  .badge-advertencia {
+    background-color: var(--warning);
+    color: var(--warning-text);
+  }
+
+  /* Badge contador de alertas (encabezado) */
+  .badge-contador {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.45rem 0.75rem;
+    border-radius: 0.375rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    border: 1px solid transparent;
+  }
+  .badge-contador.neutral {
+    background-color: var(--surface-alt);
+    color: var(--text-secondary);
+    border-color: var(--border);
+  }
+  .badge-contador.ok {
+    background-color: #e8f5ee;
+    color: var(--success);
+    border-color: #bfe3cf;
+  }
+  .badge-contador.advertencia {
+    background-color: #fff8e1;
+    color: #8a6d00;
+    border-color: #ffe9a8;
+  }
+  .badge-contador.critica {
+    background-color: #fdecee;
+    color: var(--danger);
+    border-color: #f5c2c7;
+  }
+
+  /* ============================================================
+     FILTROS
+     ============================================================ */
+  .filter-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    margin-bottom: 0.25rem;
+  }
+  .form-control:focus,
+  .form-select:focus,
+  .form-check-input:focus {
+    border-color: var(--action-primary);
+    box-shadow: 0 0 0 2px rgba(44, 62, 80, 0.15);
+  }
+  .form-check-input:checked {
+    background-color: var(--action-primary);
+    border-color: var(--action-primary);
+  }
+
+  /* ============================================================
+     ESTADOS VACÍOS / CARGA
+     ============================================================ */
+  .table-empty td {
+    padding: 2.5rem 1rem !important;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    background-color: var(--surface) !important;
+  }
+  .table-empty .spinner-border {
+    width: 1.1rem;
+    height: 1.1rem;
+    border-width: 0.15em;
+    color: var(--action-secondary);
+  }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container-fluid mt-4">
+<div class="container-fluid py-4">
+
+    <!-- Encabezado de página -->
     <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
-        <div class="d-flex flex-column">
-            <h1 class="h4 fw-bold text-dark mb-1">Proyección de Costos e Inventario</h1>
-            <p class="text-muted small mb-0">
-                Proyección de consumo y stock de materias primas basado en producción histórica
-            </p>
+        <div class="d-flex align-items-center gap-3">
+            <div class="page-icon">
+                <i class="fas fa-chart-line"></i>
+            </div>
+            <div>
+                <h1 class="page-title">Proyección de Costos e Inventario</h1>
+                <p class="page-subtitle">
+                    Proyección de consumo y stock de materias primas basado en producción histórica
+                </p>
+            </div>
         </div>
-        <div class="d-flex gap-2 flex-wrap">
-            <span class="badge bg-light text-dark border px-3 py-2 small d-flex align-items-center" id="badgeAlertas">
-                <i class="fas fa-exclamation-triangle text-warning me-1"></i>
-                <span id="countAlertas">Cargando...</span>
+        <div class="d-flex gap-2 flex-wrap align-items-center">
+            <span class="badge-contador neutral" id="badgeAlertas">
+                <span id="countAlertas"><i class="fas fa-circle-notch fa-spin me-1"></i>Cargando...</span>
             </span>
-            <button type="button" class="btn btn-sm btn-outline-primary" onclick="exportarExcel()">
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="exportarExcel(event)">
                 <i class="fas fa-file-excel me-1"></i> Exportar Excel
             </button>
         </div>
     </div>
 
     <!-- Filtros -->
-    <div class="card shadow-sm mb-4">
+    <div class="card card-clean mb-4">
         <div class="card-body py-3">
             <div class="row g-3 align-items-end">
-                <div class="col-md-4">
-                    <label class="form-label fw-bold small">Buscar Materia Prima</label>
-                    <input type="text" class="form-control form-control-sm" id="filtroBusqueda" placeholder="Escribe para filtrar...">
+                <div class="col-md-5">
+                    <label class="filter-label" for="filtroBusqueda">Buscar Materia Prima</label>
+                    <input type="text" class="form-control form-control-sm" id="filtroBusqueda"
+                        placeholder="Escribe para filtrar...">
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label fw-bold small">Ventana de Consumo</label>
-                    <select class="form-select form-select-sm" id="filtroDias">
-                        <option value="7">Últimos 7 días</option>
-                        <option value="15">Últimos 15 días</option>
-                        <option value="30" selected>Últimos 30 días</option>
-                        <option value="60">Últimos 60 días</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label fw-bold small">Filtro</label>
-                    <div class="form-check form-switch">
+                    <label class="filter-label d-block">Filtro</label>
+                    <div class="form-check form-switch m-0">
                         <input class="form-check-input" type="checkbox" id="filtroSoloAlertas">
                         <label class="form-check-label small" for="filtroSoloAlertas">Solo con alertas</label>
                     </div>
                 </div>
-                <div class="col-md-3 text-md-end">
-                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="recargarDatos()">
+                <div class="col-md-4 text-md-end">
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="recargarDatos(event)">
                         <i class="fas fa-sync-alt me-1"></i> Actualizar
                     </button>
                 </div>
@@ -54,24 +414,27 @@
     </div>
 
     <!-- Tabla Principal -->
-    <div class="card shadow-sm">
+    <div class="card card-clean">
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0" id="tablaProyeccion" style="font-size: 0.85rem;">
-                    <thead class="table-light">
+                <table class="table align-middle table-proyeccion" id="tablaProyeccion">
+                    <thead>
                         <tr>
-                            <th style="width: 35%;">MATERIA PRIMA</th>
-                            <th class="text-end" style="width: 12%;">STOCK ACTUAL (Ton)</th>
-                            <th class="text-end" style="width: 12%;">CONSUMO DIARIO (Ton/día)</th>
-                            <th class="text-end" style="width: 12%;">CONSUMO SEMANAL (Ton/sem)</th>
-                            <th class="text-end" style="width: 12%;">CONSUMO MENSUAL (Ton/mes)</th>
-                            <th class="text-center" style="width: 10%;">DÍAS STOCK</th>
-                            <th style="width: 7%;">ALERTAS</th>
+                            <th style="width: 6%;">NÚMERO</th>
+                            <th style="width: 28%;">MATERIA PRIMA</th>
+                            <th style="width: 15%;">CONSUMO SEMANAL<br><small>(7 DÍAS) GR</small></th>
+                            <th style="width: 15%;">CONSUMO DÍA<br><small>(5 DÍAS) GR</small></th>
+                            <th style="width: 14%;">CONSUMO MENSUAL<br><small>TON</small></th>
+                            <th style="width: 10%;">DÍAS STOCK</th>
+                            <th style="width: 12%;">ALERTAS</th>
                         </tr>
                     </thead>
                     <tbody id="tbodyProyeccion">
-                        <tr>
-                            <td colspan="7" class="text-center py-4 text-muted">Cargando proyecciones...</td>
+                        <tr class="table-empty">
+                            <td colspan="7">
+                                <span class="spinner-border spinner-border-sm me-2 align-middle"></span>
+                                <span class="align-middle">Cargando proyecciones...</span>
+                            </td>
                         </tr>
                     </tbody>
                 </table>
@@ -84,78 +447,101 @@
     let proyeccionesData = [];
 
     // Cargar datos al iniciar
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
         cargarProyecciones();
         // Actualizar cada 60 segundos
         setInterval(cargarProyecciones, 60000);
     });
 
+    function escapeHtml(texto) {
+        return String(texto ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
     async function cargarProyecciones() {
-        const dias = document.getElementById('filtroDias').value;
         const soloAlertas = document.getElementById('filtroSoloAlertas').checked;
         const busqueda = document.getElementById('filtroBusqueda').value.toLowerCase();
-        
+
         try {
-            const url = `/proyeccion/api/stock?dias=${dias}&alertas=${soloAlertas}`;
+            const url = `/proyeccion/api/stock?alertas=${soloAlertas}`;
             const response = await fetch(url, {
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' }
             });
-            
+
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const result = await response.json();
-            
+
             if (!result.success) throw new Error(result.msg || 'Error en respuesta');
-            
+
             proyeccionesData = result.data || [];
             renderTabla(proyeccionesData, busqueda);
             actualizarBadge(proyeccionesData);
-            
+
         } catch (error) {
             console.error('Error cargando proyecciones:', error);
-            document.getElementById('tbodyProyeccion').innerHTML = 
-                `<tr><td colspan="7" class="text-center py-4 text-danger">Error: ${error.message}</td></tr>`;
+            document.getElementById('tbodyProyeccion').innerHTML =
+                `<tr class="table-empty"><td colspan="7" style="color: var(--danger);">
+                    <i class="fas fa-exclamation-circle me-1"></i> Error: ${escapeHtml(error.message)}
+                </td></tr>`;
         }
     }
 
     function renderTabla(data, busqueda = '') {
         const tbody = document.getElementById('tbodyProyeccion');
-        
+
         if (!data || data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted">Sin datos disponibles</td></tr>';
+            tbody.innerHTML = '<tr class="table-empty"><td colspan="7">Sin datos disponibles</td></tr>';
             return;
         }
 
         // Filtrar por búsqueda
-        const filtrados = data.filter(p => 
-            p.nombre.toLowerCase().includes(busqueda)
+        const filtrados = data.filter(p =>
+            (p.nombre || '').toLowerCase().includes(busqueda)
         );
 
         if (filtrados.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted">No coinciden con la búsqueda</td></tr>';
+            tbody.innerHTML = '<tr class="table-empty"><td colspan="7">No coinciden con la búsqueda</td></tr>';
             return;
         }
 
         tbody.innerHTML = filtrados.map(p => {
-            const alertaHtml = p.alertas && p.alertas.length > 0 
-                ? p.alertas.map(a => 
-                    `<span class="badge ${a.tipo === 'critica' ? 'bg-danger' : 'bg-warning text-dark'} me-1" style="font-size: 0.7rem;">
-                        ${a.mensaje}
+            const alertaHtml = p.alertas && p.alertas.length > 0
+                ? p.alertas.map(a =>
+                    `<span class="badge badge-estado ${a.tipo === 'critica' ? 'badge-critica' : 'badge-advertencia'} me-1">
+                        ${escapeHtml(a.mensaje)}
                     </span>`
                 ).join(' ')
-                : '<span class="badge bg-success" style="font-size: 0.7rem;">OK</span>';
+                : '<span class="badge badge-estado badge-ok">OK</span>';
 
-            const filaClass = p.tiene_alerta_critica ? 'table-danger' : (p.tiene_alerta ? 'table-warning' : '');
+            const filaClass = p.tiene_alerta_critica ? 'row-critical' : (p.tiene_alerta ? 'row-warning' : '');
+
+            // Formatear números: GRAMOS con separador de miles, sin decimales
+            // TON con 3 decimales
+            const fmtGr = (val) => Number(val || 0).toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+            const fmtTon = (val) => Number(val || 0).toLocaleString('es-ES', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+
+            const esNumero = p.dias_stock !== 'N/A' && p.dias_stock !== null && p.dias_stock !== undefined;
+            let diasClass = 'is-ok';
+            if (esNumero && p.dias_stock < 7) {
+                diasClass = 'is-critico';
+            } else if (esNumero && p.dias_stock < 15) {
+                diasClass = 'is-bajo';
+            }
 
             return `
                 <tr class="${filaClass}" style="cursor: pointer;">
-                    <td class="fw-bold">${p.nombre}</td>
-                    <td class="text-end fw-bold">${p.stock_actual.toLocaleString('es-ES', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-                    <td class="text-end">${p.consumo_diario.toLocaleString('es-ES', {minimumFractionDigits: 3, maximumFractionDigits: 3})}</td>
-                    <td class="text-end">${p.consumo_semanal.toLocaleString('es-ES', {minimumFractionDigits: 3, maximumFractionDigits: 3})}</td>
-                    <td class="text-end">${p.consumo_mensual.toLocaleString('es-ES', {minimumFractionDigits: 3, maximumFractionDigits: 3})}</td>
-                    <td class="text-center fw-bold ${p.dias_stock !== 'N/A' && p.dias_stock < 7 ? 'text-danger' : (p.dias_stock !== 'N/A' && p.dias_stock < 15 ? 'text-warning' : '')}">
-                        ${p.dias_stock === 'N/A' ? '∞' : p.dias_stock}
+                    <td class="col-num">${p.numero}</td>
+                    <td class="col-name">${escapeHtml(p.nombre)}</td>
+                    <td class="col-num-data is-semanal">${fmtGr(p.consumo_semanal_gramos)}</td>
+                    <td class="col-num-data">${fmtGr(p.consumo_diario_5dias_gramos)}</td>
+                    <td class="col-num-data is-menor">${fmtTon(p.consumo_mensual_ton)}</td>
+                    <td class="col-dias ${diasClass}">
+                        ${esNumero ? p.dias_stock : '∞'}
                     </td>
                     <td>${alertaHtml}</td>
                 </tr>
@@ -166,10 +552,10 @@
     function actualizarBadge(data) {
         const badge = document.getElementById('badgeAlertas');
         const countEl = document.getElementById('countAlertas');
-        
+
         if (!data || !Array.isArray(data)) {
             countEl.textContent = '0';
-            badge.className = 'badge bg-light text-dark border px-3 py-2 small d-flex align-items-center';
+            badge.className = 'badge-contador neutral';
             return;
         }
 
@@ -177,31 +563,31 @@
         const total = data.filter(p => p.tiene_alerta).length;
 
         if (criticas > 0) {
-            badge.className = 'badge bg-danger px-3 py-2 small d-flex align-items-center';
+            badge.className = 'badge-contador critica';
             countEl.innerHTML = `<i class="fas fa-exclamation-circle me-1"></i>${criticas} críticas / ${total} alertas`;
         } else if (total > 0) {
-            badge.className = 'badge bg-warning text-dark px-3 py-2 small d-flex align-items-center';
+            badge.className = 'badge-contador advertencia';
             countEl.innerHTML = `<i class="fas fa-exclamation-triangle me-1"></i>${total} alertas`;
         } else {
-            badge.className = 'badge bg-success px-3 py-2 small d-flex align-items-center';
+            badge.className = 'badge-contador ok';
             countEl.innerHTML = '<i class="fas fa-check-circle me-1"></i>Todo OK';
         }
     }
 
-    function recargarDatos() {
-        const btn = event.target.closest('button');
+    function recargarDatos(event) {
+        const btn = event.currentTarget;
         const originalHtml = btn.innerHTML;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Actualizando...';
         btn.disabled = true;
-        
+
         cargarProyecciones().finally(() => {
             btn.innerHTML = originalHtml;
             btn.disabled = false;
         });
     }
 
-    function exportarExcel() {
-        const btn = event.target.closest('button');
+    function exportarExcel(event) {
+        const btn = event.currentTarget;
         const originalHtml = btn.innerHTML;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Generando...';
         btn.disabled = true;
@@ -209,30 +595,29 @@
         fetch('/proyeccion/costos/exportar', {
             credentials: 'include'
         })
-        .then(res => {
-            if (!res.ok) throw new Error('Error generando Excel');
-            return res.blob();
-        })
-        .then(blob => {
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `proyeccion_inventario_${new Date().toISOString().split('T')[0]}.xlsx`;
-            a.click();
-            window.URL.revokeObjectURL(url);
-        })
-        .catch(err => {
-            console.error(err);
-            alert('Error exportando: ' + err.message);
-        })
-        .finally(() => {
-            btn.innerHTML = originalHtml;
-            btn.disabled = false;
-        });
+            .then(res => {
+                if (!res.ok) throw new Error('Error generando Excel');
+                return res.blob();
+            })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `proyeccion_inventario_${new Date().toISOString().split('T')[0]}.xlsx`;
+                a.click();
+                window.URL.revokeObjectURL(url);
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Error exportando: ' + err.message);
+            })
+            .finally(() => {
+                btn.innerHTML = originalHtml;
+                btn.disabled = false;
+            });
     }
 
     // Event listeners para filtros
-    document.getElementById('filtroDias').addEventListener('change', cargarProyecciones);
     document.getElementById('filtroSoloAlertas').addEventListener('change', cargarProyecciones);
     document.getElementById('filtroBusqueda').addEventListener('input', debounce(() => {
         if (proyeccionesData.length) {

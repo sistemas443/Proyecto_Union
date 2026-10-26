@@ -14,6 +14,7 @@ from routes.lotes.vistas import lotes_bp
 from routes.catalogos.api import catalogos_bp
 from routes.consolidados.vistas import consolidados_bp
 from routes.carga_datos.vistas import carga_datos_bp
+from routes.talento_humano.vistas import talento_humano_bp  # NUEVO: Talento Humano
 
 # --- INICIO DEL FILTRO INFALIBLE PARA OCULTAR GET ---
 class ManejadorSilencioso(werkzeug.serving.WSGIRequestHandler):
@@ -25,6 +26,53 @@ class ManejadorSilencioso(werkzeug.serving.WSGIRequestHandler):
 
 def create_app():
     app = Flask(__name__)
+    app.config.from_object(Config)
+
+    # --- FILTROS PERSONALIZADOS JINJA2 ---
+    def tiempo_transcurrido(fecha_ingreso):
+        """Calcula años, meses y días desde fecha_ingreso hasta hoy"""
+        if not fecha_ingreso:
+            return "—"
+        from datetime import date
+        hoy = date.today()
+        # Si fecha_ingreso es string, convertir a date
+        if isinstance(fecha_ingreso, str):
+            try:
+                fecha_ingreso = date.fromisoformat(fecha_ingreso)
+            except ValueError:
+                return "—"
+        elif not hasattr(fecha_ingreso, 'year'):
+            return "—"
+
+        años = hoy.year - fecha_ingreso.year
+        meses = hoy.month - fecha_ingreso.month
+        dias = hoy.day - fecha_ingreso.day
+
+        if dias < 0:
+            meses -= 1
+            # Días del mes anterior
+            import calendar
+            mes_anterior = hoy.month - 1 if hoy.month > 1 else 12
+            año_mes_anterior = hoy.year if hoy.month > 1 else hoy.year - 1
+            dias += calendar.monthrange(año_mes_anterior, mes_anterior)[1]
+
+        if meses < 0:
+            años -= 1
+            meses += 12
+
+        partes = []
+        if años > 0:
+            partes.append(f"{años}a")
+        if meses > 0:
+            partes.append(f"{meses}m")
+        if dias > 0 or not partes:
+            partes.append(f"{dias}d")
+
+        return " ".join(partes)
+
+    app.jinja_env.filters['tiempo_transcurrido'] = tiempo_transcurrido
+    # ---------------------------------------
+
     app.config.from_object(Config)
 
     # Registro de TODOS los Blueprints del proyecto
@@ -39,6 +87,7 @@ def create_app():
     app.register_blueprint(catalogos_bp)           # Blueprint de catálogos con foto (Superadmin)
     app.register_blueprint(consolidados_bp)         # Blueprint de consolidados L+P
     app.register_blueprint(carga_datos_bp)         # Blueprint modular de carga masiva de datos
+    app.register_blueprint(talento_humano_bp)      # NUEVO: Talento Humano
 
     return app
 

@@ -1,0 +1,674 @@
+# models/talento_humano/colaborador.py
+"""
+Modelo para gestión de Colaboradores - Talento Humano
+Siguiendo patrones del proyecto: clases estáticas, psycopg2, DictCursor
+"""
+import os
+import hashlib
+from datetime import datetime
+from werkzeug.utils import secure_filename
+from PIL import Image, ImageOps
+
+from models.base import get_db_connection, parse_empty, to_float_safe
+import psycopg2
+import psycopg2.extras
+
+
+class Colaborador:
+    """CRUD y utilidades para tabla colaboradores"""
+
+    # --- CONFIGURACIÓN ARCHIVOS ---
+    FOTO_MAX_SIZE = 5 * 1024 * 1024  # 5 MB
+    FOTO_DIMS = (300, 300)
+    FOTO_QUALITY = 85
+    UPLOAD_ROOT = 'static/uploads/colaboradores'
+
+    # Tipos de documento válidos
+    TIPOS_DOC = ('CC', 'CE', 'PAS', 'TI', 'NIT')
+    GENEROS = ('M', 'F', 'O')
+    ESTADOS_CIVILES = ('Soltero', 'Casado', 'Union Libre', 'Separado', 'Divorciado', 'Viudo')
+    RHS = ('O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-')
+    TIPOS_CONTRATO = ('Indefinido', 'Fijo', 'Obra', 'Aprendizaje', 'Prestacion Servicios', 'Temporal')
+    ESTADOS = ('Activo', 'Inactivo', 'Licencia', 'Suspendido', 'Retirado', 'Fallecido')
+    TIPOS_CUENTA = ('Ahorros', 'Corriente')
+    NIVELES_EDUCATIVOS = ('Ninguno', 'Primaria', 'Secundaria', 'Tecnico', 'Tecnologo', 'Profesional',
+                          'Especializacion', 'Maestria', 'Doctorado')
+    ETNIAS = ('Ninguna', 'Indigena', 'Raizal', 'Palenquero', 'Negro/Afro', 'ROM', 'Otro')
+    PAISES = ('Colombia', 'Venezuela', 'Ecuador', 'Peru', 'Panama', 'Otro')
+
+    # --- NUEVAS LISTAS PARA CAMPOS ADICIONALES ---
+    TIPOS_VINCULACION = ('Empleado', 'Contratista', 'Aprendiz', 'Practicante', 'Temporal', 'Misionero')
+    CLASES_RIESGO_ARL = ('1', '2', '3', '4', '5')
+    TIPOS_VINCULACION_CONTRATO = ('Empleado', 'Contratista', 'Aprendiz', 'Practicante', 'Temporal', 'Misionero')
+    TIPOS_EXAMEN = ('Ingreso', 'Periódico', 'Retiro', 'Cambio Cargo', 'Post Incapacidad', 'Post Licencia')
+    RESULTADOS_EXAMEN = ('Apto', 'Apto con Restricciones', 'No Apto')
+    RIESGOS_CARDIOVASCULAR = ('Bajo', 'Moderado', 'Alto', 'Muy Alto')
+    TIPOS_DISCAPACIDAD = ('Física', 'Sensorial', 'Mental', 'Múltiple', 'Otra')
+    TIPOS_VIVIENDA = ('Propia', 'Arriendo', 'Familiar', 'Empresa', 'Otra')
+    TIPOS_INMUEBLE = ('Casa', 'Apartamento', 'Finca', 'Habitación', 'Otro')
+    TRANSPORTES = ('Propio', 'Público', 'Empresa', 'Mixto', 'Bicicleta', 'Caminando')
+    TIPOS_VACUNA = ('COVID', 'Influenza', 'Hepatitis B', 'Tétanos', 'Fiebre Amarilla')
+    RESULTADOS_VISUAL = ('Normal', 'Con Corrección', 'Anormal')
+    RESULTADOS_AUDITIVO = ('Normal', 'Hipoacusia Leve', 'Hipoacusia Moderada', 'Hipoacusia Severa', 'Anormal')
+    RESULTADOS_ESPIROMETRIA = ('Normal', 'Obstructivo Leve', 'Obstructivo Moderado', 'Obstructivo Severo', 'Restrictivo', 'Anormal')
+    RESULTADOS_RX = ('Normal', 'Anormal')
+    RESULTADOS_COVID = ('Positivo', 'Negativo', 'No Realizada')
+    TIPOS_CAPACITACION = ('Altura', 'Espacios Confinados', 'Manipulación Alimentos', 'Bioseguridad',
+                          'HACCP', 'BPM', 'Primeros Auxilios', 'Brigadas Emergencia',
+                          'Manejo Extintores', 'Evacuación', 'Trabajo Seguro', 'Uso EPP',
+                          'Manejo Residuos', 'Control Plagas', 'Bienestar Animal', 'Otro')
+    MOTIVOS_RETIRO = ('Renuncia', 'Despido', 'Fin Contrato', 'Jubilación', 'Mutuo Acuerdo', 'Salud', 'Estudio', 'Otro')
+    TIPOS_FAMILIAR = ('Cónyuge', 'Compañero(a)', 'Hijo(a)', 'Padre', 'Madre', 'Hermano(a)', 'Otro')
+    TIPOS_DOC_FAMILIAR = ('CC', 'CE', 'PAS', 'TI', 'NIT', 'RC')
+
+    @staticmethod
+    def _mapear_campos_adicionales(data: dict) -> dict:
+        """Mapea campos adicionales con parse_empty y tipos correctos"""
+        mapped = {}
+        campos_fecha = (
+            'fecha_expedicion_doc', 'fecha_vencimiento_doc', 'fecha_nacimiento', 'fecha_ingreso',
+            'fecha_fin_prueba',
+            'fecha_ultimo_examen_medico', 'vacuna_covid_fecha',
+            'vacuna_influenza_fecha', 'vacuna_hepatitis_fecha', 'vacuna_tetanos_fecha',
+            'vacuna_fiebre_amarilla_fecha', 'examen_visual_fecha', 'examen_auditivo_fecha',
+            'espirometria_fecha', 'radiografia_torax_fecha', '# prueba_covid_fecha # Removido',
+            'certificado_discapacidad_vencimiento'
+        )
+        campos_int = (
+            'estrato', 'num_hijos', 'num_dependientes_economicos', 'tiempo_traslado_minutos',
+            'certificado_discapacidad_porcentaje', 'vacuna_covid_dosis',
+            'certificado_discapacidad_porcentaje'
+        )
+        # Campos float (IMC removido del formulario)
+# campos_float = ('imc',)
+        campos_bool = (
+            'discapacidad', 'victima_conflicto', 'comunidad_lgtbi',
+            'desplazado', 'seguro_funeral', 'tiene_servicios_publicos', 'tiene_internet',
+            'epp_casco', 'epp_botas', 'epp_guantes', 'epp_gafas', 'epp_tapabocas', 'epp_overol',
+            'epp_botas_dielectricas', 'epp_arnes', 'epp_chaleco_reflectivo', 'epp_proteccion_auditiva',
+            'vive_con_colaborador', 'dependiente_economico', 'estudia', 'trabaja'
+        )
+        
+        for campo, valor in data.items():
+            if campo in campos_fecha:
+                mapped[campo] = parse_empty(valor)
+            elif campo in campos_int:
+                mapped[campo] = parse_empty(valor, cast_int=True)
+            elif campo in campos_float:
+                mapped[campo] = to_float_safe(valor)
+            elif campo in campos_bool:
+                mapped[campo] = bool(valor) if valor not in (None, '', '0', 0) else False
+            else:
+                mapped[campo] = parse_empty(valor)
+        return mapped
+
+    @staticmethod
+    def _get_upload_folder(num_doc: str) -> str:
+        """Ruta absoluta de la carpeta del colaborador"""
+        base = os.path.join(os.path.dirname(os.path.dirname(__file__)), '..', Colaborador.UPLOAD_ROOT, num_doc)
+        return os.path.abspath(base)
+
+    @staticmethod
+    def _procesar_foto(file_storage, num_doc: str) -> str | None:
+        """
+        Procesa foto: valida, redimensiona a 300x300, convierte a JPG 85%, guarda en carpeta del colaborador.
+        Retorna nombre del archivo guardado (relativo a static/) o None.
+        """
+        if not file_storage or not file_storage.filename:
+            return None
+
+        # Validar tamaño
+        file_storage.seek(0, os.SEEK_END)
+        size = file_storage.tell()
+        file_storage.seek(0)
+        if size > Colaborador.FOTO_MAX_SIZE:
+            raise ValueError(f"La foto supera el límite de 5 MB ({size/1024/1024:.1f} MB)")
+
+        # Validar MIME
+        mime = file_storage.mimetype or ''
+        if not mime.startswith('image/'):
+            raise ValueError("El archivo no es una imagen válida")
+
+        # Preparar carpeta
+        folder = Colaborador._get_upload_folder(num_doc)
+        os.makedirs(folder, exist_ok=True)
+
+        # Nombre único
+        ext = '.jpg'  # Forzamos JPG
+        filename = f"foto_perfil_{datetime.now().strftime('%Y%m%d_%H%M%S')}{ext}"
+        filepath = os.path.join(folder, filename)
+
+        # Procesar con Pillow
+        img = Image.open(file_storage)
+        if img.mode in ("RGBA", "P", "LA"):
+            img = img.convert("RGB")
+        img_cuadrada = ImageOps.fit(img, Colaborador.FOTO_DIMS, Image.Resampling.LANCZOS)
+        img_cuadrada.save(filepath, format='JPEG', optimize=True, quality=Colaborador.FOTO_QUALITY)
+
+        # Retornar ruta relativa a static/
+        rel_path = os.path.relpath(filepath, os.path.join(os.path.dirname(os.path.dirname(__file__)), '..', 'static'))
+        return rel_path.replace('\\', '/')
+
+    @staticmethod
+    def _eliminar_foto_anterior(ruta_relativa: str):
+        """Elimina archivo físico si existe"""
+        if not ruta_relativa:
+            return
+        base_static = os.path.join(os.path.dirname(os.path.dirname(__file__)), '..', 'static')
+        abs_path = os.path.join(base_static, ruta_relativa)
+        if os.path.exists(abs_path):
+            try:
+                os.remove(abs_path)
+            except Exception:
+                pass  # Silencioso, no rompe la transacción
+
+    # --- CRUD PRINCIPAL ---
+
+    @staticmethod
+    def get_all(filtros: dict | None = None, pagina: int = 1, por_pagina: int = 50) -> tuple[list, int]:
+        """
+        Retorna (lista_colaboradores, total_registros)
+        Soporta filtros: busqueda (texto), estado, area, cargo
+        """
+        conn = get_db_connection()
+        try:
+            with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
+                where_clauses = ["c.eliminado_en IS NULL"]
+                params = []
+
+                if filtros:
+                    if filtros.get('busqueda'):
+                        where_clauses.append("""
+                            (c.nombre_completo ILIKE %s OR c.num_doc ILIKE %s OR c.cargo ILIKE %s OR c.area ILIKE %s)
+                        """)
+                        like = f"%{filtros['busqueda']}%"
+                        params.extend([like, like, like, like])
+
+                    if filtros.get('estado'):
+                        where_clauses.append("c.estado = %s")
+                        params.append(filtros['estado'])
+
+                    if filtros.get('area'):
+                        where_clauses.append("c.area ILIKE %s")
+                        params.append(f"%{filtros['area']}%")
+
+                    if filtros.get('cargo'):
+                        where_clauses.append("c.cargo ILIKE %s")
+                        params.append(f"%{filtros['cargo']}%")
+
+                where_sql = " AND ".join(where_clauses)
+
+                # Total
+                cur.execute(f"SELECT COUNT(*) FROM colaboradores c WHERE {where_sql}", params)
+                total = cur.fetchone()[0]
+
+                # Paginación
+                offset = (pagina - 1) * por_pagina
+                cur.execute(f"""
+                    SELECT 
+                        c.id, c.tipo_doc, c.num_doc, c.nombre_completo, c.cargo, c.area,
+                        c.eps, c.arl,
+                        c.estado, c.fecha_ingreso, c.foto_perfil,
+                        COUNT(DISTINCT d.id) FILTER (WHERE d.eliminado_en IS NULL) AS total_documentos,
+                        COUNT(DISTINCT d.id) FILTER (WHERE d.eliminado_en IS NULL AND d.fecha_vencimiento < CURRENT_DATE) AS docs_vencidos,
+                        COUNT(DISTINCT e.id) AS total_estudios,
+                        COUNT(DISTINCT cu.id) AS total_cursos
+                    FROM colaboradores c
+                    LEFT JOIN colaborador_documentos d ON d.colaborador_id = c.id
+                    LEFT JOIN colaborador_estudios e ON e.colaborador_id = c.id
+                    LEFT JOIN colaborador_cursos cu ON cu.colaborador_id = c.id
+                    WHERE {where_sql}
+                    GROUP BY c.id
+                    ORDER BY c.nombre_completo ASC
+                    LIMIT %s OFFSET %s
+                """, params + [por_pagina, offset])
+
+                return cur.fetchall(), total
+
+        finally:
+            conn.close()
+
+    @staticmethod
+    def get_by_id(colaborador_id: int) -> dict | None:
+        """Obtiene colaborador completo por ID"""
+        conn = get_db_connection()
+        try:
+            with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
+                cur.execute("""
+                    SELECT * FROM colaboradores WHERE id = %s AND eliminado_en IS NULL
+                """, (colaborador_id,))
+                row = cur.fetchone()
+                return dict(row) if row else None
+        finally:
+            conn.close()
+
+    @staticmethod
+    def get_by_num_doc(num_doc: str) -> dict | None:
+        """Obtiene colaborador por número de documento (para validar unicidad)"""
+        conn = get_db_connection()
+        try:
+            with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
+                cur.execute("""
+                    SELECT id, num_doc, nombre_completo FROM colaboradores 
+                    WHERE num_doc = %s AND eliminado_en IS NULL
+                """, (num_doc,))
+                row = cur.fetchone()
+                return dict(row) if row else None
+        finally:
+            conn.close()
+
+    @staticmethod
+    def create(data: dict, usuario_id: int, foto_file=None) -> int:
+        """
+        Crea nuevo colaborador. Retorna ID creado.
+        data: dict con todos los campos del formulario
+        """
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cur:
+                # Validar documento único
+                existing = Colaborador.get_by_num_doc(data['num_doc'])
+                if existing:
+                    raise ValueError(f"Ya existe un colaborador con documento {data['num_doc']}")
+
+                # Procesar foto si hay
+                foto_rel = None
+                if foto_file:
+                    foto_rel = Colaborador._procesar_foto(foto_file, data['num_doc'])
+
+                # Insert
+                # Mapear campos adicionales
+                campos_extra = Colaborador._mapear_campos_adicionales(data)
+
+                cur.execute("""
+                    INSERT INTO colaboradores (
+                        tipo_doc, num_doc, primer_nombre, segundo_nombre, primer_apellido, segundo_apellido,
+                        fecha_nacimiento, genero, estado_civil, rh, correo_personal, celular, telefono,
+                        direccion, ciudad, departamento,
+                        contacto_emergencia_nombre, contacto_emergencia_telefono, contacto_emergencia_parentesco,
+                        cargo, area, centro_costo, jefe_inmediato_id, tipo_contrato, fecha_ingreso,
+                        estado, eps, arl, fondo_pension, fondo_cesantias,
+                        caja_compensacion, banco, tipo_cuenta, numero_cuenta,
+                        nivel_educativo, profesion_oficio, estrato, sisben, discapacidad, victima_conflicto,
+                        pais_origen, etnia, comunidad_lgtbi,
+                        foto_perfil, creado_por,
+                        -- Nuevos campos: Identificación
+                        lugar_expedicion_doc, fecha_expedicion_doc, fecha_vencimiento_doc,
+                        -- Datos personales
+                        lugar_nacimiento_ciudad, lugar_nacimiento_departamento, lugar_nacimiento_pais,
+                        nacionalidad, grupo_sanguineo, factor_rh, religion,
+                        nombre_conyuge, documento_conyuge, telefono_conyuge, ocupacion_conyuge, empresa_conyuge,
+                        -- Contacto emergencia
+                        contacto_emergencia_direccion, contacto_emergencia_correo,
+                        contacto_emergencia2_nombre, contacto_emergencia2_telefono, contacto_emergencia2_parentesco,
+                        contacto_emergencia2_direccion, contacto_emergencia2_correo,
+                        -- Laboral
+                        sede_planta, tipo_vinculacion,
+                        clase_riesgo_arl, fecha_fin_prueba,
+                        # seguro_funeral, aseguradora_funeral,  # Removido del formulario
+                        # beneficios_adicionales,  # Removido del formulario
+                        -- Sociodemográfico
+                        num_hijos, num_dependientes_economicos, tipo_vivienda, tipo_vivienda_detalle,
+                        tiene_servicios_publicos, tiene_internet, transporte_tipo, tiempo_traslado_minutos,
+                        desplazado, registro_unico_victimas,
+                        certificado_discapacidad_numero, certificado_discapacidad_porcentaje,
+                        certificado_discapacidad_entidad, certificado_discapacidad_vencimiento, tipo_discapacidad,
+                        -- Salud ocupacional
+                        fecha_ultimo_examen_medico, tipo_ultimo_examen, resultado_examen, restricciones_medicas,
+                        alergias_conocidas, medicamentos_uso_continuo, enfermedades_cronicas,
+                        factor_riesgo_cardiovascular,
+                        vacuna_covid_fecha, vacuna_covid_dosis, vacuna_influenza_fecha, vacuna_hepatitis_fecha,
+                        vacuna_tetanos_fecha, vacuna_fiebre_amarilla_fecha, vacuna_otras,
+                        # carnet_vacunacion_numero, carnet_vacunacion_entidad,  # Removido del formulario
+                        examen_visual_fecha, examen_visual_resultado, examen_auditivo_fecha, examen_auditivo_resultado,
+                        espirometria_fecha, espirometria_resultado,  # radiografia_torax_fecha y resultado removidos
+                        # prueba_covid_fecha # Removido, prueba_covid_resultado,
+                        epp_casco, epp_botas, epp_guantes, epp_gafas, epp_tapabocas, epp_overol,
+                        epp_botas_dielectricas, epp_arnes, epp_chaleco_reflectivo, epp_proteccion_auditiva,
+                        talla_camisa, talla_pantalon, talla_botas, talla_casco
+                    ) VALUES (
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                        %s, %s, %s
+                    ) RETURNING id
+                """, (
+                    data['tipo_doc'], data['num_doc'], data['primer_nombre'], parse_empty(data.get('segundo_nombre')),
+                    data['primer_apellido'], parse_empty(data.get('segundo_apellido')),
+                    parse_empty(data.get('fecha_nacimiento')), parse_empty(data.get('genero')),
+                    parse_empty(data.get('estado_civil')), parse_empty(data.get('rh')),
+                    parse_empty(data.get('correo_personal')), parse_empty(data.get('celular')),
+                    parse_empty(data.get('telefono')), parse_empty(data.get('direccion')),
+                    parse_empty(data.get('ciudad')), parse_empty(data.get('departamento')),
+                    parse_empty(data.get('contacto_emergencia_nombre')), parse_empty(data.get('contacto_emergencia_telefono')),
+                    parse_empty(data.get('contacto_emergencia_parentesco')),
+                    parse_empty(data.get('cargo')), parse_empty(data.get('area')), parse_empty(data.get('centro_costo')),
+                    parse_empty(data.get('jefe_inmediato_id'), cast_int=True),
+                    parse_empty(data.get('tipo_contrato')), parse_empty(data.get('fecha_ingreso')),
+                    data.get('estado', 'Activo'),
+                    parse_empty(data.get('eps')), parse_empty(data.get('arl')), parse_empty(data.get('fondo_pension')),
+                    parse_empty(data.get('fondo_cesantias')), parse_empty(data.get('caja_compensacion')),
+                    parse_empty(data.get('banco')), parse_empty(data.get('tipo_cuenta')),
+                    parse_empty(data.get('numero_cuenta')),
+                    parse_empty(data.get('nivel_educativo')), parse_empty(data.get('profesion_oficio')),
+                    parse_empty(data.get('estrato'), cast_int=True), parse_empty(data.get('sisben')),
+                    data.get('discapacidad', False), data.get('victima_conflicto', False),
+                    parse_empty(data.get('pais_origen', 'Colombia')), parse_empty(data.get('etnia')),
+                    data.get('comunidad_lgtbi', False),
+                    foto_rel, usuario_id,
+                    # Nuevos campos
+                    campos_extra.get('lugar_expedicion_doc'), campos_extra.get('fecha_expedicion_doc'), campos_extra.get('fecha_vencimiento_doc'),
+                    campos_extra.get('lugar_nacimiento_ciudad'), campos_extra.get('lugar_nacimiento_departamento'), campos_extra.get('lugar_nacimiento_pais'),
+                    campos_extra.get('nacionalidad'), campos_extra.get('grupo_sanguineo'), campos_extra.get('factor_rh'), campos_extra.get('religion'),
+                    campos_extra.get('nombre_conyuge'), campos_extra.get('documento_conyuge'), campos_extra.get('telefono_conyuge'), campos_extra.get('ocupacion_conyuge'), campos_extra.get('empresa_conyuge'),
+                    campos_extra.get('contacto_emergencia_direccion'), campos_extra.get('contacto_emergencia_correo'),
+                    campos_extra.get('contacto_emergencia2_nombre'), campos_extra.get('contacto_emergencia2_telefono'), campos_extra.get('contacto_emergencia2_parentesco'),
+                    campos_extra.get('contacto_emergencia2_direccion'), campos_extra.get('contacto_emergencia2_correo'),
+                    campos_extra.get('sede_planta'),
+                    campos_extra.get('tipo_vinculacion'),
+                    campos_extra.get('clase_riesgo_arl'), campos_extra.get('fecha_fin_prueba'),
+                    # campos_extra.get('seguro_funeral'), campos_extra.get('aseguradora_funeral'),  # Removido
+                    # campos_extra.get('beneficios_adicionales'),  # Removido
+                    campos_extra.get('num_hijos'), campos_extra.get('num_dependientes_economicos'), campos_extra.get('tipo_vivienda'), campos_extra.get('tipo_vivienda_detalle'),
+                    campos_extra.get('tiene_servicios_publicos'), campos_extra.get('tiene_internet'), campos_extra.get('transporte_tipo'), campos_extra.get('tiempo_traslado_minutos'),
+                    campos_extra.get('desplazado'), campos_extra.get('registro_unico_victimas'),
+                    campos_extra.get('certificado_discapacidad_numero'), campos_extra.get('certificado_discapacidad_porcentaje'),
+                    campos_extra.get('certificado_discapacidad_entidad'), campos_extra.get('certificado_discapacidad_vencimiento'), campos_extra.get('tipo_discapacidad'),
+                    campos_extra.get('fecha_ultimo_examen_medico'), campos_extra.get('tipo_ultimo_examen'), campos_extra.get('resultado_examen'),
+                    campos_extra.get('restricciones_medicas'), campos_extra.get('alergias_conocidas'), campos_extra.get('medicamentos_uso_continuo'),
+                    campos_extra.get('enfermedades_cronicas'), campos_extra.get('factor_riesgo_cardiovascular'),
+                    campos_extra.get('vacuna_covid_fecha'), campos_extra.get('vacuna_covid_dosis'), campos_extra.get('vacuna_influenza_fecha'),
+                    campos_extra.get('vacuna_hepatitis_fecha'), campos_extra.get('vacuna_tetanos_fecha'), campos_extra.get('vacuna_fiebre_amarilla_fecha'),
+                    campos_extra.get('vacuna_otras'),  # carnet_vacunacion_numero y entidad removidos
+                    campos_extra.get('examen_visual_fecha'), campos_extra.get('examen_visual_resultado'), campos_extra.get('examen_auditivo_fecha'),
+                    campos_extra.get('examen_auditivo_resultado'), campos_extra.get('espirometria_fecha'), campos_extra.get('espirometria_resultado'),
+                    # # # campos_extra.get('radiografia_torax_fecha'), campos_extra.get('radiografia_torax_resultado'),  # Removido  # Removido  # Removido
+                    campos_extra.get('# prueba_covid_fecha # Removido'), campos_extra.get('prueba_covid_resultado'),
+                    campos_extra.get('epp_casco'), campos_extra.get('epp_botas'), campos_extra.get('epp_guantes'), campos_extra.get('epp_gafas'),
+                    campos_extra.get('epp_tapabocas'), campos_extra.get('epp_overol'), campos_extra.get('epp_botas_dielectricas'),
+                    campos_extra.get('epp_arnes'), campos_extra.get('epp_chaleco_reflectivo'), campos_extra.get('epp_proteccion_auditiva'),
+                    campos_extra.get('talla_camisa'), campos_extra.get('talla_pantalon'), campos_extra.get('talla_botas'), campos_extra.get('talla_casco')
+                ))
+                nuevo_id = cur.fetchone()[0]
+                conn.commit()
+                return nuevo_id
+
+        except Exception as e:
+            conn.rollback()
+            # Log detallado del error PostgreSQL
+            import traceback
+            import sys
+            err_msg = f"[ERROR CREATE COLABORADOR] {type(e).__name__}: {e}"
+            traceback_msg = f"[ERROR TRACEBACK] {traceback.format_exc()}"
+            print(err_msg, file=sys.stderr, flush=True)
+            print(traceback_msg, file=sys.stderr, flush=True)
+            # Limpiar foto si se subió pero falló el insert
+            if 'foto_rel' in locals() and foto_rel:
+                Colaborador._eliminar_foto_anterior(foto_rel)
+            raise
+        finally:
+            conn.close()
+
+    @staticmethod
+    def update(colaborador_id: int, data: dict, usuario_id: int, foto_file=None, eliminar_foto: bool = False) -> bool:
+        """
+        Actualiza colaborador. Retorna True si éxito.
+        """
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cur:
+                # Obtener datos actuales (para foto anterior)
+                cur.execute("SELECT num_doc, foto_perfil FROM colaboradores WHERE id = %s", (colaborador_id,))
+                actual = cur.fetchone()
+                if not actual:
+                    raise ValueError("Colaborador no encontrado")
+                num_doc_actual, foto_actual = actual
+
+                # Validar documento único (si cambió)
+                if data['num_doc'] != num_doc_actual:
+                    existing = Colaborador.get_by_num_doc(data['num_doc'])
+                    if existing:
+                        raise ValueError(f"Ya existe un colaborador con documento {data['num_doc']}")
+
+                # Manejo foto
+                foto_rel = foto_actual
+                if eliminar_foto:
+                    Colaborador._eliminar_foto_anterior(foto_actual)
+                    foto_rel = None
+                elif foto_file:
+                    # Eliminar anterior y procesar nueva
+                    Colaborador._eliminar_foto_anterior(foto_actual)
+                    foto_rel = Colaborador._procesar_foto(foto_file, data['num_doc'])
+
+                    # Si cambió num_doc, mover carpeta
+                    if data['num_doc'] != num_doc_actual:
+                        Colaborador._mover_carpeta_colaborador(num_doc_actual, data['num_doc'])
+
+                # Mapear campos adicionales
+                campos_extra = Colaborador._mapear_campos_adicionales(data)
+
+                cur.execute("""
+                    UPDATE colaboradores SET
+                        tipo_doc = %s, num_doc = %s, primer_nombre = %s, segundo_nombre = %s,
+                        primer_apellido = %s, segundo_apellido = %s,
+                        fecha_nacimiento = %s, genero = %s, estado_civil = %s, rh = %s,
+                        correo_personal = %s, celular = %s, telefono = %s,
+                        direccion = %s, ciudad = %s, departamento = %s,
+                        contacto_emergencia_nombre = %s, contacto_emergencia_telefono = %s,
+                        contacto_emergencia_parentesco = %s,
+                        cargo = %s, area = %s, centro_costo = %s, jefe_inmediato_id = %s,
+                        tipo_contrato = %s, fecha_ingreso = %s,
+                        estado = %s,
+                        eps = %s, arl = %s, fondo_pension = %s, fondo_cesantias = %s,
+                        caja_compensacion = %s, banco = %s, tipo_cuenta = %s, numero_cuenta = %s,
+                        nivel_educativo = %s, profesion_oficio = %s, estrato = %s, sisben = %s,
+                        discapacidad = %s, victima_conflicto = %s, pais_origen = %s, etnia = %s,
+                        comunidad_lgtbi = %s, foto_perfil = %s, actualizado_por = %s, actualizado_en = CURRENT_TIMESTAMP,
+                        -- Nuevos campos
+                        lugar_expedicion_doc = %s, fecha_expedicion_doc = %s, fecha_vencimiento_doc = %s,
+                        lugar_nacimiento_ciudad = %s, lugar_nacimiento_departamento = %s, lugar_nacimiento_pais = %s,
+                        nacionalidad = %s, grupo_sanguineo = %s, factor_rh = %s, religion = %s,
+                        nombre_conyuge = %s, documento_conyuge = %s, telefono_conyuge = %s, ocupacion_conyuge = %s, empresa_conyuge = %s,
+                        contacto_emergencia_direccion = %s, contacto_emergencia_correo = %s,
+                        contacto_emergencia2_nombre = %s, contacto_emergencia2_telefono = %s, contacto_emergencia2_parentesco = %s,
+                        contacto_emergencia2_direccion = %s, contacto_emergencia2_correo = %s,
+                        sede_planta = %s, tipo_vinculacion = %s,
+                        clase_riesgo_arl = %s, fecha_fin_prueba = %s,
+                        seguro_funeral = %s, aseguradora_funeral = %s,
+                        beneficios_adicionales = %s,
+                        num_hijos = %s, num_dependientes_economicos = %s, tipo_vivienda = %s, tipo_vivienda_detalle = %s,
+                        tiene_servicios_publicos = %s, tiene_internet = %s, transporte_tipo = %s, tiempo_traslado_minutos = %s,
+                        desplazado = %s, registro_unico_victimas = %s,
+                        certificado_discapacidad_numero = %s, certificado_discapacidad_porcentaje = %s,
+                        certificado_discapacidad_entidad = %s, certificado_discapacidad_vencimiento = %s, tipo_discapacidad = %s,
+                        fecha_ultimo_examen_medico = %s, tipo_ultimo_examen = %s, resultado_examen = %s, restricciones_medicas = %s,
+                        alergias_conocidas = %s, medicamentos_uso_continuo = %s, enfermedades_cronicas = %s,
+                        factor_riesgo_cardiovascular = %s,
+                        vacuna_covid_fecha = %s, vacuna_covid_dosis = %s, vacuna_influenza_fecha = %s, vacuna_hepatitis_fecha = %s,
+                        vacuna_tetanos_fecha = %s, vacuna_fiebre_amarilla_fecha = %s, vacuna_otras = %s,
+                        # carnet_vacunacion_numero = %s, carnet_vacunacion_entidad = %s,  # Removido del formulario
+                        examen_visual_fecha = %s, examen_visual_resultado = %s, examen_auditivo_fecha = %s, examen_auditivo_resultado = %s,
+                        espirometria_fecha = %s, espirometria_resultado = %s,  # radiografia_torax_fecha y resultado removidos
+                        # prueba_covid_fecha # Removido = %s, prueba_covid_resultado = %s,
+                        epp_casco = %s, epp_botas = %s, epp_guantes = %s, epp_gafas = %s, epp_tapabocas = %s, epp_overol = %s,
+                        epp_botas_dielectricas = %s, epp_arnes = %s, epp_chaleco_reflectivo = %s, epp_proteccion_auditiva = %s,
+                        talla_camisa = %s, talla_pantalon = %s, talla_botas = %s, talla_casco = %s
+                    WHERE id = %s
+                """, (
+                    data['tipo_doc'], data['num_doc'], data['primer_nombre'], parse_empty(data.get('segundo_nombre')),
+                    data['primer_apellido'], parse_empty(data.get('segundo_apellido')),
+                    parse_empty(data.get('fecha_nacimiento')), parse_empty(data.get('genero')),
+                    parse_empty(data.get('estado_civil')), parse_empty(data.get('rh')),
+                    parse_empty(data.get('correo_personal')), parse_empty(data.get('celular')),
+                    parse_empty(data.get('telefono')), parse_empty(data.get('direccion')),
+                    parse_empty(data.get('ciudad')), parse_empty(data.get('departamento')),
+                    parse_empty(data.get('contacto_emergencia_nombre')), parse_empty(data.get('contacto_emergencia_telefono')),
+                    parse_empty(data.get('contacto_emergencia_parentesco')),
+                    parse_empty(data.get('cargo')), parse_empty(data.get('area')), parse_empty(data.get('centro_costo')),
+                    parse_empty(data.get('jefe_inmediato_id'), cast_int=True),
+                    parse_empty(data.get('tipo_contrato')), parse_empty(data.get('fecha_ingreso')),
+                    data.get('estado', 'Activo'),
+                    parse_empty(data.get('eps')), parse_empty(data.get('arl')), parse_empty(data.get('fondo_pension')),
+                    parse_empty(data.get('fondo_cesantias')), parse_empty(data.get('caja_compensacion')),
+                    parse_empty(data.get('banco')), parse_empty(data.get('tipo_cuenta')),
+                    parse_empty(data.get('numero_cuenta')),
+                    parse_empty(data.get('nivel_educativo')), parse_empty(data.get('profesion_oficio')),
+                    parse_empty(data.get('estrato'), cast_int=True), parse_empty(data.get('sisben')),
+                    data.get('discapacidad', False), data.get('victima_conflicto', False),
+                    parse_empty(data.get('pais_origen', 'Colombia')), parse_empty(data.get('etnia')),
+                    data.get('comunidad_lgtbi', False),
+                    foto_rel, usuario_id,
+                    # Nuevos campos
+                    campos_extra.get('lugar_expedicion_doc'), campos_extra.get('fecha_expedicion_doc'), campos_extra.get('fecha_vencimiento_doc'),
+                    campos_extra.get('lugar_nacimiento_ciudad'), campos_extra.get('lugar_nacimiento_departamento'), campos_extra.get('lugar_nacimiento_pais'),
+                    campos_extra.get('nacionalidad'), campos_extra.get('grupo_sanguineo'), campos_extra.get('factor_rh'), campos_extra.get('religion'),
+                    campos_extra.get('nombre_conyuge'), campos_extra.get('documento_conyuge'), campos_extra.get('telefono_conyuge'), campos_extra.get('ocupacion_conyuge'), campos_extra.get('empresa_conyuge'),
+                    campos_extra.get('contacto_emergencia_direccion'), campos_extra.get('contacto_emergencia_correo'),
+                    campos_extra.get('contacto_emergencia2_nombre'), campos_extra.get('contacto_emergencia2_telefono'), campos_extra.get('contacto_emergencia2_parentesco'),
+                    campos_extra.get('contacto_emergencia2_direccion'), campos_extra.get('contacto_emergencia2_correo'),
+                    campos_extra.get('sede_planta'),
+                    campos_extra.get('tipo_vinculacion'),
+                    campos_extra.get('clase_riesgo_arl'), campos_extra.get('fecha_fin_prueba'),
+                    # campos_extra.get('seguro_funeral'), campos_extra.get('aseguradora_funeral'),  # Removido
+                    # campos_extra.get('beneficios_adicionales'),  # Removido
+                    campos_extra.get('num_hijos'), campos_extra.get('num_dependientes_economicos'), campos_extra.get('tipo_vivienda'), campos_extra.get('tipo_vivienda_detalle'),
+                    campos_extra.get('tiene_servicios_publicos'), campos_extra.get('tiene_internet'), campos_extra.get('transporte_tipo'), campos_extra.get('tiempo_traslado_minutos'),
+                    campos_extra.get('desplazado'), campos_extra.get('registro_unico_victimas'),
+                    campos_extra.get('certificado_discapacidad_numero'), campos_extra.get('certificado_discapacidad_porcentaje'),
+                    campos_extra.get('certificado_discapacidad_entidad'), campos_extra.get('certificado_discapacidad_vencimiento'), campos_extra.get('tipo_discapacidad'),
+                    campos_extra.get('fecha_ultimo_examen_medico'), campos_extra.get('tipo_ultimo_examen'), campos_extra.get('resultado_examen'),
+                    campos_extra.get('restricciones_medicas'), campos_extra.get('alergias_conocidas'), campos_extra.get('medicamentos_uso_continuo'),
+                    campos_extra.get('enfermedades_cronicas'), campos_extra.get('factor_riesgo_cardiovascular'),
+                    campos_extra.get('vacuna_covid_fecha'), campos_extra.get('vacuna_covid_dosis'), campos_extra.get('vacuna_influenza_fecha'),
+                    campos_extra.get('vacuna_hepatitis_fecha'), campos_extra.get('vacuna_tetanos_fecha'), campos_extra.get('vacuna_fiebre_amarilla_fecha'),
+                    campos_extra.get('vacuna_otras'),  # carnet_vacunacion_numero y entidad removidos
+                    campos_extra.get('examen_visual_fecha'), campos_extra.get('examen_visual_resultado'), campos_extra.get('examen_auditivo_fecha'),
+                    campos_extra.get('examen_auditivo_resultado'), campos_extra.get('espirometria_fecha'), campos_extra.get('espirometria_resultado'),
+                    # # # campos_extra.get('radiografia_torax_fecha'), campos_extra.get('radiografia_torax_resultado'),  # Removido  # Removido  # Removido
+                    campos_extra.get('# prueba_covid_fecha # Removido'), campos_extra.get('prueba_covid_resultado'),
+                    campos_extra.get('epp_casco'), campos_extra.get('epp_botas'), campos_extra.get('epp_guantes'), campos_extra.get('epp_gafas'),
+                    campos_extra.get('epp_tapabocas'), campos_extra.get('epp_overol'), campos_extra.get('epp_botas_dielectricas'),
+                    campos_extra.get('epp_arnes'), campos_extra.get('epp_chaleco_reflectivo'), campos_extra.get('epp_proteccion_auditiva'),
+                    campos_extra.get('talla_camisa'), campos_extra.get('talla_pantalon'), campos_extra.get('talla_botas'), campos_extra.get('talla_casco'),
+                    colaborador_id
+                ))
+                conn.commit()
+                return cur.rowcount > 0
+
+        except Exception as e:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+
+    @staticmethod
+    def _mover_carpeta_colaborador(num_doc_viejo: str, num_doc_nuevo: str):
+        """Renombra carpeta de uploads al cambiar num_doc"""
+        base = os.path.join(os.path.dirname(os.path.dirname(__file__)), '..', Colaborador.UPLOAD_ROOT)
+        vieja = os.path.join(base, num_doc_viejo)
+        nueva = os.path.join(base, num_doc_nuevo)
+        if os.path.exists(vieja) and not os.path.exists(nueva):
+            try:
+                os.rename(vieja, nueva)
+            except Exception:
+                pass
+
+    @staticmethod
+    def soft_delete(colaborador_id: int, usuario_id: int) -> bool:
+        """Soft delete: marca eliminado_en = NOW()"""
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    UPDATE colaboradores SET eliminado_en = CURRENT_TIMESTAMP, actualizado_por = %s
+                    WHERE id = %s AND eliminado_en IS NULL
+                """, (usuario_id, colaborador_id))
+                conn.commit()
+                return cur.rowcount > 0
+        finally:
+            conn.close()
+
+    @staticmethod
+    def toggle_estado(colaborador_id: int) -> tuple[bool, str | None]:
+        """Alterna estado Activo <-> Inactivo. Retorna (ok, nuevo_estado)"""
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    UPDATE colaboradores 
+                    SET estado = CASE WHEN estado = 'Activo' THEN 'Inactivo' ELSE 'Activo' END,
+                        actualizado_en = CURRENT_TIMESTAMP
+                    WHERE id = %s AND eliminado_en IS NULL
+                    RETURNING estado
+                """, (colaborador_id,))
+                row = cur.fetchone()
+                conn.commit()
+                return (True, row[0]) if row else (False, None)
+        finally:
+            conn.close()
+
+    # --- LISTAS PARA SELECTS (TomSelect) ---
+
+    @staticmethod
+    def buscar_para_jefe(termino: str, excluir_id: int | None = None, limite: int = 20) -> list:
+        """Busca colaboradores para selector de jefe inmediato"""
+        conn = get_db_connection()
+        try:
+            with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
+                sql = """
+                    SELECT id, nombre_completo, cargo, area, num_doc
+                    FROM colaboradores
+                    WHERE eliminado_en IS NULL
+                      AND estado = 'Activo'
+                      AND (nombre_completo ILIKE %s OR num_doc ILIKE %s)
+                """
+                params = [f"%{termino}%", f"%{termino}%"]
+                if excluir_id:
+                    sql += " AND id != %s"
+                    params.append(excluir_id)
+                sql += " ORDER BY nombre_completo LIMIT %s"
+                params.append(limite)
+                cur.execute(sql, params)
+                return cur.fetchall()
+        finally:
+            conn.close()
+
+    @staticmethod
+    def get_areas_unicas() -> list:
+        """Áreas únicas para filtro"""
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("SELECT DISTINCT area FROM colaboradores WHERE area IS NOT NULL AND eliminado_en IS NULL ORDER BY area")
+                return [r[0] for r in cur.fetchall()]
+        finally:
+            conn.close()
+
+    @staticmethod
+    def get_cargos_unicos() -> list:
+        """Cargos únicos para filtro"""
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("SELECT DISTINCT cargo FROM colaboradores WHERE cargo IS NOT NULL AND eliminado_en IS NULL ORDER BY cargo")
+                return [r[0] for r in cur.fetchall()]
+        finally:
+            conn.close()
+
+
+# --- EXTENSIÓN PARSE_EMPTY PARA CAST INT ---
+def parse_empty(value, cast_int=False):
+    """Extiende base.parse_empty con opción cast_int"""
+    if value is None or str(value).strip() == '':
+        return None
+    if cast_int:
+        try:
+            return int(value)
+        except (ValueError, TypeError):
+            return None
+    return value
