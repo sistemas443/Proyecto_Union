@@ -32,11 +32,35 @@
     flex: 1 1 auto;
     padding: 10px;
   }
+
+  /* Sidebar compacto SOLO en vistas de gráficos */
+  .sidebar-rapido { width: 40px !important; }
+  .sidebar-rapido:hover { width: 170px !important; }
+  .sidebar-rapido i { font-size: 1.25rem !important; min-width: 20px !important; }
+  .sidebar-rapido span { font-size: 0.7rem !important; margin-left: 8px !important; white-space: nowrap !important; }
+  .sidebar-rapido a { padding: 8px 10px !important; }
+  .sidebar-rapido { top: 47px !important; max-height: calc(100vh - 47px) !important; }
+  body.sidebar-activa main.container-fluid { padding-left: 55px !important; }
+  @media (max-width: 991.98px) {
+    .sidebar-rapido.expandido-tactil { width: 170px !important; }
+    .sidebar-rapido.expandido-tactil span { opacity: 1 !important; }
+  }
+
+  /* Franja de fotos del lote (siempre visible, no colapsable) */
+  .franja-lote { flex-shrink: 0; }
+  .foto-lote { width: 40px; height: 40px; object-fit: cover; border-radius: 50%; border: 2px solid #dee2e6; }
+  .etiqueta-lote { font-size: 0.65rem; color: #6c757d; text-transform: uppercase; }
+  .nombre-lote { font-size: 0.85rem; font-weight: 700; }
+  @media (max-width: 767.98px) {
+    .texto-lote { display: none; }
+    .franja-lote { gap: 1rem !important; }
+    .card-filtro h5 { font-size: 0.9rem; }
+  }
 </style>
 
 <div class="container-fluid px-4 py-3 h-100 d-flex flex-column">
     <!-- Encabezado y Filtro Unificado con estilo corporativo -->
-    <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 px-3 py-2 rounded shadow-sm card-filtro" style="background-color: #212529;">
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-1 px-3 py-1 rounded shadow-sm card-filtro" style="background-color: #212529;">
       
       <!-- Título a la izquierda -->
       <h5 class="mb-0 fw-bold text-uppercase text-white" style="letter-spacing: 0.5px;">
@@ -45,7 +69,7 @@
 
       <!-- Filtro centrado -->
       <div class="mx-auto">
-        <form method="POST" action="{{ url_for('semanal.grafico_conversion') }}" class="d-flex align-items-center gap-2 m-0">
+        <form method="POST" action="{{ url_for('semanal.grafico_conversion') }}" class="d-flex flex-wrap align-items-center gap-2 m-0">
           <label for="lote" class="mb-0 fw-bold text-light text-nowrap" style="font-size: 0.9rem;">SELECCIONE UN LOTE:</label>
           <select name="lote" id="lote" class="form-select form-select-sm border-0 fw-bold shadow-none" style="width: 220px;" onchange="this.form.submit()">
             <option value="VACIO">-- Seleccione --</option>
@@ -64,6 +88,20 @@
 
     <!-- Contenedor del Gráfico -->
     {% if lote_seleccionado and lote_seleccionado != 'VACIO' %}
+    {% if info_lote %}
+    <div class="franja-lote d-flex justify-content-center gap-3 py-1 mb-1 rounded shadow-sm bg-white">
+      {% for clave in ['nutricionista', 'variedad', 'marca'] %}
+      {% set item = info_lote[clave] %}
+      <div class="tarjeta-lote d-flex align-items-center gap-2">
+        <img src="{{ item.foto }}" alt="{{ item.etiqueta }}" class="foto-lote">
+        <div class="texto-lote">
+          <div class="etiqueta-lote">{{ item.etiqueta }}</div>
+          <div class="nombre-lote">{{ item.nombre }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
         <div class="card shadow border-0 card-grafico">
             <div class="card-body d-flex flex-column p-2">
                 {% if datos_grafico and datos_grafico.semanas|length > 0 %}
@@ -95,7 +133,7 @@
         const datos = JSON.parse(datosRaw);
         
         if (datos && datos.semanas && datos.semanas.length > 0) {
-            const ejeX = datos.semanas;
+            const ejeX = (datos.semanas || []).map(x => x.toString().replace(/Sem(?:ana)?\s*\.?\s*/i, '').trim());
 
             // Variables Eje Izquierdo (y)
             const prodReal = { x: ejeX, y: datos.prod_real, name: '% Prod. Real', type: 'scatter', mode: 'lines+markers', line: {color: 'blue', width: 3}, marker: {color: 'red', size: 4}, yaxis: 'y', connectgaps: true };
@@ -105,25 +143,27 @@
             
             // Variables Eje Derecho (y2)
             const haaReal = { x: ejeX, y: datos.haa_real, name: 'H.A.A. Real', type: 'scatter', mode: 'lines', line: {color: 'lime', width: 2}, yaxis: 'y2', connectgaps: true };
-            const haaTab = { x: ejeX, y: datos.haa_tabla, name: 'H.A.A. TAB', type: 'scatter', mode: 'lines', line: {color: '#ffb6c1', width: 2}, yaxis: 'y2', connectgaps: true };
+            const haaTab = { x: ejeX, y: datos.haa_tabla, name: 'H.A.A. Tab', type: 'scatter', mode: 'lines', line: {color: '#ffb6c1', width: 2}, yaxis: 'y2', connectgaps: true };
 
             // Variables Tercer Eje (y3) - Exclusivo Conversión
             const convAcum = { x: ejeX, y: datos.conv_acum_real, name: 'Conv. Acum.', type: 'scatter', mode: 'lines', line: {color: 'maroon', width: 3}, yaxis: 'y3', connectgaps: true };
-            const convTab = { x: ejeX, y: datos.conv_acum_tabla, name: 'CONVERSION TAB', type: 'scatter', mode: 'lines', line: {color: '#d2b48c', width: 3}, yaxis: 'y3', connectgaps: true };
+            const convTab = { x: ejeX, y: datos.conv_acum_tabla, name: 'Conv. Tab', type: 'scatter', mode: 'lines', line: {color: '#d2b48c', width: 3}, yaxis: 'y3', connectgaps: true };
 
             const trazos = [prodReal, prodTabla, mortAcum, haaReal, haaTab, convAcum, mortTab, convTab];
 
+            const isMobile = window.innerWidth < 768;
             const layout = {
-                title: { text: '<b>Gráfico de Producción Hy Line Brown</b>', font: {size: 20} },
+                title: { text: '<b>Gráfico de Producción Hy Line Brown</b>', font: {size: isMobile ? 14 : 20} },
                 hovermode: 'x unified',
+                hoverlabel: { bgcolor: '#F5F5F0', bordercolor: '#999999', font: { size: 11, color: '#333333', family: 'Arial' } },
                 plot_bgcolor: '#ffffff',
-                xaxis: { title: '<b>Semanas</b>', tickangle: -45, gridcolor: '#e9ecef' },
+                xaxis: { title: '<b>Semanas</b>', type: 'category', tickangle: -90, gridcolor: '#e9ecef', tickmode: 'linear', dtick: 1, tickfont: { size: isMobile ? 8 : 10 } },
                 
                 yaxis: { 
                     title: '<b>% de Producción</b>', 
                     range: [0, 120], 
                     dtick: 20, 
-                    titlefont: {color: 'black'}, tickfont: {color: 'black'}, gridcolor: '#e9ecef'
+                    titlefont: {color: 'black'}, tickfont: {color: 'black', size: isMobile ? 10 : 12}, gridcolor: '#e9ecef'
                 },
                 
                 yaxis2: { 
@@ -131,18 +171,20 @@
                     range: [0, 400], 
                     dtick: 40, 
                     overlaying: 'y', side: 'right', 
-                    titlefont: {color: 'black'}, tickfont: {color: 'black'}, showgrid: false 
+                    titlefont: {color: 'black'}, tickfont: {color: 'black', size: isMobile ? 10 : 12}, showgrid: false 
                 },
 
-                // Tercer eje oculto para escalar la conversión perfecto (0 a 8)
+                // Tercer eje para escalar la conversión (0 a 8), con etiquetas visibles
+                // separadas del eje de Huevos Ave Alojada mediante anclaje libre
                 yaxis3: {
-                    range: [0, 8], 
+                    range: [0, 8],
                     overlaying: 'y', side: 'right',
-                    showticklabels: false, showgrid: false, zeroline: false
+                    anchor: 'free', position: 0.97,
+                    showticklabels: true, showgrid: false, zeroline: false
                 },
                 
-                legend: { orientation: 'h', y: -0.15, x: 0.5, xanchor: 'center' },
-                margin: { l: 60, r: 80, t: 50, b: 80 }
+                legend: { orientation: 'h', y: isMobile ? -0.35 : -0.15, x: 0.5, xanchor: 'center', font: { size: isMobile ? 9 : 11 } },
+                margin: { l: isMobile ? 35 : 60, r: isMobile ? 35 : 80, t: 50, b: isMobile ? 130 : 80 }
             };
 
             const config = {
@@ -192,6 +234,24 @@
 
             observer.observe(document.body);
         }
+    });
+    // Expansión táctil del sidebar: primer toque expande, segundo navega
+    document.addEventListener("DOMContentLoaded", function () {
+        const sb = document.querySelector('.sidebar-rapido');
+        if (!sb) return;
+        sb.addEventListener('click', function (e) {
+            if (window.innerWidth >= 992) return;
+            if (!sb.classList.contains('expandido-tactil')) {
+                e.preventDefault();
+                e.stopPropagation();
+                sb.classList.add('expandido-tactil');
+            }
+        });
+        document.addEventListener('click', function (e) {
+            if (window.innerWidth < 992 && !e.target.closest('.sidebar-rapido')) {
+                sb.classList.remove('expandido-tactil');
+            }
+        });
     });
 </script>
 {% endblock %}

@@ -7,3 +7,22 @@ __pycache__/
 # Archivos de configuración de OpenCode (no subir a producción)
 AGENTS.md
 opencode.json
+
+# Archivos temporales generados por skills de OpenCode
+.playwright-cli/
+conv-refactor-*.png
+ps-refactor-*.png
+v-desktop-*.png
+v-movil-*.png
+rb-*.png
+tooltip-*.png
+movil-*.png
+grafico-*.png
+fix-*.png
+
+# Backups manuales de templates
+*.bak
+
+# Entornos virtuales
+.venv/
+

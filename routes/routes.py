@@ -1,3 +1,4 @@
+import io
 import os
 import time
 import random
@@ -5,7 +6,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from functools import wraps
-from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash, session, current_app
+from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash, session, current_app, Response
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 from PIL import Image, ImageOps
@@ -479,6 +480,23 @@ def gestion_usuarios():
 
     return render_template('auth/usuarios.html', usuarios=usuarios, roles=roles)
 
+@bp.route('/api/usuarios/<int:id>/foto')
+def foto_usuario(id):
+    """Sirve la foto de perfil de un usuario desde la BD (BYTEA)."""
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT foto_data FROM usuarios WHERE id = %s AND activo = TRUE", (id,))
+        r = cur.fetchone()
+        if r and r[0]:
+            return Response(bytes(r[0]), mimetype='image/jpeg')
+        # Sin foto: devuelve un placeholder neutro
+        return redirect(url_for('static', filename='img/placeholder-catalogo.png'))
+    finally:
+        cur.close()
+        conn.close()
+
+
 @bp.route('/usuarios/guardar', methods=['POST'])
 @login_requerido
 @superadmin_requerido
@@ -496,15 +514,16 @@ def guardar_usuario():
     cur = conn.cursor()
 
     try:
-        foto_nombre = None
+        foto_nombre = None  # Marcador de "tiene foto" (para sesion y plantillas)
+        foto_data = None    # Bytes de la imagen (se guardan en la BD, no en disco)
 
-        # Recupera el nombre de la foto que ya tenía asignada el usuario para no perderla si solo cambia el nombre
+        # Recupera el marcador de foto existente para no perderlo si solo cambia el nombre
         if id_usuario:
             cur.execute("SELECT foto_perfil FROM usuarios WHERE id = %s", (id_usuario,))
             res_foto = cur.fetchone()
             foto_nombre = res_foto[0] if res_foto else None # Si no hay foto previa, se mantiene como None
 
-        if file_foto and file_foto.filename != '': # Si el administrador subió un archivo de imagen, se procesa y guarda en la carpeta correspondiente
+        if file_foto and file_foto.filename != '': # Si el administrador subió un archivo de imagen, se procesa y guarda en la BD
 
             # Chequeo de peso límite moviendo el cursor de lectura al final de los bytes del archivo
             file_foto.seek(0, os.SEEK_END)
@@ -516,48 +535,37 @@ def guardar_usuario():
                 flash("La imagen es demasiado pesada. El tamaño máximo permitido es de 5 MB.", "error")
                 return redirect(url_for('main.gestion_usuarios'))
 
-            # Direccionamiento relativo a la carpeta 'static'
-            folder_path = os.path.join(current_app.root_path, 'static', 'uploads', 'usuarios')
-            os.makedirs(folder_path, exist_ok=True)
-
-            # NUEVO: ELIMINACIÓN DE LA FOTO ANTERIOR (AHORRO DE ESPACIO)
-            if foto_nombre:
-                ruta_foto_vieja = os.path.join(folder_path, foto_nombre)
-                # Verificamos si el archivo viejo realmente existe en el disco duro
-                if os.path.exists(ruta_foto_vieja):
-                    try:
-                        os.remove(ruta_foto_vieja) # Lo eliminamos físicamente
-                    except Exception as e:
-                        print(f"[ADVERTENCIA] No se pudo borrar la foto vieja: {e}")
-
-            # Construye un nombre unívoco asegurando la limpieza de caracteres prohibidos en el sistema operativo
-            nombre_seguro = secure_filename(file_foto.filename)
-            filename = f"user_{username}_{nombre_seguro.split('.')[0]}.jpg"
-            filepath = os.path.join(folder_path, filename)
-
-            # Redimensionado geométrico obligatorio: Fija aspecto de 300x300, parcha fondos transparentes de PNG y comprime al 85%
-            img = Image.open(file_foto)
-            if img.mode in ("RGBA", "P"):
-                img = img.convert("RGB")
-
-            img_cuadrada = ImageOps.fit(img, (300, 300), Image.Resampling.LANCZOS)
-            img_cuadrada.save(filepath, format='JPEG', optimize=True, quality=85)
-
-            foto_nombre = filename
+            # Procesa la imagen a JPEG 300x300 y la guarda en memoria (BYTEA)
+            try:
+                img = Image.open(file_foto)
+                if img.mode in ("RGBA", "P"):
+                    img = img.convert("RGB")
+                img_cuadrada = ImageOps.fit(img, (300, 300), Image.Resampling.LANCZOS)
+                buffer = io.BytesIO()
+                img_cuadrada.save(buffer, format='JPEG', optimize=True, quality=85)
+                foto_data = buffer.getvalue()
+                foto_nombre = '1'  # marcador de que el usuario tiene foto
+            except Exception as e:
+                print(f"[ERROR PROCESANDO FOTO USUARIO]: {e}")
+                flash("El archivo no es una imagen válida.", "error")
+                return redirect(url_for('main.gestion_usuarios'))
 
         # Lógica dividida: Actualizar vs Insertar (Update / Insert)
         if id_usuario:
             if password:
                 hash_pass = generate_password_hash(password)
                 cur.execute("""
-                    UPDATE usuarios SET nombre_completo = %s, username = %s, rol_id = %s, password_hash = %s, foto_perfil = %s, correo = %s
+                    UPDATE usuarios SET nombre_completo = %s, username = %s, rol_id = %s,
+                           password_hash = %s, foto_perfil = %s,
+                           foto_data = COALESCE(%s, foto_data), correo = %s
                     WHERE id = %s
-                """, (nombre_completo, username, rol_id, hash_pass, foto_nombre, correo, id_usuario))
+                """, (nombre_completo, username, rol_id, hash_pass, foto_nombre, foto_data, correo, id_usuario))
             else:
                 cur.execute("""
-                    UPDATE usuarios SET nombre_completo = %s, username = %s, rol_id = %s, foto_perfil = %s, correo = %s
+                    UPDATE usuarios SET nombre_completo = %s, username = %s, rol_id = %s,
+                           foto_perfil = %s, foto_data = COALESCE(%s, foto_data), correo = %s
                     WHERE id = %s
-                """, (nombre_completo, username, rol_id, foto_nombre, correo, id_usuario))
+                """, (nombre_completo, username, rol_id, foto_nombre, foto_data, correo, id_usuario))
 
             if int(id_usuario) == int(session.get('user_id')):
                 session['user_nombre'] = nombre_completo
@@ -573,9 +581,9 @@ def guardar_usuario():
 
             hash_pass = generate_password_hash(password)
             cur.execute("""
-                INSERT INTO usuarios (nombre_completo, username, password_hash, rol_id, foto_perfil, correo)
-                VALUES (%s, %s, %s, %s, %s, %s)
-            """, (nombre_completo, username, hash_pass, rol_id, foto_nombre, correo))
+                INSERT INTO usuarios (nombre_completo, username, password_hash, rol_id, foto_perfil, foto_data, correo)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """, (nombre_completo, username, hash_pass, rol_id, foto_nombre, foto_data, correo))
             flash("Usuario creado con éxito", "success")
 
         conn.commit()

@@ -193,15 +193,17 @@
                         <div class="col-md-6 mb-2">
                             <label class="form-label fw-semibold">Nutricionista (Levante)</label>
                             <div class="input-group shadow-sm">
-                                <select name="nutricionista" id="f_nutricionista" class="form-select creatable-select">
+                                <select name="nutricionista" id="f_nutricionista" class="form-select creatable-select select-con-foto">
                                     <option value="">Seleccione...</option>
-                                    {% for item in cat_nutricionistas %}
-                                    <option value="{{ item }}">{{ item }}</option>
+                                    {% for item in cat_nutr_lev %}
+                                    <option value="{{ item.nombre }}">{{ item.nombre }}</option>
                                     {% endfor %}
                                 </select>
+                                {% if user_rol == 'Superadmin' %}
                                 <button type="button" class="btn fw-bold text-white shadow-sm"
-                                    style="background-color: #97271C;" onclick="abrirModalCatalogo('nutricionista')"
+                                    style="background-color: #97271C;" onclick="abrirModalCatalogo('nutricionista_lev')"
                                     title="Nuevo Nutricionista"><i class='bx bx-plus'></i></button>
+                                {% endif %}
                             </div>
                         </div>
                     </div>
@@ -276,15 +278,20 @@
                         </div>
                         <div class="col-md-3 mb-2">
                             <label class="form-label fw-semibold">Variedad</label>
-                            <select name="variedad" id="f_variedad" class="form-select creatable-select"
-                                placeholder="Seleccione o escriba...">
-                                <option value="">Seleccione o escriba...</option>
-                                <option value="HY LINE BROWN">HY LINE BROWN</option>
-                                <option value="LOHMANN BROWN">LOHMANN BROWN</option>
-                                {% for item in opciones.variedad %}
-                                <option value="{{ item }}">{{ item }}</option>
-                                {% endfor %}
-                            </select>
+                            <div class="input-group shadow-sm">
+                                <select name="variedad" id="f_variedad" class="form-select creatable-select select-con-foto"
+                                    placeholder="Seleccione o escriba...">
+                                    <option value="">Seleccione o escriba...</option>
+                                    {% for item in cat_variedades %}
+                                    <option value="{{ item.nombre }}">{{ item.nombre }}</option>
+                                    {% endfor %}
+                                </select>
+                                {% if user_rol == 'Superadmin' %}
+                                <button type="button" class="btn fw-bold text-white shadow-sm"
+                                    style="background-color: #97271C;" onclick="abrirModalCatalogo('variedad')"
+                                    title="Nueva Variedad"><i class='bx bx-plus'></i></button>
+                                {% endif %}
+                            </div>
                         </div>
                     </div>
                     <div class="row mb-4">
@@ -316,15 +323,17 @@
                             <label class="form-label fw-semibold">Nutricionista (Producción)</label>
                             <div class="input-group shadow-sm">
                                 <select name="nutricionista_prod" id="f_nutricionista_prod"
-                                    class="form-select creatable-select">
+                                    class="form-select creatable-select select-con-foto">
                                     <option value="">Seleccione...</option>
-                                    {% for item in cat_nutricionistas %}
-                                    <option value="{{ item }}">{{ item }}</option>
+                                    {% for item in cat_nutr_prod %}
+                                    <option value="{{ item.nombre }}">{{ item.nombre }}</option>
                                     {% endfor %}
                                 </select>
+                                {% if user_rol == 'Superadmin' %}
                                 <button type="button" class="btn fw-bold text-white shadow-sm"
-                                    style="background-color: #97271C;" onclick="abrirModalCatalogo('nutricionista')"
+                                    style="background-color: #97271C;" onclick="abrirModalCatalogo('nutricionista_prod')"
                                     title="Nuevo Nutricionista"><i class='bx bx-plus'></i></button>
+                                {% endif %}
                             </div>
                         </div>
 
@@ -365,15 +374,20 @@
                         </div>
                         <div class="col-md-3 mb-2">
                             <label class="form-label fw-semibold">Marca Galpón</label>
-                            <select name="marca_galpon" id="f_marca_galpon" class="form-select creatable-select"
-                                placeholder="Seleccione o escriba...">
-                                <option value="">Seleccione o escriba...</option>
-                                <option value="BIG DUTCHMAN">BIG DUTCHMAN</option>
-                                <option value="FACCO">FACCO</option>
-                                {% for item in opciones.marca_galpon %}
-                                <option value="{{ item }}">{{ item }}</option>
-                                {% endfor %}
-                            </select>
+                            <div class="input-group shadow-sm">
+                                <select name="marca_galpon" id="f_marca_galpon" class="form-select creatable-select select-con-foto"
+                                    placeholder="Seleccione o escriba...">
+                                    <option value="">Seleccione o escriba...</option>
+                                    {% for item in cat_marcas %}
+                                    <option value="{{ item.nombre }}">{{ item.nombre }}</option>
+                                    {% endfor %}
+                                </select>
+                                {% if user_rol == 'Superadmin' %}
+                                <button type="button" class="btn fw-bold text-white shadow-sm"
+                                    style="background-color: #97271C;" onclick="abrirModalCatalogo('marca_galpon')"
+                                    title="Nueva Marca Galpón"><i class='bx bx-plus'></i></button>
+                                {% endif %}
+                            </div>
                         </div>
                         <div class="col-md-3 mb-2">
                             <label class="form-label fw-semibold">Unidad Kilo (Kg)</label>
@@ -393,27 +407,79 @@
     </div>
 </div>
 
-<!-- MODAL: Creación rápida de personal -->
+<style>
+  #modalCatalogo .modal-header { align-items: center; }
+  #modalCatalogo .modal-title { margin-bottom: 0; min-width: 0; }
+  #modalCatalogo .modal-header .btn-close { margin-left: auto; }
+</style>
+<!-- MODAL: Creación/edición de catálogos con foto -->
 <div class="modal fade" id="modalCatalogo" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
-    <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-dialog modal-dialog-centered modal-sm modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header text-white border-0" style="background-color: #343a40;">
                 <h5 class="modal-title fw-bold" id="tituloModalCatalogo"><i class='bx bx-user-plus me-2'></i>Nuevo</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close btn-close-white flex-shrink-0 ms-7" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4 bg-light">
                 <input type="hidden" id="tipo_catalogo">
-                <div class="mb-4">
-                    <label class="form-label fw-bold text-secondary">Nombre Completo</label>
-                    <input type="text" class="form-control shadow-sm text-uppercase" id="nuevo_nombre_catalogo"
-                        placeholder="Ej: JUAN PEREZ" required>
+                <input type="hidden" id="catalogo_id">
+
+                <div class="mb-3" id="bloque_nombre">
+                    <label class="form-label fw-bold text-secondary" id="label_nombre_catalogo">Nombre Completo</label>
+                    <input type="text" class="form-control shadow-sm text-uppercase" id="nuevo_nombre_catalogo">
                 </div>
+
+                <!-- FOTO (solo catálogos con foto; se oculta para Responsable) -->
+                <div class="mb-3" id="bloque_foto" style="display: none;">
+                    <label class="form-label fw-bold text-secondary mb-1">Foto <span class="text-danger">*</span></label>
+                    <input type="file" class="form-control form-control-sm"
+                        id="foto_catalogo" accept="image/png,image/jpeg,image/webp">
+                    <div class="text-center mt-2">
+                        <img id="preview_foto" src="{{ url_for('static', filename='img/placeholder-catalogo.png') }}"
+                            alt="Vista previa"
+                            class="rounded-circle border" style="width: 80px; height: 80px; object-fit: cover;">
+                    </div>
+                </div>
+
                 <button type="button" class="btn w-100 fw-bold text-white shadow-sm" style="background-color: #97271C;"
-                    onclick="guardarCatalogoNuevo()">Guardar y Seleccionar</button>
+                    id="btnGuardarCatalogo" onclick="guardarCatalogo()">Guardar y Seleccionar</button>
+
+                <!-- CONFIRMACIÓN DE ELIMINACIÓN (formal, dentro del modal) -->
+                <div id="bloque_confirmar" style="display: none;">
+                    <div class="text-center mb-2">
+                        <i class='bx bx-trash' style="font-size: 2.5rem; color: #97271C;"></i>
+                    </div>
+                    <h6 class="fw-bold text-center mb-2">¿Eliminar este valor?</h6>
+                    <div class="d-flex align-items-center justify-content-center gap-2 mb-2">
+                        <img id="confirmar_foto" src="" alt=""
+                            class="rounded-circle border" style="width: 40px; height: 40px; object-fit: cover;">
+                        <span id="confirmar_nombre" class="fw-bold"></span>
+                    </div>
+                    <p class="text-muted small text-center mb-3" id="texto_eliminar_catalogo">
+                        El valor dejará de estar disponible para nuevos lotes.<br>
+                        Los lotes ya guardados conservarán este nombre.
+                    </p>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-secondary flex-fill" onclick="cancelarBorrado()">Cancelar</button>
+                        <button type="button" class="btn flex-fill fw-bold text-white" style="background-color: #97271C;" onclick="confirmarBorrado()">Sí, eliminar</button>
+                    </div>
+                </div>
+
+                <!-- LISTA DE VALORES EXISTENTES (editar/eliminar) -->
+                <div class="mt-3" id="bloque_lista" style="display: none;">
+                    <label class="form-label fw-bold text-secondary small mb-1">Valores existentes</label>
+                    <div id="lista_catalogo" class="small" style="max-height: 220px; overflow-y: auto;"></div>
+                </div>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+    // Mapa de fotos por select: { id_select: { nombre: url_foto } }
+    window.FOTOS_CATALOGO = {{ fotos_catalogo | tojson }};
+    window.FOTO_PLACEHOLDER = "{{ url_for('static', filename='img/placeholder-catalogo.png') }}";
+</script>
 
 <script>
     // --- SISTEMA INTELIGENTE DE ALTURA PERFECTA PARA LA TABLA DE LOTES ---
@@ -600,45 +666,309 @@
         });
     });
 
+    // ==================== CATÁLOGOS CON FOTO (SOLO SUPERADMIN) ====================
     let modalCatalogoUI;
+    let nombreOriginal = '';   // Para renombrar la opción en los selects al editar
+    let borradoPendiente = null; // {tipo, id} del valor a eliminar (confirmación formal)
+    let tituloAnterior = '';   // Título del modal antes de mostrar la confirmación
+
+    const TIPOS_CON_FOTO = ['nutricionista_lev', 'nutricionista_prod', 'variedad', 'marca_galpon'];
+    const SELECTS_POR_TIPO = {
+        nutricionista_lev:  ['f_nutricionista'],
+        nutricionista_prod: ['f_nutricionista_prod'],
+        variedad:           ['f_variedad'],
+        marca_galpon:       ['f_marca_galpon'],
+        responsable:        ['f_responsable']
+    };
+    // Base de la API: /api/catalogos/
+    const API_CAT = "{{ url_for('catalogos.listar_catalogo', tipo='TIPO') }}".replace('TIPO', '');
+
+    function botonGuardarOcupado(ocupado, texto) {
+        const btn = document.getElementById('btnGuardarCatalogo');
+        if (ocupado) {
+            btn.dataset.texto = btn.textContent;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>' + texto;
+        } else {
+            btn.disabled = false;
+            btn.textContent = btn.dataset.texto || 'Guardar y Seleccionar';
+        }
+    }
+
+    function mostrarToastCatalogo(msg, ok) {
+        const el = document.getElementById('toastCatalogo');
+        el.classList.remove('bg-success', 'bg-danger');
+        el.classList.add(ok ? 'bg-success' : 'bg-danger');
+        document.getElementById('toastCatalogoMsg').textContent = msg;
+        bootstrap.Toast.getOrCreateInstance(el).show();
+    }
 
     document.addEventListener("DOMContentLoaded", function () {
         modalCatalogoUI = new bootstrap.Modal(document.getElementById('modalCatalogo'));
+
+        // Vista previa de la foto al elegir el archivo
+        document.getElementById('foto_catalogo').addEventListener('change', function () {
+            if (this.files[0]) {
+                document.getElementById('preview_foto').src = URL.createObjectURL(this.files[0]);
+            }
+        });
     });
 
     function abrirModalCatalogo(tipo) {
+        const conFoto = TIPOS_CON_FOTO.includes(tipo);
         document.getElementById('tipo_catalogo').value = tipo;
+        document.getElementById('catalogo_id').value = '';
         document.getElementById('nuevo_nombre_catalogo').value = '';
-        document.getElementById('tituloModalCatalogo').innerHTML = tipo === 'nutricionista' ? "<i class='bx bx-plus me-2'></i>Nuevo Nutricionista" : "<i class='bx bx-plus me-2'></i>Nuevo Responsable";
+        document.getElementById('foto_catalogo').value = '';
+        document.getElementById('preview_foto').src = window.FOTO_PLACEHOLDER;
+        document.getElementById('btnGuardarCatalogo').textContent = 'Guardar y Seleccionar';
+        document.getElementById('bloque_foto').style.display = conFoto ? 'block' : 'none';
+        document.getElementById('bloque_lista').style.display = conFoto ? 'block' : 'none';
+        document.getElementById('bloque_confirmar').style.display = 'none';
+        document.getElementById('bloque_nombre').style.display = 'block';
+        document.getElementById('btnGuardarCatalogo').style.display = 'block';
+        borradoPendiente = null;
+        nombreOriginal = '';
+
+        const titulos = {
+            responsable: 'Nuevo Responsable',
+            nutricionista_lev: 'Nuevo Nutricionista (Levante)',
+            nutricionista_prod: 'Nuevo Nutricionista (Producción)',
+            variedad: 'Nueva Variedad',
+            marca_galpon: 'Nueva Marca Galpón'
+        };
+        document.getElementById('tituloModalCatalogo').innerHTML =
+            "<i class='bx bx-plus me-2'></i>" + (titulos[tipo] || 'Nuevo');
+        document.getElementById('label_nombre_catalogo').textContent =
+            etiquetasNombre[tipo] || 'Nombre';
+
+        if (conFoto) cargarListaCatalogo(tipo);
         modalCatalogoUI.show();
     }
 
-    function guardarCatalogoNuevo() {
+    function guardarCatalogo() {
         const tipo = document.getElementById('tipo_catalogo').value;
-        const nombre = document.getElementById('nuevo_nombre_catalogo').value.trim();
+        if (TIPOS_CON_FOTO.includes(tipo)) guardarCatalogoConFoto();
+        else guardarCatalogoResponsable();   // Ruta JSON original intacta
+    }
 
+    // ---- RESPONSABLE: comportamiento original sin cambios ----
+    function guardarCatalogoResponsable() {
+        const nombre = document.getElementById('nuevo_nombre_catalogo').value.trim();
         if (!nombre) { alert("El nombre es obligatorio."); return; }
 
+        botonGuardarOcupado(true, 'Guardando...');
         fetch("{{ url_for('lotes.crear_catalogo') }}", {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tipo: tipo, nombre: nombre })
+            body: JSON.stringify({ tipo: 'responsable', nombre: nombre })
         })
             .then(res => res.json())
             .then(data => {
+                botonGuardarOcupado(false);
                 if (data.status === 'ok') {
-                    if (tipo === 'nutricionista') {
-                        actualizarSelect('f_nutricionista', data.nombre);
-                        actualizarSelect('f_nutricionista_prod', data.nombre);
-                    } else {
-                        actualizarSelect('f_responsable', data.nombre);
-                    }
+                    actualizarSelect('f_responsable', data.nombre);
                     modalCatalogoUI.hide();
-                    alert("¡Guardado exitosamente!");
+                    mostrarToastCatalogo(data.msg || 'Guardado exitosamente.', true);
+                } else { mostrarToastCatalogo(data.msg, false); }
+            }).catch(() => { botonGuardarOcupado(false); mostrarToastCatalogo('Error de conexión.', false); });
+    }
+
+    // ---- CATÁLOGOS CON FOTO: crear / editar (FormData + archivo) ----
+    function guardarCatalogoConFoto() {
+        const tipo   = document.getElementById('tipo_catalogo').value;
+        const id     = document.getElementById('catalogo_id').value;
+        const nombre = document.getElementById('nuevo_nombre_catalogo').value.trim().toUpperCase();
+        const foto   = document.getElementById('foto_catalogo').files[0];
+
+        if (!nombre) { alert("El nombre es obligatorio."); return; }
+        if (!id && !foto) { alert("La foto es obligatoria."); return; }
+
+        const fd = new FormData();
+        fd.append('nombre', nombre);
+        if (foto) fd.append('foto', foto);
+
+        const url = id ? API_CAT + tipo + '/' + id + '/editar'
+                       : API_CAT + tipo + '/crear';
+
+        botonGuardarOcupado(true, id ? 'Actualizando...' : 'Guardando...');
+        fetch(url, { method: 'POST', body: fd })
+            .then(res => res.json())
+            .then(data => {
+                botonGuardarOcupado(false);
+                if (data.status !== 'ok') { mostrarToastCatalogo(data.msg, false); return; }
+
+                if (id) {
+                    SELECTS_POR_TIPO[tipo].forEach(sel => renombrarEnSelect(sel, nombreOriginal, data.nombre, data.foto_url));
                 } else {
-                    alert("Atención: " + data.msg);
+                    SELECTS_POR_TIPO[tipo].forEach(sel => agregarOpcionConFoto(sel, data.nombre, data.foto_url));
                 }
-            }).catch(err => { console.error(err); alert("Error de conexión."); });
+                cargarListaCatalogo(tipo);
+                modalCatalogoUI.hide();
+                mostrarToastCatalogo(data.msg, true);
+            }).catch(() => { botonGuardarOcupado(false); mostrarToastCatalogo('Error de conexión.', false); });
+    }
+
+    function agregarOpcionConFoto(idSelect, nombre, fotoUrl) {
+        window.FOTOS_CATALOGO[idSelect] = window.FOTOS_CATALOGO[idSelect] || {};
+        window.FOTOS_CATALOGO[idSelect][nombre] = fotoUrl;
+        actualizarSelect(idSelect, nombre);
+        const sel = document.getElementById(idSelect);
+        if (sel && sel.tomselect) sel.tomselect.refreshOptions();
+    }
+
+    function renombrarEnSelect(idSelect, viejo, nuevo, fotoUrl) {
+        const sel = document.getElementById(idSelect);
+        if (!sel) return;
+        if (sel.tomselect) {
+            sel.tomselect.removeOption(viejo);
+            sel.tomselect.addOption({ value: nuevo, text: nuevo });
+            if (sel.value === viejo) sel.tomselect.setValue(nuevo);
+        } else {
+            const opcion = Array.from(sel.options).find(o => o.value === viejo);
+            if (opcion) { opcion.value = nuevo; opcion.textContent = nuevo; }
+        }
+        if (window.FOTOS_CATALOGO[idSelect]) {
+            delete window.FOTOS_CATALOGO[idSelect][viejo];
+            window.FOTOS_CATALOGO[idSelect][nuevo] = fotoUrl;
+        }
+    }
+
+    function eliminarDeSelect(idSelect, nombre) {
+        const sel = document.getElementById(idSelect);
+        if (sel && sel.tomselect) sel.tomselect.removeOption(nombre);
+        else if (sel) {
+            const opcion = Array.from(sel.options).find(o => o.value === nombre);
+            if (opcion) sel.remove(opcion.index);
+        }
+        if (window.FOTOS_CATALOGO[idSelect]) delete window.FOTOS_CATALOGO[idSelect][nombre];
+    }
+
+    // ---- Lista existente (miniatura + editar/eliminar) ----
+    function cargarListaCatalogo(tipo) {
+        const cont = document.getElementById('lista_catalogo');
+        cont.innerHTML = '<div class="text-center text-muted py-2">Cargando...</div>';
+
+        fetch(API_CAT + tipo)
+            .then(res => res.json())
+            .then(data => {
+                cont.innerHTML = '';
+                if (data.status !== 'ok' || !data.items.length) {
+                    cont.innerHTML = '<div class="text-muted">Aún no hay valores.</div>';
+                    return;
+                }
+                data.items.forEach(it => {
+                    const fila = document.createElement('div');
+                    fila.className = 'd-flex align-items-center gap-2 border rounded p-1 mb-1 bg-white';
+
+                    const img = document.createElement('img');
+                    img.src = it.foto_url;
+                    img.style.cssText = 'width:30px;height:30px;object-fit:cover;border-radius:50%;';
+
+                    const span = document.createElement('span');
+                    span.className = 'flex-grow-1';
+                    span.textContent = it.nombre;
+
+                    const btnEdit = document.createElement('button');
+                    btnEdit.type = 'button';
+                    btnEdit.className = 'btn btn-sm btn-outline-primary';
+                    btnEdit.innerHTML = "<i class='bx bx-edit'></i>";
+                    btnEdit.onclick = () => editarCatalogo(tipo, it.id, it.nombre, it.foto_url);
+
+                    const btnDel = document.createElement('button');
+                    btnDel.type = 'button';
+                    btnDel.className = 'btn btn-sm btn-outline-danger';
+                    btnDel.innerHTML = "<i class='bx bx-trash'></i>";
+                    btnDel.onclick = () => borrarCatalogo(tipo, it.id, it.nombre, it.foto_url);
+
+                    fila.append(img, span, btnEdit, btnDel);
+                    cont.appendChild(fila);
+                });
+            })
+            .catch(() => { cont.innerHTML = '<div class="text-danger">Error al cargar.</div>'; });
+    }
+
+    const etiquetasCortas = {
+        nutricionista_lev: 'Nutricionista (Lev.)',
+        nutricionista_prod: 'Nutricionista (Prod.)',
+        variedad: 'Variedad',
+        marca_galpon: 'Marca Galpón'
+    };
+
+    const etiquetasNombre = {
+        responsable: 'Nombre Completo',
+        nutricionista_lev: 'Nombre Completo',
+        nutricionista_prod: 'Nombre Completo',
+        variedad: 'Nombre de la Variedad',
+        marca_galpon: 'Nombre de la Marca'
+    };
+
+    const sujetosEliminar = {
+        responsable: 'El responsable',
+        nutricionista_lev: 'El nutricionista',
+        nutricionista_prod: 'El nutricionista',
+        variedad: 'La variedad',
+        marca_galpon: 'La marca'
+    };
+
+    function editarCatalogo(tipo, id, nombre, fotoUrl) {
+        nombreOriginal = nombre;
+        document.getElementById('tipo_catalogo').value = tipo;
+        document.getElementById('catalogo_id').value = id;
+        document.getElementById('nuevo_nombre_catalogo').value = nombre;
+        document.getElementById('preview_foto').src = fotoUrl;
+        document.getElementById('foto_catalogo').value = '';
+        document.getElementById('btnGuardarCatalogo').textContent = 'Guardar Cambios';
+        document.getElementById('bloque_foto').style.display = 'block';
+        document.getElementById('tituloModalCatalogo').innerHTML =
+            "<i class='bx bx-edit me-2'></i>Editar " + (etiquetasCortas[tipo] || 'valor');
+        document.getElementById('label_nombre_catalogo').textContent =
+            etiquetasNombre[tipo] || 'Nombre';
+    }
+
+    function borrarCatalogo(tipo, id, nombre, fotoUrl) {
+        // Confirmación formal dentro del modal (sin ventanas del navegador)
+        borradoPendiente = { tipo: tipo, id: id };
+        tituloAnterior = document.getElementById('tituloModalCatalogo').innerHTML;
+        document.getElementById('confirmar_nombre').textContent = nombre;
+        document.getElementById('confirmar_foto').src = fotoUrl || window.FOTO_PLACEHOLDER;
+        const sujeto = sujetosEliminar[tipo] || 'El valor';
+        document.getElementById('texto_eliminar_catalogo').innerHTML =
+            sujeto + ' dejará de estar disponible para nuevos lotes.<br>' +
+            'Los lotes ya guardados conservarán este nombre.';
+        document.getElementById('bloque_nombre').style.display = 'none';
+        document.getElementById('bloque_foto').style.display = 'none';
+        document.getElementById('btnGuardarCatalogo').style.display = 'none';
+        document.getElementById('bloque_lista').style.display = 'none';
+        document.getElementById('bloque_confirmar').style.display = 'block';
+        document.getElementById('tituloModalCatalogo').innerHTML =
+            "<i class='bx bx-trash me-2'></i>Eliminar valor";
+    }
+
+    function cancelarBorrado() {
+        borradoPendiente = null;
+        const tipo = document.getElementById('tipo_catalogo').value;
+        const conFoto = TIPOS_CON_FOTO.includes(tipo);
+        document.getElementById('bloque_confirmar').style.display = 'none';
+        document.getElementById('bloque_nombre').style.display = 'block';
+        document.getElementById('bloque_foto').style.display = conFoto ? 'block' : 'none';
+        document.getElementById('btnGuardarCatalogo').style.display = 'block';
+        document.getElementById('bloque_lista').style.display = conFoto ? 'block' : 'none';
+        document.getElementById('tituloModalCatalogo').innerHTML = tituloAnterior;
+    }
+
+    function confirmarBorrado() {
+        if (!borradoPendiente) return;
+        const tipo = borradoPendiente.tipo;
+        const id = borradoPendiente.id;
+
+        fetch(API_CAT + tipo + '/' + id + '/borrar', { method: 'POST' })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status !== 'ok') { alert("Atención: " + data.msg); return; }
+                SELECTS_POR_TIPO[tipo].forEach(sel => eliminarDeSelect(sel, data.nombre));
+                abrirModalCatalogo(tipo);  // Vuelve a la vista normal con la lista actualizada
+            }).catch(() => alert("Error de conexión."));
     }
 
     function actualizarSelect(idSelect, nuevoValor) {
@@ -653,4 +983,15 @@
         if (typeof $ !== 'undefined' && $(select).hasClass('creatable-select')) $(select).val(nuevoValor).trigger('change');
     }
 </script>
+
+<!-- TOASTS DE CATÁLOGOS (inferior derecha, 3 s) -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1080;">
+    <div id="toastCatalogo" class="toast align-items-center text-white border-0" role="alert"
+        data-bs-autohide="true" data-bs-delay="3000">
+        <div class="d-flex">
+            <div class="toast-body fw-semibold" id="toastCatalogoMsg"></div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    </div>
+</div>
 {% endblock %}

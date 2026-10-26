@@ -148,54 +148,35 @@
   }
 </style>
 
-<!-- BARRA SUPERIOR OSCURA: TÍTULO Y FILTRO -->
-<div class="d-flex flex-wrap align-items-center justify-content-between mb-3 px-3 py-2 rounded shadow-sm"
-  style="background-color: #212529;">
-
-  <!-- Título a la izquierda en texto blanco -->
-  <h5 class="mb-0 fw-bold text-uppercase text-white" style="letter-spacing: 0.5px;">
-    INFORME SEMANAL DE PRODUCCIÓN
-  </h5>
-
-  <!-- Filtro centrado -->
-  <div class="mx-auto">
-    <form method="POST" class="d-flex align-items-center gap-2 m-0">
-      <label for="lote" class="mb-0 fw-bold text-light text-nowrap" style="font-size: 0.9rem;">SELECCIONE UN
-        LOTE:</label>
-      <select name="lote" id="lote" class="form-select form-select-sm border-0 fw-bold shadow-none"
-        style="width: 220px;">
-        <option value="">-- Seleccione --</option>
-        {% for l in lotes %}
-        <option value="{{ l }}" {% if lote_seleccionado==l %}selected{% endif %}>LOTE {{ l }}</option>
-        {% endfor %}
-      </select>
-      <button type="submit" class="btn btn-naranja btn-sm fw-bold px-3 border-0">Cargar Datos</button>
-    </form>
+<!-- BARRA SUPERIOR UNIFICADA: TÍTULO + FILTRO + LOTE (COLAPSABLE) -->
+<div class="card mb-3 shadow-sm border-0" style="background-color: #212529;">
+  <div class="d-flex flex-wrap align-items-center justify-content-between px-3 py-2 gap-2">
+    <div class="d-flex flex-wrap align-items-center gap-3">
+      <h5 class="mb-0 fw-bold text-uppercase text-white" style="letter-spacing: 0.5px;">
+        INFORME SEMANAL DE PRODUCCIÓN
+      </h5>
+      <form method="POST" class="d-flex flex-wrap align-items-center gap-2 m-0">
+        <label for="lote" class="mb-0 fw-bold text-light text-nowrap" style="font-size: 0.9rem;">SELECCIONE UN LOTE:</label>
+        <select name="lote" id="lote" class="form-select form-select-sm border-0 fw-bold shadow-none"
+          style="width: 220px;">
+          <option value="">-- Seleccione --</option>
+          {% for l in lotes %}
+          <option value="{{ l }}" {% if lote_seleccionado==l %}selected{% endif %}>LOTE {{ l }}</option>
+          {% endfor %}
+        </select>
+        <button type="submit" class="btn btn-naranja btn-sm fw-bold px-3 border-0">Cargar Datos</button>
+      </form>
+    </div>
+    {% if lote_seleccionado %}
+    <div class="d-flex align-items-center gap-2">
+      <span class="badge bg-naranja fs-6">LOTE: {{ lote_seleccionado }}</span>
+      <button class="btn btn-sm btn-outline-light" type="button" data-bs-toggle="collapse" data-bs-target="#collapseInfoGeneral" aria-expanded="true" aria-controls="collapseInfoGeneral" title="Mostrar/ocultar información del lote">
+        <i class='bx bx-chevron-down fs-5 icono-colapso'></i>
+      </button>
+    </div>
+    {% endif %}
   </div>
-
-  <!-- Espaciador invisible para forzar el centro perfecto del filtro -->
-  <div style="width: 320px;" class="d-none d-lg-block"></div>
-
-</div>
-
-{% if lote_seleccionado %}
-<div class="card mb-4 shadow-sm border-0 card-info-general">
-
-  <!-- 1. ENCABEZADO CLIQUEABLE -->
-  <div class="card-header bg-dark text-white fw-bold py-2 d-flex justify-content-between align-items-center"
-    style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapseInfoGeneral" aria-expanded="true"
-    title="Clic para ocultar/mostrar">
-
-    <span>
-      <!-- La flecha giratoria reemplazó al icono de info -->
-      <i class='bx bx-chevron-down fs-5 me-1 icono-colapso'></i>
-      Información General del Lote
-    </span>
-    <span class="badge bg-naranja fs-6">LOTE: {{ lote_seleccionado }}</span>
-  </div>
-
-  <!-- 2. CONTENEDOR COLAPSABLE -->
-  <!-- Mantiene la tabla abierta por defecto con la clase 'show' -->
+  {% if lote_seleccionado %}
   <div class="collapse show" id="collapseInfoGeneral">
     <div class="card-body p-0">
       <table class="table table-bordered table-sm mb-0">

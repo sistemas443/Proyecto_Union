@@ -1,0 +1,160 @@
+{% extends 'generales/layout.html' %}
+{% block title %}Masa Huevo Acumulada – Avícola San Martín{% endblock %}
+{% block content %}
+<style>
+  .tabla-compacta th, .tabla-compacta td {
+    padding: 2px 4px;
+    font-size: 0.72rem;
+    white-space: nowrap;
+  }
+  .tabla-compacta td.num { text-align: right; }
+  .tabla-compacta thead tr:nth-child(1) th { position: sticky; top: 0; z-index: 20; }
+  .tabla-compacta thead tr:nth-child(2) th { position: sticky; top: 26px; z-index: 20; }
+  .tabla-compacta thead tr:nth-child(3) th { position: sticky; top: 52px; z-index: 20; }
+  .tabla-compacta thead th {
+    background-color: #212529;
+    color: #fff;
+  }
+  .tabla-compacta .col-semana {
+    position: sticky;
+    left: 0;
+    z-index: 10;
+    background-color: #f8f9fa;
+    min-width: 70px;
+  }
+  .tabla-compacta .col-prom {
+    position: sticky;
+    left: 70px;
+    z-index: 10;
+    background-color: #f8f9fa;
+    min-width: 90px;
+    font-weight: 700;
+  }
+  .tabla-compacta .col-tabla {
+    position: sticky;
+    left: 160px;
+    z-index: 10;
+    background-color: #f8f9fa;
+    min-width: 80px;
+    font-weight: 700;
+  }
+  .tabla-compacta thead .col-semana,
+  .tabla-compacta thead .col-prom,
+  .tabla-compacta thead .col-tabla {
+    z-index: 30;
+    background-color: #212529;
+    color: #fff;
+    font-weight: 700;
+  }
+  .tabla-compacta .col-lote { min-width: 110px; }
+  .tabla-compacta thead th.col-excluida { background-color: #6c757d !important; }
+  .tabla-compacta { width: 100%; }
+  .contenedor-matriz { overflow: auto; max-height: 80vh; }
+</style>
+<div class="container-fluid px-4 py-3 h-100 d-flex flex-column">
+  <div class="d-flex flex-wrap align-items-center mb-3 px-3 py-2 rounded shadow-sm" style="background-color: #212529;">
+    <a href="{{ url_for('consolidados.vista_consolidados') }}" class="btn btn-sm btn-outline-light fw-bold me-3">
+      <i class='bx bx-arrow-back me-1'></i>VOLVER
+    </a>
+    <h5 class="mb-0 fw-bold text-uppercase text-white" style="letter-spacing: 0.5px;">
+      <i class='bx bx-calculator me-2'></i>MASA HUEVO ACUMULADA
+    </h5>
+  </div>
+
+  <div class="contenedor-matriz shadow-sm border rounded mt-3" id="contenedorMasaAc">
+    <table class="table table-sm table-bordered mb-0 tabla-compacta" id="tablaMasaAc">
+      <thead>
+        <tr>
+          <th class="col-semana">FECHA ENC</th>
+          <th class="col-prom"></th>
+          <th class="col-tabla"></th>
+          {% for l in datos.lotes %}
+          <th class="col-lote">{{ l.fecha_enc if l.fecha_enc else '' }}</th>
+          {% endfor %}
+        </tr>
+        <tr>
+          <th class="col-semana">AVES ENC</th>
+          <th class="col-prom"></th>
+          <th class="col-tabla"></th>
+          {% for l in datos.lotes %}
+          <th class="col-lote">{{ '{:,.0f}'.format(l.aves_enc).replace(',', '.') if l.aves_enc is not none else '' }}</th>
+          {% endfor %}
+        </tr>
+        <tr>
+          <th class="col-semana">SEMANA</th>
+          <th class="col-prom">PROM</th>
+          <th class="col-tabla">TABLA</th>
+          {% for l in datos.lotes %}
+          <th class="col-lote">
+            <input type="checkbox" class="chk-incluir form-check-input me-1" data-lote="{{ l.nombre }}">
+            {{ l.nombre }}
+          </th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in datos.semanas %}
+        <tr data-semana="{{ s }}">
+          <td class="col-semana fw-bold">{{ s }}</td>
+          <td class="col-prom num" data-prom></td>
+          <td class="col-tabla num">{{ '{:,.0f}'.format(datos.tabla.get(s)).replace(',', '.') if datos.tabla.get(s) is not none else '' }}</td>
+          {% for l in datos.lotes %}
+          {% set v = datos.matriz.get(s, {}).get(l.nombre) %}
+          <td class="num" data-lote="{{ l.nombre }}" data-valor="{{ v if v is not none else '' }}">{{ '{:,.0f}'.format(v).replace(',', '.') if v is not none else '' }}</td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const tabla = document.getElementById('tablaMasaAc');
+    if (!tabla) return;
+    const fmt = (n) => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    const recalcular = () => {
+      tabla.querySelectorAll('.chk-incluir').forEach(function (chk) {
+        const th = chk.closest('th');
+        if (th) th.classList.toggle('col-excluida', !chk.checked);
+      });
+      tabla.querySelectorAll('tr[data-semana]').forEach(function (tr) {
+        let suma = 0, n = 0;
+        tr.querySelectorAll('td[data-lote]').forEach(function (td) {
+          const otro = tabla.querySelector('.chk-incluir[data-lote="' + td.dataset.lote + '"]');
+          if (otro && otro.checked) {
+            const crudo = td.dataset.valor;
+            if (crudo !== '' && crudo !== undefined) {
+              const num = parseFloat(crudo);
+              if (num > 0) { suma += num; n += 1; }
+            }
+          }
+        });
+        tr.querySelector('[data-prom]').textContent = n > 0 ? fmt(suma / n) : '';
+      });
+    };
+    tabla.querySelectorAll('.chk-incluir').forEach(function (chk) {
+      chk.addEventListener('change', recalcular);
+    });
+    recalcular();
+    const ajustarSticky = () => {
+      let acc = 0;
+      tabla.querySelectorAll('thead tr').forEach(function (tr) {
+        tr.querySelectorAll('th').forEach(function (th) { th.style.top = acc + 'px'; });
+        acc += tr.offsetHeight;
+      });
+    };
+    ajustarSticky();
+    window.addEventListener('resize', ajustarSticky);
+    const cont = document.getElementById('contenedorMasaAc');
+    if (cont && window.ResizeObserver) {
+      const ajustar = () => {
+        const rect = cont.getBoundingClientRect();
+        cont.style.height = Math.max(window.innerHeight - rect.top - 15, 300) + 'px';
+      };
+      new ResizeObserver(ajustar).observe(document.body);
+      ajustar();
+    }
+  });
+</script>
+{% endblock %}

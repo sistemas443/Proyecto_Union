@@ -644,7 +644,7 @@ def procesar_excel_semanal_levante(archivo_excel, lote_nombre, usuario_id=None, 
             return False, "No se encontró la tabla de Levante. Faltan las columnas 'Tarso' o 'Agua' junto a 'Semana'."
 
         # 4. Fusionar la fila principal y la de abajo (celdas combinadas)
-        nuevas_columnas = []
+        nuevas_columnas_base = []
         for col_idx in range(df.shape[1]):
             val1 = normalizar(df.iloc[header_idx, col_idx])
             val2 = normalizar(df.iloc[header_idx + 1, col_idx]) if (header_idx + 1) < len(df) else ''
@@ -652,7 +652,18 @@ def procesar_excel_semanal_levante(archivo_excel, lote_nombre, usuario_id=None, 
             val1 = val1 if val1 not in ['nan', 'none'] else ''
             val2 = val2 if val2 not in ['nan', 'none'] else ''
 
-            nuevas_columnas.append(f"{val1} {val2}".strip())
+            nuevas_columnas_base.append(f"{val1} {val2}".strip())
+
+        # Desduplicar: 'kilos' -> 'kilos', 'kilos__1', 'kilos__2'
+        nuevas_columnas = []
+        contador = {}
+        for col in nuevas_columnas_base:
+            if col in contador:
+                contador[col] += 1
+                nuevas_columnas.append(f"{col}__{contador[col]}")
+            else:
+                contador[col] = 0
+                nuevas_columnas.append(col)
 
         df.columns = nuevas_columnas
         df = df.iloc[header_idx + 2:].reset_index(drop=True)
@@ -695,25 +706,43 @@ def procesar_excel_semanal_levante(archivo_excel, lote_nombre, usuario_id=None, 
         if not col_semana:
             return False, "Error interno: No se ubicó la columna 'Semana' con valores del 1 al 18."
 
-        # 6. MAPEO ESTRICTO DE LA LISTA BLANCA
-        mapeo_columnas = {
-            'peso corporal': 'peso_real',
-            '10%-':          'unif_10_menos',
-            '%unif':         'unif_porc_unif',
-            '10%+':          'unif_10_mas',
-            'c.v':           'unif_cv',
-            'tarso':         't_tarso_r',
-            'agua':          'agua_real',
-            'observaciones': 'observaciones',
-            'marca/tipo':    'marca_tipo_de'
-        }
+        def buscar_columna(columnas, principal, debe_tener=(), no_tener=()):
+            """Busca columna por igualdad exacta, luego por inclusión con
+            desambiguadores. Devuelve None si no hay coincidencia."""
+            cols = [str(c) for c in columnas]
+            if principal in cols:
+                return principal
+            for c in cols:
+                if (principal in c
+                        and all(t in c for t in debe_tener)
+                        and not any(t in c for t in no_tener)):
+                    return c
+            return None
+
+        # 6. MAPEO POR NOMBRE EXACTO (orden: lo más específico primero)
+        # (principal, columna_bd, debe_tener, no_tener, por_cien)
+        reglas_mapeo = [
+            ('peso corporal tab', 'peso_tab', (), (), False),
+            ('real__1',           'peso_real', (), (), False),
+            ('t. tarso. r',       't_tarso_r', (), (), False),
+            ('med. tarsos t. tarso.t', 't_tarso', (), (), False),
+            ('%unif',             'unif_porc_unif', (), (), True),
+            ('10%-',              'unif_10_menos', (), (), False),
+            ('10%+',              'unif_10_mas', (), (), False),
+            ('c.v.',              'unif_cv', (), (), False),
+            ('agua real',         'agua_real', (), (), False),
+            ('o b s e r v a c i o n e s', 'observaciones', (), (), False),
+            ('marca - tipo',      'marca_tipo_de', (), (), False),
+        ]
 
         conn = get_db_connection()
         cur = conn.cursor()
         filas_actualizadas = 0
 
         def extraer_valor(v):
-            if pd.isna(v): return None
+            if isinstance(v, pd.Series):
+                v = v.iloc[0] if len(v) > 0 else None
+            if v is None or pd.isna(v): return None
             v_str = str(v).strip().lower()
             if v_str in ['', 'nan', '-', 'none']: return None
             return v
@@ -741,24 +770,31 @@ def procesar_excel_semanal_levante(archivo_excel, lote_nombre, usuario_id=None, 
             valores = []
             columnas_ya_procesadas = set()
 
-            for palabra_clave, col_db in mapeo_columnas.items():
+            for principal, col_db, debe, no_debe, por_cien in reglas_mapeo:
                 if col_db in columnas_ya_procesadas:
                     continue
 
-                col_encontrada = next((c for c in df.columns if palabra_clave in c), None)
-                if col_encontrada:
-                    v = extraer_valor(row[col_encontrada])
-                    if v is not None:
-                        if col_db in ['observaciones', 'marca_tipo_de']:
+                col_encontrada = buscar_columna(df.columns, principal, debe, no_debe)
+                if col_encontrada is None:
+                    print(f"[IMPORT WARNING] Columna no encontrada para "
+                          f"'{principal}' -> {col_db}")
+                    continue
+
+                v = extraer_valor(row[col_encontrada])
+                if v is not None:
+                    if col_db in ['observaciones', 'marca_tipo_de']:
+                        campos_a_actualizar.append(f'"{col_db}" = %s')
+                        valores.append(str(v))
+                        columnas_ya_procesadas.add(col_db)
+                    else:
+                        try:
+                            num = to_float_safe(v) or 0.0
+                            if por_cien and 0 < num <= 1:
+                                num = round(num * 100, 1)
                             campos_a_actualizar.append(f'"{col_db}" = %s')
-                            valores.append(str(v))
+                            valores.append(num)
                             columnas_ya_procesadas.add(col_db)
-                        else:
-                            try:
-                                campos_a_actualizar.append(f'"{col_db}" = %s')
-                                valores.append(to_float_safe(v) or 0.0)
-                                columnas_ya_procesadas.add(col_db)
-                            except: pass
+                        except: pass
 
             if campos_a_actualizar:
                 valores.extend([id_lote, num_semana])
