@@ -1,53 +1,141 @@
 {% extends 'generales/layout.html' %}
 
+{% block head %}
+{% include 'planta_alimentos/_design_system.html' %}
+<style>
+  /* ============================================================
+     COTIZACIONES · NUEVA
+     ============================================================ */
+  .form-cot {
+    max-width: 720px;
+  }
+  .form-cot .form-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--text-muted);
+    margin-bottom: 0.25rem;
+  }
+  .form-cot .form-select,
+  .form-cot .form-control {
+    font-size: 0.85rem;
+    border-color: var(--border);
+  }
+  .form-cot .form-select:focus,
+  .form-cot .form-control:focus {
+    border-color: var(--action-primary);
+    box-shadow: 0 0 0 2px rgba(44, 62, 80, 0.15);
+  }
+  .aviso-existente {
+    display: none;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin-top: var(--space-3);
+    padding: 0.6rem 0.75rem;
+    border: 1px solid #ffe08a;
+    border-radius: 0.375rem;
+    background-color: #fff9e6;
+    color: #7a5c00;
+    font-size: 0.78rem;
+    line-height: 1.35;
+  }
+  .aviso-existente.is-visible {
+    display: flex;
+  }
+  .aviso-existente i {
+    margin-top: 1px;
+  }
+  .meses-existentes {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+  .meses-existentes .badge-mes {
+    display: inline-block;
+    margin: 0 0.25rem 0.25rem 0;
+    padding: 0.12rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background-color: var(--surface-alt);
+    color: var(--text-secondary);
+    font-weight: 600;
+  }
+  .acciones-form {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-top: var(--space-4);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--border);
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="h4 fw-bold text-dark mb-0">Nueva Cotización</h1>
-        <a href="{{ url_for('planta_alimentos.cotizaciones.cotizaciones_list') }}" class="btn btn-sm btn-outline-secondary">
-            <i class="fas fa-arrow-left me-1"></i> Volver
+    <div class="page-header">
+        <div class="d-flex align-items-center gap-3">
+            <div class="page-icon">
+                <i class="fas fa-file-circle-plus"></i>
+            </div>
+            <div>
+                <h2 class="page-title mb-0">Nueva Cotización</h2>
+                <p class="page-subtitle mb-0">Registro de precios por mes, proveedor y semana</p>
+            </div>
+        </div>
+        <a href="{{ url_for('planta_alimentos.cotizaciones.cotizaciones_list') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="fas fa-arrow-left me-1"></i> Volver a la lista
         </a>
     </div>
 
-    <div class="card shadow-sm">
-        <div class="card-header bg-primary text-white">
-            <h5 class="mb-0">Crear Nueva Cotización</h5>
+    <div class="card card-clean form-cot">
+        <div class="card-header">
+            <span>Periodo de la cotización</span>
         </div>
         <div class="card-body">
-            <form method="POST" class="needs-validation" novalidate>
+            <form method="POST" class="needs-validation" novalidate id="formNuevaCotizacion">
                 <div class="row g-3">
-                    <div class="col-md-4">
-                        <label for="mes" class="form-label fw-bold">Mes</label>
+                    <div class="col-sm-6 col-md-5">
+                        <label for="mes" class="form-label">Mes</label>
                         <select class="form-select form-select-sm" id="mes" name="mes" required>
-                            <option value="" disabled selected>Seleccionar mes...</option>
-                            <option value="1">Enero</option>
-                            <option value="2">Febrero</option>
-                            <option value="3">Marzo</option>
-                            <option value="4">Abril</option>
-                            <option value="5">Mayo</option>
-                            <option value="6">Junio</option>
-                            <option value="7">Julio</option>
-                            <option value="8">Agosto</option>
-                            <option value="9">Septiembre</option>
-                            <option value="10">Octubre</option>
-                            <option value="11">Noviembre</option>
-                            <option value="12">Diciembre</option>
+                            <option value="" disabled selected>Seleccionar mes…</option>
+                            {% set meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+                                            'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'] %}
+                            {% for nombre in meses %}
+                            <option value="{{ loop.index }}">{{ nombre }}</option>
+                            {% endfor %}
                         </select>
                     </div>
-                    <div class="col-md-3">
-                        <label for="anio" class="form-label fw-bold">Año</label>
+                    <div class="col-sm-6 col-md-4">
+                        <label for="anio" class="form-label">Año</label>
                         <select class="form-select form-select-sm" id="anio" name="anio" required>
-                            {% for y in range(2024, 2030) %}
-                            <option value="{{ y }}" {% if y == 2025 %}selected{% endif %}>{{ y }}</option>
+                            {% for y in range(anio_actual - 2, anio_actual + 2) %}
+                            <option value="{{ y }}" {% if y == anio_actual %}selected{% endif %}>{{ y }}</option>
                             {% endfor %}
                         </select>
                     </div>
                 </div>
-                <div class="mt-3">
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-plus me-1"></i> Crear Cotización
+
+                <div class="aviso-existente" id="avisoExistente" role="status">
+                    <i class="fas fa-circle-info"></i>
+                    <span id="avisoExistenteTexto">Ya existe una cotización para este periodo.</span>
+                </div>
+
+                {% if existentes %}
+                <div class="meses-existentes mt-3">
+                    <span class="d-block mb-1">Periodos ya registrados:</span>
+                    {% set meses_nombres = ['', 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'] %}
+                    {% for e in existentes %}
+                    <span class="badge-mes">{{ meses_nombres[e.mes] }} {{ e.anio }}</span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <div class="acciones-form">
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        <i class="fas fa-plus me-1"></i> Crear y abrir cotización
                     </button>
-                    <a href="{{ url_for('planta_alimentos.cotizaciones.cotizaciones_list') }}" class="btn btn-outline-secondary ms-2">
+                    <a href="{{ url_for('planta_alimentos.cotizaciones.cotizaciones_list') }}" class="btn btn-outline-secondary btn-sm">
                         Cancelar
                     </a>
                 </div>
@@ -55,4 +143,40 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    const existentes = {{ existentes|tojson }};
+    const meses = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+                   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    const selMes = document.getElementById('mes');
+    const selAnio = document.getElementById('anio');
+    const aviso = document.getElementById('avisoExistente');
+    const texto = document.getElementById('avisoExistenteTexto');
+
+    function revisarPeriodo() {
+        const mes = parseInt(selMes.value, 10);
+        const anio = parseInt(selAnio.value, 10);
+        if (!mes || !anio) {
+            aviso.classList.remove('is-visible');
+            return;
+        }
+        const encontrado = existentes.find(e => e.mes === mes && e.anio === anio);
+        if (encontrado) {
+            const estado = encontrado.estado === 'CERRADA' ? 'cerrada' : 'activa';
+            texto.textContent = 'Ya existe una cotización ' + estado + ' para ' +
+                meses[mes] + ' ' + anio + '. Al continuar se abrirá esa cotización y se reabrirá si estaba cerrada.';
+            aviso.classList.add('is-visible');
+        } else {
+            aviso.classList.remove('is-visible');
+        }
+    }
+
+    selMes.addEventListener('change', revisarPeriodo);
+    selAnio.addEventListener('change', revisarPeriodo);
+    revisarPeriodo();
+})();
+</script>
 {% endblock %}

@@ -1,5 +1,6 @@
 from flask import render_template, request, redirect, url_for, flash
 from datetime import datetime
+from collections import Counter
 import psycopg2.extras
 from models.base import get_db_connection
 from routes.planta_alimentos.catalogo_a import planta_bp
@@ -327,6 +328,308 @@ def resumen_inventario():
                            anio=anio, 
                            meses_nombres=meses_nombres, 
                            anios_disponibles=anios_disponibles)
+
+# Capacidad de silos por dieta (ton). Aun no existe en la base de datos:
+# se deja como punto de configuracion hasta definir su origen.
+CAPACIDAD_SILOS_POR_ITEM = {}
+
+
+@planta_bp.route('/inventario/dietas', methods=['GET'])
+@login_requerido
+def inventario_dietas():
+    """Inventario de dietas: una fila por dieta (item) y lote.
+
+    Las filas salen de las recetas registradas en el modulo Editar Receta
+    (formula_detalle). La produccion es el total fabricado por dieta y lote,
+    expresado en kilogramos (la BD lo guarda en toneladas). El inventario
+    inicial tambien se registra en kilogramos; el consumo, la venta y el
+    inventario real se manejan en toneladas y corresponden al mes elegido.
+    """
+    import calendar
+
+    mes_actual = datetime.now().month
+    anio_actual = datetime.now().year
+
+    mes = request.args.get('mes', default=mes_actual, type=int)
+    anio = request.args.get('anio', default=anio_actual, type=int)
+
+    # Validar rango del mes (evita IndexError al indexar meses_nombres)
+    if mes < 1 or mes > 12:
+        mes = mes_actual
+    if anio < 2000 or anio > anio_actual:
+        anio = anio_actual
+
+    meses_nombres = [
+        (1, 'Enero'), (2, 'Febrero'), (3, 'Marzo'), (4, 'Abril'),
+        (5, 'Mayo'), (6, 'Junio'), (7, 'Julio'), (8, 'Agosto'),
+        (9, 'Septiembre'), (10, 'Octubre'), (11, 'Noviembre'), (12, 'Diciembre')
+    ]
+
+    dias_del_mes = calendar.monthrange(anio, mes)[1]
+    semanas_del_mes = dias_del_mes / 7.0
+
+    dietas = []
+    anios_disponibles = [anio_actual]
+
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+
+    try:
+        # 1. Anios con informacion en las tablas de dietas
+        cursor.execute("""
+            SELECT DISTINCT anio FROM (
+                SELECT EXTRACT(YEAR FROM fecha)::INT AS anio FROM formula_produccion_diaria
+                UNION
+                SELECT EXTRACT(YEAR FROM fecha)::INT AS anio FROM despachos_dieta
+                UNION
+                SELECT EXTRACT(YEAR FROM fecha)::INT AS anio FROM ventas_dieta
+                UNION
+                SELECT anio FROM inventario_dieta_inicial
+            ) AS anios
+            WHERE anio IS NOT NULL
+            ORDER BY anio DESC;
+        """)
+        anios_disponibles = [fila['anio'] for fila in cursor.fetchall()]
+        if not anios_disponibles:
+            anios_disponibles = [anio_actual]
+        elif anio_actual not in anios_disponibles:
+            anios_disponibles.insert(0, anio_actual)
+            anios_disponibles.sort(reverse=True)
+
+        # El anio consultado debe existir en el selector aunque no tenga datos
+        if anio not in anios_disponibles:
+            anios_disponibles.append(anio)
+            anios_disponibles.sort(reverse=True)
+
+        # 2. Una fila por dieta (item) + lote con receta registrada
+        cursor.execute("""
+            WITH pares AS (
+                SELECT DISTINCT item_id, lote_id
+                FROM formula_detalle
+            ),
+            inicial AS (
+                SELECT item_id, lote_id, SUM(cantidad_inicial_ton) AS ton
+                FROM inventario_dieta_inicial
+                WHERE mes = %s AND anio = %s
+                GROUP BY item_id, lote_id
+            ),
+            produccion AS (
+                -- Total de toneladas fabricadas de la dieta en el lote
+                SELECT item_id, lote_id, SUM(toneladas) AS ton
+                FROM formula_produccion_diaria
+                GROUP BY item_id, lote_id
+            ),
+            despachos AS (
+                SELECT item_id, lote_id, SUM(toneladas) AS ton
+                FROM despachos_dieta
+                WHERE EXTRACT(MONTH FROM fecha) = %s AND EXTRACT(YEAR FROM fecha) = %s
+                GROUP BY item_id, lote_id
+            ),
+            ventas AS (
+                -- Toneladas vendidas de la dieta en el lote (venta externa registrada
+                -- en Editar Receta: formula_produccion_diaria.es_venta = TRUE)
+                SELECT item_id, lote_id, SUM(toneladas) AS ton
+                FROM formula_produccion_diaria
+                WHERE es_venta IS TRUE
+                GROUP BY item_id, lote_id
+            )
+            SELECT
+                ca.item_id,
+                ca.nombre AS alimento,
+                p.lote_id AS lote,
+                i.ton IS NOT NULL AS inicial_registrada,
+                COALESCE(i.ton, 0) AS inventario_inicial,
+                COALESCE(pr.ton, 0) AS produccion,
+                COALESCE(d.ton, 0) AS consumo,
+                COALESCE(v.ton, 0) AS venta
+            FROM pares p
+            JOIN catalogo_alimentos ca ON ca.item_id = p.item_id
+            LEFT JOIN inicial i ON i.item_id = p.item_id AND i.lote_id = p.lote_id
+            LEFT JOIN produccion pr ON pr.item_id = p.item_id AND pr.lote_id = p.lote_id
+            LEFT JOIN despachos d ON d.item_id = p.item_id AND d.lote_id = p.lote_id
+            LEFT JOIN ventas v ON v.item_id = p.item_id AND v.lote_id = p.lote_id
+            ORDER BY ca.item_id ASC, p.lote_id ASC;
+        """, (mes, anio) * 2)
+
+        for fila in cursor.fetchall():
+            item_id = fila['item_id']
+            inicial = float(fila['inventario_inicial'] or 0)          # kilogramos
+            produccion_ton = float(fila['produccion'] or 0)           # toneladas en BD
+            produccion = produccion_ton * 1000.0                      # kilogramos
+            consumo_ton = float(fila['consumo'] or 0)                 # toneladas en BD
+            consumo = consumo_ton * 1000.0                            # kilogramos
+            venta_ton = float(fila['venta'] or 0)                     # toneladas en BD
+            venta = venta_ton * 1000.0                                # kilogramos
+
+            # Todo el balance se maneja en kilogramos
+            total = inicial + produccion
+            inventario_real = total - consumo - venta
+
+            # Ritmo semanal de salida en toneladas (columna rotulada en TON)
+            toneladas_semanal = consumo_ton / semanas_del_mes if semanas_del_mes else 0.0
+            consumo_diario = (consumo / dias_del_mes) if dias_del_mes else 0.0
+            alimento_dias = (inventario_real / consumo_diario) if consumo_diario > 0 else None
+
+            dietas.append({
+                'item_id': item_id,
+                'alimento': fila['alimento'],
+                'lote': fila['lote'],
+                'inicial_registrada': bool(fila['inicial_registrada']),
+                'inventario_inicial': inicial,
+                'produccion': produccion,
+                'total': total,
+                'consumo': consumo,
+                'venta': venta,
+                'inventario_real': inventario_real,
+                'alimento_dias': alimento_dias,
+                'capacidad_silos': CAPACIDAD_SILOS_POR_ITEM.get(item_id),
+                'toneladas_semanal': toneladas_semanal,
+            })
+
+    except Exception as e:
+        conn.rollback()
+        flash(f"Error al cargar el inventario de dietas: {str(e)}", "danger")
+    finally:
+        cursor.close()
+        conn.close()
+
+    # Marcar el inicio de cada dieta que tiene varios lotes, para separar
+    # visualmente el grupo sin repetir la linea en dietas de un solo lote.
+    lotes_por_item = Counter(d['item_id'] for d in dietas)
+    item_anterior = None
+    for dieta in dietas:
+        dieta['group_start'] = (
+            dieta['item_id'] != item_anterior
+            and lotes_por_item[dieta['item_id']] > 1
+            and item_anterior is not None
+        )
+        item_anterior = dieta['item_id']
+
+    # Fila TOTAL: los dias de cobertura no se suman (se calculan por dieta y lote)
+    capacidades = [d['capacidad_silos'] for d in dietas if d['capacidad_silos'] is not None]
+    totales = {
+        'inventario_inicial': round(sum(d['inventario_inicial'] for d in dietas), 2),
+        'produccion': round(sum(d['produccion'] for d in dietas), 2),
+        'total': round(sum(d['total'] for d in dietas), 2),
+        'consumo': round(sum(d['consumo'] for d in dietas), 2),
+        'venta': round(sum(d['venta'] for d in dietas), 2),
+        'inventario_real': round(sum(d['inventario_real'] for d in dietas), 2),
+        'alimento_dias': None,
+        'capacidad_silos': round(sum(capacidades), 2) if capacidades else None,
+        'toneladas_semanal': round(sum(d['toneladas_semanal'] for d in dietas), 2),
+    }
+
+    return render_template(
+        'planta_alimentos/inventario_dietas.html',
+        dietas=dietas,
+        totales=totales,
+        mes=mes,
+        anio=anio,
+        meses_nombres=meses_nombres,
+        anios_disponibles=anios_disponibles
+    )
+
+
+@planta_bp.route('/inventario/dietas/inventario-inicial', methods=['POST'])
+@login_requerido
+def registrar_inventario_inicial_dieta():
+    """Registra el inventario inicial (kilogramos) por dieta y lote."""
+    mes = request.form.get('mes', type=int)
+    anio = request.form.get('anio', type=int)
+    anio_actual = datetime.now().year
+
+    if not mes or mes < 1 or mes > 12 or not anio or anio < 2000 or anio > anio_actual:
+        flash('El mes o el año enviado no es válido.', 'danger')
+        return redirect(url_for('planta_alimentos.inventario_dietas'))
+
+    item_ids = request.form.getlist('item_id')
+    lote_ids = request.form.getlist('lote_id')
+    cantidades = request.form.getlist('cantidad')
+
+    if not (len(item_ids) == len(lote_ids) == len(cantidades)):
+        flash('Los datos enviados no son válidos. Vuelve a intentarlo.', 'danger')
+        return redirect(url_for('planta_alimentos.inventario_dietas', mes=mes, anio=anio))
+
+    errores = []
+    registros = []
+
+    for item_raw, lote, cantidad_raw in zip(item_ids, lote_ids, cantidades):
+        try:
+            item_id = int(item_raw)
+        except (TypeError, ValueError):
+            errores.append('Hay una dieta con un ítem inválido.')
+            continue
+
+        texto = (cantidad_raw or '').strip().replace(',', '.')
+        if texto == '':
+            # Las filas vacias se dejan como estan (sirve para no registrar aun)
+            continue
+
+        try:
+            cantidad = float(texto)
+        except ValueError:
+            errores.append(f'La cantidad de la dieta {item_id} / lote {lote} no es un número válido.')
+            continue
+
+        if cantidad < 0:
+            errores.append(f'La cantidad de la dieta {item_id} / lote {lote} no puede ser negativa.')
+            continue
+
+        registros.append((item_id, lote, round(cantidad, 3)))
+
+    if errores:
+        flash(' '.join(errores[:3]), 'danger')
+        return redirect(url_for('planta_alimentos.inventario_dietas', mes=mes, anio=anio))
+
+    if not registros:
+        flash('No se registró inventario inicial: todas las filas estaban vacías.', 'warning')
+        return redirect(url_for('planta_alimentos.inventario_dietas', mes=mes, anio=anio))
+
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+
+    try:
+        # Solo se aceptan dietas y lotes que existen en el recetario
+        cursor.execute("""
+            SELECT ca.item_id, fd.lote_id
+            FROM catalogo_alimentos ca
+            JOIN (SELECT DISTINCT item_id, lote_id FROM formula_detalle) fd
+              ON fd.item_id = ca.item_id;
+        """)
+        pares_validos = {(fila['item_id'], fila['lote_id']) for fila in cursor.fetchall()}
+
+        guardados = 0
+        for item_id, lote, cantidad in registros:
+            if (item_id, lote) not in pares_validos:
+                continue
+
+            cursor.execute("""
+                INSERT INTO inventario_dieta_inicial
+                    (item_id, lote_id, cantidad_inicial_ton, fecha_registro, mes, anio)
+                VALUES (%s, %s, %s, CURRENT_DATE, %s, %s)
+                ON CONFLICT (item_id, lote_id, mes, anio)
+                DO UPDATE SET
+                    cantidad_inicial_ton = EXCLUDED.cantidad_inicial_ton,
+                    fecha_registro = CASE
+                        WHEN inventario_dieta_inicial.cantidad_inicial_ton IS DISTINCT FROM EXCLUDED.cantidad_inicial_ton
+                        THEN EXCLUDED.fecha_registro
+                        ELSE inventario_dieta_inicial.fecha_registro
+                    END;
+            """, (item_id, lote, cantidad, mes, anio))
+            guardados += 1
+
+        conn.commit()
+        flash(f'Inventario inicial registrado ({guardados} registros).', 'success')
+
+    except Exception as e:
+        conn.rollback()
+        flash(f'Error al registrar el inventario inicial: {str(e)}', 'danger')
+    finally:
+        cursor.close()
+        conn.close()
+
+    return redirect(url_for('planta_alimentos.inventario_dietas', mes=mes, anio=anio))
+
 
 @planta_bp.route('/compras/recepcion', methods=['GET', 'POST'])
 @login_requerido

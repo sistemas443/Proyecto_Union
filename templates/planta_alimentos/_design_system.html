@@ -1,0 +1,369 @@
+{# ============================================================
+   DESIGN SYSTEM - PLANTA DE ALIMENTOS
+   Partial compartido: tokens + componentes base.
+   Uso:  {% block head %}{% include 'planta_alimentos/_design_system.html' %}{% endblock %}
+   ============================================================ #}
+<style>
+  :root {
+    /* === CABECERA TABLA === */
+    --table-header-bg: #1a202c;
+    --table-header-text: #ffffff;
+
+    /* === ACCIONES === */
+    --action-primary: #2c3e50;
+    --action-primary-hover: #1a252f;
+    --action-primary-text: #ffffff;
+
+    --action-secondary: #6c757d;
+    --action-secondary-hover: #5a6268;
+    --action-secondary-text: #ffffff;
+
+    /* === SEMÁNTICOS (solo estados/datos) === */
+    --success: #198754;
+    --success-hover: #157347;
+    --info: #0d6efd;
+    --warning: #ffc107;
+    --warning-text: #212529;
+    --danger: #dc3545;
+
+    /* === SUPERFICIES === */
+    --surface: #ffffff;
+    --surface-alt: #f8f9fa;
+
+    /* === TEXTO === */
+    --text-primary: #212529;
+    --text-secondary: #495057;
+    --text-muted: #6c757d;
+
+    /* === ESTRUCTURA === */
+    --border: #dee2e6;
+
+    /* === ESPACIADO === */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+  }
+
+  /* ============================================================
+     BOTONES
+     ============================================================ */
+  .btn-primary {
+    background-color: var(--action-primary);
+    border-color: var(--action-primary);
+    color: var(--action-primary-text);
+  }
+  .btn-primary:hover,
+  .btn-primary:focus,
+  .btn-primary:active {
+    background-color: var(--action-primary-hover) !important;
+    border-color: var(--action-primary-hover) !important;
+    color: var(--action-primary-text) !important;
+  }
+
+  .btn-secondary {
+    background-color: var(--action-secondary);
+    border-color: var(--action-secondary);
+    color: var(--action-secondary-text);
+  }
+  .btn-secondary:hover,
+  .btn-secondary:focus,
+  .btn-secondary:active {
+    background-color: var(--action-secondary-hover) !important;
+    border-color: var(--action-secondary-hover) !important;
+    color: var(--action-secondary-text) !important;
+  }
+
+  .btn-success {
+    background-color: var(--success);
+    border-color: var(--success);
+    color: #ffffff;
+  }
+  .btn-success:hover,
+  .btn-success:focus,
+  .btn-success:active {
+    background-color: var(--success-hover) !important;
+    border-color: var(--success-hover) !important;
+  }
+
+  .btn-danger {
+    background-color: var(--danger);
+    border-color: var(--danger);
+    color: #ffffff;
+  }
+
+  .btn-outline-primary {
+    color: var(--action-primary);
+    border-color: var(--action-primary);
+  }
+  .btn-outline-primary:hover,
+  .btn-outline-primary:focus {
+    background-color: var(--action-primary);
+    border-color: var(--action-primary);
+    color: var(--action-primary-text);
+  }
+
+  .btn-outline-secondary {
+    color: var(--action-secondary);
+    border-color: var(--action-secondary);
+  }
+  .btn-outline-secondary:hover,
+  .btn-outline-secondary:focus {
+    background-color: var(--action-secondary);
+    border-color: var(--action-secondary);
+    color: var(--action-secondary-text);
+  }
+
+  .btn-outline-success {
+    color: var(--success);
+    border-color: var(--success);
+  }
+  .btn-outline-success:hover,
+  .btn-outline-success:focus {
+    background-color: var(--success);
+    border-color: var(--success);
+    color: #ffffff;
+  }
+
+  .btn-outline-danger {
+    color: var(--danger);
+    border-color: var(--danger);
+  }
+  .btn-outline-danger:hover,
+  .btn-outline-danger:focus {
+    background-color: var(--danger);
+    border-color: var(--danger);
+    color: #ffffff;
+  }
+
+  .btn-outline-info {
+    color: var(--text-secondary);
+    border-color: var(--border);
+  }
+  .btn-outline-info:hover,
+  .btn-outline-info:focus {
+    background-color: var(--action-primary);
+    border-color: var(--action-primary);
+    color: #ffffff;
+  }
+
+  .btn-outline-warning {
+    color: #8a6d00;
+    border-color: #d9b400;
+  }
+  .btn-outline-warning:hover,
+  .btn-outline-warning:focus {
+    background-color: var(--warning);
+    border-color: var(--warning);
+    color: var(--warning-text);
+  }
+
+  /* ============================================================
+     ENCABEZADO DE PÁGINA
+     ============================================================ */
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+    margin-bottom: var(--space-4);
+  }
+  .page-icon {
+    width: 44px;
+    height: 44px;
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background-color: var(--action-primary);
+    color: #ffffff;
+    font-size: 1.1rem;
+    box-shadow: 0 2px 6px rgba(44, 62, 80, 0.25);
+  }
+  .page-icon svg {
+    width: 22px;
+    height: 22px;
+    fill: currentColor;
+  }
+  .page-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.15rem;
+  }
+  .page-title .fa,
+  .page-title .fas,
+  .page-title .far {
+    color: var(--action-primary);
+  }
+  .page-subtitle {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-bottom: 0;
+  }
+
+  @media print {
+    .page-icon {
+      background-color: transparent !important;
+      color: var(--text-primary) !important;
+      box-shadow: none !important;
+    }
+  }
+
+  /* ============================================================
+     TARJETAS
+     ============================================================ */
+  .card-clean {
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  }
+  .card-clean .card-header {
+    background-color: var(--surface);
+    border-bottom: 1px solid var(--border);
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--text-secondary);
+    padding: var(--space-3) var(--space-4);
+  }
+  .card-clean .card-body {
+    padding: var(--space-4);
+  }
+
+  /* ============================================================
+     TABLA
+     ============================================================ */
+  .table-design {
+    margin-bottom: 0;
+    border-color: var(--border);
+  }
+  .table-design thead th {
+    background-color: var(--table-header-bg) !important;
+    color: var(--table-header-text) !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.25) !important;
+    font-weight: 600;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: var(--space-3);
+    white-space: nowrap;
+    text-align: center;
+    vertical-align: middle;
+  }
+  .table-design tbody td {
+    font-size: 0.82rem;
+    padding: var(--space-2) var(--space-3);
+    vertical-align: middle;
+    border-color: var(--border);
+  }
+  .table-design tbody tr:nth-child(odd) > td {
+    background-color: var(--surface);
+  }
+  .table-design tbody tr:nth-child(even) > td {
+    background-color: var(--surface-alt);
+  }
+  .table-design tbody tr:hover > td {
+    background-color: #eef1f4;
+  }
+
+  .table-design .col-text {
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+  .table-design .col-num {
+    text-align: right;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-secondary);
+  }
+  .table-design .col-num-strong {
+    text-align: right;
+    font-weight: 700;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-variant-numeric: tabular-nums;
+    color: var(--action-primary);
+  }
+  .table-design .col-center {
+    text-align: center;
+  }
+  .table-design .col-acciones {
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  /* ============================================================
+     BADGES
+     ============================================================ */
+  .badge-estado {
+    font-size: 0.68rem;
+    font-weight: 600;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    letter-spacing: 0.2px;
+    text-transform: uppercase;
+  }
+  .badge-ok {
+    background-color: #e8f5ee;
+    color: var(--success);
+    border: 1px solid #bfe3cf;
+  }
+  .badge-pendiente {
+    background-color: #fff8e1;
+    color: #8a6d00;
+    border: 1px solid #ffe9a8;
+  }
+  .badge-critica {
+    background-color: #fdecee;
+    color: var(--danger);
+    border: 1px solid #f5c2c7;
+  }
+  .badge-neutro {
+    background-color: var(--surface-alt);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+  }
+
+  /* ============================================================
+     FORMULARIOS
+     ============================================================ */
+  .form-label-design {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    margin-bottom: var(--space-1);
+  }
+  .form-control:focus,
+  .form-select:focus {
+    border-color: var(--action-primary);
+    box-shadow: 0 0 0 2px rgba(44, 62, 80, 0.15);
+  }
+  .form-text-muted {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+  }
+
+  /* ============================================================
+     ESTADOS VACÍOS
+     ============================================================ */
+  .empty-state {
+    padding: 2.5rem 1rem !important;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    background-color: var(--surface) !important;
+  }
+  .empty-state i {
+    color: var(--text-muted);
+    opacity: 0.6;
+    margin-right: 0.35rem;
+  }
+</style>

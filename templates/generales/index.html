@@ -4,17 +4,16 @@
 
 {% block content %}
 <style>
-    /* 1. Aplicamos el zoom global del 80% para que el menú y la vista mantengan el mismo tamaño que las tablas */
+    /* Escala normal (100%) */
     body {
-        zoom: 0.8;
         /* En el inicio sí permitimos scroll vertical natural (overflow-y: auto) por si la pantalla es muy pequeña */
     }
 
-    /* 2. El contenedor principal compensa el zoom para llenar toda la pantalla visualmente */
+    /* 2. El contenedor principal ocupa el alto disponible de la pantalla */
     main.container-fluid {
         display: flex;
         flex-direction: column;
-        min-height: calc(125vh - 65px); /* 125vh compensa exactamente el factor de 0.8 */
+        min-height: calc(100vh - var(--nav-h, 65px));
         padding-bottom: 20px;
     }
 

@@ -137,44 +137,101 @@ class ProyeccionesModel:
                 return resultado
         finally:
             conn.close()
+
+    @staticmethod
+    def get_consumo_ultimos_7_dias():
+        """
+        Calcula el consumo real de cada materia prima en los últimos 7 días calendario
+        (HOY - 6 días a HOY inclusive).
+        
+        Incluye:
+        - Todas las producciones (normales + ventas)
+        - Todas las dietas, lotes, versiones
+        - Receta vigente según version + fecha_vencimiento
+        
+        Returns:
+            dict: {materia_prima_id: {'nombre': str, 'consumo_7_dias_gramos': float, 
+                                     'consumo_7_dias_ton': float, 'dias_con_produccion': int}}
+        """
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cur:
+                query = """
+                    SELECT 
+                        fd.materia_prima_id,
+                        mp.nombre,
+                        SUM(fd.cantidad_kg * fpd.toneladas * 1000) AS total_gramos,
+                        COUNT(DISTINCT fpd.fecha) AS dias_con_produccion
+                    FROM formula_produccion_diaria fpd
+                    JOIN formula_detalle fd
+                        ON fd.item_id = fpd.item_id
+                       AND fd.lote_id = fpd.lote_id
+                       AND fd.version = fpd.version
+                       AND fd.fecha_vencimiento >= fpd.fecha
+                    JOIN materias_primas mp ON mp.id = fd.materia_prima_id
+                    WHERE fpd.fecha >= CURRENT_DATE - INTERVAL '6 days'
+                      AND fpd.fecha <= CURRENT_DATE
+                    GROUP BY fd.materia_prima_id, mp.nombre
+                    ORDER BY mp.nombre;
+                """
+                cur.execute(query)
+                rows = cur.fetchall()
+                
+                resultado = {}
+                for row in rows:
+                    mp_id, nombre, total_gramos, dias_con_prod = row
+                    total_gramos = float(total_gramos or 0)
+                    resultado[mp_id] = {
+                        'id': mp_id,
+                        'nombre': nombre,
+                        'consumo_7_dias_gramos': total_gramos,
+                        'consumo_7_dias_ton': round(total_gramos / 1_000_000, 3),
+                        'dias_con_produccion': int(dias_con_prod or 0)
+                    }
+                return resultado
+        finally:
+            conn.close()
     
     @staticmethod
-    def calcular_proyecciones(dias_ventana=30):
+    def calcular_proyecciones():
         """
-        Combina stock actual + consumo histórico → proyecciones + alertas
-        Returns: Lista de dicts con todos los datos para la tabla
+        Combina stock actual + consumo últimos 7 días → proyecciones + alertas
+        Returns: Lista de dicts con estructura estilo Excel + gestión operativa
+        Columnas: NÚMERO, MATERIA PRIMA, CONSUMO SEMANAL (7 DÍAS) GR, 
+                  CONSUMO DÍA (5 DÍAS) GR, CONSUMO MENSUAL TON, DÍAS STOCK, ALERTAS
         """
         stock = ProyeccionesModel.get_stock_actual()
-        consumo = ProyeccionesModel.get_consumo_historico(dias=dias_ventana)
+        consumo_7d = ProyeccionesModel.get_consumo_ultimos_7_dias()
         
         # Unir stock + consumo
-        all_mp_ids = set(stock.keys()) | set(consumo.keys())
+        all_mp_ids = set(stock.keys()) | set(consumo_7d.keys())
         resultado = []
         
         for mp_id in all_mp_ids:
             s = stock.get(mp_id, {})
-            c = consumo.get(mp_id, {})
+            c = consumo_7d.get(mp_id, {})
             
-            stock_actual = s.get('stock_actual', 0)  # En gramos
-            consumo_diario = c.get('consumo_diario_promedio', 0)  # En gramos/día
+            stock_actual_gramos = s.get('stock_actual', 0)  # En gramos
+            consumo_semanal_gramos = c.get('consumo_7_dias_gramos', 0)  # Total 7 días en gramos
             
-            # Proyecciones (en gramos)
-            consumo_semanal = c.get('consumo_semanal_proyectado', consumo_diario * 7)
-            consumo_mensual = c.get('consumo_mensual_proyectado', consumo_diario * 30)
+            # CONSUMO DÍA (5 DÍAS SEMANAL) = Semanal / 5 (fijo, día laborable)
+            consumo_diario_5dias_gramos = consumo_semanal_gramos / 5 if consumo_semanal_gramos > 0 else 0
             
-            # Días de stock
-            dias_stock = stock_actual / consumo_diario if consumo_diario > 0 else 999
+            # CONSUMO MENSUAL = Diario (5 días) × 30 días calendario → en TONELADAS
+            consumo_mensual_ton = (consumo_diario_5dias_gramos * 30) / 1_000_000
             
-            # Alertas
+            # DÍAS STOCK = Stock actual / Consumo día laborable (más conservador)
+            dias_stock = stock_actual_gramos / consumo_diario_5dias_gramos if consumo_diario_5dias_gramos > 0 else 999
+            
+            # ALERTAS (basadas en días stock con base día laborable)
             alertas = []
             if dias_stock < 7 and dias_stock > 0:
                 alertas.append({'tipo': 'critica', 'mensaje': f'Stock crítico: {dias_stock:.1f} días'})
             elif dias_stock < 15 and dias_stock > 0:
                 alertas.append({'tipo': 'advertencia', 'mensaje': f'Stock bajo: {dias_stock:.1f} días'})
             
-            # % stock mínimo (ej: 20% del consumo mensual)
-            stock_minimo = c.get('consumo_mensual_proyectado', consumo_diario * 30) * 0.2
-            if stock_actual < stock_minimo and stock_minimo > 0:
+            stock_minimo_gramos = consumo_diario_5dias_gramos * 30 * 0.2  # 20% consumo mensual en gramos
+            if stock_actual_gramos < stock_minimo_gramos and stock_minimo_gramos > 0:
                 alertas.append({'tipo': 'advertencia', 'mensaje': f'Stock < 20% consumo mensual'})
             
             tiene_alerta_critica = any(a['tipo'] == 'critica' for a in alertas)
@@ -183,18 +240,24 @@ class ProyeccionesModel:
             resultado.append({
                 'id': mp_id,
                 'nombre': s.get('nombre') or c.get('nombre', f'MP-{mp_id}'),
-                'stock_actual': round(s.get('stock_actual_ton', 0), 2),
-                'consumo_diario': round(consumo_diario / 1000000, 3),
-                'consumo_semanal': round(consumo_semanal / 1000000, 3),
-                'consumo_mensual': round(consumo_mensual / 1000000, 3),
+                # Columnas estilo Excel
+                'consumo_semanal_gramos': round(consumo_semanal_gramos),           # GRAMOS enteros
+                'consumo_diario_5dias_gramos': round(consumo_diario_5dias_gramos), # GRAMOS/DÍA enteros
+                'consumo_mensual_ton': round(consumo_mensual_ton, 3),               # TON 3 decimales
+                # Columnas gestión operativa
                 'dias_stock': round(dias_stock, 1) if dias_stock < 999 else 'N/A',
                 'alertas': alertas,
-                'tiene_alerta_critica': any(a['tipo'] == 'critica' for a in alertas),
-                'tiene_alerta': len(alertas) > 0
+                'tiene_alerta_critica': tiene_alerta_critica,
+                'tiene_alerta': tiene_alerta
             })
         
         # Ordenar: alertas críticas primero, luego por nombre
         resultado.sort(key=lambda x: (not x['tiene_alerta_critica'], not x['tiene_alerta'], x['nombre']))
+        
+        # Agregar NÚMERO correlativo (1, 2, 3...)
+        for idx, item in enumerate(resultado, 1):
+            item['numero'] = idx
+            
         return resultado
     
     @staticmethod
@@ -211,7 +274,7 @@ class ProyeccionesModel:
     
     @staticmethod
     def exportar_excel():
-        """Genera datos para exportar a Excel (formato Excel del archivo original)"""
+        """Genera datos para exportar a Excel (formato estilo Excel solicitado)"""
         import io
         import openpyxl
         from openpyxl.styles import Font, PatternFill, Alignment
@@ -222,11 +285,13 @@ class ProyeccionesModel:
         ws = wb.active
         ws.title = "Proyeccion Inventario"
         
-        # Headers
+        # Headers - Estructura nueva estilo Excel
         headers = [
-            'MATERIA PRIMA', 'STOCK ACTUAL (Ton)', 'CONSUMO DIARIO (Ton/día)',
-            'CONSUMO SEMANAL (Ton/sem)', 'CONSUMO MENSUAL (Ton/mes)',
-            'DIAS STOCK', 'ALERTAS'
+            'NÚMERO', 'MATERIA PRIMA', 
+            'CONSUMO SEMANAL (7 DÍAS) GR', 
+            'CONSUMO DÍA (5 DÍAS) GR', 
+            'CONSUMO MENSUAL TON', 
+            'DÍAS STOCK', 'ALERTAS'
         ]
         
         # Estilos
@@ -242,11 +307,11 @@ class ProyeccionesModel:
             cell.alignment = Alignment(horizontal='center')
         
         for row_idx, p in enumerate(proyecciones, 2):
-            ws.cell(row=row_idx, column=1, value=p['nombre'])
-            ws.cell(row=row_idx, column=2, value=p['stock_actual'])
-            ws.cell(row=row_idx, column=3, value=p['consumo_diario'])
-            ws.cell(row=row_idx, column=4, value=p['consumo_semanal'])
-            ws.cell(row=row_idx, column=5, value=p['consumo_mensual'])
+            ws.cell(row=row_idx, column=1, value=p['numero'])
+            ws.cell(row=row_idx, column=2, value=p['nombre'])
+            ws.cell(row=row_idx, column=3, value=p['consumo_semanal_gramos'])
+            ws.cell(row=row_idx, column=4, value=p['consumo_diario_5dias_gramos'])
+            ws.cell(row=row_idx, column=5, value=p['consumo_mensual_ton'])
             ws.cell(row=row_idx, column=6, value=p['dias_stock'])
             
             alerta_text = '; '.join([a['mensaje'] for a in p['alertas']]) if p['alertas'] else 'OK'

@@ -19,20 +19,20 @@ def proyeccion_costos():
 @proyecciones_bp.route('/api/stock', methods=['GET'])
 @login_requerido
 def api_stock_proyeccion():
-    """API: Datos completos de proyección para tabla principal"""
+    """API: Datos completos de proyección para tabla principal (ventana fija 7 días)"""
     try:
-        dias = request.args.get('dias', 30, type=int)
         solo_alertas = request.args.get('alertas', 'false').lower() == 'true'
         
         if solo_alertas:
-            data = ProyeccionesModel.get_alertas_resumen()
+            alertas_resumen = ProyeccionesModel.get_alertas_resumen()
+            data = alertas_resumen.get('mps', [])  # Solo el array de MPs con alertas
         else:
-            data = ProyeccionesModel.calcular_proyecciones(dias_ventana=dias)
+            data = ProyeccionesModel.calcular_proyecciones()
         
         return jsonify({
             'success': True,
             'data': data,
-            'total': len(data) if isinstance(data, list) else data.get('total', 0)
+            'total': len(data) if isinstance(data, list) else 0
         })
     except Exception as e:
         return jsonify({'success': False, 'msg': str(e)}), 500

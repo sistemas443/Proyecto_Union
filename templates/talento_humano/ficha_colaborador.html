@@ -1,0 +1,628 @@
+{% extends 'generales/layout.html' %}
+
+{% block title %}Hoja de Vida - {{ c.nombre_completo }}{% endblock %}
+
+{% block head %}
+<style>
+    .ficha-wrap { max-width: 1100px; margin: 0 auto; }
+
+    .ficha-acciones {
+        position: sticky; top: .5rem; z-index: 20;
+        background: rgba(255,255,255,.96);
+        border: 1px solid #e3e6ea; border-radius: 10px;
+        padding: .45rem .6rem;
+        box-shadow: 0 2px 6px rgba(0,0,0,.06);
+    }
+
+    .ficha-portada {
+        background: linear-gradient(135deg, #97271C 0%, #b73a2c 100%);
+        color: #fff; border-radius: 14px; padding: 1.25rem 1.5rem;
+        display: flex; align-items: center; gap: 1.25rem;
+    }
+    .ficha-foto {
+        width: 110px; height: 110px; border-radius: 50%; object-fit: cover;
+        border: 4px solid rgba(255,255,255,.85); background: #fff; flex: 0 0 auto;
+    }
+    .ficha-foto-vacia {
+        width: 110px; height: 110px; border-radius: 50%;
+        border: 4px solid rgba(255,255,255,.85);
+        display: flex; align-items: center; justify-content: center;
+        background: rgba(255,255,255,.15); flex: 0 0 auto;
+    }
+    .ficha-portada h1 { font-size: 1.5rem; font-weight: 700; margin: 0; }
+    .ficha-portada .doc { opacity: .92; font-size: .9rem; }
+    .ficha-chip {
+        display: inline-flex; align-items: center; gap: .35rem;
+        background: rgba(255,255,255,.18); border: 1px solid rgba(255,255,255,.35);
+        border-radius: 50px; padding: .18rem .7rem; font-size: .78rem;
+    }
+
+    .ficha-card { border: 1px solid #e3e6ea; border-radius: 12px; background: #fff; }
+    .ficha-card .card-header {
+        background: #f8f9fa; border-bottom: 1px solid #e3e6ea;
+        font-weight: 700; font-size: .82rem; text-transform: uppercase;
+        letter-spacing: .04em; color: #97271C; padding: .6rem 1rem;
+        border-radius: 12px 12px 0 0;
+    }
+
+    .campo { margin-bottom: .55rem; }
+    .campo .etiqueta {
+        display: block; font-size: .68rem; text-transform: uppercase;
+        letter-spacing: .03em; color: #8a929c; font-weight: 600; line-height: 1.2;
+    }
+    .campo .valor { display: block; font-size: .86rem; color: #212529; font-weight: 500; word-break: break-word; }
+    .campo .valor.vacio { color: #adb5bd; font-weight: 400; }
+
+    .mini-stat { text-align: center; padding: .7rem .4rem; border-radius: 10px; background: #f8f9fa; }
+    .mini-stat .num { display: block; font-size: 1.35rem; font-weight: 700; color: #97271C; line-height: 1.1; }
+    .mini-stat .lbl { font-size: .68rem; text-transform: uppercase; color: #6c757d; letter-spacing: .03em; }
+
+    .tabla-ficha { font-size: .78rem; margin: 0; }
+    .tabla-ficha thead th {
+        background: #f1f3f5; font-size: .68rem; text-transform: uppercase;
+        letter-spacing: .03em; color: #495057; white-space: nowrap;
+    }
+    .tabla-ficha td, .tabla-ficha th { padding: .4rem .55rem; vertical-align: middle; }
+    .tabla-ficha td.num { background: #fff; }
+
+    .vacio-tabla { font-size: .8rem; color: #8a929c; padding: .8rem; text-align: center; }
+
+    .epp-chip {
+        display: inline-block; font-size: .72rem; padding: .15rem .5rem;
+        border-radius: 50px; background: #e9f7ef; color: #1e7e45;
+        border: 1px solid #b7e4c7; margin: 0 .2rem .25rem 0;
+    }
+
+    @media print {
+        .sidebar-rapido, .sidebar-th, .navbar, .no-print, .toast-container { display: none !important; }
+        body { background: #fff !important; }
+        main.container-fluid { padding: 0 !important; margin: 0 !important; max-width: 100% !important; }
+        .ficha-wrap { max-width: 100%; }
+        .ficha-card { break-inside: avoid; page-break-inside: avoid; }
+        .ficha-portada { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .tabla-ficha thead th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        a[href]:after { content: ""; }
+        @page { size: A4; margin: 12mm; }
+    }
+</style>
+{% endblock %}
+
+{% macro f(v) -%}
+    {%- if v is none or v == '' -%}<span class="text-muted">—</span>
+    {%- elif v.strftime is defined -%}{{ v.strftime('%d/%m/%Y') }}
+    {%- else -%}{{ v }}{%- endif -%}
+{%- endmacro %}
+
+{% macro v(val) -%}
+    {%- if val is none or val == '' -%}<span class="valor vacio">—</span>
+    {%- else -%}<span class="valor">{{ val }}</span>{%- endif -%}
+{%- endmacro %}
+
+{% macro si(val) -%}
+    {%- if val is sameas true -%}Sí{%- elif val is sameas false -%}No{%- else -%}{{ f(val) }}{%- endif -%}
+{%- endmacro %}
+
+{% block content %}
+<div class="ficha-wrap py-3">
+
+    <!-- BOTONES -->
+    <div class="d-flex justify-content-between align-items-center mb-3 no-print ficha-acciones">
+        <a href="{{ url_for('talento_humano.colaboradores') }}" class="btn btn-sm btn-outline-secondary">
+            <i class='bx bx-arrow-back'></i> Volver al panel de colaboradores
+        </a>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('talento_humano.documentos_colaborador', colaborador_id=c.id) }}"
+               class="btn btn-sm btn-outline-primary">
+                <i class='bx bx-file'></i> Documentos
+            </a>
+            <button type="button" class="btn btn-sm btn-dark fw-bold" onclick="window.print()">
+                <i class='bx bx-printer'></i> Imprimir / Guardar PDF
+            </button>
+        </div>
+    </div>
+
+    <!-- PORTADA -->
+    <div class="ficha-portada shadow-sm mb-3">
+        {% if c.foto_perfil %}
+        <img src="{{ url_for('static', filename=c.foto_perfil) }}" alt="{{ c.nombre_completo }}" class="ficha-foto">
+        {% else %}
+        <div class="ficha-foto-vacia"><i class='bx bxs-user text-white' style="font-size:3rem;"></i></div>
+        {% endif %}
+        <div class="flex-grow-1">
+            <h1>{{ c.nombre_completo }}</h1>
+            <div class="doc">
+                {{ c.tipo_doc or 'Documento' }} {{ c.num_doc }}
+                {% if c.cargo %} &middot; {{ c.cargo }}{% endif %}
+                {% if c.area %} &middot; {{ c.area }}{% endif %}
+            </div>
+            <div class="d-flex flex-wrap gap-2 mt-2">
+                <span class="ficha-chip"><i class='bx bx-check-circle'></i>{{ c.estado or 'Sin estado' }}</span>
+                {% if c.fecha_ingreso %}
+                <span class="ficha-chip"><i class='bx bx-calendar'></i>Ingreso: {{ f(c.fecha_ingreso) }}</span>
+                <span class="ficha-chip"><i class='bx bx-time'></i>Antigüedad: {{ c.fecha_ingreso|tiempo_transcurrido }}</span>
+                {% endif %}
+                {% if c.tipo_contrato %}<span class="ficha-chip"><i class='bx bx-briefcase'></i>{{ c.tipo_contrato }}</span>{% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- RESUMEN -->
+    <div class="row g-2 mb-3">
+        <div class="col-6 col-md-3"><div class="mini-stat"><span class="num">{{ resumen_docs.total or 0 }}</span><span class="lbl">Documentos</span></div></div>
+        <div class="col-6 col-md-3"><div class="mini-stat"><span class="num">{{ resumen_docs.vencidos or 0 }}</span><span class="lbl">Docs. vencidos</span></div></div>
+        <div class="col-6 col-md-3"><div class="mini-stat"><span class="num">{{ capacitaciones|length }}</span><span class="lbl">Capacitaciones</span></div></div>
+        <div class="col-6 col-md-3"><div class="mini-stat"><span class="num">{{ experiencia|length }}</span><span class="lbl">Experiencias</span></div></div>
+    </div>
+
+    <div class="row g-3">
+        <!-- DATOS PERSONALES -->
+        <div class="col-12">
+            <div class="ficha-card shadow-sm">
+                <div class="card-header"><i class='bx bx-id-card me-1'></i> Datos personales</div>
+                <div class="card-body">
+                    <div class="row g-2">
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Tipo documento</span>{{ v(c.tipo_doc) }}</div></div>
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Número documento</span>{{ v(c.num_doc) }}</div></div>
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Fecha expedición</span>{{ v(f(c.fecha_expedicion_doc)) }}</div></div>
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Lugar expedición</span>{{ v(c.lugar_expedicion_doc) }}</div></div>
+
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Fecha nacimiento</span>{{ v(f(c.fecha_nacimiento)) }}</div></div>
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Edad</span>
+                            {% if c.fecha_nacimiento %}<span class="valor">{{ ((hoy - c.fecha_nacimiento).days // 365) }} años</span>{% else %}<span class="valor vacio">—</span>{% endif %}
+                        </div></div>
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Género</span>{{ v(c.genero) }}</div></div>
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Estado civil</span>{{ v(c.estado_civil) }}</div></div>
+
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Grupo sanguíneo</span>{{ v(c.grupo_sanguineo) }}</div></div>
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Factor RH</span>{{ v(c.factor_rh) }}</div></div>
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Nacionalidad</span>{{ v(c.nacionalidad) }}</div></div>
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">País de origen</span>{{ v(c.pais_origen) }}</div></div>
+
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Lugar de nacimiento</span>{{ v(c.lugar_nacimiento_ciudad) }}{% if c.lugar_nacimiento_departamento %} / {{ c.lugar_nacimiento_departamento }}{% endif %}</div></div>
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Estrato</span>{{ v(c.estrato) }}</div></div>
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Sisbén</span>{{ v(c.sisben) }}</div></div>
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Etnia</span>{{ v(c.etnia) }}</div></div>
+
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Discapacidad</span><span class="valor">{{ si(c.discapacidad) }}{% if c.tipo_discapacidad %} · {{ c.tipo_discapacidad }}{% endif %}</span></div></div>
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Víctima del conflicto</span><span class="valor">{{ si(c.victima_conflicto) }}</span></div></div>
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Comunidad LGTBI</span><span class="valor">{{ si(c.comunidad_lgtbi) }}</span></div></div>
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Religión</span>{{ v(c.religion) }}</div></div>
+
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Nivel educativo</span>{{ v(c.nivel_educativo) }}</div></div>
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Profesión / oficio</span>{{ v(c.profesion_oficio) }}</div></div>
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">N° hijos</span>{{ v(c.num_hijos) }}</div></div>
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Dependientes económicos</span>{{ v(c.num_dependientes_economicos) }}</div></div>
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Servicios públicos</span>{{ v(c.servicios_publicos) }}</div></div>
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Internet</span><span class="valor">{{ si(c.tiene_internet) }}</span></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CONTACTO -->
+        <div class="col-12">
+            <div class="ficha-card shadow-sm">
+                <div class="card-header"><i class='bx bx-phone me-1'></i> Contacto y emergencia</div>
+                <div class="card-body">
+                    <div class="row g-2">
+                        <div class="col-12 col-md-4"><div class="campo"><span class="etiqueta">Correo personal</span>{{ v(c.correo_personal) }}</div></div>
+                        <div class="col-6 col-md-2"><div class="campo"><span class="etiqueta">Celular</span>{{ v(c.celular) }}</div></div>
+                        <div class="col-6 col-md-2"><div class="campo"><span class="etiqueta">Teléfono</span>{{ v(c.telefono) }}</div></div>
+                        <div class="col-6 col-md-2"><div class="campo"><span class="etiqueta">Ciudad</span>{{ v(c.ciudad) }}</div></div>
+                        <div class="col-6 col-md-2"><div class="campo"><span class="etiqueta">Departamento</span>{{ v(c.departamento) }}</div></div>
+
+                        <div class="col-12"><div class="campo"><span class="etiqueta">Dirección</span>{{ v(c.direccion) }}</div></div>
+
+                        <div class="col-12 mt-2"><hr class="my-1"><span class="etiqueta mb-2">Contacto de emergencia 1</span></div>
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Nombre</span>{{ v(c.contacto_emergencia_nombre) }}</div></div>
+                        <div class="col-6 col-md-2"><div class="campo"><span class="etiqueta">Parentesco</span>{{ v(c.contacto_emergencia_parentesco) }}</div></div>
+                        <div class="col-6 col-md-2"><div class="campo"><span class="etiqueta">Teléfono</span>{{ v(c.contacto_emergencia_telefono) }}</div></div>
+                        <div class="col-6 col-md-2"><div class="campo"><span class="etiqueta">Correo</span>{{ v(c.contacto_emergencia_correo) }}</div></div>
+                        <div class="col-12 col-md-3"><div class="campo"><span class="etiqueta">Dirección</span>{{ v(c.contacto_emergencia_direccion) }}</div></div>
+
+                        {% if c.contacto_emergencia2_nombre %}
+                        <div class="col-12 mt-2"><span class="etiqueta mb-2">Contacto de emergencia 2</span></div>
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Nombre</span>{{ v(c.contacto_emergencia2_nombre) }}</div></div>
+                        <div class="col-6 col-md-2"><div class="campo"><span class="etiqueta">Parentesco</span>{{ v(c.contacto_emergencia2_parentesco) }}</div></div>
+                        <div class="col-6 col-md-2"><div class="campo"><span class="etiqueta">Teléfono</span>{{ v(c.contacto_emergencia2_telefono) }}</div></div>
+                        <div class="col-6 col-md-2"><div class="campo"><span class="etiqueta">Correo</span>{{ v(c.contacto_emergencia2_correo) }}</div></div>
+                        <div class="col-12 col-md-3"><div class="campo"><span class="etiqueta">Dirección</span>{{ v(c.contacto_emergencia2_direccion) }}</div></div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- INFORMACIÓN LABORAL -->
+    <div class="row g-3 mt-1">
+        <div class="col-12">
+            <div class="ficha-card shadow-sm">
+                <div class="card-header"><i class='bx bx-briefcase me-1'></i> Información laboral</div>
+                <div class="card-body">
+                    <div class="row g-2">
+                        <div class="col-12 col-md-3"><div class="campo"><span class="etiqueta">Cargo</span>{{ v(c.cargo) }}</div></div>
+                        <div class="col-12 col-md-3"><div class="campo"><span class="etiqueta">Área</span>{{ v(c.area) }}</div></div>
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Centro de costo</span>{{ v(c.centro_costo) }}</div></div>
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Jefe inmediato</span>{{ v(jefe.nombre_completo if jefe else '') }}</div></div>
+
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Tipo de contrato</span>{{ v(c.tipo_contrato) }}</div></div>
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Tipo de vinculación</span>{{ v(c.tipo_vinculacion) }}</div></div>
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Clase de riesgo ARL</span>{{ v(c.clase_riesgo_arl) }}</div></div>
+
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Sede / planta</span>{{ v(c.sede_planta) }}</div></div>
+
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Fecha de ingreso</span>{{ v(f(c.fecha_ingreso)) }}</div></div>
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Transporte</span>{{ v(c.transporte_tipo) }}</div></div>
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Tiempo de traslado</span>{% if c.tiempo_traslado_minutos %}<span class="valor">{{ c.tiempo_traslado_minutos }} min</span>{% else %}<span class="valor vacio">—</span>{% endif %}</div></div>
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Desplazado</span><span class="valor">{{ si(c.desplazado) }}</span></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SEGURIDAD SOCIAL Y DATOS BANCARIOS -->
+        <div class="col-12">
+            <div class="ficha-card shadow-sm">
+                <div class="card-header"><i class='bx bx-shield-quarter me-1'></i> Seguridad social y datos bancarios</div>
+                <div class="card-body">
+                    <div class="row g-2">
+                        <div class="col-12 col-md-3"><div class="campo"><span class="etiqueta">EPS</span>{{ v(c.eps) }}</div></div>
+                        <div class="col-12 col-md-3"><div class="campo"><span class="etiqueta">ARL</span>{{ v(c.arl) }}</div></div>
+                        <div class="col-12 col-md-3"><div class="campo"><span class="etiqueta">Fondo de pensión</span>{{ v(c.fondo_pension) }}</div></div>
+                        <div class="col-12 col-md-3"><div class="campo"><span class="etiqueta">Fondo de cesantías</span>{{ v(c.fondo_cesantias) }}</div></div>
+
+                        <div class="col-12 col-md-3"><div class="campo"><span class="etiqueta">Caja de compensación</span>{{ v(c.caja_compensacion) }}</div></div>
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Banco</span>{{ v(c.banco) }}</div></div>
+                        <div class="col-6 col-md-2"><div class="campo"><span class="etiqueta">Tipo de cuenta</span>{{ v(c.tipo_cuenta) }}</div></div>
+                        <div class="col-6 col-md-4"><div class="campo"><span class="etiqueta">Número de cuenta</span>{{ v(c.numero_cuenta) }}</div></div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SALUD OCUPACIONAL -->
+    <div class="row g-3 mt-1">
+        <div class="col-12">
+            <div class="ficha-card shadow-sm">
+                <div class="card-header"><i class='bx bx-plus-medical me-1'></i> Salud ocupacional</div>
+                <div class="card-body">
+                    <div class="row g-2">
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Último examen médico</span>{{ v(f(c.fecha_ultimo_examen_medico)) }}</div></div>
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Tipo de examen</span>{{ v(c.tipo_ultimo_examen) }}</div></div>
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Resultado</span>{{ v(c.resultado_examen) }}</div></div>
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Riesgo cardiovascular</span>{{ v(c.factor_riesgo_cardiovascular) }}</div></div>
+                        <div class="col-12 col-md-3"><div class="campo"><span class="etiqueta">Restricciones médicas</span>{{ v(c.restricciones_medicas) }}</div></div>
+                        <div class="col-12 col-md-3"><div class="campo"><span class="etiqueta">Alergias conocidas</span>{{ v(c.alergias_conocidas) }}</div></div>
+                        <div class="col-12 col-md-3"><div class="campo"><span class="etiqueta">Medicamentos de uso continuo</span>{{ v(c.medicamentos_uso_continuo) }}</div></div>
+
+                        <div class="col-12"><div class="campo"><span class="etiqueta">Enfermedades crónicas</span>{{ v(c.enfermedades_cronicas) }}</div></div>
+
+                        {% if c.certificado_discapacidad_numero or c.tipo_discapacidad %}
+                        <div class="col-12 mt-2"><span class="etiqueta mb-2">Certificado de discapacidad</span></div>
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Número</span>{{ v(c.certificado_discapacidad_numero) }}</div></div>
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Porcentaje</span>{% if c.certificado_discapacidad_porcentaje %}<span class="valor">{{ c.certificado_discapacidad_porcentaje }}%</span>{% else %}<span class="valor vacio">—</span>{% endif %}</div></div>
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Entidad</span>{{ v(c.certificado_discapacidad_entidad) }}</div></div>
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Vencimiento</span>{{ v(f(c.certificado_discapacidad_vencimiento)) }}</div></div>
+                        {% endif %}
+                    </div>
+
+                    <hr class="my-3">
+                    <span class="etiqueta mb-2">Vacunas</span>
+                    <div class="row g-2">
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">COVID-19</span>{{ v(f(c.vacuna_covid_fecha)) }}{% if c.vacuna_covid_dosis %} · {{ c.vacuna_covid_dosis }} dosis{% endif %}</div></div>
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Influenza</span>{{ v(f(c.vacuna_influenza_fecha)) }}</div></div>
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Hepatitis</span>{{ v(f(c.vacuna_hepatitis_fecha)) }}</div></div>
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Tétanos</span>{{ v(f(c.vacuna_tetanos_fecha)) }}</div></div>
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Fiebre amarilla</span>{{ v(f(c.vacuna_fiebre_amarilla_fecha)) }}</div></div>
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Otras vacunas</span>{{ v(c.vacuna_otras) }}</div></div>
+                    </div>
+
+                    <hr class="my-3">
+                    <span class="etiqueta mb-2">Exámenes y pruebas</span>
+                    <div class="row g-2">
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Visual</span>{{ v(f(c.examen_visual_fecha)) }}{% if c.examen_visual_resultado %} · {{ c.examen_visual_resultado }}{% endif %}</div></div>
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Auditivo</span>{{ v(f(c.examen_auditivo_fecha)) }}{% if c.examen_auditivo_resultado %} · {{ c.examen_auditivo_resultado }}{% endif %}</div></div>
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Espirometría</span>{{ v(f(c.espirometria_fecha)) }}{% if c.espirometria_resultado %} · {{ c.espirometria_resultado }}{% endif %}</div></div>
+                    </div>
+
+                    <hr class="my-3">
+                    <span class="etiqueta mb-2">Elementos de protección personal (EPP)</span>
+                    <div class="mt-1">
+                        {% set epps = [
+                            ('Casco', c.epp_casco), ('Botas', c.epp_botas), ('Guantes', c.epp_guantes),
+                            ('Gafas', c.epp_gafas), ('Tapabocas', c.epp_tapabocas), ('Overol', c.epp_overol),
+                            ('Botas dieléctricas', c.epp_botas_dielectricas), ('Arnés', c.epp_arnes),
+                            ('Chaleco reflectivo', c.epp_chaleco_reflectivo), ('Protección auditiva', c.epp_proteccion_auditiva)
+                        ] %}
+                        {% for nombre, tiene in epps if tiene %}
+                        <span class="epp-chip"><i class='bx bx-check'></i> {{ nombre }}</span>
+                        {% endfor %}
+                        {% if not (c.epp_casco or c.epp_botas or c.epp_guantes or c.epp_gafas or c.epp_tapabocas or c.epp_overol or c.epp_botas_dielectricas or c.epp_arnes or c.epp_chaleco_reflectivo or c.epp_proteccion_auditiva) %}
+                        <span class="valor vacio">Sin EPP registrado</span>
+                        {% endif %}
+                    </div>
+                    <div class="row g-2 mt-1">
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Talla camisa</span>{{ v(c.talla_camisa) }}</div></div>
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Talla pantalón</span>{{ v(c.talla_pantalon) }}</div></div>
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Talla botas</span>{{ v(c.talla_botas) }}</div></div>
+                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Talla casco</span>{{ v(c.talla_casco) }}</div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FORMACIÓN ACADÉMICA -->
+    <div class="row g-3 mt-1">
+        <div class="col-12">
+            <div class="ficha-card shadow-sm">
+                <div class="card-header"><i class='bx bx-book me-1'></i> Formación académica</div>
+                <div class="card-body">
+                    <div class="row g-2 mb-2">
+                        <div class="col-12 col-md-4"><div class="campo"><span class="etiqueta">Nivel educativo</span>{{ v(c.nivel_educativo) }}</div></div>
+                        <div class="col-12 col-md-8"><div class="campo"><span class="etiqueta">Profesión / oficio</span>{{ v(c.profesion_oficio) }}</div></div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover tabla-ficha align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Nivel</th><th>Título</th><th>Institución</th><th>Ciudad</th>
+                                    <th>Inicio</th><th>Fin</th><th>Grado</th><th>Estado</th><th>Certificado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for e in estudios %}
+                                <tr>
+                                    <td>{{ e.nivel or '—' }}</td>
+                                    <td>{{ e.titulo or '—' }}</td>
+                                    <td>{{ e.institucion or '—' }}</td>
+                                    <td>{{ e.ciudad_institucion or '—' }}</td>
+                                    <td>{{ f(e.fecha_inicio) }}</td>
+                                    <td>{{ f(e.fecha_fin) }}</td>
+                                    <td>{{ f(e.fecha_graduacion) }}</td>
+                                    <td>{% if e.esta_cursando %}<span class="badge bg-warning text-dark">En curso</span>{% else %}<span class="badge bg-success">Finalizado</span>{% endif %}</td>
+                                    <td>
+                                        {% if e.certificado_ruta %}
+                                        <a href="{{ url_for('static', filename=e.certificado_ruta) }}" target="_blank" class="btn btn-sm btn-outline-danger py-0 px-2"><i class='bx bx-file'></i></a>
+                                        {% else %}—{% endif %}
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr><td colspan="9" class="vacio-tabla">Sin estudios registrados.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12">
+            <div class="ficha-card shadow-sm">
+                <div class="card-header"><i class='bx bx-certification me-1'></i> Cursos complementarios</div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover tabla-ficha align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Curso</th><th>Entidad</th><th>Modalidad</th><th>Horas</th>
+                                    <th>Inicio</th><th>Fin</th><th>Vence</th><th>Puntaje</th><th>Aprobado</th><th>Certificado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for cu in cursos %}
+                                <tr>
+                                    <td>{{ cu.nombre_curso or '—' }}</td>
+                                    <td>{{ cu.entidad_organizadora or '—' }}</td>
+                                    <td>{{ cu.modalidad or '—' }}</td>
+                                    <td>{{ cu.horas_duracion or '—' }}</td>
+                                    <td>{{ f(cu.fecha_inicio) }}</td>
+                                    <td>{{ f(cu.fecha_fin) }}</td>
+                                    <td>{{ f(cu.fecha_vencimiento) }}</td>
+                                    <td>{{ cu.puntaje if cu.puntaje is not none else '—' }}</td>
+                                    <td>{% if cu.aprobado %}<span class="badge bg-success">Sí</span>{% else %}<span class="badge bg-secondary">No</span>{% endif %}</td>
+                                    <td>
+                                        {% if cu.certificado_ruta %}
+                                        <a href="{{ url_for('static', filename=cu.certificado_ruta) }}" target="_blank" class="btn btn-sm btn-outline-danger py-0 px-2"><i class='bx bx-file'></i></a>
+                                        {% else %}—{% endif %}
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr><td colspan="10" class="vacio-tabla">Sin cursos registrados.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- EXPERIENCIA LABORAL -->
+    <div class="row g-3 mt-1">
+        <div class="col-12">
+            <div class="ficha-card shadow-sm">
+                <div class="card-header"><i class='bx bx-history me-1'></i> Experiencia laboral</div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover tabla-ficha align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Empresa</th><th>Cargo</th><th>Sector</th><th>Inicio</th><th>Fin</th>
+                                    <th>Tiempo</th><th>Jefe</th><th>Teléfono</th><th>Motivo de retiro</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for x in experiencia %}
+                                <tr>
+                                    <td>{{ x.empresa or '—' }}</td>
+                                    <td>{{ x.cargo or '—' }}</td>
+                                    <td>{{ x.sector_empresa or '—' }}</td>
+                                    <td>{{ f(x.fecha_inicio) }}</td>
+                                    <td>{{ f(x.fecha_fin) }}</td>
+                                    <td>{% if x.tiempo_meses %}{{ x.tiempo_meses }} meses{% else %}—{% endif %}</td>
+                                    <td>{{ x.jefe_inmediato or '—' }}</td>
+                                    <td>{{ x.telefono_referencia or '—' }}</td>
+                                    <td>{{ x.motivo_retiro or '—' }}</td>
+                                </tr>
+                                {% if x.funciones_principales %}
+                                <tr><td colspan="9" class="text-muted small py-1"><strong>Funciones:</strong> {{ x.funciones_principales }}</td></tr>
+                                {% endif %}
+                                {% else %}
+                                <tr><td colspan="9" class="vacio-tabla">Sin experiencia registrada.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CAPACITACIONES -->
+        <div class="col-12">
+            <div class="ficha-card shadow-sm">
+                <div class="card-header"><i class='bx bx-chalkboard me-1'></i> Capacitaciones</div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover tabla-ficha align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Tipo</th><th>Curso</th><th>Entidad</th><th>Horas</th>
+                                    <th>Inicio</th><th>Fin</th><th>Vence</th><th>Aprobado</th><th>Certificado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for cp in capacitaciones %}
+                                <tr>
+                                    <td>{{ cp.tipo_capacitacion or '—' }}</td>
+                                    <td>{{ cp.nombre_curso or '—' }}</td>
+                                    <td>{{ cp.entidad_certificadora or '—' }}</td>
+                                    <td>{{ cp.horas_duracion or '—' }}</td>
+                                    <td>{{ f(cp.fecha_inicio) }}</td>
+                                    <td>{{ f(cp.fecha_fin) }}</td>
+                                    <td>
+                                        {{ f(cp.fecha_vencimiento) }}
+                                        {% if cp.fecha_vencimiento and cp.fecha_vencimiento < hoy %}
+                                        <span class="badge bg-danger">Vencida</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{% if cp.aprobado %}<span class="badge bg-success">Sí</span>{% else %}<span class="badge bg-secondary">No</span>{% endif %}</td>
+                                    <td>
+                                        {% if cp.certificado_ruta %}
+                                        <a href="{{ url_for('static', filename=cp.certificado_ruta) }}" target="_blank" class="btn btn-sm btn-outline-danger py-0 px-2"><i class='bx bx-file'></i></a>
+                                        {% else %}—{% endif %}
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr><td colspan="9" class="vacio-tabla">Sin capacitaciones registradas.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FAMILIARES -->
+        <div class="col-12">
+            <div class="ficha-card shadow-sm">
+                <div class="card-header"><i class='bx bx-group me-1'></i> Grupo familiar</div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover tabla-ficha align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Parentesco</th><th>Nombre</th><th>Documento</th><th>Nacimiento</th><th>Edad</th>
+                                    <th>Vive con el colaborador</th><th>Dependiente</th><th>Estudia</th><th>Trabaja</th><th>Teléfono</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for fm in familiares %}
+                                <tr>
+                                    <td>{{ fm.tipo_familiar or '—' }}</td>
+                                    <td>{{ fm.nombre_completo or '—' }}</td>
+                                    <td>{{ fm.tipo_documento or '' }} {{ fm.numero_documento or '' }}</td>
+                                    <td>{{ f(fm.fecha_nacimiento) }}</td>
+                                    <td>{{ fm.edad if fm.edad is not none else '—' }}</td>
+                                    <td>{{ si(fm.vive_con_colaborador) }}</td>
+                                    <td>{{ si(fm.dependiente_economico) }}</td>
+                                    <td>{{ si(fm.estudia) }}</td>
+                                    <td>{{ si(fm.trabaja) }}</td>
+                                    <td>{{ fm.telefono or '—' }}</td>
+                                </tr>
+                                {% else %}
+                                <tr><td colspan="10" class="vacio-tabla">Sin familiares registrados.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- DOCUMENTOS -->
+        <div class="col-12">
+            <div class="ficha-card shadow-sm">
+                <div class="card-header"><i class='bx bx-folder me-1'></i> Documentos
+                    <span class="float-end text-muted fw-normal" style="font-size:.72rem; text-transform:none;">
+                        {{ resumen_docs.total or 0 }} en total · {{ resumen_docs.vencidos or 0 }} vencidos · {{ resumen_docs.por_vencer or 0 }} por vencer
+                    </span>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover tabla-ficha align-middle">
+                            <thead>
+                                <tr><th>Tipo</th><th>Archivo</th><th>Fecha documento</th><th>Vence</th><th>Estado</th><th>Tamaño</th><th>Ver</th></tr>
+                            </thead>
+                            <tbody>
+                                {% for d in documentos %}
+                                <tr>
+                                    <td>{{ d.tipo_documento or '—' }}</td>
+                                    <td class="text-truncate" style="max-width:240px;" title="{{ d.nombre_original }}">{{ d.nombre_original or '—' }}</td>
+                                    <td>{{ f(d.fecha_documento) }}</td>
+                                    <td>{{ f(d.fecha_vencimiento) }}</td>
+                                    <td>
+                                        {% if not d.fecha_vencimiento %}
+                                        <span class="badge bg-secondary">Sin vencimiento</span>
+                                        {% elif d.fecha_vencimiento < hoy %}
+                                        <span class="badge bg-danger">Vencido</span>
+                                        {% elif d.fecha_vencimiento <= por_vencer_hasta %}
+                                        <span class="badge bg-warning text-dark">Por vencer</span>
+                                        {% else %}
+                                        <span class="badge bg-success">Vigente</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if d.tamano_bytes and d.tamano_bytes >= 1048576 %}
+                                        {{ (d.tamano_bytes / 1048576)|round(1) }} MB
+                                        {% elif d.tamano_bytes %}
+                                        {{ (d.tamano_bytes / 1024)|round(0)|int }} KB
+                                        {% else %}—{% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('talento_humano.api_documento_archivo', id=d.id) }}" target="_blank"
+                                           class="btn btn-sm btn-outline-danger py-0 px-2" title="Abrir archivo">
+                                            <i class='bx bx-show'></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr><td colspan="7" class="vacio-tabla">Sin documentos cargados.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="text-center text-muted mt-3 mb-2" style="font-size:.72rem;">
+        Hoja de vida generada el {{ hoy.strftime('%d/%m/%Y') }} · Avícola San Martín
+    </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,1538 @@
+<!-- templates/talento_humano/partials/_modal_colaborador.html -->
+<div class="modal fade" id="modalColaborador" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg">
+
+            <!-- HEADER -->
+            <div class="modal-header text-white border-0" style="background-color: #343a40;">
+                <h5 class="modal-title fw-bold" id="modalColaboradorTitulo">
+                    <i class='bx bx-user-plus me-2'></i>Registrar Colaborador
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+
+            <form method="POST" enctype="multipart/form-data" id="formColaborador" novalidate
+                  data-url-crear="{{ url_for('talento_humano.crear_colaborador') }}"
+                  data-url-editar="{{ url_for('talento_humano.editar_colaborador', id=0) }}">
+                <input type="hidden" name="id" id="form_id" value="">
+                <input type="hidden" name="eliminar_foto" id="form_eliminar_foto" value="0">
+
+                <div class="modal-body p-3 bg-light" style="max-height: 75vh; overflow-y: auto;">
+
+                    <!-- FOTO PERFIL -->
+                    <div class="d-flex align-items-center gap-3 mb-3 p-3 bg-white rounded shadow-sm">
+                        <div class="position-relative flex-shrink-0">
+                            <img id="preview_foto" class="foto-preview rounded" src="" alt="Foto perfil" style="display:none;">
+                            <div id="preview_placeholder" class="foto-preview-placeholder rounded">
+                                <i class='bx bx-camera fs-2'></i>
+                            </div>
+                            <label for="form_foto" class="position-absolute bottom-0 end-0 m-0 p-1 bg-white rounded-circle shadow-sm border"
+                                style="cursor:pointer;" title="Cambiar foto">
+                                <i class='bx bx-edit-alt text-dark fs-6'></i>
+                                <input type="file" id="form_foto" name="foto_perfil" accept="image/*" class="d-none" onchange="previsualizarFoto(this)">
+                            </label>
+                        </div>
+                        <div class="w-100">
+                            <label class="form-label fw-bold text-secondary mb-1">Foto de Perfil</label>
+                            <small class="text-muted">JPG, PNG o WEBP • Máx 5 MB • Se recorta a 300×300</small>
+                        </div>
+                    </div>
+
+                    <!-- TABS PRINCIPALES -->
+                    <ul class="nav nav-tabs nav-fill mb-3" id="tabsColaborador" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active fw-semibold" id="tabDatos-tab" data-bs-toggle="tab" data-bs-target="#tabDatos" type="button" role="tab">
+                                <i class='bx bx-id-card me-1'></i> Datos
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link fw-semibold" id="tabCapacitaciones-tab" data-bs-toggle="tab" data-bs-target="#tabCapacitaciones" type="button" role="tab">
+                                <i class='bx bx-certification me-1'></i> Capacitaciones
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link fw-semibold" id="tabExperiencia-tab" data-bs-toggle="tab" data-bs-target="#tabExperiencia" type="button" role="tab">
+                                <i class='bx bx-briefcase me-1'></i> Experiencia
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link fw-semibold" id="tabFamiliares-tab" data-bs-toggle="tab" data-bs-target="#tabFamiliares" type="button" role="tab">
+                                <i class='bx bx-group me-1'></i> Familiares
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link fw-semibold" id="tabDocumentos-tab" data-bs-toggle="tab" data-bs-target="#tabDocumentos" type="button" role="tab">
+                                <i class='bx bx-folder me-1'></i> Documentos
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content" id="tabsColaboradorContent">
+                        <div class="tab-pane fade show active" id="tabDatos" role="tabpanel">
+                        <div class="card border-0 shadow-sm mb-3">
+                            <div class="card-header bg-white fw-bold">
+                                <i class='bx bx-id-card me-2'></i> Identificación
+                            </div>
+                            <div class="card-body">
+                                    <div class="row g-2">
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-bold text-secondary">Tipo Doc <span class="text-danger">*</span></label>
+                                            <select class="form-select form-select-sm" name="tipo_doc" id="form_tipo_doc" required>
+                                                <option value="CC">CC - Cédula Ciudadanía</option>
+                                                <option value="CE">CE - Cédula Extranjería</option>
+                                                <option value="PAS">PAS - Pasaporte</option>
+                                                <option value="TI">TI - Tarjeta Identidad</option>
+                                                <option value="NIT">NIT</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label fw-bold text-secondary">N° Documento <span class="text-danger">*</span></label>
+                                            <div class="input-group input-group-sm">
+                                                <input type="text" class="form-control" name="num_doc" id="form_num_doc" required
+                                                    placeholder="Solo números" autocomplete="off">
+                                                <span class="input-group-text bg-white" id="btnValidarDoc" onclick="validarDocUnico()" title="Verificar disponibilidad">
+                                                    <i class='bx bx-search'></i>
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-5">
+                                            <label class="form-label fw-bold text-secondary">Primer Nombre <span class="text-danger">*</span></label>
+                                            <input type="text" class="form-control form-control-sm" name="primer_nombre" id="form_primer_nombre" required>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-bold text-secondary">Segundo Nombre</label>
+                                            <input type="text" class="form-control form-control-sm" name="segundo_nombre" id="form_segundo_nombre">
+                                        </div>
+                                        <div class="col-md-5">
+                                            <label class="form-label fw-bold text-secondary">Primer Apellido <span class="text-danger">*</span></label>
+                                            <input type="text" class="form-control form-control-sm" name="primer_apellido" id="form_primer_apellido" required>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label fw-bold text-secondary">Segundo Apellido</label>
+                                            <input type="text" class="form-control form-control-sm" name="segundo_apellido" id="form_segundo_apellido">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label fw-bold text-secondary">Lugar Expedición Doc</label>
+                                            <input type="text" class="form-control form-control-sm" name="lugar_expedicion_doc" id="form_lugar_expedicion_doc" placeholder="Ciudad, Departamento">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-bold text-secondary">Fecha Expedición</label>
+                                            <input type="date" class="form-control form-control-sm" name="fecha_expedicion_doc" id="form_fecha_expedicion_doc">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-bold text-secondary">Fecha Vencimiento</label>
+                                            <input type="date" class="form-control form-control-sm" name="fecha_vencimiento_doc" id="form_fecha_vencimiento_doc">
+                                        </div>
+                                    </div>
+                                </div>
+                        </div>
+                        <div class="card border-0 shadow-sm mb-3">
+                            <div class="card-header bg-white fw-bold">
+                                <i class='bx bx-user me-2'></i> Datos Personales
+                            </div>
+                            <div class="card-body">
+                                    <div class="row g-2">
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-bold text-secondary">Fecha Nacimiento <span class="text-danger">*</span></label>
+                                            <input type="date" class="form-control form-control-sm" name="fecha_nacimiento" id="form_fecha_nacimiento" required>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label fw-bold text-secondary">Género <span class="text-danger">*</span></label>
+                                            <select class="form-select form-select-sm" name="genero" id="form_genero" required>
+                                                <option value="">Seleccione</option>
+                                                <option value="M">Masculino</option>
+                                                <option value="F">Femenino</option>
+                                                <option value="O">Otro</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-bold text-secondary">Estado Civil <span class="text-danger">*</span></label>
+                                            <select class="form-select form-select-sm" name="estado_civil" id="form_estado_civil" required>
+                                                <option value="">Seleccione</option>
+                                                <option value="Soltero">Soltero</option>
+                                                <option value="Casado">Casado</option>
+                                                <option value="Union Libre">Unión Libre</option>
+                                                <option value="Separado">Separado</option>
+                                                <option value="Divorciado">Divorciado</option>
+                                                <option value="Viudo">Viudo</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label fw-bold text-secondary">RH <span class="text-danger">*</span></label>
+                                            <select class="form-select form-select-sm" name="rh" id="form_rh" required>
+                                                <option value="">Seleccione</option>
+                                                {% for r in ['O+','O-','A+','A-','B+','B-','AB+','AB-'] %}<option value="{{r}}">{{r}}</option>{% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label fw-bold text-secondary">Correo Personal <span class="text-danger">*</span></label>
+                                            <input type="email" class="form-control form-control-sm" name="correo_personal" id="form_correo_personal" required placeholder="correo@ejemplo.com">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-bold text-secondary">Celular <span class="text-danger">*</span></label>
+                                            <input type="tel" class="form-control form-control-sm" name="celular" id="form_celular" required placeholder="3001234567">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-bold text-secondary">Teléfono</label>
+                                            <input type="tel" class="form-control form-control-sm" name="telefono" id="form_telefono" placeholder="6012345678">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold text-secondary">Dirección</label>
+                                            <input type="text" class="form-control form-control-sm" name="direccion" id="form_direccion" placeholder="Calle 123 #45-67">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-bold text-secondary">Ciudad</label>
+                                            <div class="input-group input-group-sm">
+                                                <select class="form-select form-select-sm border-end-0" name="ciudad" id="form_ciudad">
+                                                    <option value="">Seleccione ciudad</option>
+                                                </select>
+                                                <button type="button" class="btn fw-bold text-white shadow-sm" style="background-color: #97271C; border: none;" onclick="abrirModalNuevoCatalogo('ciudad')" title="Crear nueva ciudad"><i class='bx bx-plus'></i></button>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-bold text-secondary">Departamento</label>
+                                            <div class="input-group input-group-sm">
+                                                <select class="form-select form-select-sm border-end-0" name="departamento" id="form_departamento">
+                                                    <option value="">Seleccione departamento</option>
+                                                </select>
+                                                <button type="button" class="btn fw-bold text-white shadow-sm" style="background-color: #97271C; border: none;" onclick="abrirModalNuevoCatalogo('departamento')" title="Crear nuevo departamento"><i class='bx bx-plus'></i></button>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-bold text-secondary">Ciudad Nacimiento</label>
+                                            <div class="input-group input-group-sm">
+                                                <select class="form-select form-select-sm border-end-0" name="lugar_nacimiento_ciudad" id="form_lugar_nac_ciudad">
+                                                    <option value="">Seleccione ciudad</option>
+                                                </select>
+                                                <button type="button" class="btn fw-bold text-white shadow-sm" style="background-color: #97271C; border: none;" onclick="abrirModalNuevoCatalogo('ciudad_nacimiento')" title="Crear nueva ciudad de nacimiento"><i class='bx bx-plus'></i></button>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-bold text-secondary">Depto Nacimiento</label>
+                                            <div class="input-group input-group-sm">
+                                                <select class="form-select form-select-sm border-end-0" name="lugar_nacimiento_departamento" id="form_lugar_nac_depto">
+                                                    <option value="">Seleccione departamento</option>
+                                                </select>
+                                                <button type="button" class="btn fw-bold text-white shadow-sm" style="background-color: #97271C; border: none;" onclick="abrirModalNuevoCatalogo('departamento_nacimiento')" title="Crear nuevo departamento de nacimiento"><i class='bx bx-plus'></i></button>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-bold text-secondary">País Nacimiento</label>
+                                            <div class="input-group input-group-sm">
+                                                <select class="form-select form-select-sm border-end-0" name="lugar_nacimiento_pais" id="form_lugar_nac_pais">
+                                                    <option value="">Seleccione país</option>
+                                                </select>
+                                                <button type="button" class="btn fw-bold text-white shadow-sm" style="background-color: #97271C; border: none;" onclick="abrirModalNuevoCatalogo('pais_nacimiento')" title="Crear nuevo país"><i class='bx bx-plus'></i></button>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-bold text-secondary">Nacionalidad</label>
+                                            <div class="input-group input-group-sm">
+                                                <select class="form-select form-select-sm border-end-0" name="nacionalidad" id="form_nacionalidad">
+                                                    <option value="">Seleccione nacionalidad</option>
+                                                </select>
+                                                <button type="button" class="btn fw-bold text-white shadow-sm" style="background-color: #97271C; border: none;" onclick="abrirModalNuevoCatalogo('nacionalidad')" title="Crear nueva nacionalidad"><i class='bx bx-plus'></i></button>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label fw-bold text-secondary">Grupo Sanguíneo</label>
+                                            <select class="form-select form-select-sm" name="grupo_sanguineo" id="form_grupo_sanguineo">
+                                                <option value="">Seleccione</option>
+                                                <option value="A">A</option><option value="B">B</option>
+                                                <option value="AB">AB</option><option value="O">O</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label fw-bold text-secondary">Factor RH</label>
+                                            <select class="form-select form-select-sm" name="factor_rh" id="form_factor_rh">
+                                                <option value="">Sel.</option><option value="+">+</option><option value="-">-</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-bold text-secondary">Religión</label>
+                                            <div class="input-group input-group-sm">
+                                                <select class="form-select form-select-sm border-end-0" name="religion" id="form_religion">
+                                                    <option value="">Seleccione religión</option>
+                                                </select>
+                                                <button type="button" class="btn fw-bold text-white shadow-sm" style="background-color: #97271C; border: none;" onclick="abrirModalNuevoCatalogo('religion')" title="Crear nueva religión"><i class='bx bx-plus'></i></button>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label fw-bold text-secondary">Cónyuge/Compañero(a)</label>
+                                            <input type="text" class="form-control form-control-sm" name="nombre_conyuge" id="form_nombre_conyuge" placeholder="Nombre completo">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-bold text-secondary">Doc. Cónyuge</label>
+                                            <input type="text" class="form-control form-control-sm" name="documento_conyuge" id="form_doc_conyuge" placeholder="N° documento">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-bold text-secondary">Tel. Cónyuge</label>
+                                            <input type="tel" class="form-control form-control-sm" name="telefono_conyuge" id="form_tel_conyuge" placeholder="3001234567">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label fw-bold text-secondary">Ocupación Cónyuge</label>
+                                            <input type="text" class="form-control form-control-sm" name="ocupacion_conyuge" id="form_ocup_conyuge" placeholder="Ej: Docente, Ama de casa...">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label fw-bold text-secondary">Empresa Cónyuge</label>
+                                            <input type="text" class="form-control form-control-sm" name="empresa_conyuge" id="form_emp_conyuge" placeholder="Empresa donde labora">
+                                        </div>
+                                    </div>
+                                </div>
+                        </div>
+                        <div class="card border-0 shadow-sm mb-3">
+                            <div class="card-header bg-white fw-bold">
+                                <i class='bx bx-phone-call me-2'></i> Contacto de Emergencia
+                            </div>
+                            <div class="card-body">
+                                    <h6 class="fw-bold text-secondary mb-3"><i class='bx bx-user me-1'></i> Contacto Principal</h6>
+                                    <div class="row g-2 mb-3">
+                                        <div class="col-md-5">
+                                            <label class="form-label fw-bold text-secondary">Nombre <span class="text-danger">*</span></label>
+                                            <input type="text" class="form-control form-control-sm" name="contacto_emergencia_nombre" id="form_contacto_nombre" required>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label fw-bold text-secondary">Teléfono <span class="text-danger">*</span></label>
+                                            <input type="tel" class="form-control form-control-sm" name="contacto_emergencia_telefono" id="form_contacto_telefono" required>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-bold text-secondary">Parentesco <span class="text-danger">*</span></label>
+                                            <input type="text" class="form-control form-control-sm" name="contacto_emergencia_parentesco" id="form_contacto_parentesco" required placeholder="Padre, Madre, Cónyuge, Hermano...">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold text-secondary">Dirección</label>
+                                            <input type="text" class="form-control form-control-sm" name="contacto_emergencia_direccion" id="form_contacto_direccion" placeholder="Dirección completa">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold text-secondary">Correo</label>
+                                            <input type="email" class="form-control form-control-sm" name="contacto_emergencia_correo" id="form_contacto_correo" placeholder="correo@ejemplo.com">
+                                        </div>
+                                    </div>
+
+                                    <hr class="my-2">
+                                    <h6 class="fw-bold text-secondary mb-3"><i class='bx bx-user-plus me-1'></i> Contacto Secundario (Opcional)</h6>
+                                    <div class="row g-2">
+                                        <div class="col-md-5">
+                                            <label class="form-label fw-bold text-secondary">Nombre</label>
+                                            <input type="text" class="form-control form-control-sm" name="contacto_emergencia2_nombre" id="form_contacto2_nombre">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label fw-bold text-secondary">Teléfono</label>
+                                            <input type="tel" class="form-control form-control-sm" name="contacto_emergencia2_telefono" id="form_contacto2_telefono">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-bold text-secondary">Parentesco</label>
+                                            <input type="text" class="form-control form-control-sm" name="contacto_emergencia2_parentesco" id="form_contacto2_parentesco" placeholder="Hermano, Tío, Amigo...">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold text-secondary">Dirección</label>
+                                            <input type="text" class="form-control form-control-sm" name="contacto_emergencia2_direccion" id="form_contacto2_direccion">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold text-secondary">Correo</label>
+                                            <input type="email" class="form-control form-control-sm" name="contacto_emergencia2_correo" id="form_contacto2_correo" placeholder="correo@ejemplo.com">
+                                        </div>
+                                    </div>
+                                </div>
+                        </div>
+                        <div class="card border-0 shadow-sm mb-3">
+                            <div class="card-header bg-white fw-bold">
+                                <i class='bx bx-briefcase me-2'></i> Información Laboral
+                            </div>
+                            <div class="card-body">
+                                    <div class="row g-2">
+                                        <!-- Fila 1: Cargo, Área, Centro Costo, Sede, Jefe -->
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-bold text-secondary">Cargo <span class="text-danger">*</span></label>
+                                            <input type="text" class="form-control form-control-sm" name="cargo" id="form_cargo" required placeholder="Ej: Operario Producción">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-bold text-secondary">Área <span class="text-danger">*</span></label>
+                                            <div class="input-group input-group-sm">
+                                                <select class="form-select form-select-sm border-end-0" name="area" id="form_area" required>
+                                                    <option value="">Seleccione área</option>
+                                                </select>
+                                                <button type="button" class="btn fw-bold text-white shadow-sm" style="background-color: #97271C; border: none;" onclick="abrirModalNuevoCatalogo('area')" title="Crear nueva área"><i class='bx bx-plus'></i></button>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label fw-bold text-secondary">Centro Costo</label>
+                                            <input type="text" class="form-control form-control-sm" name="centro_costo" id="form_centro_costo" placeholder="CC-001">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label fw-bold text-secondary">Sede/Planta</label>
+                                            <select class="form-select form-select-sm" name="sede_planta" id="form_sede_planta">
+                                                <option value="">Seleccione</option>
+                                                <option value="Planta Principal">Planta Principal</option>
+                                                <option value="Planta Alimentos">Planta de Alimentos</option>
+                                                <option value="Granja Reproductora">Granja Reproductora</option>
+                                                <option value="Incubadora">Incubadora</option>
+                                                <option value="Oficinas Centrales">Oficinas Centrales</option>
+                                                <option value="Otra">Otra</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label fw-bold text-secondary">Jefe Inmediato</label>
+                                            <div class="input-group input-group-sm">
+                                                <input type="text" class="form-control" id="form_jefe_nombre" placeholder="Buscar colaborador..." readonly>
+                                                <input type="hidden" name="jefe_inmediato_id" id="form_jefe_id">
+                                                <button type="button" class="btn btn-outline-secondary" onclick="abrirBuscarJefe()"><i class='bx bx-search'></i></button>
+                                            </div>
+                                        </div>
+
+                                        <!-- Fila 2: Contrato, Fechas, Estado -->
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-bold text-secondary">Tipo Contrato <span class="text-danger">*</span></label>
+                                            <select class="form-select form-select-sm" name="tipo_contrato" id="form_tipo_contrato" required>
+                                                <option value="">Seleccione</option>
+                                                <option value="Indefinido">Indefinido</option>
+                                                <option value="Fijo">Fijo</option>
+                                                <option value="Obra">Obra</option>
+                                                <option value="Aprendizaje">Aprendizaje</option>
+                                                <option value="Prestacion Servicios">Prestación Servicios</option>
+                                                <option value="Temporal">Temporal</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label fw-bold text-secondary">Tipo Vinculación</label>
+                                            <select class="form-select form-select-sm" name="tipo_vinculacion" id="form_tipo_vinculacion">
+                                                <option value="Empleado">Empleado</option>
+                                                <option value="Contratista">Contratista</option>
+                                                <option value="Aprendiz">Aprendiz</option>
+                                                <option value="Practicante">Prácticante</option>
+                                                <option value="Temporal">Temporal</option>
+                                                <option value="Misionero">Misionero</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-bold text-secondary">Fecha Ingreso <span class="text-danger">*</span></label>
+                                            <input type="date" class="form-control form-control-sm" name="fecha_ingreso" id="form_fecha_ingreso" required>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label fw-bold text-secondary">Clase Riesgo ARL</label>
+                                            <select class="form-select form-select-sm" name="clase_riesgo_arl" id="form_clase_riesgo_arl">
+                                                <option value="">Sel.</option>
+                                                <option value="1">I - Muy Bajo</option>
+                                                <option value="2">II - Bajo</option>
+                                                <option value="3">III - Medio</option>
+                                                <option value="4">IV - Alto</option>
+                                                <option value="5">V - Muy Alto</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label fw-bold text-secondary">Estado <span class="text-danger">*</span></label>
+                                            <select class="form-select form-select-sm" name="estado" id="form_estado" required>
+                                                <option value="Activo">Activo</option>
+                                                <option value="Inactivo">Inactivo</option>
+                                                <option value="Licencia">Licencia</option>
+                                                <option value="Suspendido">Suspendido</option>
+                                                <option value="Retirado">Retirado</option>
+                                                <option value="Fallecido">Fallecido</option>
+                                            </select>
+                                        </div>
+
+                                        <!-- Fila 4: (salario, auxilio y fechas de retiro/ascenso/evaluación eliminados) -->
+
+                                        <!-- Fila 5: EPS, ARL, Fondos, Caja, Seguros -->
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-bold text-secondary">EPS <span class="text-danger">*</span></label>
+                                            <div class="input-group input-group-sm">
+                                                <select class="form-select form-select-sm border-end-0" name="eps" id="form_eps" required>
+                                                    <option value="">Seleccione EPS</option>
+                                                </select>
+                                                <button type="button" class="btn fw-bold text-white shadow-sm" style="background-color: #97271C; border: none;" onclick="abrirModalNuevaEPS()" title="Crear nueva EPS"><i class='bx bx-plus'></i></button>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-bold text-secondary">ARL <span class="text-danger">*</span></label>
+                                            <div class="input-group input-group-sm">
+                                                <select class="form-select form-select-sm border-end-0" name="arl" id="form_arl" required>
+                                                    <option value="">Seleccione ARL</option>
+                                                </select>
+                                                <button type="button" class="btn fw-bold text-white shadow-sm" style="background-color: #97271C; border: none;" onclick="abrirModalNuevaARL()" title="Crear nueva ARL"><i class='bx bx-plus'></i></button>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-bold text-secondary">Fondo Pensión</label>
+                                            <div class="input-group input-group-sm">
+                                                <select class="form-select form-select-sm border-end-0" name="fondo_pension" id="form_fondo_pension">
+                                                    <option value="">Seleccione fondo</option>
+                                                </select>
+                                                <button type="button" class="btn fw-bold text-white shadow-sm" style="background-color: #97271C; border: none;" onclick="abrirModalNuevoCatalogo('fondo_pension')" title="Crear nuevo fondo de pensión"><i class='bx bx-plus'></i></button>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-bold text-secondary">Fondo Cesantías</label>
+                                            <div class="input-group input-group-sm">
+                                                <select class="form-select form-select-sm border-end-0" name="fondo_cesantias" id="form_fondo_cesantias">
+                                                    <option value="">Seleccione fondo</option>
+                                                </select>
+                                                <button type="button" class="btn fw-bold text-white shadow-sm" style="background-color: #97271C; border: none;" onclick="abrirModalNuevoCatalogo('fondo_cesantias')" title="Crear nuevo fondo de cesantías"><i class='bx bx-plus'></i></button>
+                                            </div>
+                                        </div>
+
+                                        <!-- Fila 6: Caja, Seguros, Cuentas -->
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-bold text-secondary">Caja Compensación</label>
+                                            <div class="input-group input-group-sm">
+                                                <select class="form-select form-select-sm border-end-0" name="caja_compensacion" id="form_caja_compensacion">
+                                                    <option value="">Seleccione caja</option>
+                                                </select>
+                                                <button type="button" class="btn fw-bold text-white shadow-sm" style="background-color: #97271C; border: none;" onclick="abrirModalNuevoCatalogo('caja_compensacion')" title="Crear nueva caja de compensación"><i class='bx bx-plus'></i></button>
+                                            </div>
+                                        </div>
+
+                                        <!-- Fila 7: Cuentas bancarias -->
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-bold text-secondary">Banco</label>
+                                            <div class="input-group input-group-sm">
+                                                <select class="form-select form-select-sm border-end-0" name="banco" id="form_banco">
+                                                    <option value="">Seleccione banco</option>
+                                                </select>
+                                                <button type="button" class="btn fw-bold text-white shadow-sm" style="background-color: #97271C; border: none;" onclick="abrirModalNuevoCatalogo('banco')" title="Crear nuevo banco"><i class='bx bx-plus'></i></button>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label fw-bold text-secondary">Tipo Cuenta</label>
+                                            <select class="form-select form-select-sm" name="tipo_cuenta" id="form_tipo_cuenta">
+                                                <option value="">Seleccione</option>
+                                                <option value="Ahorros">Ahorros</option>
+                                                <option value="Corriente">Corriente</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label fw-bold text-secondary">N° Cuenta</label>
+                                            <input type="text" class="form-control form-control-sm" name="numero_cuenta" id="form_numero_cuenta" placeholder="12345678901">
+                                        </div>
+                                    </div>
+                                </div>
+                        </div>
+                        <div class="card border-0 shadow-sm mb-3">
+                            <div class="card-header bg-white fw-bold">
+                                <i class='bx bx-user-voice me-2'></i> Perfil Sociodemográfico
+                            </div>
+                            <div class="card-body">
+                                    <div class="row g-2">
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-bold text-secondary">Nivel Educativo <span class="text-danger">*</span></label>
+                                            <select class="form-select form-select-sm" name="nivel_educativo" id="form_nivel_educativo" required>
+                                                <option value="">Seleccione</option>
+                                                <option value="Ninguno">Ninguno</option>
+                                                <option value="Primaria">Primaria</option>
+                                                <option value="Secundaria">Secundaria</option>
+                                                <option value="Tecnico">Técnico</option>
+                                                <option value="Tecnologo">Tecnólogo</option>
+                                                <option value="Profesional">Profesional</option>
+                                                <option value="Especializacion">Especialización</option>
+                                                <option value="Maestria">Maestría</option>
+                                                <option value="Doctorado">Doctorado</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-5">
+                                            <label class="form-label fw-bold text-secondary">Profesión / Oficio</label>
+                                            <input type="text" class="form-control form-control-sm" name="profesion_oficio" id="form_profesion" placeholder="Ej: Ingeniero Industrial, Soldador, Contador...">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label fw-bold text-secondary">Estrato</label>
+                                            <select class="form-select form-select-sm" name="estrato" id="form_estrato">
+                                                <option value="">Seleccione</option>
+                                                <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+                                                <option value="4">4</option><option value="5">5</option><option value="6">6</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label fw-bold text-secondary">SISBEN</label>
+                                            <input type="text" class="form-control form-control-sm" name="sisben" id="form_sisben" placeholder="Puntaje o grupo">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label fw-bold text-secondary">Discapacidad</label>
+                                            <select class="form-select form-select-sm" name="discapacidad" id="form_discapacidad">
+                                                <option value="0">No</option>
+                                                <option value="1">Sí</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-bold text-secondary">Víctima Conflicto</label>
+                                            <select class="form-select form-select-sm" name="victima_conflicto" id="form_victima">
+                                                <option value="0">No</option>
+                                                <option value="1">Sí</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-bold text-secondary">País Origen</label>
+                                            <select class="form-select form-select-sm" name="pais_origen" id="form_pais_origen">
+                                                {% for p in ['Colombia','Venezuela','Ecuador','Peru','Panama','Otro'] %}<option value="{{p}}" {% if p=='Colombia' %}selected{% endif %}>{{p}}</option>{% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-bold text-secondary">Etnia</label>
+                                            <select class="form-select form-select-sm" name="etnia" id="form_etnia">
+                                                <option value="Ninguna">Ninguna</option>
+                                                <option value="Indigena">Indígena</option>
+                                                <option value="Raizal">Raizal</option>
+                                                <option value="Palenquero">Palenquero</option>
+                                                <option value="Negro/Afro">Negro/Afro</option>
+                                                <option value="ROM">ROM</option>
+                                                <option value="Otro">Otro</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label fw-bold text-secondary">Comunidad LGBTI</label>
+                                            <select class="form-select form-select-sm" name="comunidad_lgtbi" id="form_lgtbi">
+                                                <option value="0">No</option>
+                                                <option value="1">Sí</option>
+                                            </select>
+                                        </div>
+
+                                        <!-- Vivienda, transporte y grupo familiar -->
+                                        <div class="col-md-2">
+                                            <label class="form-label fw-bold text-secondary">N° Hijos</label>
+                                            <input type="number" min="0" class="form-control form-control-sm" name="num_hijos" id="form_num_hijos">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label fw-bold text-secondary">N° Dependientes</label>
+                                            <input type="number" min="0" class="form-control form-control-sm" name="num_dependientes_economicos" id="form_num_dependientes">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label fw-bold text-secondary">Tipo Vivienda</label>
+                                            <select class="form-select form-select-sm" name="tipo_vivienda" id="form_tipo_vivienda">
+                                                <option value="">Seleccione</option>
+                                                <option value="Propia">Propia</option>
+                                                <option value="Arriendo">Arriendo</option>
+                                                <option value="Familiar">Familiar</option>
+                                                <option value="Empresa">Empresa</option>
+                                                <option value="Otra">Otra</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label fw-bold text-secondary">Tipo Inmueble</label>
+                                            <select class="form-select form-select-sm" name="tipo_vivienda_detalle" id="form_tipo_vivienda_detalle">
+                                                <option value="">Seleccione</option>
+                                                <option value="Casa">Casa</option>
+                                                <option value="Apartamento">Apartamento</option>
+                                                <option value="Finca">Finca</option>
+                                                <option value="Habitación">Habitación</option>
+                                                <option value="Otro">Otro</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label fw-bold text-secondary">Transporte</label>
+                                            <select class="form-select form-select-sm" name="transporte_tipo" id="form_transporte">
+                                                <option value="">Seleccione</option>
+                                                <option value="Propio">Propio</option>
+                                                <option value="Público">Público</option>
+                                                <option value="Empresa">Empresa</option>
+                                                <option value="Mixto">Mixto</option>
+                                                <option value="Bicicleta">Bicicleta</option>
+                                                <option value="Caminando">Caminando</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label fw-bold text-secondary">Tiempo Traslado (min)</label>
+                                            <input type="number" min="0" class="form-control form-control-sm" name="tiempo_traslado_minutos" id="form_tiempo_traslado">
+                                        </div>
+
+                                        <!-- Servicios públicos: desplegable de selección múltiple -->
+                                        <div class="col-md-5">
+                                            <label class="form-label fw-bold text-secondary" for="btn_servicios_publicos">Serv. Públicos</label>
+                                            <div class="dropdown multi-select" data-target="form_servicios_publicos">
+                                                <button class="form-select form-select-sm text-start multi-select-toggle" type="button"
+                                                        id="btn_servicios_publicos" data-bs-toggle="dropdown"
+                                                        data-bs-auto-close="outside" aria-expanded="false">
+                                                    <span class="multi-select-text d-block text-truncate text-muted">Seleccione</span>
+                                                </button>
+                                                <div class="dropdown-menu w-100 p-2 shadow-sm" style="max-height: 220px; overflow-y: auto;">
+                                                    <div class="form-check mb-1">
+                                                        <input class="form-check-input multi-select-check" type="checkbox" value="LUZ" id="serv_luz">
+                                                        <label class="form-check-label small" for="serv_luz">LUZ</label>
+                                                    </div>
+                                                    <div class="form-check mb-1">
+                                                        <input class="form-check-input multi-select-check" type="checkbox" value="ALCANTARILLADO" id="serv_alcantarillado">
+                                                        <label class="form-check-label small" for="serv_alcantarillado">ALCANTARILLADO</label>
+                                                    </div>
+                                                    <div class="form-check mb-1">
+                                                        <input class="form-check-input multi-select-check" type="checkbox" value="GAS POR RED" id="serv_gas">
+                                                        <label class="form-check-label small" for="serv_gas">GAS POR RED</label>
+                                                    </div>
+                                                    <div class="form-check mb-1">
+                                                        <input class="form-check-input multi-select-check" type="checkbox" value="TELEVISIÓN" id="serv_tv">
+                                                        <label class="form-check-label small" for="serv_tv">TELEVISIÓN</label>
+                                                    </div>
+                                                    <div class="form-check">
+                                                        <input class="form-check-input multi-select-check" type="checkbox" value="CELULAR" id="serv_celular">
+                                                        <label class="form-check-label small" for="serv_celular">CELULAR</label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <select class="d-none" name="servicios_publicos" id="form_servicios_publicos" multiple tabindex="-1" aria-hidden="true">
+                                                <option value="LUZ">LUZ</option>
+                                                <option value="ALCANTARILLADO">ALCANTARILLADO</option>
+                                                <option value="GAS POR RED">GAS POR RED</option>
+                                                <option value="TELEVISIÓN">TELEVISIÓN</option>
+                                                <option value="CELULAR">CELULAR</option>
+                                            </select>
+                                        </div>
+
+                                        <!-- Tipo de discapacidad: desplegable de selección múltiple -->
+                                        <div class="col-md-5">
+                                            <label class="form-label fw-bold text-secondary" for="btn_tipo_discapacidad">Tipo Discapacidad</label>
+                                            <div class="dropdown multi-select" data-target="form_tipo_discapacidad">
+                                                <button class="form-select form-select-sm text-start multi-select-toggle" type="button"
+                                                        id="btn_tipo_discapacidad" data-bs-toggle="dropdown"
+                                                        data-bs-auto-close="outside" aria-expanded="false">
+                                                    <span class="multi-select-text d-block text-truncate text-muted">Seleccione</span>
+                                                </button>
+                                                <div class="dropdown-menu w-100 p-2 shadow-sm" style="max-height: 220px; overflow-y: auto;">
+                                                    <div class="form-check mb-1">
+                                                        <input class="form-check-input multi-select-check" type="checkbox" value="Física" id="disc_fisica">
+                                                        <label class="form-check-label small" for="disc_fisica">Física</label>
+                                                    </div>
+                                                    <div class="form-check mb-1">
+                                                        <input class="form-check-input multi-select-check" type="checkbox" value="Sensorial" id="disc_sensorial">
+                                                        <label class="form-check-label small" for="disc_sensorial">Sensorial</label>
+                                                    </div>
+                                                    <div class="form-check mb-1">
+                                                        <input class="form-check-input multi-select-check" type="checkbox" value="Mental" id="disc_mental">
+                                                        <label class="form-check-label small" for="disc_mental">Mental</label>
+                                                    </div>
+                                                    <div class="form-check mb-1">
+                                                        <input class="form-check-input multi-select-check" type="checkbox" value="Múltiple" id="disc_multiple">
+                                                        <label class="form-check-label small" for="disc_multiple">Múltiple</label>
+                                                    </div>
+                                                    <div class="form-check">
+                                                        <input class="form-check-input multi-select-check" type="checkbox" value="Otra" id="disc_otra">
+                                                        <label class="form-check-label small" for="disc_otra">Otra</label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <select class="d-none" name="tipo_discapacidad" id="form_tipo_discapacidad" multiple tabindex="-1" aria-hidden="true">
+                                                <option value="Física">Física</option>
+                                                <option value="Sensorial">Sensorial</option>
+                                                <option value="Mental">Mental</option>
+                                                <option value="Múltiple">Múltiple</option>
+                                                <option value="Otra">Otra</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="col-md-2">
+                                            <label class="form-label fw-bold text-secondary">Internet</label>
+                                            <select class="form-select form-select-sm" name="tiene_internet" id="form_internet">
+                                                <option value="0">No</option>
+                                                <option value="1">Sí</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label fw-bold text-secondary">Desplazado</label>
+                                            <div class="form-check mt-2">
+                                                <input class="form-check-input" type="checkbox" name="desplazado" id="form_desplazado" value="1">
+                                                <label class="form-check-label small" for="form_desplazado">Sí (conflicto armado)</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label fw-bold text-secondary">Registro Único Víctimas</label>
+                                            <input type="text" class="form-control form-control-sm" name="registro_unico_victimas" id="form_registro_victimas" placeholder="Número de registro (si aplica)">
+                                        </div>
+
+                                        <!-- Certificado de discapacidad -->
+                                        <div class="col-md-4">
+                                            <label class="form-label fw-bold text-secondary">N° Certificado</label>
+                                            <input type="text" class="form-control form-control-sm" name="certificado_discapacidad_numero" id="form_cert_disc_numero">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label fw-bold text-secondary">% Discapacidad</label>
+                                            <input type="number" min="0" max="100" class="form-control form-control-sm" name="certificado_discapacidad_porcentaje" id="form_cert_disc_pct">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold text-secondary">Entidad Certificadora</label>
+                                            <input type="text" class="form-control form-control-sm" name="certificado_discapacidad_entidad" id="form_cert_disc_entidad" placeholder="EPS, IPS, Secretaría de Salud...">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label fw-bold text-secondary">Vence Certificado</label>
+                                            <input type="date" class="form-control form-control-sm" name="certificado_discapacidad_vencimiento" id="form_cert_disc_vence">
+                                        </div>
+                                    </div>
+                                </div>
+                        </div>
+                        <div class="card border-0 shadow-sm mb-3">
+                            <div class="card-header bg-white fw-bold">
+                                <i class='bx bx-heart-pulse me-2'></i> Salud Ocupacional
+                            </div>
+                            <div class="card-body">
+                                    <div class="row g-2">
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-bold text-secondary">Fecha Último Examen</label>
+                                            <input type="date" class="form-control form-control-sm" name="fecha_ultimo_examen_medico" id="form_fecha_ultimo_examen">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-bold text-secondary">Tipo Examen</label>
+                                            <select class="form-select form-select-sm" name="tipo_ultimo_examen" id="form_tipo_ultimo_examen">
+                                                <option value="">Seleccione</option>
+                                                <option value="Ingreso">Ingreso</option>
+                                                <option value="Periódico">Periódico</option>
+                                                <option value="Retiro">Retiro</option>
+                                                <option value="Cambio Cargo">Cambio Cargo</option>
+                                                <option value="Post Incapacidad">Post Incapacidad</option>
+                                                <option value="Post Licencia">Post Licencia</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-bold text-secondary">Resultado</label>
+                                            <select class="form-select form-select-sm" name="resultado_examen" id="form_resultado_examen">
+                                                <option value="">Seleccione</option>
+                                                <option value="Apto">Apto</option>
+                                                <option value="Apto con Restricciones">Apto con Restricciones</option>
+                                                <option value="No Apto">No Apto</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label fw-bold text-secondary" style="padding: .6rem .7rem;">Riesgo Cardiovascular</label>
+                                            <select class="form-select form-select-sm" name="factor_riesgo_cardiovascular" id="form_riesgo_cv" style="padding: .6rem .7rem; border-color: #e3ded9;">
+                                                <option value="">Seleccione</option>
+                                                <option value="Bajo">Bajo</option>
+                                                <option value="Moderado">Moderado</option>
+                                                <option value="Alto">Alto</option>
+                                                <option value="Muy Alto">Muy Alto</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label fw-bold text-secondary">Restricciones Médicas</label>
+                                            <textarea class="form-control form-control-sm" name="restricciones_medicas" id="form_restricciones_med" rows="2" placeholder="Altura, espacios confinados, ruido, químicos, carga pesada, turno nocturno..."></textarea>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label fw-bold text-secondary">Alergias</label>
+                                            <input type="text" class="form-control form-control-sm" name="alergias_conocidas" id="form_alergias" placeholder="Penicilina, latex, polen, alimentos...">
+                                        </div>
+
+                                        <div class="col-md-4">
+                                            <label class="form-label fw-bold text-secondary">Medicamentos Uso Continuo</label>
+                                            <input type="text" class="form-control form-control-sm" name="medicamentos_uso_continuo" id="form_medicamentos" placeholder="Losartán 50mg, Metformina 850mg...">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label fw-bold text-secondary">Enfermedades Crónicas</label>
+                                            <input type="text" class="form-control form-control-sm" name="enfermedades_cronicas" id="form_enf_cronicas" placeholder="Hipertensión, Diabetes, Asma, Hipotiroidismo...">
+                                        </div>
+                                        <div class="col-md-12">
+                                            <label class="form-label fw-bold text-secondary">Vacunas</label>
+                                            <div class="row g-2">
+                                                <div class="col-md-3">
+                                                    <label class="form-label small">COVID</label>
+                                                    <div class="input-group input-group-sm">
+                                                        <input type="date" class="form-control" name="vacuna_covid_fecha" id="form_vac_covid_fecha">
+                                                        <select class="form-select form-select-sm" name="vacuna_covid_dosis" id="form_vac_covid_dosis" style="width: 80px;">
+                                                            <option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="form-label small">Influenza</label>
+                                                    <input type="date" class="form-control form-control-sm" name="vacuna_influenza_fecha" id="form_vac_influenza">
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="form-label small">Hepatitis B</label>
+                                                    <input type="date" class="form-control form-control-sm" name="vacuna_hepatitis_fecha" id="form_vac_hepatitis">
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="form-label small">Tétanos</label>
+                                                    <input type="date" class="form-control form-control-sm" name="vacuna_tetanos_fecha" id="form_vac_tetanos">
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-12">
+                                            <label class="form-label fw-bold text-secondary">Otras Vacunas y Carné de Vacunación</label>
+                                            <div class="row g-2">
+                                                <div class="col-md-3">
+                                                    <label class="form-label small">Fiebre Amarilla</label>
+                                                    <input type="date" class="form-control form-control-sm" name="vacuna_fiebre_amarilla_fecha" id="form_vac_fiebre_amarilla">
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label class="form-label small">Otras vacunas</label>
+                                                    <input type="text" class="form-control form-control-sm" name="vacuna_otras" id="form_vac_otras" placeholder="Neumococo, Varicela, Triple viral...">
+                                                </div>
+                                                </div>
+                                        </div>
+
+                                        <div class="col-md-12">
+                                            <label class="form-label fw-bold text-secondary">Exámenes Complementarios</label>
+                                            <div class="row g-2">
+                                                <div class="col-md-3">
+                                                    <label class="form-label small">Visual</label>
+                                                    <div class="input-group input-group-sm">
+                                                        <input type="date" class="form-control" name="examen_visual_fecha" id="form_exam_visual_fecha">
+                                                        <select class="form-select form-select-sm" name="examen_visual_resultado" id="form_exam_visual_res">
+                                                            <option value="">Sel.</option><option value="Normal">Normal</option><option value="Con Corrección">Con Corrección</option><option value="Anormal">Anormal</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="form-label small">Auditivo</label>
+                                                    <div class="input-group input-group-sm">
+                                                        <input type="date" class="form-control" name="examen_auditivo_fecha" id="form_exam_auditivo_fecha">
+                                                        <select class="form-select form-select-sm" name="examen_auditivo_resultado" id="form_exam_auditivo_res">
+                                                            <option value="">Sel.</option><option value="Normal">Normal</option><option value="Hipoacusia Leve">Hipoacusia Leve</option><option value="Hipoacusia Moderada">Hipoacusia Moderada</option><option value="Hipoacusia Severa">Hipoacusia Severa</option><option value="Anormal">Anormal</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="form-label small">Espirometría</label>
+                                                    <div class="input-group input-group-sm">
+                                                        <input type="date" class="form-control" name="espirometria_fecha" id="form_espir_fecha">
+                                                        <select class="form-select form-select-sm" name="espirometria_resultado" id="form_espir_res">
+                                                            <option value="">Sel.</option><option value="Normal">Normal</option><option value="Obstructivo Leve">Obstructivo Leve</option><option value="Obstructivo Moderado">Obstructivo Moderado</option><option value="Obstructivo Severo">Obstructivo Severo</option><option value="Restrictivo">Restrictivo</option><option value="Anormal">Anormal</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-12">
+                                            <label class="form-label fw-bold text-secondary">EPP Asignado (Entrega de Elementos de Protección Personal)</label>
+                                            <div class="row g-2">
+                                                <div class="col-md-2">
+                                                    <div class="form-check form-check-inline">
+                                                        <input class="form-check-input" type="checkbox" name="epp_casco" id="form_epp_casco" value="1">
+                                                        <label class="form-check-label small" for="form_epp_casco">Casco</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <div class="form-check form-check-inline">
+                                                        <input class="form-check-input" type="checkbox" name="epp_botas" id="form_epp_botas" value="1">
+                                                        <label class="form-check-label small" for="form_epp_botas">Botas</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <div class="form-check form-check-inline">
+                                                        <input class="form-check-input" type="checkbox" name="epp_guantes" id="form_epp_guantes" value="1">
+                                                        <label class="form-check-label small" for="form_epp_guantes">Guantes</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <div class="form-check form-check-inline">
+                                                        <input class="form-check-input" type="checkbox" name="epp_gafas" id="form_epp_gafas" value="1">
+                                                        <label class="form-check-label small" for="form_epp_gafas">Gafas</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <div class="form-check form-check-inline">
+                                                        <input class="form-check-input" type="checkbox" name="epp_tapabocas" id="form_epp_tapabocas" value="1">
+                                                        <label class="form-check-label small" for="form_epp_tapabocas">Tapabocas</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <div class="form-check form-check-inline">
+                                                        <input class="form-check-input" type="checkbox" name="epp_overol" id="form_epp_overol" value="1">
+                                                        <label class="form-check-label small" for="form_epp_overol">Overol</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <div class="form-check form-check-inline">
+                                                        <input class="form-check-input" type="checkbox" name="epp_botas_dielectricas" id="form_epp_botas_diel" value="1">
+                                                        <label class="form-check-label small" for="form_epp_botas_diel">Botas Diel.</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <div class="form-check form-check-inline">
+                                                        <input class="form-check-input" type="checkbox" name="epp_arnes" id="form_epp_arnes" value="1">
+                                                        <label class="form-check-label small" for="form_epp_arnes">Arnés</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <div class="form-check form-check-inline">
+                                                        <input class="form-check-input" type="checkbox" name="epp_chaleco_reflectivo" id="form_epp_chaleco" value="1">
+                                                        <label class="form-check-label small" for="form_epp_chaleco">Chaleco Ref.</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <div class="form-check form-check-inline">
+                                                        <input class="form-check-input" type="checkbox" name="epp_proteccion_auditiva" id="form_epp_auditiva" value="1">
+                                                        <label class="form-check-label small" for="form_epp_auditiva">Prot. Auditiva</label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-12">
+                                            <label class="form-label fw-bold text-secondary">Tallas EPP</label>
+                                            <div class="row g-2">
+                                                <div class="col-12 col-sm-6 col-xl-3">
+                                                    <label class="form-label small">Camisa</label>
+                                                    <div class="input-group input-group-sm">
+                                                        <select class="form-select form-select-sm border-end-0" name="talla_camisa" id="form_talla_camisa">
+                                                            <option value="">Seleccione</option>
+                                                        </select>
+                                                        <button type="button" class="btn fw-bold text-white shadow-sm" style="background-color: #97271C; border: none;" onclick="abrirModalNuevaTalla('camisa')" title="Crear nueva talla de camisa"><i class='bx bx-plus'></i></button>
+                                                    </div>
+                                                </div>
+                                                <div class="col-12 col-sm-6 col-xl-3">
+                                                    <label class="form-label small">Pantalón</label>
+                                                    <div class="input-group input-group-sm">
+                                                        <select class="form-select form-select-sm border-end-0" name="talla_pantalon" id="form_talla_pantalon">
+                                                            <option value="">Seleccione</option>
+                                                        </select>
+                                                        <button type="button" class="btn fw-bold text-white shadow-sm" style="background-color: #97271C; border: none;" onclick="abrirModalNuevaTalla('pantalon')" title="Crear nueva talla de pantalón"><i class='bx bx-plus'></i></button>
+                                                    </div>
+                                                </div>
+                                                <div class="col-12 col-sm-6 col-xl-3">
+                                                    <label class="form-label small">Botas</label>
+                                                    <div class="input-group input-group-sm">
+                                                        <select class="form-select form-select-sm border-end-0" name="talla_botas" id="form_talla_botas">
+                                                            <option value="">Seleccione</option>
+                                                        </select>
+                                                        <button type="button" class="btn fw-bold text-white shadow-sm" style="background-color: #97271C; border: none;" onclick="abrirModalNuevaTalla('botas')" title="Crear nueva talla de botas"><i class='bx bx-plus'></i></button>
+                                                    </div>
+                                                </div>
+                                                <div class="col-12 col-sm-6 col-xl-3">
+                                                    <label class="form-label small">Casco</label>
+                                                    <div class="input-group input-group-sm">
+                                                        <select class="form-select form-select-sm border-end-0" name="talla_casco" id="form_talla_casco">
+                                                            <option value="">Seleccione</option>
+                                                        </select>
+                                                        <button type="button" class="btn fw-bold text-white shadow-sm" style="background-color: #97271C; border: none;" onclick="abrirModalNuevaTalla('casco')" title="Crear nueva talla de casco"><i class='bx bx-plus'></i></button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                        </div>
+                        </div>
+                        <div class="tab-pane fade" id="tabCapacitaciones" role="tabpanel">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="mb-0 fw-bold"><i class='bx bx-certification me-1'></i> Capacitaciones del Colaborador</h6>
+                                <button type="button" class="btn btn-sm fw-bold text-white shadow-sm" style="background-color:#97271C;" onclick="abrirModalCapacitacion()">
+                                    <i class='bx bx-plus me-1'></i> Agregar
+                                </button>
+                            </div>
+                            <div class="alert alert-warning small py-2 mb-2" id="aviso_tabCapacitaciones">
+                                <i class='bx bx-info-circle me-1'></i> Guarde primero el colaborador para registrar informaci&oacute;n en esta pesta&ntilde;a.
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover align-middle mb-0">
+                                    <thead class="table-light"><tr><th>Curso</th><th>Tipo</th><th>Entidad</th><th>Inicio</th><th>Vence</th><th>Horas</th><th class="text-end">Acciones</th></tr></thead>
+                                    <tbody id="tbodyCapacitaciones">
+                                        <tr><td colspan="7" class="text-center text-muted py-3">Sin registros</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="tabExperiencia" role="tabpanel">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="mb-0 fw-bold"><i class='bx bx-briefcase me-1'></i> Experiencia Laboral Anterior</h6>
+                                <button type="button" class="btn btn-sm fw-bold text-white shadow-sm" style="background-color:#97271C;" onclick="abrirModalExperiencia()">
+                                    <i class='bx bx-plus me-1'></i> Agregar
+                                </button>
+                            </div>
+                            <div class="alert alert-warning small py-2 mb-2" id="aviso_tabExperiencia">
+                                <i class='bx bx-info-circle me-1'></i> Guarde primero el colaborador para registrar informaci&oacute;n en esta pesta&ntilde;a.
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover align-middle mb-0">
+                                    <thead class="table-light"><tr><th>Empresa</th><th>Cargo</th><th>Desde</th><th>Hasta</th><th>Jefe</th><th>Motivo</th><th class="text-end">Acciones</th></tr></thead>
+                                    <tbody id="tbodyExperiencia">
+                                        <tr><td colspan="7" class="text-center text-muted py-3">Sin registros</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="tabFamiliares" role="tabpanel">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="mb-0 fw-bold"><i class='bx bx-group me-1'></i> Familiares / Dependientes</h6>
+                                <button type="button" class="btn btn-sm fw-bold text-white shadow-sm" style="background-color:#97271C;" onclick="abrirModalFamiliar()">
+                                    <i class='bx bx-plus me-1'></i> Agregar
+                                </button>
+                            </div>
+                            <div class="alert alert-warning small py-2 mb-2" id="aviso_tabFamiliares">
+                                <i class='bx bx-info-circle me-1'></i> Guarde primero el colaborador para registrar informaci&oacute;n en esta pesta&ntilde;a.
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover align-middle mb-0">
+                                    <thead class="table-light"><tr><th>Nombre</th><th>Parentesco</th><th>Documento</th><th>Nacimiento</th><th>Tel&eacute;fono</th><th>Dependiente</th><th class="text-end">Acciones</th></tr></thead>
+                                    <tbody id="tbodyFamiliares">
+                                        <tr><td colspan="7" class="text-center text-muted py-3">Sin registros</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="tabDocumentos" role="tabpanel">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="mb-0 fw-bold"><i class='bx bx-folder me-1'></i> Documentos del Colaborador</h6>
+                                <div class="d-flex gap-2">
+                                    <a href="#" id="btnGestionarDocumentos" class="btn btn-sm btn-outline-primary" target="_blank" disabled>
+                                        <i class='bx bx-folder-open me-1'></i> Módulo completo
+                                    </a>
+                                    <button type="button" class="btn btn-sm fw-bold text-white shadow-sm" style="background-color:#97271C;"
+                                            id="btnNuevoDocumento" onclick="abrirFormDocumento()" disabled>
+                                        <i class='bx bx-upload me-1'></i> Subir
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="alert alert-warning small py-2 mb-2" id="aviso_tabDocumentos">
+                                <i class='bx bx-info-circle me-1'></i> Guarde primero el colaborador para adjuntar documentos.
+                            </div>
+
+                            <!-- Formulario de carga / edición -->
+                            <div class="card border-0 bg-light mb-3 d-none" id="cajaFormDocumento">
+                                <div class="card-body py-2">
+                                    <div class="row g-2 align-items-end">
+                                        <div class="col-md-3">
+                                            <label class="form-label small fw-bold text-secondary mb-1">Tipo <span class="text-danger">*</span></label>
+                                            <select class="form-select form-select-sm" id="doc_tipo">
+                                                <option value="">Seleccione</option>
+                                                <option value="Contrato">Contrato</option>
+                                                <option value="Hoja de Vida">Hoja de Vida</option>
+                                                <option value="Examenes Medicos">Exámenes Médicos</option>
+                                                <option value="Certificado Laboral">Certificado Laboral</option>
+                                                <option value="Curso Capacitacion">Curso / Capacitación</option>
+                                                <option value="Carne Vacunacion">Carné de Vacunación</option>
+                                                <option value="ARL">ARL</option>
+                                                <option value="EPS">EPS</option>
+                                                <option value="Fondo Pension">Fondo de Pensión</option>
+                                                <option value="Fondo Cesantias">Fondo de Cesantías</option>
+                                                <option value="Cuenta Bancaria">Cuenta Bancaria</option>
+                                                <option value="Licencia Conduccion">Licencia de Conducción</option>
+                                                <option value="Pasaporte">Pasaporte</option>
+                                                <option value="Antecedentes Penales">Antecedentes Penales</option>
+                                                <option value="Referencia Personal">Referencia Personal</option>
+                                                <option value="Referencia Familiar">Referencia Familiar</option>
+                                                <option value="Otro">Otro</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label small fw-bold text-secondary mb-1">Fecha documento</label>
+                                            <input type="date" class="form-control form-control-sm" id="doc_fecha">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label small fw-bold text-secondary mb-1">Vence</label>
+                                            <input type="date" class="form-control form-control-sm" id="doc_vencimiento">
+                                        </div>
+                                        <div class="col-md-3" id="cajaArchivoDocumento">
+                                            <label class="form-label small fw-bold text-secondary mb-1">Archivo <span class="text-danger">*</span></label>
+                                            <input type="file" class="form-control form-control-sm" id="doc_archivo"
+                                                   accept=".pdf,application/pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.webp,.gif,.txt">
+                                        </div>
+                                        <div class="col-md-2 d-flex gap-1">
+                                            <button type="button" class="btn btn-sm btn-success fw-bold w-100" id="btnGuardarDocumento" onclick="guardarDocumento()">
+                                                <i class='bx bx-save'></i> Guardar
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="cerrarFormDocumento()" title="Cancelar">
+                                                <i class='bx bx-x'></i>
+                                            </button>
+                                        </div>
+                                        <div class="col-12">
+                                            <input type="text" class="form-control form-control-sm" id="doc_observaciones" placeholder="Observaciones (opcional)">
+                                        </div>
+                                        <div class="col-12">
+                                            <small class="text-muted" id="docAyudaTipo">PDF, Word, Excel, imágenes o TXT. Máximo 10 MB.</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Tipo</th>
+                                            <th>Archivo</th>
+                                            <th>Fecha</th>
+                                            <th>Vence</th>
+                                            <th>Estado</th>
+                                            <th class="text-end">Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tbodyDocumentos">
+                                        <tr><td colspan="6" class="text-center text-muted py-3">Sin registros</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <hr class="my-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <small class="fw-bold text-secondary">Documentos obligatorios</small>
+                                <small class="text-muted" id="docProgresoTexto">0 de 14</small>
+                            </div>
+                            <div class="progress mt-1" style="height:6px;">
+                                <div class="progress-bar bg-success" id="docProgresoBarra" style="width:0%"></div>
+                            </div>
+                            <div class="d-flex flex-wrap gap-2 mt-2" id="checklistDocumentos"></div>
+                        </div>
+                    </div>
+
+
+                </div>
+
+                <!-- FOOTER -->
+                <div class="modal-footer bg-white border-0 p-3">
+                    <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">
+                        <i class='bx bx-x me-1'></i> Cancelar
+                    </button>
+                    <button type="submit" class="btn fw-bold px-4 text-white shadow-sm" style="background-color: #97271C;" id="btnGuardarColaborador">
+                        <i class='bx bx-save me-1'></i> <span id="btnGuardarTexto">Guardar Colaborador</span>
+                    </button>
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+</div>
+
+<!-- MODAL BUSCAR JEFE (TomSelect) -->
+<div class="modal fade" id="modalBuscarJefe" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header text-white" style="background-color: #343a40;">
+                <h5 class="modal-title fw-bold"><i class='bx bx-user-check me-2'></i>Seleccionar Jefe Inmediato</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-3">
+                <input type="text" class="form-control form-control-sm mb-3" id="inputBuscarJefe" placeholder="Escriba nombre o documento..." autocomplete="off">
+                <div id="resultadosJefe" class="list-group" style="max-height: 300px; overflow-y: auto;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL NUEVO REGISTRO DE CATÁLOGO (departamento, ciudad, área, banco, etc.) -->
+<div class="modal fade" id="modalNuevoCatalogo" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header text-white border-0" style="background-color: #343a40;">
+                <h5 class="modal-title fw-bold"><i class='bx bx-list-plus me-2'></i>Nuevo registro: <span id="nuevo_catalogo_titulo"></span></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4 bg-light">
+                <input type="hidden" id="nuevo_catalogo_campo">
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-secondary" id="nuevo_catalogo_etiqueta">Nombre <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control form-control-sm shadow-sm" id="nuevo_catalogo_nombre" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-secondary">Código</label>
+                    <input type="text" class="form-control form-control-sm shadow-sm" id="nuevo_catalogo_codigo" placeholder="Opcional">
+                </div>
+                <button type="button" class="btn w-100 fw-bold text-white shadow-sm" style="background-color: #97271C;" id="btnGuardarCatalogo" onclick="guardarNuevoCatalogo()">Crear registro</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL NUEVA EPS -->
+<div class="modal fade" id="modalNuevaEPS" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header text-white border-0" style="background-color: #343a40;">
+                <h5 class="modal-title fw-bold"><i class='bx bx-heart me-2'></i>Nueva EPS</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4 bg-light">
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-secondary">Nombre EPS <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control form-control-sm shadow-sm" id="nueva_eps_nombre" placeholder="Ej: NUEVA EPS, SANITAS, SURA" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-secondary">Código</label>
+                    <input type="text" class="form-control form-control-sm shadow-sm" id="nueva_eps_codigo" placeholder="Ej: NUE, SAN, SUR (opcional)">
+                </div>
+                <button type="button" class="btn w-100 fw-bold text-white shadow-sm" style="background-color: #97271C;" onclick="guardarNuevaEPS()">Crear EPS</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL NUEVA ARL -->
+<div class="modal fade" id="modalNuevaARL" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header text-white border-0" style="background-color: #343a40;">
+                <h5 class="modal-title fw-bold"><i class='bx bx-shield me-2'></i>Nueva ARL</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4 bg-light">
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-secondary">Nombre ARL <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control form-control-sm shadow-sm" id="nueva_arl_nombre" placeholder="Ej: POSITIVA, SURA, COLMENA" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-secondary">Código</label>
+                    <input type="text" class="form-control form-control-sm shadow-sm" id="nueva_arl_codigo" placeholder="Ej: POS, SUR, COL (opcional)">
+                </div>
+                <button type="button" class="btn w-100 fw-bold text-white shadow-sm" style="background-color: #97271C;" onclick="guardarNuevaARL()">Crear ARL</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL NUEVA TALLA (camisa, pantalón, botas, casco) -->
+<div class="modal fade" id="modalNuevaTalla" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header text-white border-0" style="background-color: #343a40;">
+                <h5 class="modal-title fw-bold"><i class='bx bx-ruler me-2'></i>Nueva talla de <span id="nueva_talla_titulo">EPP</span></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4 bg-light">
+                <input type="hidden" id="nueva_talla_tipo">
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-secondary">Nombre de la talla <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control form-control-sm shadow-sm" id="nueva_talla_nombre" placeholder="Ej: XL" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-secondary">Código</label>
+                    <input type="text" class="form-control form-control-sm shadow-sm" id="nueva_talla_codigo" placeholder="Opcional">
+                </div>
+                <button type="button" class="btn w-100 fw-bold text-white shadow-sm" style="background-color: #97271C;" onclick="guardarNuevaTalla(this)">Crear talla</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     SUB-MODAL: CAPACITACION
+     ============================================================ -->
+<div class="modal fade" id="modalCapacitacion" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header text-white border-0" style="background-color:#343a40;">
+                <h5 class="modal-title fw-bold"><i class='bx bx-certification me-2'></i>Capacitaci&oacute;n</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" onclick="volverAlColaborador('tabCapacitaciones')"></button>
+            </div>
+            <div class="modal-body p-4 bg-light">
+                <input type="hidden" id="cap_id">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold text-secondary small">Tipo <span class="text-danger">*</span></label>
+                        <select class="form-select form-select-sm" id="cap_tipo">
+                                    <option value="">Seleccione...</option>
+                                    <option value="Altura">Altura</option>
+                                    <option value="Espacios Confinados">Espacios Confinados</option>
+                                    <option value="Manipulación Alimentos">Manipulación Alimentos</option>
+                                    <option value="Bioseguridad">Bioseguridad</option>
+                                    <option value="HACCP">HACCP</option>
+                                    <option value="BPM">BPM</option>
+                                    <option value="Primeros Auxilios">Primeros Auxilios</option>
+                                    <option value="Brigadas Emergencia">Brigadas Emergencia</option>
+                                    <option value="Manejo Extintores">Manejo Extintores</option>
+                                    <option value="Evacuación">Evacuación</option>
+                                    <option value="Trabajo Seguro">Trabajo Seguro</option>
+                                    <option value="Uso EPP">Uso EPP</option>
+                                    <option value="Manejo Residuos">Manejo Residuos</option>
+                                    <option value="Control Plagas">Control Plagas</option>
+                                    <option value="Bienestar Animal">Bienestar Animal</option>
+                                    <option value="Otro">Otro</option>
+                        </select>
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label fw-bold text-secondary small">Nombre del curso <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control form-control-sm" id="cap_curso" placeholder="Ej: Trabajo en alturas nivel avanzado">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold text-secondary small">Entidad certificadora</label>
+                        <input type="text" class="form-control form-control-sm" id="cap_entidad" placeholder="Ej: SENA">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold text-secondary small">Horas</label>
+                        <input type="number" step="0.5" min="0" class="form-control form-control-sm" id="cap_horas">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold text-secondary small">Aprobado</label>
+                        <select class="form-select form-select-sm" id="cap_aprobado">
+                            <option value="true">S&iacute;</option>
+                            <option value="false">No</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold text-secondary small">Fecha inicio</label>
+                        <input type="date" class="form-control form-control-sm" id="cap_inicio">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold text-secondary small">Fecha fin</label>
+                        <input type="date" class="form-control form-control-sm" id="cap_fin">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold text-secondary small">Fecha vencimiento</label>
+                        <input type="date" class="form-control form-control-sm" id="cap_vencimiento">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-bold text-secondary small">Observaciones</label>
+                        <textarea class="form-control form-control-sm" id="cap_observaciones" rows="2"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-white border-0">
+                <button type="button" class="btn btn-secondary btn-sm fw-bold" data-bs-dismiss="modal" onclick="volverAlColaborador('tabCapacitaciones')">Cancelar</button>
+                <button type="button" class="btn btn-sm fw-bold text-white px-4" style="background-color:#97271C;" id="btnGuardarCapacitacion" onclick="guardarCapacitacion()">
+                    <i class='bx bx-save me-1'></i> Guardar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     SUB-MODAL: EXPERIENCIA LABORAL
+     ============================================================ -->
+<div class="modal fade" id="modalExperiencia" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header text-white border-0" style="background-color:#343a40;">
+                <h5 class="modal-title fw-bold"><i class='bx bx-briefcase me-2'></i>Experiencia Laboral</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" onclick="volverAlColaborador('tabExperiencia')"></button>
+            </div>
+            <div class="modal-body p-4 bg-light">
+                <input type="hidden" id="exp_id">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold text-secondary small">Empresa <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control form-control-sm" id="exp_empresa">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold text-secondary small">Cargo <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control form-control-sm" id="exp_cargo">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold text-secondary small">Sector</label>
+                        <input type="text" class="form-control form-control-sm" id="exp_sector">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold text-secondary small">Fecha inicio</label>
+                        <input type="date" class="form-control form-control-sm" id="exp_inicio">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold text-secondary small">Fecha fin</label>
+                        <input type="date" class="form-control form-control-sm" id="exp_fin">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold text-secondary small">Jefe inmediato</label>
+                        <input type="text" class="form-control form-control-sm" id="exp_jefe">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold text-secondary small">Tel&eacute;fono referencia</label>
+                        <input type="text" class="form-control form-control-sm" id="exp_telefono">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold text-secondary small">Motivo de retiro</label>
+                        <select class="form-select form-select-sm" id="exp_motivo">
+                                    <option value="">Seleccione...</option>
+                                    <option value="Renuncia">Renuncia</option>
+                                    <option value="Despido">Despido</option>
+                                    <option value="Fin Contrato">Fin Contrato</option>
+                                    <option value="Jubilación">Jubilación</option>
+                                    <option value="Mutuo Acuerdo">Mutuo Acuerdo</option>
+                                    <option value="Salud">Salud</option>
+                                    <option value="Estudio">Estudio</option>
+                                    <option value="Otro">Otro</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-bold text-secondary small">Funciones principales</label>
+                        <textarea class="form-control form-control-sm" id="exp_funciones" rows="2"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-white border-0">
+                <button type="button" class="btn btn-secondary btn-sm fw-bold" data-bs-dismiss="modal" onclick="volverAlColaborador('tabExperiencia')">Cancelar</button>
+                <button type="button" class="btn btn-sm fw-bold text-white px-4" style="background-color:#97271C;" id="btnGuardarExperiencia" onclick="guardarExperiencia()">
+                    <i class='bx bx-save me-1'></i> Guardar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     SUB-MODAL: FAMILIAR
+     ============================================================ -->
+<div class="modal fade" id="modalFamiliar" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header text-white border-0" style="background-color:#343a40;">
+                <h5 class="modal-title fw-bold"><i class='bx bx-group me-2'></i>Familiar / Dependiente</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" onclick="volverAlColaborador('tabFamiliares')"></button>
+            </div>
+            <div class="modal-body p-4 bg-light">
+                <input type="hidden" id="fam_id">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold text-secondary small">Parentesco <span class="text-danger">*</span></label>
+                        <select class="form-select form-select-sm" id="fam_tipo">
+                                    <option value="">Seleccione...</option>
+                                    <option value="Cónyuge">Cónyuge</option>
+                                    <option value="Compañero(a)">Compañero(a)</option>
+                                    <option value="Hijo(a)">Hijo(a)</option>
+                                    <option value="Padre">Padre</option>
+                                    <option value="Madre">Madre</option>
+                                    <option value="Hermano(a)">Hermano(a)</option>
+                                    <option value="Otro">Otro</option>
+                        </select>
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label fw-bold text-secondary small">Nombre completo <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control form-control-sm" id="fam_nombre">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold text-secondary small">Tipo doc.</label>
+                        <select class="form-select form-select-sm" id="fam_tipo_doc">
+                                    <option value="">Seleccione...</option>
+                                    <option value="CC">CC</option>
+                                    <option value="CE">CE</option>
+                                    <option value="PAS">PAS</option>
+                                    <option value="TI">TI</option>
+                                    <option value="NIT">NIT</option>
+                                    <option value="RC">RC</option>
+                        </select>
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label fw-bold text-secondary small">N&uacute;mero documento</label>
+                        <input type="text" class="form-control form-control-sm" id="fam_num_doc">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold text-secondary small">Fecha nacimiento</label>
+                        <input type="date" class="form-control form-control-sm" id="fam_nacimiento">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold text-secondary small">Tel&eacute;fono</label>
+                        <input type="text" class="form-control form-control-sm" id="fam_telefono">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold text-secondary small">Correo</label>
+                        <input type="email" class="form-control form-control-sm" id="fam_correo">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold text-secondary small">EPS del familiar</label>
+                        <input type="text" class="form-control form-control-sm" id="fam_eps">
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-check mt-4">
+                            <input class="form-check-input" type="checkbox" id="fam_dependiente" checked>
+                            <label class="form-check-label small fw-bold" for="fam_dependiente">Dependiente econ&oacute;mico</label>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-check mt-4">
+                            <input class="form-check-input" type="checkbox" id="fam_vive" checked>
+                            <label class="form-check-label small fw-bold" for="fam_vive">Vive con el colaborador</label>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-check mt-4">
+                            <input class="form-check-input" type="checkbox" id="fam_estudia">
+                            <label class="form-check-label small fw-bold" for="fam_estudia">Estudia actualmente</label>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-bold text-secondary small">Observaciones</label>
+                        <textarea class="form-control form-control-sm" id="fam_observaciones" rows="2"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-white border-0">
+                <button type="button" class="btn btn-secondary btn-sm fw-bold" data-bs-dismiss="modal" onclick="volverAlColaborador('tabFamiliares')">Cancelar</button>
+                <button type="button" class="btn btn-sm fw-bold text-white px-4" style="background-color:#97271C;" id="btnGuardarFamiliar" onclick="guardarFamiliar()">
+                    <i class='bx bx-save me-1'></i> Guardar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

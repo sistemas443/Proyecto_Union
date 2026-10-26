@@ -1,0 +1,900 @@
+# routes/talento_humano/vistas.py
+"""
+Blueprint Talento Humano - Gestión de Colaboradores
+Solo accesible para rol 'Talento humano'
+"""
+import os
+import datetime
+from decimal import Decimal
+from flask import (Blueprint, render_template, request, jsonify, redirect, url_for,
+                   flash, session, current_app, send_file, abort)
+from werkzeug.utils import secure_filename
+
+from routes.routes import login_requerido
+from models.talento_humano.colaborador import Colaborador
+from models.talento_humano.capacitaciones import Capacitacion
+from models.talento_humano.experiencia import Experiencia
+from models.talento_humano.familiares import Familiar
+from models.talento_humano.maestros import EPS, ARL, Talla, Catalogo
+from models.talento_humano.documentos import Documento
+from models.talento_humano.estudios import Estudio
+from models.talento_humano.cursos import Curso
+
+# Decorador específico para Talento Humano
+def talento_humano_requerido(f):
+    from functools import wraps
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if session.get('user_rol') != 'Talento humano':
+            if request.path.startswith('/api/'):
+                return jsonify({'status': 'error', 'msg': 'Acceso denegado. Solo Talento Humano.'}), 403
+            flash("Acceso denegado. Este módulo es exclusivo para Talento Humano.", "error")
+            return redirect(url_for('main.pantalla_principal'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+talento_humano_bp = Blueprint('talento_humano', __name__, url_prefix='/talento_humano')
+
+
+def _json_fila(row):
+    """Convierte una fila de BD a dict serializable (fechas ISO, Decimal -> float)."""
+    out = {}
+    for k, v in dict(row).items():
+        if isinstance(v, (datetime.datetime, datetime.date)):
+            out[k] = v.isoformat()
+        elif isinstance(v, Decimal):
+            out[k] = float(v)
+        else:
+            out[k] = v
+    return out
+
+
+# ============================================================
+# VISTA PRINCIPAL: LISTA DE COLABORADORES
+# ============================================================
+@talento_humano_bp.route('/colaboradores')
+@login_requerido
+@talento_humano_requerido
+def colaboradores():
+    """Vista principal con tabla, buscador y paginación"""
+    # Filtros desde query params
+    filtros = {
+        'busqueda': request.args.get('busqueda', '').strip(),
+        'estado': request.args.get('estado', ''),
+        'area': request.args.get('area', ''),
+        'cargo': request.args.get('cargo', ''),
+    }
+    # Limpiar vacíos
+    filtros = {k: v for k, v in filtros.items() if v}
+
+    pagina = request.args.get('pagina', 1, type=int)
+    por_pagina = 50
+
+    colaboradores_lista, total = Colaborador.get_all(filtros, pagina, por_pagina)
+    total_paginas = (total + por_pagina - 1) // por_pagina
+
+    # Listas para filtros dropdown
+    areas = Colaborador.get_areas_unicas()
+    cargos = Colaborador.get_cargos_unicos()
+    estados = Colaborador.ESTADOS
+
+    return render_template(
+        'talento_humano/colaboradores.html',
+        colaboradores=colaboradores_lista,
+        filtros=filtros,
+        pagina=pagina,
+        total_paginas=total_paginas,
+        total=total,
+        areas=areas,
+        cargos=cargos,
+        estados=estados
+    )
+
+
+# ============================================================
+# VISTA: HOJA DE VIDA / FICHA COMPLETA DEL COLABORADOR
+# ============================================================
+@talento_humano_bp.route('/colaboradores/<int:id>/ficha')
+@login_requerido
+@talento_humano_requerido
+def ficha_colaborador(id):
+    """Hoja de Vida consolidada e imprimible."""
+    colaborador = Colaborador.get_by_id(id)
+    if not colaborador:
+        flash('Colaborador no encontrado.', 'error')
+        return redirect(url_for('talento_humano.colaboradores'))
+
+    jefe = None
+    if colaborador.get('jefe_inmediato_id'):
+        jefe = Colaborador.get_by_id(colaborador['jefe_inmediato_id'])
+
+    return render_template(
+        'talento_humano/ficha_colaborador.html',
+        c=colaborador,
+        jefe=jefe,
+        capacitaciones=Capacitacion.get_all(id, activas_solo=False),
+        experiencia=Experiencia.get_all(id),
+        familiares=Familiar.get_all(id),
+        estudios=Estudio.get_all(id),
+        cursos=Curso.get_all(id),
+        documentos=Documento.get_all(id),
+        resumen_docs=Documento.get_resumen(id),
+        hoy=datetime.date.today(),
+        por_vencer_hasta=datetime.date.today() + datetime.timedelta(days=30),
+    )
+
+
+# ============================================================
+# API: BUSCAR COLABORADORES (para TomSelect jefe inmediato)
+# ============================================================
+@talento_humano_bp.route('/api/colaboradores/buscar')
+@login_requerido
+@talento_humano_requerido
+def api_buscar_colaboradores():
+    """Endpoint para TomSelect: busca colaboradores activos"""
+    termino = request.args.get('q', '').strip()
+    excluir = request.args.get('excluir', type=int)
+    limite = request.args.get('limit', 20, type=int)
+
+    if not termino or len(termino) < 2:
+        return jsonify({'status': 'ok', 'results': []})
+
+    resultados = Colaborador.buscar_para_jefe(termino, excluir, limite)
+    data = [
+        {
+            'id': r['id'],
+            'text': f"{r['nombre_completo']} ({r['cargo'] or 'Sin cargo'} - {r['area'] or 'Sin área'})",
+            'num_doc': r['num_doc'],
+            'cargo': r['cargo'],
+            'area': r['area']
+        }
+        for r in resultados
+    ]
+    return jsonify({'status': 'ok', 'results': data})
+
+
+# ============================================================
+# CREAR COLABORADOR
+# ============================================================
+@talento_humano_bp.route('/colaboradores/crear', methods=['GET', 'POST'])
+@login_requerido
+@talento_humano_requerido
+def crear_colaborador():
+    if request.method == 'GET':
+        return redirect(url_for('talento_humano.colaboradores'))
+
+    # POST - Procesar formulario
+    try:
+        data = _form_a_dict(request.form)
+        foto = request.files.get('foto_perfil')
+
+        nuevo_id = Colaborador.create(data, session['user_id'], foto)
+        flash(f"Colaborador creado exitosamente (ID: {nuevo_id})", "success")
+        return redirect(url_for('talento_humano.colaboradores'))
+
+    except ValueError as e:
+        flash(str(e), "error")
+    except Exception as e:
+        current_app.logger.error(f"[ERROR CREAR COLABORADOR]: {e}")
+        flash("Error interno al crear colaborador. Verifique los datos.", "error")
+
+    # Si error, volver con datos en sesión para repoblar (opcional)
+    return redirect(url_for('talento_humano.colaboradores'))
+
+
+# ============================================================
+# EDITAR COLABORADOR
+# ============================================================
+@talento_humano_bp.route('/colaboradores/editar/<int:id>', methods=['GET', 'POST'])
+@login_requerido
+@talento_humano_requerido
+def editar_colaborador(id):
+    colaborador = Colaborador.get_by_id(id)
+    if not colaborador:
+        flash("Colaborador no encontrado", "error")
+        return redirect(url_for('talento_humano.colaboradores'))
+
+    if request.method == 'GET':
+        # Para GET, podríamos renderizar modal con datos precargados via JS
+        # Pero en este patrón usamos modal único con JS, así que redirigimos
+        return redirect(url_for('talento_humano.colaboradores'))
+
+    # POST - Actualizar
+    try:
+        data = _form_a_dict(request.form)
+        data['id'] = id
+        foto = request.files.get('foto_perfil')
+        eliminar_foto = request.form.get('eliminar_foto') == '1'
+
+        exito = Colaborador.update(id, data, session['user_id'], foto, eliminar_foto)
+        if exito:
+            flash("Colaborador actualizado exitosamente", "success")
+        else:
+            flash("No se pudo actualizar (¿colaborador inexistente?)", "error")
+
+    except ValueError as e:
+        flash(str(e), "error")
+    except Exception as e:
+        current_app.logger.error(f"[ERROR EDITAR COLABORADOR]: {e}")
+        flash("Error interno al actualizar colaborador.", "error")
+
+    return redirect(url_for('talento_humano.colaboradores'))
+
+
+# ============================================================
+# TOGGLE ESTADO (ACTIVO/INACTIVO)
+# ============================================================
+@talento_humano_bp.route('/api/colaboradores/toggle/<int:id>', methods=['POST'])
+@login_requerido
+@talento_humano_requerido
+def toggle_estado_colaborador(id):
+    ok, nuevo_estado = Colaborador.toggle_estado(id)
+    if ok:
+        return jsonify({'status': 'ok', 'estado': nuevo_estado})
+    return jsonify({'status': 'error', 'msg': 'Colaborador no encontrado'}), 404
+
+
+# ============================================================
+# ELIMINAR (SOFT DELETE)
+# ============================================================
+@talento_humano_bp.route('/api/colaboradores/eliminar/<int:id>', methods=['POST'])
+@login_requerido
+@talento_humano_requerido
+def eliminar_colaborador(id):
+    # Validación: no auto-eliminarse (aunque rol es distinto, por seguridad)
+    if int(id) == int(session.get('user_id')):
+        return jsonify({'status': 'error', 'msg': 'No puedes eliminarte a ti mismo.'}), 400
+
+    ok = Colaborador.soft_delete(id, session['user_id'])
+    if ok:
+        return jsonify({'status': 'ok'})
+    return jsonify({'status': 'error', 'msg': 'Colaborador no encontrado'}), 404
+
+
+# ============================================================
+# OBTENER DATOS PARA MODAL EDICIÓN (AJAX)
+# ============================================================
+@talento_humano_bp.route('/api/colaboradores/<int:id>')
+@login_requerido
+@talento_humano_requerido
+def api_get_colaborador(id):
+    colab = Colaborador.get_by_id(id)
+    if not colab:
+        return jsonify({'status': 'error', 'msg': 'No encontrado'}), 404
+
+    # Fechas en formato ISO (YYYY-MM-DD) para que los <input type="date"> las acepten
+    return jsonify({'status': 'ok', 'colaborador': _json_fila(colab)})
+
+
+# ============================================================
+# CATÁLOGOS: EPS
+# ============================================================
+
+@talento_humano_bp.route('/api/eps')
+@login_requerido
+@talento_humano_requerido
+def api_eps_list():
+    """Lista EPS para selects"""
+    eps_list = EPS.get_all()
+    return jsonify({'status': 'ok', 'eps': [dict(e) for e in eps_list]})
+
+@talento_humano_bp.route('/api/eps/crear', methods=['POST'])
+@login_requerido
+@talento_humano_requerido
+def api_eps_crear():
+    data = request.get_json(silent=True) or {}
+    nombre = data.get('nombre', '').strip()
+    codigo = data.get('codigo', '').strip() or None
+    if not nombre:
+        return jsonify({'status': 'error', 'msg': 'El nombre es obligatorio'}), 400
+    try:
+        nuevo_id = EPS.create(nombre, codigo)
+        return jsonify({'status': 'ok', 'id': nuevo_id, 'nombre': nombre.upper()})
+    except ValueError as e:
+        return jsonify({'status': 'error', 'msg': str(e)}), 400
+    except Exception as e:
+        current_app.logger.error(f"[ERROR CREAR EPS]: {e}")
+        return jsonify({'status': 'error', 'msg': 'Error interno'}), 500
+
+@talento_humano_bp.route('/api/eps/<int:id>', methods=['PUT'])
+@login_requerido
+@talento_humano_requerido
+def api_eps_actualizar(id):
+    data = request.get_json(silent=True) or {}
+    nombre = data.get('nombre', '').strip()
+    codigo = data.get('codigo', '').strip() or None
+    activa = data.get('activa', True)
+    if not nombre:
+        return jsonify({'status': 'error', 'msg': 'El nombre es obligatorio'}), 400
+    try:
+        ok = EPS.update(id, nombre, codigo, activa)
+        if ok:
+            return jsonify({'status': 'ok'})
+        return jsonify({'status': 'error', 'msg': 'EPS no encontrada'}), 404
+    except ValueError as e:
+        return jsonify({'status': 'error', 'msg': str(e)}), 400
+
+@talento_humano_bp.route('/api/eps/toggle/<int:id>', methods=['POST'])
+@login_requerido
+@talento_humano_requerido
+def api_eps_toggle(id):
+    nueva = EPS.toggle_activa(id)
+    if nueva is not None:
+        return jsonify({'status': 'ok', 'activa': nueva})
+    return jsonify({'status': 'error', 'msg': 'EPS no encontrada'}), 404
+
+
+# ============================================================
+# CATÁLOGOS: ARL
+# ============================================================
+@talento_humano_bp.route('/api/arl')
+@login_requerido
+@talento_humano_requerido
+def api_arl_list():
+    """Lista ARL para selects"""
+    arl_list = ARL.get_all()
+    return jsonify({'status': 'ok', 'arl': [dict(a) for a in arl_list]})
+
+@talento_humano_bp.route('/api/arl/crear', methods=['POST'])
+@login_requerido
+@talento_humano_requerido
+def api_arl_crear():
+    data = request.get_json(silent=True) or {}
+    nombre = data.get('nombre', '').strip()
+    codigo = data.get('codigo', '').strip() or None
+    if not nombre:
+        return jsonify({'status': 'error', 'msg': 'El nombre es obligatorio'}), 400
+    try:
+        nuevo_id = ARL.create(nombre, codigo)
+        return jsonify({'status': 'ok', 'id': nuevo_id, 'nombre': nombre.upper()})
+    except ValueError as e:
+        return jsonify({'status': 'error', 'msg': str(e)}), 400
+    except Exception as e:
+        current_app.logger.error(f"[ERROR CREAR ARL]: {e}")
+        return jsonify({'status': 'error', 'msg': 'Error interno'}), 500
+
+@talento_humano_bp.route('/api/arl/<int:id>', methods=['PUT'])
+@login_requerido
+@talento_humano_requerido
+def api_arl_actualizar(id):
+    data = request.get_json(silent=True) or {}
+    nombre = data.get('nombre', '').strip()
+    codigo = data.get('codigo', '').strip() or None
+    activa = data.get('activa', True)
+    if not nombre:
+        return jsonify({'status': 'error', 'msg': 'El nombre es obligatorio'}), 400
+    try:
+        ok = ARL.update(id, nombre, codigo, activa)
+        if ok:
+            return jsonify({'status': 'ok'})
+        return jsonify({'status': 'error', 'msg': 'ARL no encontrada'}), 404
+    except ValueError as e:
+        return jsonify({'status': 'error', 'msg': str(e)}), 400
+
+@talento_humano_bp.route('/api/arl/toggle/<int:id>', methods=['POST'])
+@login_requerido
+@talento_humano_requerido
+def api_arl_toggle(id):
+    nueva = ARL.toggle_activa(id)
+    if nueva is not None:
+        return jsonify({'status': 'ok', 'activa': nueva})
+    return jsonify({'status': 'error', 'msg': 'ARL no encontrada'}), 404
+
+
+# ============================================================
+# CATÁLOGOS: TALLAS EPP (camisa, pantalón, botas, casco)
+# ============================================================
+@talento_humano_bp.route('/api/tallas/<tipo>')
+@login_requerido
+@talento_humano_requerido
+def api_tallas_list(tipo):
+    """Lista las tallas activas del tipo solicitado"""
+    try:
+        tallas = Talla.get_all(tipo)
+    except ValueError:
+        return jsonify({'status': 'error', 'msg': 'Tipo de talla no válido'}), 404
+    return jsonify({'status': 'ok', 'tallas': [dict(t) for t in tallas]})
+
+@talento_humano_bp.route('/api/tallas/<tipo>/crear', methods=['POST'])
+@login_requerido
+@talento_humano_requerido
+def api_tallas_crear(tipo):
+    data = request.get_json(silent=True) or {}
+    nombre = str(data.get('nombre', '')).strip()
+    codigo = str(data.get('codigo', '')).strip() or None
+    if not nombre:
+        return jsonify({'status': 'error', 'msg': 'El nombre es obligatorio'}), 400
+    try:
+        nuevo_id = Talla.create(tipo, nombre, codigo)
+    except ValueError as e:
+        return jsonify({'status': 'error', 'msg': str(e)}), 400
+    except Exception as e:
+        current_app.logger.error(f"[ERROR CREAR TALLA {tipo}]: {e}")
+        return jsonify({'status': 'error', 'msg': 'Error interno'}), 500
+    return jsonify({'status': 'ok', 'id': nuevo_id, 'nombre': nombre.upper()})
+
+@talento_humano_bp.route('/api/tallas/<tipo>/<int:id>', methods=['PUT'])
+@login_requerido
+@talento_humano_requerido
+def api_tallas_actualizar(tipo, id):
+    data = request.get_json(silent=True) or {}
+    nombre = str(data.get('nombre', '')).strip()
+    codigo = str(data.get('codigo', '')).strip() or None
+    activa = data.get('activa', True)
+    if not nombre:
+        return jsonify({'status': 'error', 'msg': 'El nombre es obligatorio'}), 400
+    try:
+        ok = Talla.update(tipo, id, nombre, codigo, activa)
+    except ValueError as e:
+        return jsonify({'status': 'error', 'msg': str(e)}), 400
+    if ok:
+        return jsonify({'status': 'ok'})
+    return jsonify({'status': 'error', 'msg': 'Talla no encontrada'}), 404
+
+@talento_humano_bp.route('/api/tallas/<tipo>/toggle/<int:id>', methods=['POST'])
+@login_requerido
+@talento_humano_requerido
+def api_tallas_toggle(tipo, id):
+    try:
+        nueva = Talla.toggle_activa(tipo, id)
+    except ValueError:
+        return jsonify({'status': 'error', 'msg': 'Tipo de talla no válido'}), 404
+    if nueva is not None:
+        return jsonify({'status': 'ok', 'activa': nueva})
+    return jsonify({'status': 'error', 'msg': 'Talla no encontrada'}), 404
+
+
+# ============================================================
+# CATÁLOGOS DE TEXTO LIBRE (departamento, ciudad, área, banco, etc.)
+# Cada campo tiene su propia tabla.
+# ============================================================
+@talento_humano_bp.route('/api/catalogos/<campo>')
+@login_requerido
+@talento_humano_requerido
+def api_catalogo_list(campo):
+    """Lista los registros activos del catálogo solicitado"""
+    try:
+        registros = Catalogo.get_all(campo)
+    except ValueError:
+        return jsonify({'status': 'error', 'msg': 'Catálogo no válido'}), 404
+    return jsonify({'status': 'ok', 'registros': [dict(r) for r in registros]})
+
+
+@talento_humano_bp.route('/api/catalogos/<campo>/crear', methods=['POST'])
+@login_requerido
+@talento_humano_requerido
+def api_catalogo_crear(campo):
+    data = request.get_json(silent=True) or {}
+    nombre = str(data.get('nombre', '')).strip()
+    codigo = str(data.get('codigo', '')).strip() or None
+    if not nombre:
+        return jsonify({'status': 'error', 'msg': 'El nombre es obligatorio'}), 400
+    try:
+        nuevo_id = Catalogo.create(campo, nombre, codigo)
+    except ValueError as e:
+        return jsonify({'status': 'error', 'msg': str(e)}), 400
+    except Exception as e:
+        current_app.logger.error(f"[ERROR CREAR CATALOGO {campo}]: {e}")
+        return jsonify({'status': 'error', 'msg': 'Error interno'}), 500
+    return jsonify({'status': 'ok', 'id': nuevo_id, 'nombre': nombre.upper()})
+
+
+@talento_humano_bp.route('/api/catalogos/<campo>/<int:id>', methods=['PUT'])
+@login_requerido
+@talento_humano_requerido
+def api_catalogo_actualizar(campo, id):
+    data = request.get_json(silent=True) or {}
+    nombre = str(data.get('nombre', '')).strip()
+    codigo = str(data.get('codigo', '')).strip() or None
+    activa = data.get('activa', True)
+    if not nombre:
+        return jsonify({'status': 'error', 'msg': 'El nombre es obligatorio'}), 400
+    try:
+        ok = Catalogo.update(campo, id, nombre, codigo, activa)
+    except ValueError as e:
+        return jsonify({'status': 'error', 'msg': str(e)}), 400
+    if ok:
+        return jsonify({'status': 'ok'})
+    return jsonify({'status': 'error', 'msg': 'Registro no encontrado'}), 404
+
+
+@talento_humano_bp.route('/api/catalogos/<campo>/toggle/<int:id>', methods=['POST'])
+@login_requerido
+@talento_humano_requerido
+def api_catalogo_toggle(campo, id):
+    try:
+        nueva = Catalogo.toggle_activa(campo, id)
+    except ValueError:
+        return jsonify({'status': 'error', 'msg': 'Catálogo no válido'}), 404
+    if nueva is not None:
+        return jsonify({'status': 'ok', 'activa': nueva})
+    return jsonify({'status': 'error', 'msg': 'Registro no encontrado'}), 404
+
+
+# ============================================================
+# HELPERS
+# ============================================================
+CAMPOS_BOOL_FORM = (
+    'discapacidad', 'victima_conflicto', 'comunidad_lgtbi',
+    'desplazado', 'tiene_servicios_publicos', 'tiene_internet',
+    'epp_casco', 'epp_botas', 'epp_guantes', 'epp_gafas', 'epp_tapabocas', 'epp_overol',
+    'epp_botas_dielectricas', 'epp_arnes', 'epp_chaleco_reflectivo', 'epp_proteccion_auditiva',
+)
+
+# Campos que llegan como múltiples valores (checkbox) y se guardan como texto separado por comas
+CAMPOS_MULTI_FORM = ('tipo_discapacidad', 'servicios_publicos')
+
+
+def _form_a_dict(form) -> dict:
+    """Convierte request.form a dict con tipos correctos"""
+    data = {}
+    for key in form.keys():
+        if key in CAMPOS_MULTI_FORM:
+            continue  # se procesan aparte con getlist()
+        value = form.get(key)
+        if key in CAMPOS_BOOL_FORM:
+            # Los <select> Sí/No envían "0"/"1"; los checkbox sólo llegan si están marcados
+            data[key] = str(value).strip() not in ('', '0', 'false', 'False', 'None')
+        elif key in ('estrato', 'jefe_inmediato_id'):
+            data[key] = int(value) if value and value.isdigit() else None
+        else:
+            data[key] = value.strip() if isinstance(value, str) else value
+
+    # Selección múltiple -> "LUZ, CELULAR"
+    for key in CAMPOS_MULTI_FORM:
+        seleccion = [v.strip() for v in form.getlist(key) if v and v.strip()]
+        data[key] = ', '.join(seleccion) if seleccion else None
+
+    # El booleano histórico se mantiene sincronizado con la nueva lista
+    data['tiene_servicios_publicos'] = bool(data.get('servicios_publicos'))
+
+    return data
+
+
+# ============================================================
+# CAPACITACIONES
+# ============================================================
+
+@talento_humano_bp.route('/api/colaboradores/<int:colaborador_id>/capacitaciones')
+@login_requerido
+@talento_humano_requerido
+def api_capacitaciones_list(colaborador_id):
+    """Lista capacitaciones de un colaborador"""
+    todas = request.args.get('todas', 'false').lower() == 'true'
+    capacitaciones = Capacitacion.get_all(colaborador_id, activas_solo=not todas)
+    return jsonify({'status': 'ok', 'capacitaciones': [_json_fila(c) for c in capacitaciones]})
+
+
+@talento_humano_bp.route('/api/colaboradores/<int:colaborador_id>/capacitaciones', methods=['POST'])
+@login_requerido
+@talento_humano_requerido
+def api_capacitacion_crear(colaborador_id):
+    data = request.get_json(silent=True) or {}
+    data['colaborador_id'] = colaborador_id
+    if not data.get('tipo_capacitacion') or not data.get('nombre_curso'):
+        return jsonify({'status': 'error', 'msg': 'Tipo y nombre son obligatorios'}), 400
+    try:
+        nuevo_id = Capacitacion.create(data, session['user_id'])
+        return jsonify({'status': 'ok', 'id': nuevo_id})
+    except ValueError as e:
+        return jsonify({'status': 'error', 'msg': str(e)}), 400
+    except Exception as e:
+        current_app.logger.error(f"[ERROR CREAR CAPACITACION]: {e}")
+        return jsonify({'status': 'error', 'msg': 'Error interno'}), 500
+
+
+@talento_humano_bp.route('/api/capacitaciones/<int:id>', methods=['PUT'])
+@login_requerido
+@talento_humano_requerido
+def api_capacitacion_actualizar(id):
+    data = request.get_json(silent=True) or {}
+    try:
+        ok = Capacitacion.update(id, data, session['user_id'])
+        if ok:
+            return jsonify({'status': 'ok'})
+        return jsonify({'status': 'error', 'msg': 'Capacitación no encontrada'}), 404
+    except ValueError as e:
+        return jsonify({'status': 'error', 'msg': str(e)}), 400
+
+
+@talento_humano_bp.route('/api/capacitaciones/<int:id>', methods=['DELETE'])
+@login_requerido
+@talento_humano_requerido
+def api_capacitacion_eliminar(id):
+    try:
+        ok = Capacitacion.delete(id)
+        if ok:
+            return jsonify({'status': 'ok'})
+        return jsonify({'status': 'error', 'msg': 'Capacitación no encontrada'}), 404
+    except Exception as e:
+        current_app.logger.error(f"[ERROR ELIMINAR CAPACITACION]: {e}")
+        return jsonify({'status': 'error', 'msg': 'Error interno'}), 500
+
+
+@talento_humano_bp.route('/api/capacitaciones/vencidas')
+@login_requerido
+@talento_humano_requerido
+def api_capacitaciones_vencidas():
+    """Obtiene capacitaciones vencidas o por vencer (30 días)"""
+    colaborador_id = request.args.get('colaborador_id', type=int)
+    vencidas = Capacitacion.get_vencidas(colaborador_id)
+    return jsonify({'status': 'ok', 'vencidas': [_json_fila(v) for v in vencidas]})
+
+
+# ============================================================
+# EXPERIENCIA LABORAL
+# ============================================================
+
+@talento_humano_bp.route('/api/colaboradores/<int:colaborador_id>/experiencia')
+@login_requerido
+@talento_humano_requerido
+def api_experiencia_list(colaborador_id):
+    """Lista experiencia laboral de un colaborador"""
+    experiencia = Experiencia.get_all(colaborador_id)
+    return jsonify({'status': 'ok', 'experiencia': [_json_fila(e) for e in experiencia]})
+
+
+@talento_humano_bp.route('/api/colaboradores/<int:colaborador_id>/experiencia', methods=['POST'])
+@login_requerido
+@talento_humano_requerido
+def api_experiencia_crear(colaborador_id):
+    data = request.get_json(silent=True) or {}
+    data['colaborador_id'] = colaborador_id
+    if not data.get('empresa') or not data.get('cargo') or not data.get('fecha_inicio'):
+        return jsonify({'status': 'error', 'msg': 'Empresa, cargo y fecha inicio son obligatorios'}), 400
+    try:
+        nuevo_id = Experiencia.create(data, session['user_id'])
+        return jsonify({'status': 'ok', 'id': nuevo_id})
+    except ValueError as e:
+        return jsonify({'status': 'error', 'msg': str(e)}), 400
+    except Exception as e:
+        current_app.logger.error(f"[ERROR CREAR EXPERIENCIA]: {e}")
+        return jsonify({'status': 'error', 'msg': 'Error interno'}), 500
+
+
+@talento_humano_bp.route('/api/experiencia/<int:id>', methods=['PUT'])
+@login_requerido
+@talento_humano_requerido
+def api_experiencia_actualizar(id):
+    data = request.get_json(silent=True) or {}
+    try:
+        ok = Experiencia.update(id, data, session['user_id'])
+        if ok:
+            return jsonify({'status': 'ok'})
+        return jsonify({'status': 'error', 'msg': 'Experiencia no encontrada'}), 404
+    except ValueError as e:
+        return jsonify({'status': 'error', 'msg': str(e)}), 400
+
+
+@talento_humano_bp.route('/api/experiencia/<int:id>', methods=['DELETE'])
+@login_requerido
+@talento_humano_requerido
+def api_experiencia_eliminar(id):
+    try:
+        ok = Experiencia.delete(id)
+        if ok:
+            return jsonify({'status': 'ok'})
+        return jsonify({'status': 'error', 'msg': 'Experiencia no encontrada'}), 404
+    except Exception as e:
+        current_app.logger.error(f"[ERROR ELIMINAR EXPERIENCIA]: {e}")
+        return jsonify({'status': 'error', 'msg': 'Error interno'}), 500
+
+
+# ============================================================
+# FAMILIARES
+# ============================================================
+
+@talento_humano_bp.route('/api/colaboradores/<int:colaborador_id>/familiares')
+@login_requerido
+@talento_humano_requerido
+def api_familiares_list(colaborador_id):
+    """Lista familiares de un colaborador"""
+    solo_dependientes = request.args.get('dependientes', 'false').lower() == 'true'
+    familiares = Familiar.get_all(colaborador_id, solo_dependientes=solo_dependientes)
+    return jsonify({'status': 'ok', 'familiares': [_json_fila(f) for f in familiares]})
+
+
+@talento_humano_bp.route('/api/colaboradores/<int:colaborador_id>/familiares', methods=['POST'])
+@login_requerido
+@talento_humano_requerido
+def api_familiar_crear(colaborador_id):
+    data = request.get_json(silent=True) or {}
+    data['colaborador_id'] = colaborador_id
+    if not data.get('tipo_familiar') or not data.get('nombre_completo'):
+        return jsonify({'status': 'error', 'msg': 'Tipo familiar y nombre son obligatorios'}), 400
+    try:
+        nuevo_id = Familiar.create(data, session['user_id'])
+        return jsonify({'status': 'ok', 'id': nuevo_id})
+    except ValueError as e:
+        return jsonify({'status': 'error', 'msg': str(e)}), 400
+    except Exception as e:
+        current_app.logger.error(f"[ERROR CREAR FAMILIAR]: {e}")
+        return jsonify({'status': 'error', 'msg': 'Error interno'}), 500
+
+
+@talento_humano_bp.route('/api/familiares/<int:id>', methods=['PUT'])
+@login_requerido
+@talento_humano_requerido
+def api_familiar_actualizar(id):
+    data = request.get_json(silent=True) or {}
+    try:
+        ok = Familiar.update(id, data, session['user_id'])
+        if ok:
+            return jsonify({'status': 'ok'})
+        return jsonify({'status': 'error', 'msg': 'Familiar no encontrado'}), 404
+    except ValueError as e:
+        return jsonify({'status': 'error', 'msg': str(e)}), 400
+
+
+@talento_humano_bp.route('/api/familiares/<int:id>', methods=['DELETE'])
+@login_requerido
+@talento_humano_requerido
+def api_familiar_eliminar(id):
+    try:
+        ok = Familiar.delete(id)
+        if ok:
+            return jsonify({'status': 'ok'})
+        return jsonify({'status': 'error', 'msg': 'Familiar no encontrado'}), 404
+    except Exception as e:
+        current_app.logger.error(f"[ERROR ELIMINAR FAMILIAR]: {e}")
+        return jsonify({'status': 'error', 'msg': 'Error interno'}), 500
+
+
+@talento_humano_bp.route('/api/colaboradores/<int:colaborador_id>/familiares/resumen')
+@login_requerido
+@talento_humano_requerido
+def api_familiares_resumen(colaborador_id):
+    """Resumen de familiares por tipo y dependientes"""
+    resumen = Familiar.get_conteo_por_tipo(colaborador_id)
+    dependientes = Familiar.get_dependientes(colaborador_id)
+    return jsonify({
+        'status': 'ok',
+        'resumen': resumen,
+        'dependientes': [_json_fila(d) for d in dependientes],
+        'total_dependientes': len(dependientes)
+    })
+
+
+# ============================================================
+# DOCUMENTOS
+# ============================================================
+
+@talento_humano_bp.route('/documentos')
+@login_requerido
+@talento_humano_requerido
+def documentos_colaborador():
+    """Página global de documentos por colaborador"""
+    filtros = {
+        'colaborador_id': request.args.get('colaborador_id', '').strip(),
+        'tipo': request.args.get('tipo', '').strip(),
+        'q': request.args.get('q', '').strip(),
+        'estado': request.args.get('estado', '').strip() or 'todos',
+    }
+    filtros_limpios = {k: v for k, v in filtros.items() if v}
+
+    documentos = [_json_fila(d) for d in Documento.get_global(filtros_limpios)]
+    estadisticas = Documento.get_estadisticas()
+
+    colaboradores_lista, _ = Colaborador.get_all({}, 1, 500)
+
+    return render_template(
+        'talento_humano/documentos.html',
+        documentos=documentos,
+        filtros=filtros,
+        tipos=Documento.TIPOS,
+        estadisticas=estadisticas,
+        colaboradores=colaboradores_lista,
+        max_size_mb=Documento.MAX_SIZE_MB,
+        extensiones=sorted(Documento.EXTENSIONES),
+    )
+
+
+@talento_humano_bp.route('/api/colaboradores/<int:colaborador_id>/documentos')
+@login_requerido
+@talento_humano_requerido
+def api_documentos_list(colaborador_id):
+    """Lista de documentos del colaborador + resumen"""
+    docs = Documento.get_all(colaborador_id)
+    resumen = Documento.get_resumen(colaborador_id)
+    return jsonify({
+        'status': 'ok',
+        'documentos': [_json_fila(d) for d in docs],
+        'resumen': resumen,
+        'tipos': list(Documento.TIPOS),
+    })
+
+
+@talento_humano_bp.route('/api/colaboradores/<int:colaborador_id>/documentos', methods=['POST'])
+@login_requerido
+@talento_humano_requerido
+def api_documento_subir(colaborador_id):
+    """Sube un documento (multipart/form-data)"""
+    archivo = request.files.get('archivo')
+    try:
+        nuevo_id = Documento.create(colaborador_id, request.form, archivo, session['user_id'])
+        return jsonify({
+            'status': 'ok',
+            'id': nuevo_id,
+            'documento': _json_fila(Documento.get_by_id(nuevo_id)),
+        })
+    except ValueError as e:
+        return jsonify({'status': 'error', 'msg': str(e)}), 400
+    except Exception as e:
+        current_app.logger.error(f"[ERROR SUBIR DOCUMENTO]: {e}")
+        return jsonify({'status': 'error', 'msg': 'Error interno al subir el documento'}), 500
+
+
+@talento_humano_bp.route('/api/documentos/<int:id>', methods=['PUT'])
+@login_requerido
+@talento_humano_requerido
+def api_documento_actualizar(id):
+    """Actualiza metadatos de un documento"""
+    data = request.get_json(silent=True) or {}
+    try:
+        ok = Documento.update(id, data, session['user_id'])
+        if not ok:
+            return jsonify({'status': 'error', 'msg': 'Documento no encontrado'}), 404
+        return jsonify({'status': 'ok', 'documento': _json_fila(Documento.get_by_id(id))})
+    except ValueError as e:
+        return jsonify({'status': 'error', 'msg': str(e)}), 400
+    except Exception as e:
+        current_app.logger.error(f"[ERROR ACTUALIZAR DOCUMENTO]: {e}")
+        return jsonify({'status': 'error', 'msg': 'Error interno'}), 500
+
+
+@talento_humano_bp.route('/api/documentos/<int:id>', methods=['DELETE'])
+@login_requerido
+@talento_humano_requerido
+def api_documento_eliminar(id):
+    """Elimina (baja lógica) un documento"""
+    try:
+        ok = Documento.delete(id, session.get('user_id'))
+        if ok:
+            return jsonify({'status': 'ok'})
+        return jsonify({'status': 'error', 'msg': 'Documento no encontrado'}), 404
+    except Exception as e:
+        current_app.logger.error(f"[ERROR ELIMINAR DOCUMENTO]: {e}")
+        return jsonify({'status': 'error', 'msg': 'Error interno'}), 500
+
+
+@talento_humano_bp.route('/api/documentos/<int:id>/archivo')
+@login_requerido
+@talento_humano_requerido
+def api_documento_archivo(id):
+    """Ver (inline) o descargar (?descargar=1) el archivo"""
+    doc = Documento.get_by_id(id)
+    if not doc:
+        abort(404)
+
+    ruta = Documento.ruta_absoluta(doc['ruta_archivo'])
+    if not os.path.exists(ruta):
+        abort(404)
+
+    descargar = request.args.get('descargar') == '1'
+    return send_file(
+        ruta,
+        mimetype=doc.get('mime_type') or 'application/octet-stream',
+        as_attachment=descargar,
+        download_name=doc.get('nombre_original') or os.path.basename(ruta),
+    )
+
+
+@talento_humano_bp.route('/api/documentos')
+@login_requerido
+@talento_humano_requerido
+def api_documentos_global():
+    """Listado global filtrable (para refrescar la página sin recargar)"""
+    filtros = {
+        'colaborador_id': request.args.get('colaborador_id', '').strip(),
+        'tipo': request.args.get('tipo', '').strip(),
+        'q': request.args.get('q', '').strip(),
+        'estado': request.args.get('estado', '').strip() or 'todos',
+    }
+    filtros_limpios = {k: v for k, v in filtros.items() if v}
+    docs = Documento.get_global(filtros_limpios)
+    return jsonify({
+        'status': 'ok',
+        'documentos': [_json_fila(d) for d in docs],
+        'estadisticas': Documento.get_estadisticas(),
+    })

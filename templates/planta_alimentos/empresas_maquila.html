@@ -1,36 +1,275 @@
 {% extends 'generales/layout.html' %}
 
+{% block head %}
+<style>
+  /* ============================================================
+     CLIENTES Y MAQUILAS - DESIGN TOKENS (Impeccable: Operate + Quieter)
+     ============================================================ */
+  :root {
+    /* === CABECERA TABLA === */
+    --table-header-bg: #1a202c;
+    --table-header-text: #ffffff;
+
+    /* === ACCIONES === */
+    --action-primary: #2c3e50;
+    --action-primary-hover: #1a252f;
+    --action-primary-text: #ffffff;
+
+    --action-secondary: #6c757d;
+    --action-secondary-hover: #5a6268;
+    --action-secondary-text: #ffffff;
+
+    /* === SEMÁNTICOS (Solo estados/datos) === */
+    --success: #198754;
+    --info: #0d6efd;
+    --warning: #ffc107;
+    --warning-text: #212529;
+    --danger: #dc3545;
+
+    /* === SUPERFICIES === */
+    --surface: #ffffff;
+    --surface-alt: #f8f9fa;
+
+    /* === TEXTO === */
+    --text-primary: #212529;
+    --text-secondary: #495057;
+    --text-muted: #6c757d;
+
+    /* === ESTRUCTURA === */
+    --border: #dee2e6;
+
+    /* === ESPACIADO (base 4px) === */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+  }
+
+  /* ============================================================
+     BOTONES UNIFICADOS
+     ============================================================ */
+  .btn-primary {
+    background-color: var(--action-primary);
+    border-color: var(--action-primary);
+    color: var(--action-primary-text);
+  }
+  .btn-primary:hover,
+  .btn-primary:focus {
+    background-color: var(--action-primary-hover);
+    border-color: var(--action-primary-hover);
+  }
+
+  .btn-secondary {
+    background-color: var(--action-secondary);
+    border-color: var(--action-secondary);
+    color: var(--action-secondary-text);
+  }
+  .btn-secondary:hover,
+  .btn-secondary:focus {
+    background-color: var(--action-secondary-hover);
+    border-color: var(--action-secondary-hover);
+  }
+
+  .btn-outline-secondary {
+    color: var(--action-secondary);
+    border-color: var(--action-secondary);
+  }
+  .btn-outline-secondary:hover,
+  .btn-outline-secondary:focus {
+    background-color: var(--action-secondary);
+    color: var(--action-secondary-text);
+  }
+
+  .btn-outline-danger {
+    color: var(--danger);
+    border-color: var(--danger);
+  }
+  .btn-outline-danger:hover {
+    background-color: var(--danger);
+    color: #ffffff;
+  }
+
+  .btn-danger {
+    background-color: var(--danger);
+    border-color: var(--danger);
+    color: #ffffff;
+  }
+
+  /* ============================================================
+     TABLA: Cabecera unificada gris oscuro, centrada
+     ============================================================ */
+  .table-emp thead {
+    background-color: var(--table-header-bg) !important;
+    color: var(--table-header-text) !important;
+  }
+  .table-emp thead th {
+    background-color: var(--table-header-bg) !important;
+    color: var(--table-header-text) !important;
+    border-color: rgba(255,255,255,0.15);
+    border-bottom: 2px solid rgba(255,255,255,0.25) !important;
+    font-weight: 600;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: var(--space-2) var(--space-2);
+    white-space: nowrap;
+    text-align: center !important;
+    vertical-align: middle;
+  }
+
+  /* ============================================================
+     TABLA: Cuerpo - filas alternadas sutiles
+     ============================================================ */
+  .table-emp tbody tr:nth-child(odd) {
+    background-color: var(--surface);
+  }
+  .table-emp tbody tr:nth-child(even) {
+    background-color: var(--surface-alt);
+  }
+  .table-emp tbody tr:hover {
+    background-color: #eef1f4;
+  }
+  .table-emp tbody td {
+    font-size: 0.8rem;
+    padding: var(--space-2) var(--space-2);
+    vertical-align: middle;
+    border-color: var(--border);
+  }
+
+  /* Columna Nombre */
+  .table-emp .col-nombre {
+    font-weight: 600;
+    color: var(--text-primary);
+    text-align: left;
+  }
+
+  /* Columna Costo Maquila */
+  .table-emp .col-costo {
+    color: var(--success);
+    font-weight: 600;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+  }
+
+  /* Acciones centradas */
+  .table-emp .col-acciones {
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  /* Card sin borde, sombra sutil */
+  .card-emp {
+    box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
+    border: 1px solid var(--border);
+  }
+
+  .card-form-emp {
+    box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
+    border: 1px solid var(--border);
+  }
+
+  /* Botones de acción en tabla */
+  .table-emp .btn-action {
+    padding: 0.2rem 0.5rem;
+    font-size: 0.75rem;
+  }
+  .table-emp .btn-action svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  /* Inputs en tabla - transparentes, sin borde */
+  .table-emp input.form-control,
+  .table-emp select.form-select {
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0.15rem 0.3rem !important;
+    font-size: 0.8rem !important;
+  }
+  .table-emp input.form-control:focus,
+  .table-emp select.form-select:focus {
+    outline: none;
+    background-color: #ffffff !important;
+    box-shadow: 0 0 0 2px rgba(44, 62, 80, 0.2) !important;
+  }
+
+  /* ============================================================
+     CABECERA DE PÁGINA (icono profesional + títulos)
+     ============================================================ */
+  .page-icon {
+    width: 44px;
+    height: 44px;
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background-color: var(--action-primary);
+    color: #ffffff;
+    font-size: 1.1rem;
+    box-shadow: 0 2px 6px rgba(44, 62, 80, 0.25);
+  }
+  .page-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--text-primary);
+    line-height: 1.25;
+  }
+  .page-subtitle {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    line-height: 1.3;
+  }
+  @media print {
+    .page-icon {
+      background-color: transparent !important;
+      color: var(--text-primary) !important;
+      box-shadow: none !important;
+    }
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid py-4">
     <div class="row mb-4">
         <div class="col-12">
-            <h2 class="h4 text-primary fw-bold mb-0">
-                <i class="fas fa-building me-2"></i> Clientes y Maquilas
-            </h2>
+            <div class="d-flex align-items-center gap-3">
+                <div class="page-icon">
+                    <i class="fas fa-building"></i>
+                </div>
+                <div>
+                    <h2 class="page-title mb-0">Clientes y Maquilas</h2>
+                    <p class="page-subtitle mb-0">Clientes propios y empresas de maquila con costo por tonelada</p>
+                </div>
+            </div>
         </div>
     </div>
 
     <div class="row">
         <!-- Formulario de Registro -->
         <div class="col-md-4 mb-4">
-            <div class="card border-0 shadow-sm">
+            <div class="card card-form-emp">
                 <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
                     <h6 class="fw-bold text-secondary">Registrar Empresa</h6>
                 </div>
                 <div class="card-body">
                     <form method="POST" action="{{ url_for('planta_alimentos.empresas_maquila') }}">
                         <div class="mb-3">
-                            <label class="form-label fw-bold text-muted small">Nombre (Cliente o Granja)</label>
+                            <label class="form-label fw-semibold text-muted small">Nombre (Cliente o Granja)</label>
                             <input type="text" name="nombre" class="form-control form-control-sm" placeholder="Ej. SAN MARTIN, PREMEX" required autocomplete="off">
                         </div>
                         <div class="mb-3">
-                            <label class="form-label fw-bold text-muted small">Costo Maquila (por Tonelada)</label>
+                            <label class="form-label fw-semibold text-muted small">Costo Maquila (por Tonelada)</label>
                             <div class="input-group input-group-sm">
-                                <span class="input-group-text">$</span>
+                                <span class="input-group-text" style="background-color: var(--surface); border-color: var(--border); color: var(--text-muted);">$</span>
                                 <input type="number" step="0.01" name="costo_maquila" class="form-control" placeholder="45000" required>
                             </div>
                         </div>
-                        <button type="submit" class="btn btn-primary btn-sm w-100 fw-bold">
+                        <button type="submit" class="btn btn-primary btn-sm w-100 fw-semibold">
                             <i class="fas fa-save me-1"></i> Guardar Empresa
                         </button>
                     </form>
@@ -40,27 +279,25 @@
 
         <!-- Tabla de Empresas -->
         <div class="col-md-8">
-            <div class="card border-0 shadow-sm">
+            <div class="card card-emp">
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
-                            <thead class="bg-light">
+                        <table class="table table-hover align-middle mb-0 table-emp" style="font-size: 0.8rem;">
+                            <thead>
                                 <tr>
-                                    <th class="text-secondary small fw-bold text-uppercase px-4">ID</th>
-                                    <th class="text-secondary small fw-bold text-uppercase">Cliente / Granja</th>
-                                    <th class="text-secondary small fw-bold text-uppercase text-end px-4">Costo Maquila</th>
+                                    <th style="width: 78%;">CLIENTE / GRANJA</th>
+                                    <th class="col-costo" style="width: 22%;">COSTO MAQUILA</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for empresa in empresas %}
                                 <tr>
-                                    <td class="px-4 fw-bold text-muted">{{ empresa['id'] }}</td>
-                                    <td class="fw-bold text-dark">{{ empresa['nombre'] }}</td>
-                                    <td class="text-end fw-semibold text-success px-4">$ {{ "{:,.2f}".format(empresa['costo_maquila']) }}</td>
+                                    <td class="col-nombre px-3">{{ empresa['nombre'] }}</td>
+                                    <td class="col-costo px-3">$ {{ "{:,.2f}".format(empresa['costo_maquila']) }}</td>
                                 </tr>
                                 {% else %}
                                 <tr>
-                                    <td colspan="3" class="text-center py-4 text-muted">No hay empresas registradas.</td>
+                                    <td colspan="2" class="text-center py-4 text-muted">No hay empresas registradas.</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>

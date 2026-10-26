@@ -4,10 +4,9 @@
 
 {% block content %}
 <style>
-  /* 1. Bloqueamos el scroll general y aplicamos zoom global del 80% */
+  /* Escala normal (100%) */
   body {
     overflow-y: hidden !important;
-    zoom: 0.8;
   }
 
   /* 2. El contenedor principal base */
@@ -180,8 +179,8 @@
                 const rect = graficoDiv.getBoundingClientRect();
                 const pixelesLibres = window.innerHeight - rect.top;
                 
-                // Compensamos el zoom del 80% (0.8) y ajustamos el margen
-                const alturaPerfecta = (pixelesLibres / 0.8) - 15;
+                /* Escala normal (100%) */
+                const alturaPerfecta = pixelesLibres - 15;
                 
                 graficoDiv.style.height = alturaPerfecta + "px";
                 

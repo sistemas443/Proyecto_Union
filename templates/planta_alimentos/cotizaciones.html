@@ -1,73 +1,225 @@
 {% extends 'generales/layout.html' %}
 
+{% block head %}
+{% include 'planta_alimentos/_design_system.html' %}
+<style>
+  /* ============================================================
+     COTIZACIONES · LISTA
+     ============================================================ */
+  .filtros-bar {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+  }
+  .filtros-bar .form-select,
+  .filtros-bar .form-control {
+    font-size: 0.78rem;
+    min-width: 130px;
+  }
+  .filtros-bar .form-select-sm {
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
+  }
+  .contador-registros {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+
+  .tabla-cot tbody td {
+    font-size: 0.82rem;
+  }
+  .tabla-cot .col-mes,
+  .tabla-cot .col-anio {
+    font-weight: 600;
+    color: var(--action-primary);
+  }
+  .tabla-cot .col-fecha,
+  .tabla-cot .col-usuario {
+    color: var(--text-secondary);
+    white-space: nowrap;
+  }
+  .tabla-cot .col-items {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .acciones-grupo {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+  .btn-accion {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border-radius: 0.375rem;
+    border: 1px solid var(--border);
+    background-color: var(--surface);
+    color: var(--text-secondary);
+    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  }
+  .btn-accion:hover,
+  .btn-accion:focus-visible {
+    background-color: var(--action-primary);
+    border-color: var(--action-primary);
+    color: #ffffff;
+    outline: none;
+  }
+  .btn-accion.is-danger:hover,
+  .btn-accion.is-danger:focus-visible {
+    background-color: var(--danger);
+    border-color: var(--danger);
+  }
+  .btn-accion.is-success:hover,
+  .btn-accion.is-success:focus-visible {
+    background-color: var(--success);
+    border-color: var(--success);
+  }
+
+  .celda-vacia {
+    padding: 3rem 1rem !important;
+    text-align: center;
+    color: var(--text-muted);
+  }
+  .celda-vacia i {
+    display: block;
+    font-size: 1.6rem;
+    margin-bottom: 0.5rem;
+    color: #adb5bd;
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="h4 fw-bold text-dark mb-0">Cotizaciones de Productos</h1>
-        <a href="{{ url_for('planta_alimentos.cotizaciones.cotizacion_nueva') }}" class="btn btn-sm btn-primary">
-            <i class="fas fa-plus me-1"></i> Nueva Cotización
+    <div class="page-header">
+        <div class="d-flex align-items-center gap-3">
+            <div class="page-icon">
+                <i class="fas fa-file-invoice-dollar"></i>
+            </div>
+            <div>
+                <h2 class="page-title mb-0">Cotizaciones de Productos</h2>
+                <p class="page-subtitle mb-0">Precios mensuales por proveedor y semana</p>
+            </div>
+        </div>
+        <a href="{{ url_for('planta_alimentos.cotizaciones.cotizacion_nueva') }}" class="btn btn-primary btn-sm">
+            <i class="fas fa-plus me-1"></i> Nueva cotización
         </a>
     </div>
 
-    <!-- Tabla de Cotizaciones -->
-    <div class="card shadow-sm">
-        <div class="card-header bg-white d-flex justify-content-between align-items-center">
-            <span class="fw-bold">Historial de Cotizaciones</span>
+    <div class="card card-clean">
+        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <span>Historial de cotizaciones</span>
+
+            <form method="GET" class="filtros-bar">
+                <select name="anio" class="form-select form-select-sm" aria-label="Filtrar por año">
+                    <option value="">Todos los años</option>
+                    {% for y in anios %}
+                    <option value="{{ y }}" {% if filtro_anio == y %}selected{% endif %}>{{ y }}</option>
+                    {% endfor %}
+                </select>
+                <select name="estado" class="form-select form-select-sm" aria-label="Filtrar por estado">
+                    <option value="">Todos los estados</option>
+                    <option value="ACTIVA" {% if filtro_estado == 'ACTIVA' %}selected{% endif %}>Activa</option>
+                    <option value="CERRADA" {% if filtro_estado == 'CERRADA' %}selected{% endif %}>Cerrada</option>
+                </select>
+                <button type="submit" class="btn btn-outline-primary btn-sm">
+                    <i class="fas fa-filter me-1"></i> Filtrar
+                </button>
+                {% if filtro_anio or filtro_estado %}
+                <a href="{{ url_for('planta_alimentos.cotizaciones.cotizaciones_list') }}" class="btn btn-outline-secondary btn-sm">
+                    Limpiar
+                </a>
+                {% endif %}
+                <span class="contador-registros">{{ cotizaciones|length }} registro{{ '' if cotizaciones|length == 1 else 's' }}</span>
+            </form>
         </div>
+
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light">
+                <table class="table table-hover align-middle mb-0 table-design tabla-cot">
+                    <thead>
                         <tr>
-                            <th style="width: 80px;">MES</th>
+                            <th style="width: 110px;">MES</th>
                             <th style="width: 80px;">AÑO</th>
-                            <th>FECHA REGISTRO</th>
+                            <th style="width: 160px;">FECHA REGISTRO</th>
                             <th>USUARIO</th>
-                            <th style="width: 100px;">ESTADO</th>
-                            <th style="width: 100px;">ITEMS</th>
-                            <th style="width: 150px;">ACCIONES</th>
+                            <th style="width: 110px;">ESTADO</th>
+                            <th style="width: 90px;">ITEMS</th>
+                            <th style="width: 170px;">ACCIONES</th>
                         </tr>
                     </thead>
                     <tbody>
+                        {% set mes_nombres = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'] %}
                         {% for cot in cotizaciones %}
                         <tr>
-                            <td class="fw-bold text-center">
-                                {% set mes_nombres = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'] %}
-                                {{ mes_nombres[cot.mes] if cot.mes else '' }}
-                            </td>
-                            <td class="text-center">{{ cot.anio }}</td>
-                            <td class="text-center">
+                            <td class="col-mes col-center">{{ mes_nombres[cot.mes] if cot.mes else '' }}</td>
+                            <td class="col-anio col-center">{{ cot.anio }}</td>
+                            <td class="col-fecha col-center">
                                 {% if cot.fecha_registro %}
-                                    {{ cot.fecha_registro.strftime('%d/%m/%Y %H:%M') if cot.fecha_registro is not string else cot.fecha_registro }}
+                                    {{ cot.fecha_registro.strftime('%d/%m/%Y %H:%M') }}
                                 {% else %}
-                                    -
+                                    —
                                 {% endif %}
                             </td>
-                            <td>{{ cot.usuario_nombre or 'N/A' }}</td>
-                            <td class="text-center">
+                            <td class="col-usuario">{{ cot.usuario_nombre or 'N/A' }}</td>
+                            <td class="col-center">
                                 {% if cot.estado == 'ACTIVA' %}
-                                    <span class="badge bg-success">Activa</span>
+                                <span class="badge-estado badge-ok">Activa</span>
                                 {% else %}
-                                    <span class="badge bg-secondary">{{ cot.estado }}</span>
+                                <span class="badge-estado badge-neutro">{{ cot.estado|capitalize }}</span>
                                 {% endif %}
                             </td>
-                            <td class="text-center">{{ cot.total_items or 0 }}</td>
-                            <td>
-                                <div class="d-flex gap-1 justify-content-center">
-                                    <a href="{{ url_for('planta_alimentos.cotizaciones.cotizacion_detalle', cotizacion_id=cot.id) }}" 
-                                       class="btn btn-sm btn-outline-primary" title="Editar">
-                                        <i class="fas fa-edit"></i>
+                            <td class="col-items col-center">{{ cot.total_items or 0 }}</td>
+                            <td class="col-acciones">
+                                <div class="acciones-grupo">
+                                    <a href="{{ url_for('planta_alimentos.cotizaciones.cotizacion_detalle', cotizacion_id=cot.id) }}"
+                                       class="btn-accion" title="Abrir cotización"
+                                       aria-label="Abrir cotización de {{ mes_nombres[cot.mes] }} {{ cot.anio }}">
+                                        <i class="fas fa-pen-to-square"></i>
                                     </a>
-                                    <a href="{{ url_for('planta_alimentos.cotizaciones.exportar_cotizacion', mes=cot.mes, anio=cot.anio) }}" 
-                                       class="btn btn-sm btn-outline-success" title="Exportar Excel">
+
+                                    <a href="{{ url_for('planta_alimentos.cotizaciones.exportar_cotizacion', mes=cot.mes, anio=cot.anio) }}"
+                                       class="btn-accion is-success" title="Exportar a Excel"
+                                       aria-label="Exportar cotización de {{ mes_nombres[cot.mes] }} {{ cot.anio }} a Excel">
                                         <i class="fas fa-file-excel"></i>
                                     </a>
+
+                                    <form method="POST" class="d-inline"
+                                          action="{{ url_for('planta_alimentos.cotizaciones.cambiar_estado_cotizacion', cotizacion_id=cot.id) }}">
+                                        <input type="hidden" name="estado" value="{{ 'ACTIVA' if cot.estado != 'ACTIVA' else 'CERRADA' }}">
+                                        <button type="submit" class="btn-accion"
+                                                title="{{ 'Reabrir cotización' if cot.estado != 'ACTIVA' else 'Cerrar cotización' }}"
+                                                aria-label="{{ 'Reabrir' if cot.estado != 'ACTIVA' else 'Cerrar' }} cotización de {{ mes_nombres[cot.mes] }} {{ cot.anio }}">
+                                            <i class="fas {{ 'fa-lock-open' if cot.estado != 'ACTIVA' else 'fa-lock' }}"></i>
+                                        </button>
+                                    </form>
+
+                                    <form method="POST" class="d-inline"
+                                          action="{{ url_for('planta_alimentos.cotizaciones.eliminar_cotizacion', cotizacion_id=cot.id) }}"
+                                          onsubmit="return confirm('¿Eliminar la cotización de {{ mes_nombres[cot.mes] }} {{ cot.anio }}? Se borrarán también sus {{ cot.total_items or 0 }} precios.');">
+                                        <button type="submit" class="btn-accion is-danger"
+                                                title="Eliminar cotización"
+                                                aria-label="Eliminar cotización de {{ mes_nombres[cot.mes] }} {{ cot.anio }}">
+                                            <i class="fas fa-trash-can"></i>
+                                        </button>
+                                    </form>
                                 </div>
                             </td>
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="7" class="text-center py-4 text-muted">No hay cotizaciones registradas</td>
+                            <td colspan="7" class="celda-vacia">
+                                <i class="fas fa-file-invoice"></i>
+                                {% if filtro_anio or filtro_estado %}
+                                    No hay cotizaciones que coincidan con el filtro.
+                                {% else %}
+                                    Todavía no hay cotizaciones registradas.
+                                {% endif %}
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>

@@ -1,30 +1,229 @@
 {% extends 'generales/layout.html' %}
 
+{% block head %}
+<style>
+  /* ============================================================
+     INGRESO DIARIO - DESIGN TOKENS (Impeccable: Operate + Quieter)
+     ============================================================ */
+  :root {
+    /* === CABECERA TABLA === */
+    --table-header-bg: #1a202c;
+    --table-header-text: #ffffff;
+
+    /* === ACCIONES === */
+    --action-primary: #2c3e50;
+    --action-primary-hover: #1a252f;
+    --action-primary-text: #ffffff;
+
+    --action-secondary: #6c757d;
+    --action-secondary-hover: #5a6268;
+    --action-secondary-text: #ffffff;
+
+    /* === SEMÁNTICOS (Solo estados/datos) === */
+    --success: #198754;
+    --success-hover: #157347;
+    --info: #0d6efd;
+    --warning: #ffc107;
+    --warning-text: #212529;
+    --danger: #dc3545;
+
+    /* === SUPERFICIES === */
+    --surface: #ffffff;
+    --surface-alt: #f8f9fa;
+
+    /* === TEXTO === */
+    --text-primary: #212529;
+    --text-secondary: #495057;
+    --text-muted: #6c757d;
+
+    /* === ESTRUCTURA === */
+    --border: #dee2e6;
+
+    /* === ESPACIADO (base 4px) === */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+  }
+
+  /* ============================================================
+     BOTONES UNIFICADOS
+     ============================================================ */
+  .btn-primary {
+    background-color: var(--action-primary);
+    border-color: var(--action-primary);
+    color: var(--action-primary-text);
+  }
+  .btn-primary:hover,
+  .btn-primary:focus {
+    background-color: var(--action-primary-hover);
+    border-color: var(--action-primary-hover);
+  }
+
+  .btn-secondary {
+    background-color: var(--action-secondary);
+    border-color: var(--action-secondary);
+    color: var(--action-secondary-text);
+  }
+  .btn-secondary:hover,
+  .btn-secondary:focus {
+    background-color: var(--action-secondary-hover);
+    border-color: var(--action-secondary-hover);
+  }
+
+  .btn-success {
+    background-color: var(--success);
+    border-color: var(--success);
+    color: #ffffff;
+  }
+  .btn-success:hover,
+  .btn-success:focus {
+    background-color: var(--success-hover);
+    border-color: var(--success-hover);
+  }
+
+  .btn-outline-danger {
+    color: var(--danger);
+    border-color: var(--danger);
+  }
+  .btn-outline-danger:hover {
+    background-color: var(--danger);
+    color: #ffffff;
+  }
+
+  .btn-danger {
+    background-color: var(--danger);
+    border-color: var(--danger);
+    color: #ffffff;
+  }
+
+  /* ============================================================
+     TABLA: Cabecera unificada gris oscuro, centrada
+     ============================================================ */
+  .table-ingreso thead {
+    background-color: var(--table-header-bg) !important;
+    color: var(--table-header-text) !important;
+  }
+  .table-ingreso thead th {
+    background-color: var(--table-header-bg) !important;
+    color: var(--table-header-text) !important;
+    border-color: rgba(255,255,255,0.15);
+    border-bottom: 2px solid rgba(255,255,255,0.25) !important;
+    font-weight: 600;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: var(--space-2) var(--space-2);
+    white-space: nowrap;
+    text-align: center !important;
+    vertical-align: middle;
+  }
+
+  /* ============================================================
+     TABLA: Cuerpo - filas alternadas sutiles
+     ============================================================ */
+  .table-ingreso tbody tr:nth-child(odd) {
+    background-color: var(--surface);
+  }
+  .table-ingreso tbody tr:nth-child(even) {
+    background-color: var(--surface-alt);
+  }
+  .table-ingreso tbody tr:hover {
+    background-color: #eef1f4;
+  }
+  .table-ingreso tbody td {
+    font-size: 0.8rem;
+    padding: var(--space-2) var(--space-2);
+    vertical-align: middle;
+    border-color: var(--border);
+  }
+
+  /* Inputs en tabla - transparentes, sin borde */
+  .table-ingreso input.form-control,
+  .table-ingreso select.form-select {
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0.15rem 0.3rem !important;
+    font-size: 0.85rem !important;
+  }
+  .table-ingreso input.form-control:focus,
+  .table-ingreso select.form-select:focus {
+    outline: none;
+    background-color: #ffffff !important;
+    box-shadow: 0 0 0 2px rgba(44, 62, 80, 0.2) !important;
+  }
+
+  /* Columna Acción */
+  .table-ingreso .col-accion {
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  /* Card sin borde, sombra sutil */
+  .card-ingreso {
+    box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
+    border: 1px solid var(--border);
+  }
+
+  .card-form-ingreso {
+    box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
+    border: 1px solid var(--border);
+    background-color: var(--surface);
+  }
+
+  /* Card header neutro */
+  .card-header.bg-neutral {
+    background-color: var(--action-secondary) !important;
+    color: var(--action-secondary-text) !important;
+    border-bottom: none;
+  }
+
+  /* Inputs en tarjetas */
+  .card-form-ingreso input.form-control,
+  .card-form-ingreso select.form-select {
+    border-color: var(--border);
+  }
+  .card-form-ingreso input.form-control:focus,
+  .card-form-ingreso select.form-select:focus {
+    border-color: var(--action-primary);
+    box-shadow: 0 0 0 2px rgba(44, 62, 80, 0.2);
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid mt-4 mb-5">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2><i class="fas fa-calendar-alt me-2 text-primary"></i>Captura Diario de Compras (Matriz)</h2>
-        <a href="{{ url_for('planta_alimentos.matriz_mensual_compras') }}" class="btn btn-secondary shadow-sm">
+        <h2 class="h4 fw-bold mb-0" style="color: var(--text-primary);">
+            <i class="fas fa-calendar-alt me-2" style="color: var(--action-primary);"></i>Captura Diario de Compras (Matriz)
+        </h2>
+        <a href="{{ url_for('planta_alimentos.matriz_mensual_compras') }}" class="btn btn-secondary btn-sm">
             <i class="fas fa-table me-1"></i> Ver Matriz Mensual
         </a>
     </div>
 
     <form method="POST" action="{{ url_for('planta_alimentos.guardar_ingreso_diario') }}">
-        
+
         <!-- Tarjeta 1: Datos Generales del Día -->
-        <div class="card shadow-sm border-0 mb-3 bg-light">
+        <div class="card card-form-ingreso mb-3">
             <div class="card-body">
                 <div class="row align-items-center">
                     <div class="col-md-3">
-                        <label class="form-label font-weight-bold">Día del Periodo / Mes:</label>
-                        <input type="number" name="dia_numero" class="form-control form-control-lg font-weight-bold text-center text-primary" min="1" max="31" placeholder="Ej: 15" required>
+                        <label class="form-label fw-semibold text-muted small">Día del Periodo / Mes:</label>
+                        <select name="dia_numero" class="form-select form-control-lg fw-bold text-center" style="color: var(--action-primary);" required>
+                            <option value="" disabled selected>Seleccione día</option>
+                            {% for d in range(1, 32) %}
+                            <option value="{{ d }}">{{ d }}</option>
+                            {% endfor %}
+                        </select>
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label font-weight-bold">Fecha del Registro:</label>
+                        <label class="form-label fw-semibold text-muted small">Fecha del Registro:</label>
                         <input type="date" name="fecha_registro" class="form-control" value="{{ hoy }}" required>
                     </div>
                     <div class="col-md-5">
-                        <label class="form-label font-weight-bold">Observación / Lote General:</label>
+                        <label class="form-label fw-semibold text-muted small">Observación / Lote General:</label>
                         <input type="text" name="observacion_general" class="form-control" placeholder="Ej: Ingreso correspondiente a mulas del día">
                     </div>
                 </div>
@@ -32,50 +231,49 @@
         </div>
 
         <!-- Tarjeta 2: Tabla Dinámica de Materias Primas -->
-        <div class="card shadow-sm border-0 mb-4">
-            <div class="card-header bg-dark text-white font-weight-bold d-flex justify-content-between align-items-center py-3">
-                <span class="fs-5"><i class="fas fa-boxes me-2"></i> Captura de Cantidades y Valores</span>
-                <!-- Botón Añadir Mejorado (Azul Primario para resaltar) -->
-                <button type="button" class="btn btn-primary shadow-sm" id="btn-add-row">
+        <div class="card card-ingreso mb-4">
+            <div class="card-header bg-neutral d-flex justify-content-between align-items-center py-3">
+                <span class="fw-semibold fs-5"><i class="fas fa-boxes me-2"></i> Captura de Cantidades y Valores</span>
+                <button type="button" class="btn btn-primary btn-sm" id="btn-add-row">
                     <i class="fas fa-plus me-1"></i> Añadir Ingrediente
                 </button>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-bordered table-striped align-middle mb-0" id="tabla-materias-primas">
-                        <thead class="table-primary text-center">
+                    <table class="table table-bordered align-middle mb-0 table-ingreso" id="tabla-materias-primas" style="font-size: 0.85rem;">
+                        <thead>
                             <tr>
-                                <!-- Anchos ajustados para dar espacio al botón de acción -->
-                                <th style="width: 30%;">Materia Prima / Ingrediente</th>
-                                <th style="width: 20%;">Cantidad (Gramos)</th>
-                                <th style="width: 20%;">Costo Total ($) / Mula</th>
-                                <th style="width: 20%;">Nº Lote / Remisión</th>
-                                <th style="width: 10%;">Acción</th>
+                                <th style="width: 30%;">MATERIA PRIMA / INGREDIENTE</th>
+                                <th class="col-numeric" style="width: 20%;">CANTIDAD (GRAMOS)</th>
+                                <th class="col-numeric" style="width: 20%;">COSTO TOTAL ($) / MULA</th>
+                                <th style="width: 20%;">Nº LOTE / REMESIÓN</th>
+                                <th class="col-accion" style="width: 10%;">ACCIÓN</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr class="fila-ingreso">
                                 <td>
-                                    <select name="materia_prima_id[]" class="form-select border-primary" required>
+                                    <select name="materia_prima_id[]" class="form-select border-0 bg-transparent" required style="font-size: 0.85rem;">
                                         <option value="">Seleccione el ingrediente...</option>
                                         {% for mp in materias_primas %}
-                                            <option value="{{ mp['id'] }}">{{ mp['nombre'] }}</option>
+                                        <option value="{{ mp['id'] }}">{{ mp['nombre'] }}</option>
                                         {% endfor %}
                                     </select>
                                 </td>
                                 <td>
-                                    <input type="number" step="0.01" name="cantidad[]" class="form-control text-end" placeholder="0.00" required>
+                                    <input type="number" step="0.01" name="cantidad[]" class="form-control border-0 bg-transparent text-end" placeholder="0.00" required style="font-size: 0.85rem;">
                                 </td>
                                 <td>
-                                    <input type="number" step="0.01" name="costo[]" class="form-control text-end" placeholder="0.00">
+                                    <input type="number" step="0.01" name="costo[]" class="form-control border-0 bg-transparent text-end" placeholder="0.00" style="font-size: 0.85rem;">
                                 </td>
                                 <td>
-                                    <input type="text" name="lote[]" class="form-control text-center" placeholder="Opcional">
+                                    <input type="text" name="lote[]" class="form-control border-0 bg-transparent text-center" placeholder="Opcional" style="font-size: 0.85rem;">
                                 </td>
-                                <td class="text-center">
-                                    <!-- Botón Eliminar Mejorado (Tamaño normal, icono claro) -->
-                                    <button type="button" class="btn btn-outline-danger btn-remove-row px-3" title="Eliminar fila">
-                                        <i class="fas fa-trash-alt"></i>
+                                <td class="col-accion text-center">
+                                    <button type="button" class="btn btn-outline-danger btn-sm btn-action px-2" title="Eliminar fila">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-trash3" viewBox="0 0 16 16">
+                                            <path d="M6.5 1h3a.5.5 0 0 1 .5.5v1H6v-1a.5.5 0 0 1 .5-.5M11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3A1.5 1.5 0 0 0 5 1.5v1H1.5a.5.5 0 0 0 0 1h.538l.853 10.66A2 2 0 0 0 4.937 16h6.126a2 2 0 0 0 1.997-1.84l.853-10.66h.538a.5.5 0 0 0 0-1zm1.958 1-.846 10.58a1 1 0 0 1-.997.92H4.937a1 1 0 0 1-.997-.92L3.042 3.5zm-7.487 1a.5.5 0 0 1 .528.47l.5 8.5a.5.5 0 0 1-.998.06L5 5.03a.5.5 0 0 1 .47-.53Zm5.058 0a.5.5 0 0 1 .47.53l-.5 8.5a.5.5 0 1 1-.998-.06l.5-8.5a.5.5 0 0 1 .528-.47M8 4.5a.5.5 0 0 1 .5.5v8.5a.5.5 0 0 1-1 0V5a.5.5 0 0 1 .5-.5"/>
+                                        </svg>
                                     </button>
                                 </td>
                             </tr>
@@ -85,7 +283,7 @@
             </div>
         </div>
 
-        <button type="submit" class="btn btn-success btn-lg w-100 shadow-sm py-3 fs-5">
+        <button type="submit" class="btn btn-primary w-100 fw-semibold py-2">
             <i class="fas fa-save me-2"></i> Guardar Día e Incrementar Inventario
         </button>
     </form>
@@ -112,8 +310,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Eliminar fila
     tableBody.addEventListener('click', function(e) {
-        // Buscar si se hizo clic en el botón o dentro del icono del botón
-        const btnRemove = e.target.closest('.btn-remove-row');
+        const btnRemove = e.target.closest('.btn-outline-danger');
         
         if (btnRemove) {
             const rows = tableBody.querySelectorAll('.fila-ingreso');

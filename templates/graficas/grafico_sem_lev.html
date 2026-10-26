@@ -4,7 +4,6 @@
 <style>
   body {
     overflow-y: hidden !important;
-    zoom: 0.8;
   }
   main.container-fluid {
     display: flex;
@@ -212,7 +211,7 @@
             const observer = new ResizeObserver(() => {
                 const rect = graficoDiv.getBoundingClientRect();
                 const pixelesLibres = window.innerHeight - rect.top;
-                const alturaPerfecta = (pixelesLibres / 0.8) - 15;
+                const alturaPerfecta = pixelesLibres - 15;
                 graficoDiv.style.height = alturaPerfecta + "px";
                 if (window.Plotly) {
                     Plotly.Plots.resize(graficoDiv);

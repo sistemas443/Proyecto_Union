@@ -1,65 +1,319 @@
 {% extends 'generales/layout.html' %}
 
+{% block head %}
+<style>
+  /* ============================================================
+     MATERIAS PRIMAS - DESIGN TOKENS (Impeccable: Operate + Quieter)
+     ============================================================ */
+  :root {
+    /* === CABECERA TABLA === */
+    --table-header-bg: #1a202c;
+    --table-header-text: #ffffff;
+
+    /* === ACCIONES === */
+    --action-primary: #2c3e50;
+    --action-primary-hover: #1a252f;
+    --action-primary-text: #ffffff;
+
+    --action-secondary: #6c757d;
+    --action-secondary-hover: #5a6268;
+    --action-secondary-text: #ffffff;
+
+    /* === SEMÁNTICOS (Solo estados/datos) === */
+    --success: #198754;
+    --info: #0d6efd;
+    --warning: #ffc107;
+    --warning-text: #212529;
+    --danger: #dc3545;
+
+    /* === SUPERFICIES === */
+    --surface: #ffffff;
+    --surface-alt: #f8f9fa;
+
+    /* === TEXTO === */
+    --text-primary: #212529;
+    --text-secondary: #495057;
+    --text-muted: #6c757d;
+
+    /* === ESTRUCTURA === */
+    --border: #dee2e6;
+
+    /* === ESPACIADO (base 4px) === */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+  }
+
+  /* ============================================================
+     BOTONES UNIFICADOS
+     ============================================================ */
+  .btn-primary {
+    background-color: var(--action-primary);
+    border-color: var(--action-primary);
+    color: var(--action-primary-text);
+  }
+  .btn-primary:hover,
+  .btn-primary:focus {
+    background-color: var(--action-primary-hover);
+    border-color: var(--action-primary-hover);
+  }
+
+  .btn-secondary {
+    background-color: var(--action-secondary);
+    border-color: var(--action-secondary);
+    color: var(--action-secondary-text);
+  }
+  .btn-secondary:hover,
+  .btn-secondary:focus {
+    background-color: var(--action-secondary-hover);
+    border-color: var(--action-secondary-hover);
+  }
+
+  .btn-outline-danger {
+    color: var(--danger);
+    border-color: var(--danger);
+  }
+  .btn-outline-danger:hover {
+    background-color: var(--danger);
+    color: #ffffff;
+  }
+
+  .btn-danger {
+    background-color: var(--danger);
+    border-color: var(--danger);
+    color: #ffffff;
+  }
+
+  /* ============================================================
+     TABLA: Cabecera unificada gris oscuro, centrada
+     ============================================================ */
+  .table-mp thead {
+    background-color: var(--table-header-bg) !important;
+    color: var(--table-header-text) !important;
+  }
+  .table-mp thead th {
+    background-color: var(--table-header-bg) !important;
+    color: var(--table-header-text) !important;
+    border-color: rgba(255,255,255,0.15);
+    border-bottom: 2px solid rgba(255,255,255,0.25) !important;
+    font-weight: 600;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: var(--space-2) var(--space-2);
+    white-space: nowrap;
+    text-align: center !important;
+    vertical-align: middle;
+  }
+
+  /* ============================================================
+     TABLA: Cuerpo - filas alternadas sutiles
+     ============================================================ */
+  .table-mp tbody tr:nth-child(odd) {
+    background-color: var(--surface);
+  }
+  .table-mp tbody tr:nth-child(even) {
+    background-color: var(--surface-alt);
+  }
+  .table-mp tbody tr:hover {
+    background-color: #eef1f4;
+  }
+  .table-mp tbody td {
+    font-size: 0.8rem;
+    padding: var(--space-2) var(--space-2);
+    vertical-align: middle;
+    border-color: var(--border);
+  }
+
+  /* Columna Producto - negrita, mayúscula */
+  .table-mp .col-producto {
+    font-weight: 600;
+    color: var(--text-primary);
+    text-align: left;
+  }
+
+  /* Columna Proveedor */
+  .table-mp .col-proveedor {
+    color: var(--text-secondary);
+    text-align: left;
+  }
+
+  /* Columnas numéricas - alineadas derecha, monospace */
+  .table-mp .col-numeric {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 0.75rem;
+  }
+
+  /* Colores semánticos SOLO EN TEXTO (sin fondos de color) */
+  .table-mp .col-p-iva {
+    color: var(--success);
+    font-weight: 600;
+  }
+  .table-mp .col-p-iva-flete {
+    color: var(--info);
+    font-weight: 600;
+  }
+  .table-mp .col-neto {
+    color: var(--text-muted);
+  }
+  .table-mp .col-p-flete {
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+
+  /* Acciones centradas */
+  .table-mp .col-acciones {
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  /* Badge Maquila discreto */
+  .badge-maquila {
+    font-size: 0.6rem;
+    padding: 0.15rem 0.4rem;
+    border-radius: 0.25rem;
+    background-color: var(--warning);
+    color: var(--warning-text);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+
+  /* Inputs en tabla - transparentes, sin borde */
+  .table-mp input.form-control,
+  .table-mp select.form-select {
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0.15rem 0.3rem !important;
+    font-size: 0.8rem !important;
+  }
+  .table-mp input.form-control:focus,
+  .table-mp select.form-select:focus {
+    outline: none;
+    background-color: #ffffff !important;
+    box-shadow: 0 0 0 2px rgba(44, 62, 80, 0.2) !important;
+  }
+
+  /* Modal header neutro */
+  .modal-header.bg-neutral {
+    background-color: var(--action-secondary) !important;
+    color: var(--action-secondary-text) !important;
+    border-bottom: none;
+  }
+  .modal-header.bg-neutral .btn-close {
+    filter: invert(1);
+  }
+
+  /* Card sin borde, sombra sutil */
+  .card-mp {
+    box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
+    border: 1px solid var(--border);
+  }
+
+  /* ============================================================
+     CABECERA DE PÁGINA (icono profesional + títulos)
+     ============================================================ */
+  .page-icon {
+    width: 44px;
+    height: 44px;
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background-color: var(--action-primary);
+    color: #ffffff;
+    font-size: 1.1rem;
+    box-shadow: 0 2px 6px rgba(44, 62, 80, 0.25);
+  }
+  .page-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--text-primary);
+    line-height: 1.25;
+  }
+  .page-subtitle {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    line-height: 1.3;
+  }
+  @media print {
+    .page-icon {
+      background-color: transparent !important;
+      color: var(--text-primary) !important;
+      box-shadow: none !important;
+    }
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid py-4">
     <!-- Encabezado con Botón de Modal -->
-    <div class="row mb-3 align-items-center">
-        <div class="col-md-6">
-            <h2 class="h4 text-primary fw-bold mb-0">
-                <i class="fas fa-boxes me-2"></i> Gestión de Materias Primas
-            </h2>
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-3">
+        <div class="d-flex align-items-center gap-3">
+            <div class="page-icon">
+                <i class="fas fa-seedling"></i>
+            </div>
+            <div>
+                <h2 class="page-title mb-0">Gestión de Materias Primas</h2>
+                <p class="page-subtitle mb-0">Insumos, costos y stock disponible</p>
+            </div>
         </div>
-        <div class="col-md-6 text-end">
-            <!-- BOTÓN QUE ACTIVA EL MODAL -->
-            <button type="button" class="btn btn-dark btn-sm fw-bold shadow-sm" data-bs-toggle="modal"
-                data-bs-target="#modalNuevaMateriaPrima">
-                <i class="fas fa-plus me-1"></i> Agregar Materia Prima +
-            </button>
-        </div>
+        <button type="button" class="btn btn-primary btn-sm fw-semibold" data-bs-toggle="modal"
+            data-bs-target="#modalNuevaMateriaPrima">
+            <i class="fas fa-plus me-1"></i> Agregar Materia Prima
+        </button>
     </div>
 
-    <!-- Tabla ocupando el 100% del ancho (col-12) -->
+    <!-- Tabla -->
     <div class="row">
         <div class="col-12">
-            <div class="card border-0 shadow-sm">
+            <div class="card card-mp">
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-bordered table-hover align-middle mb-0 text-nowrap"
-                            style="font-size: 0.85rem;">
-                            <thead class="text-center align-middle" style="background-color: #f8f9fa;">
+                        <table class="table table-hover align-middle mb-0 table-mp" style="font-size: 0.8rem;">
+                            <thead>
                                 <tr>
-                                    <th style="background-color: #000000; color: #f8f4f4;">PRODUCTO</th>
-                                    <th style="background-color: #000000; color: #f8f4f4;width: 200px;">PROVEEDOR</th>
-                                    <th style="background-color: #000000; color: #f8f4f4;">PRECIO KG</th>
-                                    <th style="background-color: #000000; color: #f8f4f4; width: 150px;">IVA</th>
-                                    <th style="background-color: #198754; color: #fff;">P+IVA</th>
-                                    <th style="background-color: #000000; color: #f8f4f4; width: 120px;">FLETE</th>
-                                    <th style="background-color: #0d6efd; color: #fff;">P+IVA+FLETE</th>
-                                    <th style="background-color: #000000; color: #f8f4f4;">PRECIO NETO</th>
-                                    <th style="background-color: #0bdb2a; color: #fff;">P+FLETE</th>
-                                    <th style="background-color: #f8f9fa;">ACCIONES</th>
+                                    <th style="width: 22%;">PRODUCTO</th>
+                                    <th style="width: 18%;">PROVEEDOR</th>
+                                    <th class="col-numeric" style="width: 10%;">PRECIO KG</th>
+                                    <th class="col-numeric" style="width: 8%;">IVA</th>
+                                    <th class="col-numeric" style="width: 11%;">P+IVA</th>
+                                    <th class="col-numeric" style="width: 11%;">P+IVA+FLETE</th>
+                                    <th class="col-numeric" style="width: 10%;">PRECIO NETO</th>
+                                    <th class="col-numeric" style="width: 11%;">P+FLETE</th>
+                                    <th class="col-numeric" style="width: 8%;">FLETE</th>
+                                    <th class="col-acciones" style="width: 5%;">ACCIONES</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for mp in materias_primas %}
-                                <tr {% if mp['es_maquila'] %}class="table-warning" {% endif %}>
+                                <tr {% if mp['es_maquila'] %}data-maquila="true"{% endif %}>
                                     <!-- PRODUCTO -->
-                                    <td class="px-2">
+                                    <td class="col-producto px-3">
                                         <input type="text" form="form-mp-edit-{{ mp['id'] }}" name="nombre"
                                             value="{{ mp['nombre'] }}"
                                             class="form-control form-control-sm border-0 bg-transparent fw-bold text-dark text-uppercase"
                                             required>
+                                        {% if mp['es_maquila'] %}
+                                        <span class="badge-maquila ms-1">Maquila</span>
+                                        {% endif %}
                                     </td>
 
                                     <!-- PROVEEDOR DESPLEGABLE -->
-                                    <td class="px-2">
+                                    <td class="col-proveedor px-2">
                                         <select form="form-mp-edit-{{ mp['id'] }}" name="proveedor"
                                             class="form-select form-select-sm border-0 bg-transparent text-uppercase fw-semibold"
-                                            style="font-size: 0.85rem;">
+                                            style="font-size: 0.8rem;">
                                             <option value="">-- SIN PROVEEDOR --</option>
                                             {% for prov in proveedores %}
-                                            <option value="{{ prov['nombre'] }}" {% if mp['proveedor']==prov['nombre']
-                                                %}selected{% endif %}>
+                                            <option value="{{ prov['nombre'] }}" {% if mp['proveedor']==prov['nombre'] %}selected{% endif %}>
                                                 {{ prov['nombre'] }}
                                             </option>
                                             {% endfor %}
@@ -67,89 +321,77 @@
                                     </td>
 
                                     <!-- PRECIO KG -->
-                                    <td class="text-end px-2">
+                                    <td class="col-numeric px-2">
                                         <input type="text" form="form-mp-edit-{{ mp['id'] }}" name="precio_actual_kg"
-                                            value="{{ " {:,.0f}".format(mp['precio_actual_kg']).replace(',', '.' ) if
-                                            mp['precio_actual_kg'] else '0' }}"
+                                            value="{{ '{:,.0f}'.format(mp['precio_actual_kg']).replace(',', '.') if mp['precio_actual_kg'] else '0' }}"
                                             class="form-control form-control-sm border-0 bg-transparent text-end fw-bold text-dark monto-miles"
-                                            style="width: 85px;" required>
+                                            style="width: 90px;" required>
                                     </td>
 
                                     <!-- IVA -->
-                                    <!-- IVA (Factor) -->
-                                    <td class="text-center px-1">
+                                    <td class="col-numeric px-1 text-center">
                                         <select form="form-mp-edit-{{ mp['id'] }}" name="iva"
                                             class="form-select form-select-sm border-0 bg-transparent text-center p-0"
-                                            style="font-size: 0.85rem;">
-                                            <option value="1.00" {% if mp['iva']|float==1.00 %}selected{% endif %}>(0%)
-                                            </option>
-                                            <option value="1.05" {% if mp['iva']|float==1.05 %}selected{% endif %}>(5%)
-                                            </option>
-                                            <option value="1.19" {% if mp['iva']|float==1.19 %}selected{% endif %}>(19%)
-                                            </option>
+                                            style="font-size: 0.8rem;">
+                                            <option value="1.00" {% if mp['iva']|float==1.00 %}selected{% endif %}>0%</option>
+                                            <option value="1.05" {% if mp['iva']|float==1.05 %}selected{% endif %}>5%</option>
+                                            <option value="1.19" {% if mp['iva']|float==1.19 %}selected{% endif %}>19%</option>
                                         </select>
                                     </td>
 
                                     <!-- P+IVA -->
-                                    <td class="text-end px-2 text-success fw-semibold"
-                                        style="background-color: #e8f5e9;">
+                                    <td class="col-numeric col-p-iva px-2">
                                         $ {{ "{:,.1f}".format(mp['p_iva']) }}
                                     </td>
 
                                     <!-- FLETE -->
-                                    <td class="text-end px-2">
-                                        <input type="text" form="form-mp-edit-{{ mp['id'] }}" name="flete" value="{{ "
-                                            {:,.0f}".format(mp['flete']).replace(',', '.' ) if mp['flete'] else '0' }}"
+                                    <td class="col-numeric px-2">
+                                        <input type="text" form="form-mp-edit-{{ mp['id'] }}" name="flete"
+                                            value="{{ '{:,.0f}'.format(mp['flete']).replace(',', '.') if mp['flete'] else '0' }}"
                                             class="form-control form-control-sm border-0 bg-transparent text-end monto-miles"
                                             style="width: 70px;">
                                     </td>
 
                                     <!-- P+IVA+FLETE -->
-                                    <td class="text-end px-2 text-primary fw-bold" style="background-color: #e3f2fd;">
+                                    <td class="col-numeric col-p-iva-flete px-2">
                                         $ {{ "{:,.0f}".format(mp['p_iva_flete']) }}
                                     </td>
 
                                     <!-- PRECIO NETO -->
-                                    <td class="text-end px-2 text-muted">
+                                    <td class="col-numeric col-neto px-2">
                                         $ {{ "{:,.0f}".format(mp['precio_neto']) }}
                                     </td>
 
                                     <!-- P+FLETE -->
-                                    <td class="text-end px-2 text-dark" style="background-color: #f1f3f5;">
+                                    <td class="col-numeric col-p-flete px-2">
                                         $ {{ "{:,.0f}".format(mp['p_flete']) }}
                                     </td>
 
                                     <!-- ACCIONES -->
-                                    <td class="text-center px-2">
+                                    <td class="col-acciones px-1">
                                         <div class="d-flex justify-content-center gap-1">
                                             <form id="form-mp-edit-{{ mp['id'] }}" method="POST"
                                                 action="{{ url_for('planta_alimentos.editar_materia_prima', id_mp=mp['id']) }}">
                                             </form>
 
-                                            <!-- Lápiz Guardar -->
+                                            <!-- Guardar -->
                                             <button type="submit" form="form-mp-edit-{{ mp['id'] }}"
-                                                class="btn btn-sm btn-outline-primary border-0 p-1"
-                                                title="Guardar Cambios">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15"
-                                                    fill="currentColor" class="bi bi-pencil-square" viewBox="0 0 16 16">
-                                                    <path
-                                                        d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z" />
-                                                    <path fill-rule="evenodd"
-                                                        d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5z" />
+                                                class="btn btn-primary btn-sm p-1" title="Guardar Cambios">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14"
+                                                    fill="currentColor" class="bi bi-check-lg" viewBox="0 0 16 16">
+                                                    <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425a.247.247 0 0 1 .02-.022Z"/>
                                                 </svg>
                                             </button>
 
-                                            <!-- Papelera Borrar -->
+                                            <!-- Eliminar -->
                                             <form method="POST"
                                                 action="{{ url_for('planta_alimentos.eliminar_materia_prima', id_mp=mp['id']) }}"
                                                 onsubmit="return confirm('¿Deseas eliminar este insumo?');"
                                                 class="d-inline">
-                                                <button type="submit" class="btn btn-sm btn-outline-danger border-0 p-1"
-                                                    title="Eliminar Insumo">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15"
+                                                <button type="submit" class="btn btn-outline-danger btn-sm p-1" title="Eliminar Insumo">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14"
                                                         fill="currentColor" class="bi bi-trash3" viewBox="0 0 16 16">
-                                                        <path
-                                                            d="M6.5 1h3a.5.5 0 0 1 .5.5v1H6v-1a.5.5 0 0 1 .5-.5M11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3A1.5 1.5 0 0 0 5 1.5v1H1.5a.5.5 0 0 0 0 1h.538l.853 10.66A2 2 0 0 0 4.937 16h6.126a2 2 0 0 0 1.997-1.84l.853-10.66h.538a.5.5 0 0 0 0-1zm1.958 1-.846 10.58a1 1 0 0 1-.997.92H4.937a1 1 0 0 1-.997-.92L3.042 3.5zm-7.487 1a.5.5 0 0 1 .528.47l.5 8.5a.5.5 0 0 1-.998.06L5 5.03a.5.5 0 0 1 .47-.53Zm5.058 0a.5.5 0 0 1 .47.53l-.5 8.5a.5.5 0 1 1-.998-.06l.5-8.5a.5.5 0 0 1 .528-.47M8 4.5a.5.5 0 0 1 .5.5v8.5a.5.5 0 0 1-1 0V5a.5.5 0 0 1 .5-.5" />
+                                                        <path d="M6.5 1h3a.5.5 0 0 1 .5.5v1H6v-1a.5.5 0 0 1 .5-.5M11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3A1.5 1.5 0 0 0 5 1.5v1H1.5a.5.5 0 0 0 0 1h.538l.853 10.66A2 2 0 0 0 4.937 16h6.126a2 2 0 0 0 1.997-1.84l.853-10.66h.538a.5.5 0 0 0 0-1zm1.958 1-.846 10.58a1 1 0 0 1-.997.92H4.937a1 1 0 0 1-.997-.92L3.042 3.5zm-7.487 1a.5.5 0 0 1 .528.47l.5 8.5a.5.5 0 0 1-.998.06L5 5.03a.5.5 0 0 1 .47-.53Zm5.058 0a.5.5 0 0 1 .47.53l-.5 8.5a.5.5 0 1 1-.998-.06l.5-8.5a.5.5 0 0 1 .528-.47M8 4.5a.5.5 0 0 1 .5.5v8.5a.5.5 0 0 1-1 0V5a.5.5 0 0 1 .5-.5"/>
                                                     </svg>
                                                 </button>
                                             </form>
@@ -158,8 +400,7 @@
                                 </tr>
                                 {% else %}
                                 <tr>
-                                    <td colspan="10" class="text-center py-4 text-muted">No hay materias primas
-                                        registradas.</td>
+                                    <td colspan="10" class="text-center py-4 text-muted">No hay materias primas registradas.</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -176,8 +417,8 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow">
             
-            <div class="modal-header bg-dark text-white">
-                <h5 class="modal-title fw-bold fs-6" id="modalLabel">
+            <div class="modal-header bg-neutral">
+                <h5 class="modal-title fw-semibold fs-6" id="modalLabel">
                     <i class="fas fa-plus-circle me-1"></i> Nueva Materia Prima
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -189,13 +430,13 @@
                     
                     <!-- Producto -->
                     <div class="mb-3">
-                        <label class="form-label fw-bold text-muted small mb-1">Nombre del Producto</label>
+                        <label class="form-label fw-semibold text-muted small mb-1">Nombre del Producto</label>
                         <input type="text" name="nombre" class="form-control form-control-sm text-uppercase" placeholder="Ej. MAIZ" required autocomplete="off">
                     </div>
 
                     <!-- Proveedor -->
                     <div class="mb-3">
-                        <label class="form-label fw-bold text-muted small mb-1">Proveedor</label>
+                        <label class="form-label fw-semibold text-muted small mb-1">Proveedor</label>
                         <select name="proveedor" class="form-select form-select-sm text-uppercase">
                             <option value="">-- SELECCIONE PROVEEDOR (OPCIONAL) --</option>
                             {% for prov in proveedores %}
@@ -206,22 +447,22 @@
 
                     <!-- Precio KG -->
                     <div class="mb-3">
-                        <label class="form-label fw-bold text-muted small mb-1">Precio KG ($)</label>
+                        <label class="form-label fw-semibold text-muted small mb-1">Precio KG ($)</label>
                         <input type="text" name="precio_actual_kg" class="form-control form-control-sm monto-miles" placeholder="0" required autocomplete="off">
                     </div>
 
                     <!-- Row con Factor IVA y Flete -->
                     <div class="row g-2 mb-3">
                         <div class="col-6">
-                            <label class="form-label fw-bold text-muted small mb-1">Factor IVA</label>
+                            <label class="form-label fw-semibold text-muted small mb-1">Factor IVA</label>
                             <select name="iva" class="form-select form-select-sm">
-                                <option value="1.00">0 (0%)</option>
-                                <option value="1.05">1.05 (5%)</option>
-                                <option value="1.19">1.19 (19%)</option>
+                                <option value="1.00">0%</option>
+                                <option value="1.05">5%</option>
+                                <option value="1.19">19%</option>
                             </select>
                         </div>
                         <div class="col-6">
-                            <label class="form-label fw-bold text-muted small mb-1">Flete ($/Kg)</label>
+                            <label class="form-label fw-semibold text-muted small mb-1">Flete ($/Kg)</label>
                             <input type="text" name="flete" class="form-control form-control-sm monto-miles" placeholder="0" autocomplete="off">
                         </div>
                     </div>
@@ -229,7 +470,7 @@
                     <!-- Checkbox Maquila -->
                     <div class="form-check mb-2">
                         <input class="form-check-input" type="checkbox" name="es_maquila" id="es_maquila_check">
-                        <label class="form-check-label fw-bold text-secondary small" for="es_maquila_check">
+                        <label class="form-check-label fw-semibold text-secondary small" for="es_maquila_check">
                             ¿Es costo de Maquila?
                         </label>
                     </div>
@@ -239,7 +480,7 @@
                 <!-- FOOTER DENTRO DEL FORMULARIO -->
                 <div class="modal-footer bg-light">
                     <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-sm btn-primary fw-bold">
+                    <button type="submit" class="btn btn-sm btn-primary fw-semibold">
                         <i class="fas fa-save me-1"></i> Guardar Insumo
                     </button>
                 </div>

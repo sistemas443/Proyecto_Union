@@ -7,9 +7,8 @@
 <!-- INICIO DEL BLOQUE DE CONTENIDO PRINCIPAL -->
 {% block content %}
 <style>
-/* 1. Zoom global del 80% para estandarizar diseño */
+/* Escala normal (100%) */
     body {
-        zoom: 0.8;
         overflow-y: hidden !important; /* <--- Esta es la línea que elimina el scroll exterior */
     }
 
@@ -18,7 +17,7 @@
         display: flex;
         flex-direction: column;
         padding-bottom: 0px !important;
-        height: calc(125vh - 65px); /* Compensamos el zoom de 0.8 */
+        height: calc(100vh - var(--nav-h, 65px));
     }
 
     /* 3. Aseguramos que la cabecera no se encoja */
@@ -47,12 +46,6 @@
         top: 0;
         z-index: 10;
         box-shadow: 0 2px 2px -1px rgba(0,0,0,0.1);
-    }
-
-    /* 5. Corrección matemática para modales y fondos bajo zoom de 0.8 */
-    .modal, .modal-backdrop {
-        width: 125vw !important;
-        height: 125vh !important;
     }
 
     /* 6. CSS PARA LA BARRA ESTILO PÍLDORA PERFECTA */
@@ -333,8 +326,8 @@
                 const rect = divCard.getBoundingClientRect();
                 const pixelesLibres = window.innerHeight - rect.top;
                 
-                // Compensamos el zoom del 80% (0.8) y ajustamos un margen inferior de seguridad
-                const alturaPerfecta = (pixelesLibres / 0.8) - 15;
+                /* Escala normal (100%) */
+                const alturaPerfecta = pixelesLibres - 15;
                 
                 divCard.style.height = alturaPerfecta + "px";
                 scrollDiv.style.maxHeight = alturaPerfecta + "px";

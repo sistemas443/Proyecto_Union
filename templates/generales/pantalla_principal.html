@@ -4,10 +4,9 @@
 {% block content %}
 
 <style>
-    /* 1. Bloqueamos el scroll general y aplicamos zoom global del 80% (igual que primera_semana) */
+    /* Escala normal (100%) */
     body {
         overflow-y: hidden !important;
-        zoom: 0.8;
     }
 
     /* 2. El contenedor principal base (igual que primera_semana) */
@@ -20,7 +19,7 @@
     /* 3. Contenedor que ocupa toda la pantalla útil para centrar el GIF */
     .pantalla-bienvenida {
         width: 100%;
-        height: calc(100vh / 0.8 - 80px);
+        height: calc(100vh - var(--nav-h, 80px) - 32px);
         display: flex;
         flex-direction: column;
         align-items: center;

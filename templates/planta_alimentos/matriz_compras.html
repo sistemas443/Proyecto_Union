@@ -1,25 +1,311 @@
 {% extends 'generales/layout.html' %}
 
+{% block head %}
+<style>
+  /* ============================================================
+     MATRIZ MENSUAL DE COMPRAS - DESIGN TOKENS (Impeccable: Operate + Quieter)
+     ============================================================ */
+  :root {
+    /* === CABECERA TABLA === */
+    --table-header-bg: #1a202c;
+    --table-header-text: #ffffff;
+
+    /* === ACCIONES === */
+    --action-primary: #2c3e50;
+    --action-primary-hover: #1a252f;
+    --action-primary-text: #ffffff;
+
+    --action-secondary: #6c757d;
+    --action-secondary-hover: #5a6268;
+    --action-secondary-text: #ffffff;
+
+    /* === SEMÁNTICOS (Solo estados/datos) === */
+    --success: #198754;
+    --success-hover: #157347;
+    --info: #0d6efd;
+    --warning: #ffc107;
+    --warning-text: #212529;
+    --danger: #dc3545;
+
+    /* === SUPERFICIES === */
+    --surface: #ffffff;
+    --surface-alt: #f8f9fa;
+
+    /* === TEXTO === */
+    --text-primary: #212529;
+    --text-secondary: #495057;
+    --text-muted: #6c757d;
+
+    /* === ESTRUCTURA === */
+    --border: #dee2e6;
+
+    /* === ESPACIADO (base 4px) === */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+  }
+
+  /* ============================================================
+     BOTONES UNIFICADOS
+     ============================================================ */
+  .btn-primary {
+    background-color: var(--action-primary);
+    border-color: var(--action-primary);
+    color: var(--action-primary-text);
+  }
+  .btn-primary:hover,
+  .btn-primary:focus {
+    background-color: var(--action-primary-hover);
+    border-color: var(--action-primary-hover);
+  }
+
+  .btn-secondary {
+    background-color: var(--action-secondary);
+    border-color: var(--action-secondary);
+    color: var(--action-secondary-text);
+  }
+  .btn-secondary:hover,
+  .btn-secondary:focus {
+    background-color: var(--action-secondary-hover);
+    border-color: var(--action-secondary-hover);
+  }
+
+  .btn-success {
+    background-color: var(--success);
+    border-color: var(--success);
+    color: #ffffff;
+  }
+  .btn-success:hover,
+  .btn-success:focus {
+    background-color: var(--success-hover);
+    border-color: var(--success-hover);
+  }
+
+  .btn-secondary {
+    background-color: var(--action-secondary);
+    border-color: var(--action-secondary);
+    color: var(--action-secondary-text);
+  }
+  .btn-secondary:hover {
+    background-color: var(--action-secondary-hover);
+    border-color: var(--action-secondary-hover);
+  }
+
+  .btn-outline-danger {
+    color: var(--danger);
+    border-color: var(--danger);
+  }
+  .btn-outline-danger:hover {
+    background-color: var(--danger);
+    color: #ffffff;
+  }
+
+  /* ============================================================
+     TABLA: Cabecera unificada gris oscuro, centrada
+     ============================================================ */
+  .table-matriz thead {
+    background-color: var(--table-header-bg) !important;
+    color: var(--table-header-text) !important;
+  }
+  .table-matriz thead th {
+    background-color: var(--table-header-bg) !important;
+    color: var(--table-header-text) !important;
+    border-color: rgba(255,255,255,0.15);
+    border-bottom: 2px solid rgba(255,255,255,0.25) !important;
+    font-weight: 600;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: var(--space-2) var(--space-2);
+    white-space: nowrap;
+    text-align: center !important;
+    vertical-align: middle;
+  }
+
+  /* ============================================================
+     TABLA: Cuerpo - filas alternadas sutiles
+     ============================================================ */
+  .table-matriz tbody tr:nth-child(odd) {
+    background-color: var(--surface);
+  }
+  .table-matriz tbody tr:nth-child(even) {
+    background-color: var(--surface-alt);
+  }
+  .table-matriz tbody tr:hover {
+    background-color: #eef1f4;
+  }
+  .table-matriz tbody td {
+    font-size: 0.8rem;
+    padding: var(--space-2) var(--space-2);
+    vertical-align: middle;
+    border-color: var(--border);
+  }
+
+  /* Columna Día */
+  .table-matriz .col-dia {
+    font-weight: 600;
+    color: var(--text-primary);
+    text-align: center;
+    background-color: var(--surface-alt) !important;
+  }
+
+  /* Celdas interactivas */
+  .table-matriz .celda-interactiva {
+    cursor: pointer;
+    transition: background-color 0.15s, border-color 0.15s;
+    text-align: center;
+  }
+  .table-matriz .celda-interactiva:hover {
+    background-color: #e8f4fd !important;
+    border-color: var(--action-primary) !important;
+  }
+  .table-matriz .celda-interactiva.has-value {
+    font-weight: 600;
+    color: var(--success);
+  }
+  .table-matriz .celda-interactiva.empty {
+    color: var(--text-muted);
+  }
+
+  /* Footer totals */
+  .table-matriz tfoot {
+    background-color: var(--table-header-bg) !important;
+    color: var(--table-header-text) !important;
+  }
+  .table-matriz tfoot td {
+    background-color: var(--table-header-bg) !important;
+    color: var(--table-header-text) !important;
+    font-weight: 600;
+  }
+
+  /* Columna Día fija */
+  .table-matriz th:first-child,
+  .table-matriz td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background-color: inherit;
+  }
+  .table-matriz thead th:first-child {
+    z-index: 3;
+    border-left: 3px solid var(--info);
+  }
+  .table-matriz tbody td:first-child {
+    z-index: 2;
+    font-weight: 600;
+    background-color: var(--surface-alt) !important;
+  }
+
+  /* Footer total row */
+  .table-matriz tfoot td:first-child {
+    background-color: var(--table-header-bg) !important;
+    font-weight: 700;
+  }
+  .table-matriz tfoot td:not(:first-child) {
+    background-color: var(--table-header-bg) !important;
+    color: var(--table-header-text) !important;
+    font-weight: 700;
+  }
+
+  /* ============================================================
+     MODAL
+     ============================================================ */
+  .modal-header.bg-neutral {
+    background-color: var(--action-secondary) !important;
+    color: var(--action-secondary-text) !important;
+    border-bottom: none;
+  }
+  .modal-header.bg-neutral .btn-close {
+    filter: invert(1);
+  }
+
+  /* ============================================================
+     CARD
+     ============================================================ */
+  .card-matriz {
+    box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
+    border: 1px solid var(--border);
+  }
+  .card-form-matriz {
+    box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
+    border: 1px solid var(--border);
+  }
+
+  /* ============================================================
+     FILTROS CARD
+     ============================================================ */
+  .card-filtros-matriz {
+    box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
+    border: 1px solid var(--border);
+    background-color: var(--surface);
+  }
+
+  /* ============================================================
+     CABECERA DE PÁGINA (icono profesional + títulos)
+     ============================================================ */
+  .page-icon {
+    width: 44px;
+    height: 44px;
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background-color: var(--action-primary);
+    color: #ffffff;
+    font-size: 1.1rem;
+    box-shadow: 0 2px 6px rgba(44, 62, 80, 0.25);
+  }
+  .page-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--text-primary);
+    line-height: 1.25;
+  }
+  .page-subtitle {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    line-height: 1.3;
+  }
+  @media print {
+    .page-icon {
+      background-color: transparent !important;
+      color: var(--text-primary) !important;
+      box-shadow: none !important;
+    }
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid mt-4 mb-5">
     <!-- Cabecera y Filtros -->
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2><i class="fas fa-table me-2 text-primary"></i>Matriz Mensual de Control de Compras (gr)</h2>
-        <a href="{{ url_for('planta_alimentos.ingreso_diario') }}" class="btn btn-success">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-3">
+        <div class="d-flex align-items-center gap-3">
+            <div class="page-icon">
+                <i class="fas fa-table"></i>
+            </div>
+            <div>
+                <h2 class="page-title mb-0">Matriz Mensual de Control de Compras</h2>
+                <p class="page-subtitle mb-0">Consumo diario de materias primas en gramos</p>
+            </div>
+        </div>
+        <a href="{{ url_for('planta_alimentos.ingreso_diario') }}" class="btn btn-primary btn-sm">
             <i class="fas fa-plus me-1"></i> Registrar Día
         </a>
     </div>
 
     <!-- Seleccionar Mes y Año -->
-    <div class="card shadow-sm border-0 mb-4 bg-light">
-        <div class="card-body py-2">
+    <div class="card card-filtros-matriz mb-4">
+        <div class="card-body py-3">
             <form method="GET" action="{{ url_for('planta_alimentos.matriz_mensual_compras') }}"
                 class="row align-items-center g-2">
                 <div class="col-auto">
-                    <label class="form-label font-weight-bold mb-0">Mes:</label>
+                    <label class="form-label fw-semibold text-muted small mb-0">Mes:</label>
                 </div>
                 <div class="col-auto">
-                    <!-- Desplegable de Meses en Español -->
                     <select name="mes" class="form-select form-select-sm">
                         {% for m_num, m_nombre in meses_nombres %}
                         <option value="{{ m_num }}" {% if m_num==mes %}selected{% endif %}>{{ m_nombre }}</option>
@@ -27,10 +313,9 @@
                     </select>
                 </div>
                 <div class="col-auto">
-                    <label class="form-label font-weight-bold mb-0">Año:</label>
+                    <label class="form-label fw-semibold text-muted small mb-0">Año:</label>
                 </div>
                 <div class="col-auto">
-                    <!-- Desplegable Dinámico de Años -->
                     <select name="anio" class="form-select form-select-sm text-center" style="width: 100px;">
                         {% for a in anios_disponibles %}
                         <option value="{{ a }}" {% if a==anio %}selected{% endif %}>{{ a }}</option>
@@ -38,35 +323,35 @@
                     </select>
                 </div>
                 <div class="col-auto">
-                    <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-search me-1"></i>
-                        Consultar</button>
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        <i class="fas fa-search me-1"></i> Consultar
+                    </button>
                 </div>
             </form>
         </div>
     </div>
 
     <!-- Tabla Matriz Estilo Excel -->
-    <div class="card shadow-sm border-0">
+    <div class="card card-matriz">
         <div class="card-body p-0">
             <div class="table-responsive" style="max-height: 75vh;">
-                <table class="table table-bordered table-hover align-middle mb-0 text-center"
-                    style="font-size: 0.85rem;">
-                    <thead class="table-dark sticky-top">
+                <table class="table table-bordered table-hover align-middle mb-0 text-center table-matriz"
+                    style="font-size: 0.8rem;">
+                    <thead class="sticky-top">
                         <tr>
-                            <th style="min-width: 60px;">DIA</th>
+                            <th style="min-width: 60px; width: 60px;">DÍA</th>
                             {% for mp in materias_primas %}
-                            <th style="min-width: 140px;" class="bg-warning text-dark">{{ mp['nombre'] }} (gr)</th>
+                            <th style="min-width: 140px;">{{ mp['nombre'] }} (gr)</th>
                             {% endfor %}
                         </tr>
                     </thead>
                     <tbody>
                         {% for dia in dias %}
                         <tr>
-                            <td class="font-weight-bold bg-light">{{ dia }}</td>
+                            <td class="col-dia">{{ dia }}</td>
                             {% for mp in materias_primas %}
                             {% set cant = matriz[dia][mp['id']] %}
-                            <!-- 1. CELDA MODIFICADA CON DATOS INTERACTIVOS -->
-                            <td class="celda-interactiva {% if cant > 0 %}table-success font-weight-bold{% else %}text-muted{% endif %}"
+                            <td class="celda-interactiva {% if cant > 0 %}has-value{% else %}empty{% endif %}"
                                 data-dia="{{ dia }}" 
                                 data-mp-id="{{ mp['id'] }}" 
                                 data-mp-nombre="{{ mp['nombre'] }}"
@@ -81,7 +366,7 @@
                         </tr>
                         {% endfor %}
                     </tbody>
-                    <tfoot class="table-dark sticky-bottom font-weight-bold">
+                    <tfoot class="sticky-bottom">
                         <tr>
                             <td>TOTAL</td>
                             {% for mp in materias_primas %}
@@ -89,9 +374,7 @@
                             {% for dia in dias %}
                             {% set total_col.val = total_col.val + matriz[dia][mp['id']] %}
                             {% endfor %}
-                            <td class="bg-success text-white">
-                                {{ "{:,.0f}".format(total_col.val) }}
-                            </td>
+                            <td>{{ "{:,.0f}".format(total_col.val) }}</td>
                             {% endfor %}
                         </tr>
                     </tfoot>
@@ -101,29 +384,19 @@
     </div>
 </div>
 
-<!-- 2. ESTILOS PARA LAS CELDAS -->
-<style>
-    .celda-interactiva {
-        cursor: pointer;
-        transition: background-color 0.2s;
-    }
-    .celda-interactiva:hover {
-        background-color: #d1ecf1 !important; 
-        border: 2px solid #0c5460;
-    }
-</style>
-
 <!-- 3. MODAL DE INGRESO RÁPIDO -->
 <div class="modal fade" id="modalIngresoCelda" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <div class="modal-header bg-success text-white">
-                <h5 class="modal-title"><i class="fas fa-plus-circle me-2"></i>Ingreso Rápido</h5>
+            <div class="modal-header bg-neutral">
+                <h5 class="modal-title fw-semibold fs-6">
+                    <i class="fas fa-plus-circle me-2"></i>Ingreso Rápido
+                </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form method="POST" action="{{ url_for('planta_alimentos.guardar_celda_matriz') }}">
                 <div class="modal-body">
-                    <p class="mb-3 text-secondary">
+                    <p class="mb-3" style="color: var(--text-secondary);">
                         Registrando ingreso para el <strong>Día <span id="modal-dia-txt"></span></strong> 
                         del mes seleccionado.
                     </p>
@@ -134,29 +407,31 @@
                     <input type="hidden" name="anio" value="{{ anio }}">
                     <input type="hidden" name="materia_prima_id" id="input-mp-id">
                     <input type="hidden" name="materia_prima_nombre" id="input-mp-nombre">
-
+ 
                     <div class="mb-3">
-                        <label class="form-label font-weight-bold">Materia Prima:</label>
+                        <label class="form-label fw-semibold text-muted small">Materia Prima:</label>
                         <input type="text" class="form-control" id="modal-mp-txt" disabled>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label font-weight-bold text-success">Cantidad Recibida (gr) *</label>
+                        <label class="form-label fw-semibold" style="color: var(--success);">Cantidad Recibida (gr) *</label>
                         <input type="number" step="0.01" name="cantidad" class="form-control form-control-lg text-end" required placeholder="Ej: 50000">
                     </div>
                     <div class="row">
                         <div class="col-6 mb-3">
-                            <label class="form-label font-weight-bold">Costo Total ($)</label>
+                            <label class="form-label fw-semibold text-muted small">Costo Total ($)</label>
                             <input type="number" step="0.01" name="costo" class="form-control text-end" placeholder="0.00">
                         </div>
                         <div class="col-6 mb-3">
-                            <label class="form-label font-weight-bold">Lote / Remisión</label>
+                            <label class="form-label fw-semibold text-muted small">Lote / Remisión</label>
                             <input type="text" name="lote" class="form-control text-center" placeholder="Opcional">
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer bg-light">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-success"><i class="fas fa-save me-1"></i> Guardar Ingreso</button>
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary btn-sm fw-semibold">
+                        <i class="fas fa-save me-1"></i> Guardar Ingreso
+                    </button>
                 </div>
             </form>
         </div>
@@ -184,7 +459,9 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('input-mp-id').value = mpId;
             document.getElementById('input-mp-nombre').value = mpNombre;
 
-            modal.show();
+            const modalEl = document.getElementById('modalIngresoCelda');
+            const modalInstance = bootstrap.Modal.getOrCreateInstance(modalEl);
+            modalInstance.show();
         });
     });
 });

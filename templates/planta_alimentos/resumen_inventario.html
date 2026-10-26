@@ -1,34 +1,350 @@
 {% extends 'generales/layout.html' %}
 
+{% block head %}
+<style>
+  /* ============================================================
+     INVENTARIO RESUMEN - DESIGN TOKENS (Impeccable: Operate + Quieter)
+     ============================================================ */
+  :root {
+    /* === SUPERFICIES === */
+    --surface: #ffffff;
+    --surface-alt: #f8f9fa;
+    --surface-elevated: #ffffff;
+
+    /* === TEXTO === */
+    --text-primary: #212529;
+    --text-secondary: #495057;
+    --text-muted: #6c757d;
+    --text-on-primary: #ffffff;
+
+    /* === ACCIÓN PRIMARIA (Una sola) === */
+    --action-primary: #2c3e50;
+    --action-primary-hover: #1a252f;
+    --action-primary-text: #ffffff;
+
+    /* === CABECERA TABLA (Diferencial - más cálido y saturado para distinguir claramente) === */
+    --table-header-bg: #1a202c;
+    --table-header-hover: #0f1419;
+    --table-header-text: #ffffff;
+
+    /* === FOOTER TABLA (Más oscuro y frío para anclar) === */
+    --table-footer-bg: #151e2a;
+    --table-footer-text: #ffffff;
+
+    /* === ACCIÓN SECUNDARIA === */
+    --action-secondary: #6c757d;
+    --action-secondary-hover: #5a6268;
+    --action-secondary-text: #ffffff;
+
+    /* === SEMÁNTICOS (Solo estados, no decoración) === */
+    --danger: #dc3545;
+    --danger-hover: #c82333;
+    --danger-text: #ffffff;
+
+    --success: #198754;
+    --success-hover: #157347;
+
+    --warning: #ffc107;
+    --warning-text: #212529;
+    --warning-hover: #e0a800;
+
+    /* === ESTRUCTURA === */
+    --border: #dee2e6;
+    --border-strong: #ced4da;
+    --focus-ring: rgba(44, 62, 80, 0.25);
+
+    /* === ESPACIADO (base 4px) === */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-5: 1.5rem;
+    --space-6: 2rem;
+  }
+
+  /* ============================================================
+     COMPONENTES: Botones unificados
+     ============================================================ */
+  .btn-primary {
+    background-color: var(--action-primary);
+    border-color: var(--action-primary);
+    color: var(--action-primary-text);
+  }
+  .btn-primary:hover,
+  .btn-primary:focus {
+    background-color: var(--action-primary-hover);
+    border-color: var(--action-primary-hover);
+  }
+
+  .btn-secondary {
+    background-color: var(--action-secondary);
+    border-color: var(--action-secondary);
+    color: var(--action-secondary-text);
+  }
+  .btn-secondary:hover,
+  .btn-secondary:focus {
+    background-color: var(--action-secondary-hover);
+    border-color: var(--action-secondary-hover);
+  }
+
+  .btn-outline-danger {
+    color: var(--danger);
+    border-color: var(--danger);
+  }
+  .btn-outline-danger:hover {
+    background-color: var(--danger);
+    color: var(--danger-text);
+  }
+
+  .btn-danger {
+    background-color: var(--danger);
+    border-color: var(--danger);
+    color: var(--danger-text);
+  }
+  .btn-danger:hover {
+    background-color: var(--danger-hover);
+    border-color: var(--danger-hover);
+  }
+
+  /* ============================================================
+     TABLA: Cabecera diferenciada del cuerpo
+     ============================================================ */
+  table.table-inventario thead,
+  .table-inventario thead {
+    background-color: var(--table-header-bg) !important;
+    color: var(--table-header-text) !important;
+  }
+  .table-inventario thead th {
+    background-color: var(--table-header-bg) !important;
+    color: var(--table-header-text) !important;
+    border-color: rgba(255,255,255,0.15);
+    border-bottom: 2px solid rgba(255,255,255,0.25) !important;
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: var(--space-3) var(--space-2);
+    white-space: nowrap;
+    text-align: center !important;
+  }
+  .table-inventario thead th:first-child {
+    text-align: center !important;
+    padding-left: var(--space-4);
+  }
+
+  /* ============================================================
+     TABLA: Footer diferenciado (más oscuro para jerarquía)
+     ============================================================ */
+  .table-inventario tfoot {
+    background-color: var(--table-footer-bg) !important;
+    color: var(--table-footer-text) !important;
+  }
+
+  /* ============================================================
+     TABLA: Filas y celdas
+     ============================================================ */
+  .table-inventario tbody tr:nth-child(odd) {
+    background-color: var(--surface);
+  }
+  .table-inventario tbody tr:nth-child(even) {
+    background-color: var(--surface-alt);
+  }
+  .table-inventario tbody tr:hover {
+    background-color: #eef1f4;
+  }
+
+  .table-inventario tbody td {
+    font-size: 0.85rem;
+    padding: var(--space-2) var(--space-3);
+    vertical-align: middle;
+    border-color: var(--border);
+  }
+
+  .table-inventario tbody td:first-child {
+    text-align: left;
+    padding-left: var(--space-4);
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  /* Columnas numéricas: alineadas derecha, texto secundario, SIN color decorativo */
+  .table-inventario .col-numeric {
+    text-align: right;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+  }
+
+  /* INVENTARIO FINAL - Única columna con color de estado semántico */
+  .table-inventario .col-final {
+    text-align: right;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+  }
+  .table-inventario .col-final.positive {
+    color: var(--success);
+  }
+  .table-inventario .col-final.negative {
+    color: var(--danger);
+  }
+
+  /* CONSUMO 7 DÍAS - Texto muted */
+  .table-inventario .col-consumo7 {
+    text-align: right;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* SEM INV - Solo ámbar si crítico (<1) */
+  .table-inventario .col-seminv {
+    text-align: center;
+    font-weight: 600;
+  }
+  .table-inventario .col-seminv.critical {
+    color: var(--warning);
+  }
+  .table-inventario .col-seminv.no-data {
+    color: var(--text-muted);
+    font-weight: 400;
+  }
+
+  /* ============================================================
+     FOOTER: Totales en negrita, estilo diferenciado
+     ============================================================ */
+  .table-inventario tfoot th {
+    font-weight: 700;
+    font-size: 0.85rem;
+    padding: var(--space-3) var(--space-2);
+    border-color: rgba(255,255,255,0.15);
+  }
+  .table-inventario tfoot th:first-child {
+    text-align: left;
+    padding-left: var(--space-4);
+  }
+
+  /* ============================================================
+     MODALES: Headers neutros (bg-secondary)
+     ============================================================ */
+  .modal-header.bg-neutral {
+    background-color: var(--action-secondary) !important;
+    color: var(--action-secondary-text) !important;
+    border-bottom: none;
+  }
+
+  /* ============================================================
+     CARD: Sombra suave, sin borde
+     ============================================================ */
+  .card-inventario {
+    box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
+    border: 1px solid var(--border);
+  }
+
+  /* ============================================================
+     CABECERA DE PÁGINA (icono profesional + títulos)
+     ============================================================ */
+  .page-icon {
+    width: 44px;
+    height: 44px;
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background-color: var(--action-primary);
+    color: #ffffff;
+    font-size: 1.1rem;
+    box-shadow: 0 2px 6px rgba(44, 62, 80, 0.25);
+  }
+  .page-icon svg {
+    width: 22px;
+    height: 22px;
+    fill: currentColor;
+  }
+  .page-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--text-primary);
+    line-height: 1.25;
+  }
+  .page-subtitle {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    line-height: 1.3;
+  }
+  @media print {
+    .page-icon {
+      background-color: transparent !important;
+      color: var(--text-primary) !important;
+      box-shadow: none !important;
+    }
+  }
+
+  /* ============================================================
+     PRINT: Ocultar controles
+     ============================================================ */
+  @media print {
+    .d-print-none,
+    .btn,
+    .modal,
+    .card-header {
+      display: none !important;
+    }
+    .table-inventario thead th {
+      background-color: var(--table-header-bg) !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .table-inventario tfoot th {
+      background-color: var(--table-footer-bg) !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .table-inventario tbody tr {
+      background-color: transparent !important;
+    }
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid mt-4 mb-5">
     <!-- Cabecera -->
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2><i class="fas fa-boxes me-2 text-info"></i>Consolidado Mensual de Inventarios</h2>
-        <button class="btn btn-outline-secondary shadow-sm" onclick="window.print()">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-3">
+        <div class="d-flex align-items-center gap-3">
+            <div class="page-icon">
+                <svg viewBox="-1 -1 26 26" aria-hidden="true" focusable="false"><path d="M7.4 0h9.2l-1.6 4.5H9L7.4 0ZM9 6c-5.2 3.1-9 8.4-9 13.5 0 2.5 2 4.5 4.5 4.5h15c2.5 0 4.5-2 4.5-4.5C24 14.4 20.2 9.1 15 6H9Z"/></svg>
+            </div>
+            <div>
+                <h2 class="page-title mb-0">Consolidado Mensual de Inventarios</h2>
+                <p class="page-subtitle mb-0">Existencias, entradas y salidas por mes</p>
+            </div>
+        </div>
+        <button class="btn btn-outline-secondary btn-sm" onclick="window.print()">
             <i class="fas fa-print me-1"></i> Imprimir Reporte
         </button>
     </div>
 
     <!-- Filtros de Mes y Año + Acciones de Cierre/Reapertura -->
-    <div class="card shadow-sm border-0 mb-4 bg-light d-print-none">
-        <div class="card-body py-2">
+    <div class="card card-inventario mb-4 d-print-none">
+        <div class="card-body py-3">
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <!-- Formulario de Filtros -->
                 <form method="GET" action="{{ url_for('planta_alimentos.resumen_inventario') }}"
                     class="row align-items-center g-2 mb-0">
                     <div class="col-auto">
-                        <label class="form-label font-weight-bold mb-0">Mes:</label>
+                        <label class="form-label fw-semibold mb-0" style="color: var(--text-secondary);">Mes:</label>
                     </div>
                     <div class="col-auto">
-                        <select name="mes" class="form-select form-select-sm">
+                        <select name="mes" class="form-select form-select-sm" style="width: auto;">
                             {% for m_num, m_nombre in meses_nombres %}
                             <option value="{{ m_num }}" {% if m_num==mes %}selected{% endif %}>{{ m_nombre }}</option>
                             {% endfor %}
                         </select>
                     </div>
                     <div class="col-auto">
-                        <label class="form-label font-weight-bold mb-0">Año:</label>
+                        <label class="form-label fw-semibold mb-0" style="color: var(--text-secondary);">Año:</label>
                     </div>
                     <div class="col-auto">
                         <select name="anio" class="form-select form-select-sm text-center" style="width: 100px;">
@@ -38,7 +354,7 @@
                         </select>
                     </div>
                     <div class="col-auto">
-                        <button type="submit" class="btn btn-info btn-sm text-white">
+                        <button type="submit" class="btn btn-primary btn-sm">
                             <i class="fas fa-sync-alt me-1"></i> Actualizar
                         </button>
                     </div>
@@ -46,11 +362,11 @@
 
                 <!-- Botones de Acción: Cierre y Reapertura -->
                 <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-warning btn-sm fw-bold shadow-sm text-dark"
+                    <button type="button" class="btn btn-secondary btn-sm fw-semibold"
                         data-bs-toggle="modal" data-bs-target="#modalCierreMes">
                         <i class="fas fa-lock me-1"></i> Cerrar Mes
                     </button>
-                    <button type="button" class="btn btn-outline-danger btn-sm fw-bold shadow-sm" data-bs-toggle="modal"
+                    <button type="button" class="btn btn-outline-danger btn-sm fw-semibold" data-bs-toggle="modal"
                         data-bs-target="#modalReabrirMes">
                         <i class="fas fa-unlock me-1"></i> Reabrir Mes
                     </button>
@@ -63,17 +379,16 @@
     <div class="modal fade" id="modalCierreMes" tabindex="-1" aria-labelledby="modalCierreMesLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
-                <div class="modal-header bg-warning text-dark">
+                <div class="modal-header bg-neutral">
                     <h5 class="modal-title" id="modalCierreMesLabel">
-                        <i class="fas fa-exclamation-triangle me-2"></i>Confirmar Cierre de Mes
+                        <i class="fas fa-lock me-2"></i>Confirmar Cierre de Mes
                     </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <p class="mb-2">¿Está seguro de que desea ejecutar el cierre del mes <strong>{{ mes }}/{{ anio
-                            }}</strong>?</p>
-                    <div class="alert alert-secondary mb-0" style="font-size: 0.85rem;">
-                        <i class="fas fa-info-circle me-1 text-primary"></i>
+                    <p class="mb-2">¿Está seguro de que desea ejecutar el cierre del mes <strong>{{ mes }}/{{ anio }}</strong>?</p>
+                    <div class="alert alert-light border mb-0" style="font-size: 0.85rem;">
+                        <i class="fas fa-info-circle me-1" style="color: var(--action-primary);"></i>
                         Esta acción tomará el <strong>Inventario Final</strong> del periodo seleccionado y lo registrará
                         como el <strong>Inventario Inicial</strong> del mes siguiente.
                     </div>
@@ -83,7 +398,7 @@
                     <form method="POST" action="{{ url_for('planta_alimentos.realizar_cierre_mes') }}">
                         <input type="hidden" name="mes" value="{{ mes }}">
                         <input type="hidden" name="anio" value="{{ anio }}">
-                        <button type="submit" class="btn btn-warning btn-sm fw-bold">
+                        <button type="submit" class="btn btn-primary btn-sm fw-semibold">
                             <i class="fas fa-check-circle me-1"></i> Sí, Ejecutar Cierre
                         </button>
                     </form>
@@ -93,21 +408,19 @@
     </div>
 
     <!-- Modal de Confirmación para Reabrir Mes -->
-    <div class="modal fade" id="modalReabrirMes" tabindex="-1" aria-labelledby="modalReabrirMesLabel"
-        aria-hidden="true">
+    <div class="modal fade" id="modalReabrirMes" tabindex="-1" aria-labelledby="modalReabrirMesLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
-                <div class="modal-header bg-danger text-white">
+                <div class="modal-header bg-neutral">
                     <h5 class="modal-title" id="modalReabrirMesLabel">
-                        <i class="fas fa-unlock-alt me-2"></i>Reabrir Mes Seleccionado
+                        <i class="fas fa-unlock me-2"></i>Reabrir Mes Seleccionado
                     </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
-                        aria-label="Close"></button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <p class="mb-2">¿Desea anular el cierre del mes <strong>{{ mes }}/{{ anio }}</strong>?</p>
-                    <div class="alert alert-danger mb-0" style="font-size: 0.85rem;">
-                        <i class="fas fa-exclamation-circle me-1"></i>
+                    <div class="alert alert-light border mb-0" style="font-size: 0.85rem;">
+                        <i class="fas fa-exclamation-circle me-1" style="color: var(--danger);"></i>
                         <strong>Atención:</strong> Se eliminarán los registros de <strong>Inventario Inicial</strong>
                         que se hayan generado para el mes siguiente. Utilice esta opción si necesita ingresar mermas o
                         compras extemporáneas.
@@ -118,7 +431,7 @@
                     <form method="POST" action="{{ url_for('planta_alimentos.reabrir_mes') }}">
                         <input type="hidden" name="mes" value="{{ mes }}">
                         <input type="hidden" name="anio" value="{{ anio }}">
-                        <button type="submit" class="btn btn-danger btn-sm fw-bold">
+                        <button type="submit" class="btn btn-danger btn-sm fw-semibold">
                             <i class="fas fa-undo me-1"></i> Sí, Reabrir Mes
                         </button>
                     </form>
@@ -128,52 +441,49 @@
     </div>
 
     <!-- Tabla Resumen -->
-    <div class="card shadow-sm border-0">
+    <div class="card card-inventario">
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-bordered table-hover align-middle mb-0 text-center"
-                    style="font-size: 0.9rem;">
-                    <thead class="table-dark">
+                <table class="table table-bordered table-hover align-middle mb-0 table-inventario" style="font-size: 0.85rem;">
+                    <thead>
                         <tr>
-                            <th style="width: 20%; text-align: left; padding-left: 15px;background-color: #000000">
-                                MATERIA PRIMA</th>
-                            <th style="width: 13%; background-color: #0d06c5;">CONSUMO DEL MES</th>
-                            <th style="width: 11%; background-color: #000000;">INICIAL</th>
-                            <th style="width: 11%; background-color: #1cd20f;">COMPRAS</th>
-                            <th style="width: 12%; background-color: #000000;">TOTAL (gr)</th>
-                            <th style="width: 13%; background-color: #bc740a;">INVENTARIO FINAL (gr)</th>
-                            <th style="width: 12%; background-color: #06090f;">CONSUMO 7 DIAS</th>
-                            <th style="width: 8%; background-color: #c1b7b7;">SEM INV.</th>
+                            <th style="width: 22%; padding-left: 1rem;">MATERIA PRIMA</th>
+                            <th class="col-numeric" style="width: 13%;">CONSUMO MES (gr)</th>
+                            <th class="col-numeric" style="width: 11%;">INICIAL (gr)</th>
+                            <th class="col-numeric" style="width: 11%;">COMPRAS (gr)</th>
+                            <th class="col-numeric" style="width: 12%;">TOTAL DISP. (gr)</th>
+                            <th class="col-numeric" style="width: 13%;">INV. FINAL (gr)</th>
+                            <th class="col-numeric" style="width: 12%;">CONS. 7 DÍAS (gr)</th>
+                            <th class="col-seminv" style="width: 8%;">SEM INV.</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for item in inventario %}
                         <tr>
-                            <td class="font-weight-bold text-start ps-3 bg-light">{{ item['materia_prima'] }}</td>
-                            <td class="text-danger font-weight-bold">{{ "{:,.0f}".format(item['consumo_mes']) }}</td>
-                            <td class="text-secondary">{{ "{:,.0f}".format(item['inicial']) }}</td>
-                            <td class="text-primary">{{ "{:,.0f}".format(item['compras']) }}</td>
-                            <td class="font-weight-bold">{{ "{:,.0f}".format(item['total_disponible']) }}</td>
-                            <td
-                                class="font-weight-bold fs-6 {% if item['inventario_final'] < 0 %}bg-danger text-white{% else %}text-success{% endif %}">
+                            <td class="fw-semibold ps-3">{{ item['materia_prima'] }}</td>
+                            <td class="col-numeric">{{ "{:,.0f}".format(item['consumo_mes']) }}</td>
+                            <td class="col-numeric">{{ "{:,.0f}".format(item['inicial']) }}</td>
+                            <td class="col-numeric">{{ "{:,.0f}".format(item['compras']) }}</td>
+                            <td class="col-numeric fw-bold">{{ "{:,.0f}".format(item['total_disponible']) }}</td>
+                            <td class="col-final {% if item['inventario_final'] < 0 %}negative{% else %}positive{% endif %}">
                                 {{ "{:,.0f}".format(item['inventario_final']) }}
                             </td>
-                            <td class="text-muted">{{ "{:,.0f}".format(item['consumo_7_dias']) }}</td>
-                            <td
-                                class="font-weight-bold align-middle {% if item['sem_inv'] != none and item['sem_inv'] < 1 %}text-danger{% elif item['sem_inv'] == none %}text-secondary{% endif %}">
+                            <td class="col-consumo7">{{ "{:,.0f}".format(item['consumo_7_dias']) }}</td>
+                            <td class="col-seminv {% if item['sem_inv'] != none and item['sem_inv'] < 1 %}critical{% elif item['sem_inv'] == none %}no-data{% endif %}">
                                 {% if item['sem_inv'] != none %}
                                 {% if item['sem_inv'] < 0 %} ({{ "{:,.0f}" .format(item['sem_inv']|abs) }}) {% else %}
-                                    {{ "{:,.0f}" .format(item['sem_inv']) }} {% endif %} {% else %} <span
-                                    class="badge bg-light text-secondary border fw-normal" style="font-size: 0.75rem;"
+                                    {{ "{:,.0f}" .format(item['sem_inv']) }} {% endif %} 
+                                {% else %} 
+                                <span class="text-muted small" style="font-size: 0.75rem;"
                                     title="No existen ingresos o consumos de esta materia prima para calcular las semanas.">
                                     Sin registros
-                                    </span>
-                                    {% endif %}
+                                </span>
+                                {% endif %}
                             </td>
                         </tr>
                         {% endfor %}
                     </tbody>
-                    <tfoot class="table-dark font-weight-bold fs-6">
+                    <tfoot>
                         {% set totales = namespace(
                         consumo=0,
                         inicial=0,
@@ -193,14 +503,14 @@
                         {% endfor %}
 
                         <tr>
-                            <td class="text-start ps-3 fs-5">TOTAL GENERAL (gr)</td>
-                            <td class="text-danger">{{ "{:,.0f}".format(totales.consumo) }}</td>
-                            <td>{{ "{:,.0f}".format(totales.inicial) }}</td>
-                            <td class="text-info">{{ "{:,.0f}".format(totales.compras) }}</td>
-                            <td>{{ "{:,.0f}".format(totales.disponible) }}</td>
-                            <td class="text-success">{{ "{:,.0f}".format(totales.final) }}</td>
-                            <td class="text-warning">{{ "{:,.0f}".format(totales.consumo7) }}</td>
-                            <td class="text-muted">-</td>
+                            <th class="text-start ps-3">TOTAL GENERAL (gr)</th>
+                            <th class="col-numeric">{{ "{:,.0f}".format(totales.consumo) }}</th>
+                            <th class="col-numeric">{{ "{:,.0f}".format(totales.inicial) }}</th>
+                            <th class="col-numeric">{{ "{:,.0f}".format(totales.compras) }}</th>
+                            <th class="col-numeric">{{ "{:,.0f}".format(totales.disponible) }}</th>
+                            <th class="col-numeric {% if totales.final < 0 %}negative{% else %}positive{% endif %}">{{ "{:,.0f}".format(totales.final) }}</th>
+                            <th class="col-consumo7">{{ "{:,.0f}".format(totales.consumo7) }}</th>
+                            <th class="col-seminv">—</th>
                         </tr>
                     </tfoot>
                 </table>

@@ -1,21 +1,26 @@
 {% extends 'generales/layout.html' %}
 
-{% block extra_css %}
+{% block head %}
+{% include 'planta_alimentos/_design_system.html' %}
 <style>
-/* ========== COTIZACIÓN GRID - ESTILOS MEJORADOS ========== */
-
+/* ============================================================
+   COTIZACIÓN GRID - TOKENS PROPIOS
+   El resto de tokens y componentes viene de _design_system.html
+   ============================================================ */
 :root {
+    --bg-row-even: #f8f9fa;
+    --bg-row-odd: #ffffff;
+    --bg-hover: #eef5ff;
+    --bg-editing: #fffbe6;
+
     --color-best: #198754;
     --color-worst: #dc3545;
     --color-warning: #ffc107;
     --color-info: #0dcaf0;
     --color-historical: #6f42c1;
-    --bg-row-even: #f8f9fa;
-    --bg-row-odd: #ffffff;
-    --bg-hover: #eef5ff;
-    --bg-editing: #fffbe6;
-    --border-color: #dee2e6;
-    --shadow-input: 0 0 0 0.15rem rgba(13, 110, 253, 0.25);
+
+    --border-color: var(--border);
+    --shadow-input: 0 0 0 0.15rem rgba(44, 62, 80, 0.25);
 }
 
 #tablaCotizacion {
@@ -778,6 +783,82 @@ section[aria-labelledby="tabla2-title"] {
     }
 }
 
+/* ============================================================
+   AJUSTES SOBRE EL DESIGN SYSTEM
+   ============================================================ */
+/* Cabeceras oscuras en ambas tablas (pisan los degradados legacy) */
+#tablaCotizacion thead th,
+#tablaConsolidado thead th {
+  background-color: var(--table-header-bg) !important;
+  color: var(--table-header-text) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.25) !important;
+}
+
+/* La primera columna (producto) va alineada a la izquierda */
+#tablaCotizacion thead th:first-child,
+#tablaCotizacion tbody td:first-child,
+#tablaConsolidado thead th:first-child,
+#tablaConsolidado tbody td:first-child {
+  text-align: left;
+}
+
+/* Fila separadora de producto dentro del grid */
+#tablaCotizacion .producto-header td {
+  background-color: #eef2f6 !important;
+  color: var(--action-primary);
+  font-size: 0.72rem;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  border-top: 2px solid var(--border);
+}
+
+/* Cotización cerrada: el grid queda en solo lectura */
+.grid-bloqueada .precio-input {
+  background-color: var(--surface-alt);
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+.grid-bloqueada .precio-input.has-value {
+  background-color: #f8f9fa;
+}
+
+/* Banner de cotización cerrada */
+.aviso-cerrada {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  margin-bottom: var(--space-3);
+  padding: 0.65rem 0.85rem;
+  border: 1px solid #dee2e6;
+  border-left: 3px solid var(--action-secondary);
+  border-radius: 0.375rem;
+  background-color: #f8f9fa;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+.aviso-cerrada i {
+  margin-top: 1px;
+  color: var(--action-secondary);
+}
+.aviso-cerrada strong {
+  color: var(--text-primary);
+}
+
+/* Barra de datos de la cotización */
+.info-cot .dato-label {
+  display: block;
+  font-size: 0.66rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-muted);
+}
+.info-cot .dato-valor {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
 </style>
 {% endblock %}
 
@@ -791,95 +872,127 @@ section[aria-labelledby="tabla2-title"] {
 {% endmacro %}
 
 <div class="container-fluid mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
-        <div class="d-flex flex-column">
-            <h1 class="h4 fw-bold text-dark mb-1">
-                <i class="fas fa-tag text-primary me-2"></i>
-                Cotización {{ mes_nombre }} {{ cotizacion.anio }}
-            </h1>
-            <p class="text-muted small mb-0">
-                <i class="fas fa-edit me-1"></i>
-                Editar precios por producto, proveedor y semana
-            </p>
+    <div class="page-header">
+        <div class="d-flex align-items-center gap-3">
+            <div class="page-icon">
+                <i class="fas fa-file-invoice-dollar"></i>
+            </div>
+            <div>
+                <h2 class="page-title mb-0">Cotización {{ mes_nombre }} {{ cotizacion.anio }}</h2>
+                <p class="page-subtitle mb-0">Precios por producto, proveedor y semana</p>
+            </div>
         </div>
-        <div class="d-flex gap-2 flex-wrap">
-            <a href="{{ url_for('planta_alimentos.cotizaciones.cotizaciones_list') }}" class="btn btn-sm btn-outline-secondary" title="Volver a la lista">
+        <div class="d-flex gap-2 flex-wrap align-items-center">
+            <a href="{{ url_for('planta_alimentos.cotizaciones.cotizaciones_list') }}" class="btn btn-outline-secondary btn-sm" title="Volver a la lista">
                 <i class="fas fa-arrow-left me-1"></i> Volver
             </a>
-            <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalAgregarFila" title="Agregar nueva materia prima (Alt+N)">
-                <i class="fas fa-plus me-1"></i> Agregar Fila
+            {% if cotizacion.estado == 'ACTIVA' %}
+            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalAgregarFila" title="Agregar nueva materia prima (Alt+N)">
+                <i class="fas fa-plus me-1"></i> Agregar fila
             </button>
-            <a href="{{ url_for('planta_alimentos.cotizaciones.exportar_cotizacion', mes=cotizacion.mes, anio=cotizacion.anio) }}" 
-               class="btn btn-sm btn-success" title="Exportar a Excel (Alt+E)">
+            {% endif %}
+            <a href="{{ url_for('planta_alimentos.cotizaciones.exportar_cotizacion', mes=cotizacion.mes, anio=cotizacion.anio) }}"
+               class="btn btn-outline-primary btn-sm" title="Exportar a Excel (Alt+E)">
                 <i class="fas fa-file-excel me-1"></i> Exportar Excel
             </a>
-            <button type="button" class="btn btn-sm btn-outline-info" onclick="window.toggleColumnas()" title="Mostrar/ocultar columnas (Alt+C)">
+            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.toggleColumnas()" title="Mostrar/ocultar columnas (Alt+C)">
                 <i class="fas fa-columns me-1"></i> Columnas
             </button>
         </div>
+    </div>
 
-    <!-- Info Cotización - MOVIDO ARRIBA -->
-    <div class="card shadow-sm mb-3 border-0">
+    <div class="card card-clean mb-3">
         <div class="card-body py-2">
-            <div class="row g-2 align-items-center">
-                <div class="col-md-3 col-6">
-                    <span class="text-muted small d-block">Mes</span>
-                    <strong>{{ mes_nombres[cotizacion.mes] if cotizacion.mes else 'N/A' }}</strong>
+            <div class="row g-2 align-items-center info-cot">
+                <div class="col-md-2 col-6">
+                    <span class="dato-label">Mes</span>
+                    <span class="dato-valor">{{ mes_nombres[cotizacion.mes] if cotizacion.mes else 'N/A' }}</span>
                 </div>
                 <div class="col-md-2 col-6">
-                    <span class="text-muted small d-block">Año</span>
-                    <strong>{{ cotizacion.anio }}</strong>
+                    <span class="dato-label">Año</span>
+                    <span class="dato-valor">{{ cotizacion.anio }}</span>
+                </div>
+                <div class="col-md-2 col-6">
+                    <span class="dato-label">Estado</span>
+                    {% if cotizacion.estado == 'ACTIVA' %}
+                    <span class="badge-estado badge-ok">Activa</span>
+                    {% else %}
+                    <span class="badge-estado badge-neutro">{{ cotizacion.estado|capitalize }}</span>
+                    {% endif %}
                 </div>
                 <div class="col-md-3 col-6">
-                    <span class="text-muted small d-block">Estado</span>
-                    <span class="badge bg-success">{{ cotizacion.estado }}</span>
+                    <span class="dato-label">Creada</span>
+                    <span class="dato-valor">{{ cotizacion.fecha_registro.strftime('%d/%m/%Y %H:%M') if cotizacion.fecha_registro else 'N/A' }}</span>
                 </div>
-                <div class="col-md-4 col-6">
-                    <span class="text-muted small d-block">Creada</span>
-                    <strong>{{ cotizacion.fecha_registro.strftime('%d/%m/%Y %H:%M') if cotizacion.fecha_registro else 'N/A' }}</strong>
+                <div class="col-md-3 col-12 text-md-end">
+                    <form method="POST" class="d-inline"
+                          action="{{ url_for('planta_alimentos.cotizaciones.cambiar_estado_cotizacion', cotizacion_id=cotizacion.id) }}">
+                        {% if cotizacion.estado == 'ACTIVA' %}
+                        <input type="hidden" name="estado" value="CERRADA">
+                        <button type="submit" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-lock me-1"></i> Cerrar cotización
+                        </button>
+                        {% else %}
+                        <input type="hidden" name="estado" value="ACTIVA">
+                        <button type="submit" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-lock-open me-1"></i> Reabrir cotización
+                        </button>
+                        {% endif %}
+                    </form>
                 </div>
             </div>
         </div>
     </div>
 
+    {% if cotizacion.estado != 'ACTIVA' %}
+    <div class="aviso-cerrada" role="status">
+        <i class="fas fa-lock"></i>
+        <div>
+            <strong>Cotización cerrada.</strong>
+            Los precios están en solo lectura. Reábrela para modificarlos.
+        </div>
+    </div>
+    {% endif %}
+
     <!-- ============================================================
          TABLA 1: GRID DE CAPTURA (Editor principal)
          ============================================================ -->
     <section class="mb-4" aria-labelledby="tabla1-title">
-        <div class="card shadow-sm border-0 h-100" style="min-height: 500px;">
-            <div class="card-header bg-white d-flex justify-content-between align-items-center flex-wrap gap-2 py-3 border-bottom">
+        <div class="card card-clean h-100">
+            <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <div class="d-flex align-items-center gap-3">
-                    <h5 class="fw-bold fs-6 mb-0 d-flex align-items-center gap-2">
-                        <i class="fas fa-table me-2 text-primary"></i>
-                        <span class="d-none d-md-inline">Grid de Captura - </span>{{ mes_nombre }} {{ cotizacion.anio }}
-                    </h5>
-                    <span class="badge bg-light text-dark small px-3 py-2" id="estadoGuardado">
-                        <i class="fas fa-check-circle text-success me-1"></i>
+                    <span class="fw-bold">
+                        <i class="fas fa-table me-2"></i> Grid de captura · {{ mes_nombre }} {{ cotizacion.anio }}
+                    </span>
+                    <span class="badge-estado badge-neutro" id="estadoGuardado">
+                        <i class="fas fa-check-circle me-1"></i>
                         <span class="d-none d-sm-inline">Sin cambios</span>
                     </span>
                 </div>
-                <div class="d-flex gap-2 flex-wrap">
-                    <div class="form-check form-switch">
+                <div class="d-flex gap-2 flex-wrap align-items-center">
+                    <div class="form-check form-switch mb-0">
                         <input class="form-check-input" type="checkbox" id="filtroSoloConPrecio" onchange="window.filtrarTabla()" title="Filtrar solo filas con precio (Alt+F)">
                         <label class="form-check-label small fw-medium" for="filtroSoloConPrecio">
                             <i class="fas fa-filter me-1"></i> <span class="d-none d-sm-inline">Solo con precio</span>
                         </label>
                     </div>
-                    <div class="form-check form-switch">
+                    <div class="form-check form-switch mb-0">
                         <input class="form-check-input" type="checkbox" id="filtroMejorPrecio" onchange="window.filtrarTabla()" title="Mostrar solo el mejor precio por producto (Alt+M)">
                         <label class="form-check-label small fw-medium" for="filtroMejorPrecio">
                             <i class="fas fa-trophy me-1 text-warning"></i> <span class="d-none d-sm-inline">Solo mejor</span>
                         </label>
                     </div>
-                    <button type="button" class="btn btn-sm btn-success" onclick="window.guardarTodo(event)" id="btnGuardarTodo" title="Guardar todos los cambios (Ctrl+S)">
-                        <i class="fas fa-save me-1"></i> <span class="d-none d-sm-inline">Guardar Todo</span>
+                    {% if cotizacion.estado == 'ACTIVA' %}
+                    <button type="button" class="btn btn-sm btn-primary" onclick="window.guardarTodo(event)" id="btnGuardarTodo" title="Guardar todos los cambios (Ctrl+S)">
+                        <i class="fas fa-save me-1"></i> <span class="d-none d-sm-inline">Guardar todo</span>
                     </button>
+                    {% endif %}
                 </div>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive" style="height: calc(100vh - 420px); min-height: 400px; max-height: 70vh;">
-                    <table class="table table-bordered table-hover align-middle mb-0" id="tablaCotizacion" style="font-size: 0.8rem;">
-                    <thead class="table-light">
+                    <table class="table table-design table-hover align-middle mb-0{{ ' grid-bloqueada' if cotizacion.estado != 'ACTIVA' else '' }}" id="tablaCotizacion" style="font-size: 0.8rem;">
+                    <thead>
                         <tr>
                             <th style="width: 28%; min-width: 200px; position: sticky; left: 0; z-index: 1;">PRODUCTO</th>
                             <th style="width: 14%; min-width: 120px; position: sticky; left: 200px; z-index: 1;">PROVEEDOR</th>
@@ -898,7 +1011,7 @@ section[aria-labelledby="tabla2-title"] {
                                 {% set _ = productos_agrupados.__setitem__(d.producto_nombre, {}) %}
                             {% endif %}
                             {% if d.proveedor_nombre not in productos_agrupados[d.producto_nombre] %}
-                                {% set _ = productos_agrupados[d.producto_nombre].__setitem__(d.proveedor_nombre, {'precios': {}, 'sum': 0, 'count': 0}) %}
+                                {% set _ = productos_agrupados[d.producto_nombre].__setitem__(d.proveedor_nombre, {'precios': {}, 'sum': 0, 'count': 0, 'mp_id': d.materia_prima_id, 'prov_id': d.proveedor_id}) %}
                             {% endif %}
                             {% set _ = productos_agrupados[d.producto_nombre][d.proveedor_nombre].precios.__setitem__(d.semana, d.precio) %}
                             {% set _ = productos_agrupados[d.producto_nombre][d.proveedor_nombre].__setitem__('sum', productos_agrupados[d.producto_nombre][d.proveedor_nombre].sum + d.precio) %}
@@ -928,14 +1041,15 @@ section[aria-labelledby="tabla2-title"] {
                                     <td class="text-center">
                                         <input type="text" 
                                                class="form-control form-control-sm text-end precio-input" 
+                                               {% if cotizacion.estado != 'ACTIVA' %}disabled{% endif %}
                                                step="0.01" min="0" max="9999999999.99"
                                                pattern="^([1-9]\d{0,2}(\.\d{3})*|0)(,\d{1,2})?$"
                                                value="{{ (precios[1] | float | string) | replace('.', ',') if precios[1] else '' }}"
                                                data-producto="{{ producto }}"
                                                data-proveedor="{{ prov }}"
                                                data-semana="1"
-                                               data-materia-prima-id="{{ data.precios.get('materia_prima_id', 0) if data.precios else 0 }}"
-                                               data-proveedor-id="{{ data.precios.get('proveedor_id', 0) if data.precios else 0 }}"
+                                               data-materia-prima-id="{{ data.mp_id }}"
+                                               data-proveedor-id="{{ data.prov_id }}"
                                                data-precio-original="{{ precios[1] if precios[1] else '' }}"
                                                style="width: 95px; padding: 0.2rem 0.35rem; font-size: 0.8rem;"
                                                placeholder="$ 0,00"
@@ -951,14 +1065,15 @@ section[aria-labelledby="tabla2-title"] {
                                     <td class="text-center">
                                         <input type="text" 
                                                class="form-control form-control-sm text-end precio-input" 
+                                               {% if cotizacion.estado != 'ACTIVA' %}disabled{% endif %}
                                                step="0.01" min="0" max="9999999999.99"
                                                pattern="^([1-9]\d{0,2}(\.\d{3})*|0)(,\d{1,2})?$"
                                                value="{{ (precios[2] | float | string) | replace('.', ',') if precios[2] else '' }}"
                                                data-producto="{{ producto }}"
                                                data-proveedor="{{ prov }}"
                                                data-semana="2"
-                                               data-materia-prima-id="{{ data.precios.get('materia_prima_id', 0) if data.precios else 0 }}"
-                                               data-proveedor-id="{{ data.precios.get('proveedor_id', 0) if data.precios else 0 }}"
+                                               data-materia-prima-id="{{ data.mp_id }}"
+                                               data-proveedor-id="{{ data.prov_id }}"
                                                data-precio-original="{{ precios[2] if precios[2] else '' }}"
                                                style="width: 95px; padding: 0.2rem 0.35rem; font-size: 0.8rem;"
                                                placeholder="$ 0,00"
@@ -973,14 +1088,15 @@ section[aria-labelledby="tabla2-title"] {
                                     <td class="text-center">
                                         <input type="text" 
                                                class="form-control form-control-sm text-end precio-input" 
+                                               {% if cotizacion.estado != 'ACTIVA' %}disabled{% endif %}
                                                step="0.01" min="0" max="9999999999.99"
                                                pattern="^([1-9]\d{0,2}(\.\d{3})*|0)(,\d{1,2})?$"
                                                value="{{ (precios[3] | float | string) | replace('.', ',') if precios[3] else '' }}"
                                                data-producto="{{ producto }}"
                                                data-proveedor="{{ prov }}"
                                                data-semana="3"
-                                               data-materia-prima-id="{{ data.precios.get('materia_prima_id', 0) if data.precios else 0 }}"
-                                               data-proveedor-id="{{ data.precios.get('proveedor_id', 0) if data.precios else 0 }}"
+                                               data-materia-prima-id="{{ data.mp_id }}"
+                                               data-proveedor-id="{{ data.prov_id }}"
                                                data-precio-original="{{ precios[3] if precios[3] else '' }}"
                                                style="width: 95px; padding: 0.2rem 0.35rem; font-size: 0.8rem;"
                                                placeholder="$ 0,00"
@@ -995,14 +1111,15 @@ section[aria-labelledby="tabla2-title"] {
                                     <td class="text-center">
                                         <input type="text" 
                                                class="form-control form-control-sm text-end precio-input" 
+                                               {% if cotizacion.estado != 'ACTIVA' %}disabled{% endif %}
                                                step="0.01" min="0" max="9999999999.99"
                                                pattern="^([1-9]\d{0,2}(\.\d{3})*|0)(,\d{1,2})?$"
                                                value="{{ (precios[4] | float | string) | replace('.', ',') if precios[4] else '' }}"
                                                data-producto="{{ producto }}"
                                                data-proveedor="{{ prov }}"
                                                data-semana="4"
-                                               data-materia-prima-id="{{ data.precios.get('materia_prima_id', 0) if data.precios else 0 }}"
-                                               data-proveedor-id="{{ data.precios.get('proveedor_id', 0) if data.precios else 0 }}"
+                                               data-materia-prima-id="{{ data.mp_id }}"
+                                               data-proveedor-id="{{ data.prov_id }}"
                                                data-precio-original="{{ precios[4] if precios[4] else '' }}"
                                                style="width: 95px; padding: 0.2rem 0.35rem; font-size: 0.8rem;"
                                                placeholder="$ 0,00"
@@ -1042,20 +1159,21 @@ section[aria-labelledby="tabla2-title"] {
          TABLA 2: CONSOLIDADO MEJOR PRECIO (Solo lectura)
          ============================================================ -->
     <section class="mb-4" aria-labelledby="tabla2-title">
-        <div class="card shadow-sm border-0">
-            <div class="card-header bg-white d-flex justify-content-between align-items-center flex-wrap gap-2 py-3 border-bottom">
-                <h5 class="fw-bold fs-6 mb-0 d-flex align-items-center gap-2" id="tabla2-title">
-                    <i class="fas fa-trophy text-warning me-2"></i>
-                    <span class="d-none d-md-inline">Consolidado Mejor Precio por Producto</span>
-                    <button class="btn btn-link btn-sm p-0 ms-2 text-muted" type="button" data-bs-toggle="collapse" data-bs-target="#collapseConsolidado" aria-expanded="true" aria-controls="collapseConsolidado" title="Expandir/Colapsar">
+        <div class="card card-clean">
+            <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="fw-bold" id="tabla2-title">
+                        <i class="fas fa-trophy text-warning me-2"></i> Consolidado · mejor precio por producto
+                    </span>
+                    <button class="btn btn-link btn-sm p-0 text-muted" type="button" data-bs-toggle="collapse" data-bs-target="#collapseConsolidado" aria-expanded="true" aria-controls="collapseConsolidado" title="Expandir/Colapsar">
                         <i class="fas fa-chevron-up" id="iconCollapseConsolidado"></i>
                     </button>
-                </h5>
-                <div class="d-flex gap-2">
-                    <span class="badge bg-light text-dark small px-3 py-2 align-self-center">
-                        <i class="fas fa-info-circle me-1"></i> Solo lectura - Calculado automáticamente
+                </div>
+                <div class="d-flex gap-2 align-items-center">
+                    <span class="badge-estado badge-neutro">
+                        <i class="fas fa-info-circle me-1"></i> Solo lectura
                     </span>
-                    <button type="button" class="btn btn-sm btn-outline-success" onclick="window.exportarConsolidadoExcel()" title="Exportar consolidado a Excel (Alt+X)">
+                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="window.exportarConsolidadoExcel()" title="Exportar consolidado a Excel (Alt+X)">
                         <i class="fas fa-file-excel me-1"></i> <span class="d-none d-sm-inline">Exportar</span>
                     </button>
                 </div>
@@ -1063,8 +1181,8 @@ section[aria-labelledby="tabla2-title"] {
             <div class="collapse show" id="collapseConsolidado">
                 <div class="card-body p-0">
                     <div class="table-responsive" style="max-height: 50vh;">
-                        <table class="table table-bordered table-hover align-middle mb-0" id="tablaConsolidado" style="font-size: 0.8rem;">
-                    <thead class="table-light">
+                        <table class="table table-design table-hover align-middle mb-0" id="tablaConsolidado" style="font-size: 0.8rem;">
+                    <thead>
                         <tr>
                             <th style="width: 35%; min-width: 200px; position: sticky; left: 0; z-index: 1;">PRODUCTO</th>
                             <th style="width: 20%; min-width: 150px; text-align: center;">MEJOR PROVEEDOR</th>
@@ -1207,9 +1325,13 @@ section[aria-labelledby="tabla2-title"] {
             </div>
         </div>
     </div>
+    </div>
+    </section>
+</div>
 
 <script>
     const cotizacionId = {{ cotizacion.id }};
+    const COTIZACION_CERRADA = {{ 'true' if cotizacion.estado != 'ACTIVA' else 'false' }};
     let proyeccionesData = [];
 
     // Crear mapas de lookup para obtener IDs desde nombres
@@ -1232,109 +1354,23 @@ section[aria-labelledby="tabla2-title"] {
         };
     }
 
-    // Toggle sección "Otras materias primas" (ahora es un tbody con collapse)
-    function toggleOtrasMaterias() {
-        const collapse = document.getElementById('tbodyOtras');
-        const btn = document.getElementById('btnToggleOtras');
-        const icon = btn.querySelector('i');
-        
-        if (collapse.classList.contains('show')) {
-            collapse.classList.remove('show');
-            icon.classList.remove('fa-chevron-up');
-            icon.classList.add('fa-chevron-down');
-            btn.innerHTML = '<i class="fas fa-chevron-down me-1"></i> Ver otras (<span id="countOtras">{{ materias_otras|length }}</span>)';
-        } else {
-            collapse.classList.add('show');
-            icon.classList.remove('fa-chevron-down');
-            icon.classList.add('fa-chevron-up');
-            btn.innerHTML = '<i class="fas fa-chevron-up me-1"></i> Ocultar otras';
-        }
-    }
-
-    // Toggle estrella (destacada) - AJAX
-    document.addEventListener('DOMContentLoaded', function() {
-        document.querySelectorAll('.toggle-destacada').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const mpId = this.dataset.mpId;
-                const nuevoEstado = this.dataset.estado === '1' ? '0' : '1';
-                const icon = this.querySelector('i');
-                const row = this.closest('tr');
-                
-                fetch(`/planta_alimentos/materia-prima/${mpId}/toggle-destacada`, {
-                    method: 'POST',
-                    credentials: 'include',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ destacada: nuevoEstado === '1' })
-                })
-                .then(async res => {
-                    const contentType = res.headers.get('content-type');
-                    let data;
-                    if (contentType && contentType.includes('application/json')) {
-                        data = await res.json();
-                    } else {
-                        const text = await res.text();
-                        console.error('Respuesta no JSON:', text);
-                        throw new Error('Respuesta del servidor inválida: ' + text.substring(0, 200));
-                    }
-                    
-                    if (!res.ok) {
-                        throw new Error(data.msg || `Error HTTP ${res.status}`);
-                    }
-                    return data;
-                })
-                .then(data => {
-                    if (data.success) {
-                        // Actualizar UI
-                        this.dataset.estado = nuevoEstado;
-                        if (nuevoEstado === '1') {
-                            icon.classList.remove('far');
-                            icon.classList.add('fas');
-                            this.classList.remove('btn-outline-warning');
-                            this.classList.add('btn-warning');
-                            this.title = 'Quitar de destacadas';
-                            // Mover a tabla destacadas si estaba en otras
-                            if (row.closest('#tbodyOtras')) {
-                                row.remove();
-                                document.getElementById('tbodyDestacadas').appendChild(row);
-                            }
-                        } else {
-                            icon.classList.remove('fas');
-                            icon.classList.add('far');
-                            this.classList.remove('btn-warning');
-                            this.classList.add('btn-outline-warning');
-                            this.title = 'Agregar a destacadas';
-                            // Mover a tabla otras si estaba en destacadas
-                            if (row.closest('#tbodyDestacadas')) {
-                                row.remove();
-                                document.getElementById('tbodyOtras').appendChild(row);
-                            }
-                        }
-                        // Actualizar contador
-                        actualizarContadorOtras();
-                    } else {
-                        alert('Error: ' + (data.msg || 'No se pudo actualizar'));
-                    }
-                })
-                .catch(err => {
-                    console.error(err);
-                    alert('Error de conexión');
-                });
-            });
-        });
-
-        function actualizarContadorOtras() {
-            const count = document.querySelectorAll('#tbodyOtras tr').length;
-            const countEl = document.getElementById('countOtras');
-            if (countEl) countEl.textContent = count;
+    // Si la cotización está cerrada, el grid queda en solo lectura
+    document.querySelectorAll('#tablaCotizacion .precio-input').forEach(function (input) {
+        if (COTIZACION_CERRADA) {
+            input.disabled = true;
+            input.readOnly = true;
         }
     });
-// Force parser completion
-void 0;
+
 </script>
 
 <script>
 // Función para guardar una nueva fila en la cotización (fuera de DOMContentLoaded para ser accesible globalmente)
 async function guardarNuevaFila(event) {
+    if (COTIZACION_CERRADA) {
+        alert('La cotización está cerrada. Reábrela para modificarla.');
+        return;
+    }
     const form = document.getElementById('formAgregarFila');
     if (!form.checkValidity()) {
         form.reportValidity();
@@ -1372,8 +1408,6 @@ async function guardarNuevaFila(event) {
         return;
     }
 
-    console.log('Enviando items (nueva fila):', items);
-
     const btn = event.target;
     const originalHtml = btn.innerHTML;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Guardando...';
@@ -1390,17 +1424,7 @@ async function guardarNuevaFila(event) {
             })
         });
 
-        const responseText = await response.text();
-        console.log('Respuesta servidor (raw):', responseText);
-        
-        let data;
-        try {
-            data = JSON.parse(responseText);
-        } catch (e) {
-            console.error('Error parsing JSON:', e, responseText);
-            throw new Error('Respuesta del servidor no es JSON válido');
-        }
-        console.log('Respuesta servidor (parsed):', data);
+        const data = await response.json();
 
         if (data.success) {
             // Recargar la página para ver los cambios
@@ -1422,6 +1446,10 @@ async function guardarNuevaFila(event) {
 
 // Función para guardar todos los cambios del grid (Guardar Todo)
 async function guardarTodo(event) {
+    if (COTIZACION_CERRADA) {
+        alert('La cotización está cerrada. Reábrela para modificarla.');
+        return;
+    }
     const btn = event.target;
     const originalHtml = btn.innerHTML;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Guardando...';
@@ -1429,35 +1457,27 @@ async function guardarTodo(event) {
 
     const items = [];
 
-    // Recopilar todos los inputs de precio editados
-    document.querySelectorAll('.precio-input').forEach(input => {
+    // Recopilar los precios del grid: se envía si tiene valor o si antes tenía
+    // uno y quedó vacío (para poder borrar el precio de una semana).
+    document.querySelectorAll('#tablaCotizacion .precio-input').forEach(input => {
         const value = getValorNumerico(input);
-        if (value > 0) {
-            // Usar IDs directos de los atributos data-*
-            const materia_prima_id = parseInt(input.dataset.materiaPrimaId) || 0;
-            const proveedor_id = parseInt(input.dataset.proveedorId) || 0;
-            const semana = parseInt(input.dataset.semana);
-            
-            if (materia_prima_id && proveedor_id) {
-                items.push({
-                    materia_prima_id: materia_prima_id,
-                    proveedor_id: proveedor_id,
-                    semana: semana,
-                    precio: value,
-                    observaciones: ''
-                });
-            } else {
-                console.warn('No se encontraron IDs para:', { 
-                    materia_prima_id, 
-                    proveedor_id, 
-                    semana, 
-                    dataset: input.dataset 
-                });
-            }
-        }
-    });
+        const original = (input.dataset.precioOriginal || '').trim();
+        if (value <= 0 && !original) return;
 
-    console.log('Enviando items:', items);
+        const materia_prima_id = parseInt(input.dataset.materiaPrimaId) || 0;
+        const proveedor_id = parseInt(input.dataset.proveedorId) || 0;
+        const semana = parseInt(input.dataset.semana);
+
+        if (!materia_prima_id || !proveedor_id) return;
+
+        items.push({
+            materia_prima_id: materia_prima_id,
+            proveedor_id: proveedor_id,
+            semana: semana,
+            precio: value > 0 ? value : 0,
+            observaciones: ''
+        });
+    });
 
     if (items.length === 0) {
         alert('No hay cambios para guardar');
@@ -1477,17 +1497,7 @@ async function guardarTodo(event) {
             })
         });
 
-        const responseText = await response.text();
-        console.log('Respuesta servidor (raw):', responseText);
-        
-        let data;
-        try {
-            data = JSON.parse(responseText);
-        } catch (e) {
-            console.error('Error parsing JSON:', e, responseText);
-            throw new Error('Respuesta del servidor no es JSON válido');
-        }
-        console.log('Respuesta servidor (parsed):', data);
+        const data = await response.json();
 
         if (data.success) {
             // Recargar la página para ver los cambios
@@ -2406,9 +2416,9 @@ void 0;
 <div class="modal fade" id="modalAgregarFila" tabindex="-1" aria-labelledby="modalAgregarFilaLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="modalAgregarFilaLabel"><i class="fas fa-plus me-2"></i>Agregar Materia Prima con Precios</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-header" style="background-color: var(--table-header-bg); color: #ffffff;">
+                <h5 class="modal-title" id="modalAgregarFilaLabel"><i class="fas fa-plus me-2"></i>Agregar materia prima con precios</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
             <div class="modal-body">
                 <form id="formAgregarFila">

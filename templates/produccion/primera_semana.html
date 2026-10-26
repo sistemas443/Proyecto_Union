@@ -4,10 +4,9 @@
 {% block content %}
 
 <style>
-  /* 1. Bloqueamos el scroll general y aplicamos zoom global del 80% */
+  /* Escala normal (100%) */
   body {
     overflow-y: hidden !important;
-    zoom: 0.8;
   }
 
   /* 2. El contenedor principal base */
@@ -452,8 +451,8 @@
         // Píxeles físicos que quedan libres hasta el fondo del monitor
         const pixelesLibres = window.innerHeight - rect.top;
 
-        // Compensamos el zoom del 80% (0.8) y dejamos 10px de margen estético abajo
-        const alturaPerfecta = (pixelesLibres / 0.8) - 10;
+        /* Escala normal (100%) */
+        const alturaPerfecta = pixelesLibres - 10;
 
         // Inyectamos la altura exacta a la tabla
         tabla.style.height = alturaPerfecta + "px";
