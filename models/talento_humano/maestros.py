@@ -168,7 +168,7 @@ class ARL:
 
 
 class Talla:
-    """Catálogos de tallas EPP: camisa, pantalón, botas y casco.
+    """Catálogos de tallas de dotación: camisa, pantalón, botas y casco.
 
     Cada tipo tiene su propia tabla. El nombre de la tabla NUNCA se toma
     del usuario: se resuelve contra este mapa (lista blanca).

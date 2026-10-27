@@ -66,17 +66,25 @@ def consolidado_precios():
     costos_dietas = FormulaDetalle.obtener_consolidado_costos()
     
     # 3. Filtrar en 3 grupos fijos por empresa
+    EMPRESAS_ASIGNADAS = ('SAN MARTIN', 'COUNTRY', 'DOS CRESTAS SANTUARIO')
     dietas_san_martin = [d for d in costos_dietas if d['nombre_empresa'] == 'SAN MARTIN']
     dietas_country = [d for d in costos_dietas if d['nombre_empresa'] == 'COUNTRY']
     dietas_dos_crestas = [d for d in costos_dietas if d['nombre_empresa'] == 'DOS CRESTAS SANTUARIO']
-    
+
+    # 4. Dietas que no se pueden ubicar en ninguna empresa (se perderían en silencio)
+    dietas_sin_asignar = [
+        d for d in costos_dietas
+        if (d.get('nombre_empresa') or '') not in EMPRESAS_ASIGNADAS
+    ]
+
     return render_template(
         'planta_alimentos/consolidado_precios.html',
         materias_destacadas=materias_destacadas,
         materias_otras=materias_otras,
         dietas_san_martin=dietas_san_martin,
         dietas_country=dietas_country,
-        dietas_dos_crestas=dietas_dos_crestas
+        dietas_dos_crestas=dietas_dos_crestas,
+        dietas_sin_asignar=dietas_sin_asignar
     )
 
 

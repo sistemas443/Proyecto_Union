@@ -358,7 +358,7 @@ function setupBotonesLotes() {
         
         // BOTÓN OJO (Ver Detalles - Solo Lectura)
         let btnVer = e.target.closest('.btn-ver');
-        if (btnVer) {
+        if (btnVer && btnVer.hasAttribute('data-lote')) {
             e.preventDefault();
             const lote = JSON.parse(btnVer.getAttribute('data-lote'));
             llenarFormularioLote(lote);
@@ -379,7 +379,7 @@ function setupBotonesLotes() {
 
         // BOTÓN LÁPIZ (Editar Lote)
         let btnEditar = e.target.closest('.btn-editar');
-        if (btnEditar) {
+        if (btnEditar && btnEditar.hasAttribute('data-lote')) {
             e.preventDefault();
             const lote = JSON.parse(btnEditar.getAttribute('data-lote'));
             llenarFormularioLote(lote);

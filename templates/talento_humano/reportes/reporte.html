@@ -1,0 +1,181 @@
+{% extends 'generales/layout.html' %}
+
+{% set palette = ['#97271C', '#D97706', '#0F766E', '#1D4ED8', '#7C3AED', '#BE185D', '#4D7C0F', '#B45309', '#C2410C', '#0E7490', '#6D28D9', '#A21CAF'] %}
+
+{% block head %}
+<style>
+  :root {
+    --rpt-bg: #f6f4f2;
+    --rpt-ink: #201d1a;
+    --rpt-muted: #6b6560;
+    --rpt-line: #eae4df;
+    --rpt-card: #ffffff;
+    --rpt-accent: #97271C;
+  }
+  .reportes-wrap { background: transparent; }
+  .reportes-hero {
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 1rem; padding: 1.1rem 1.2rem; margin-bottom: 1rem;
+    background: linear-gradient(135deg, #201d1a 0%, #2c2421 55%, #97271C 150%);
+    border-radius: 14px; color: #fff; box-shadow: 0 12px 30px rgba(30, 22, 18, 0.18);
+  }
+  .reportes-hero .hero-titulo { font-size: 1.35rem; font-weight: 700; letter-spacing: -0.02em; }
+  .reportes-hero .hero-sub { color: #e7dcd6; font-size: .85rem; margin-top: .15rem; }
+  .reportes-hero .hero-stat {
+    background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14);
+    border-radius: 12px; padding: .7rem 1.1rem; text-align: center; min-width: 120px;
+  }
+  .reportes-hero .hero-stat .num { font-size: 1.9rem; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+  .reportes-hero .hero-stat .lbl { font-size: .7rem; text-transform: uppercase; letter-spacing: .08em; color: #e7dcd6; margin-top: .25rem; }
+
+  .reporte-card {
+    background: var(--rpt-card); border: 1px solid var(--rpt-line); border-radius: 14px;
+    box-shadow: 0 1px 2px rgba(30,22,18,.04), 0 8px 22px rgba(30,22,18,.06);
+    overflow: hidden; height: 100%;
+  }
+  .reporte-card .card-head {
+    display: flex; align-items: center; gap: .55rem;
+    padding: .8rem 1rem; border-bottom: 1px solid var(--rpt-line);
+  }
+  .reporte-card .card-head .icono {
+    width: 30px; height: 30px; border-radius: 8px; display: inline-flex;
+    align-items: center; justify-content: center; font-size: 1rem;
+    background: #fbeae7; color: var(--rpt-accent);
+  }
+  .reporte-card .card-head h6 { margin: 0; font-weight: 700; font-size: .95rem; color: var(--rpt-ink); }
+  .reporte-card .card-body { padding: .75rem 1rem 1rem; }
+
+  .grafico-box { min-height: 240px; }
+
+  /* Tabla de distribución */
+  .tabla-dist { width: 100%; border-collapse: collapse; }
+  .tabla-dist thead th {
+    font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--rpt-muted); padding: 0 .4rem .45rem; border-bottom: 1px solid var(--rpt-line);
+  }
+  .tabla-dist tbody td { padding: .42rem .4rem; border-bottom: 1px solid #f3efec; vertical-align: middle; }
+  .tabla-dist tbody tr:last-child td { border-bottom: 0; }
+  .tabla-dist tbody tr:hover td { background: #fbf9f7; }
+
+  .dist-label { display: flex; align-items: center; gap: .5rem; font-size: .82rem; color: var(--rpt-ink); }
+  .dist-label .dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 9px; }
+  .dist-bar { height: 6px; border-radius: 4px; background: #efeae6; overflow: hidden; }
+  .dist-bar > span { display: block; height: 100%; border-radius: 4px; background: var(--rpt-accent); transition: width .4s ease; }
+  .dist-count { text-align: right; font-weight: 700; font-size: .85rem; color: var(--rpt-ink); font-variant-numeric: tabular-nums; }
+  .dist-pct { text-align: right; font-size: .76rem; color: var(--rpt-muted); font-variant-numeric: tabular-nums; }
+
+  .vacio-rep { color: var(--rpt-muted); font-size: .85rem; text-align: center; padding: 1rem 0; }
+
+  ::selection { background: #f3c5bd; color: #3a0d08; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-3 reportes-wrap">
+
+  <div class="reportes-hero">
+    <div>
+      <div class="hero-titulo">{{ reporte.titulo }}</div>
+      <div class="hero-sub">Indicadores construidos con la información de los colaboradores</div>
+    </div>
+    <div class="hero-stat">
+      <div class="num">{{ reporte.total }}</div>
+      <div class="lbl">{{ 'colaborador' if reporte.total == 1 else 'colaboradores' }}</div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    {% for b in reporte.bloques %}
+    {% set maxv = (b.datos | map(attribute='valor') | max) if b.datos else 1 %}
+    <div class="col-12 col-xl-6">
+      <div class="reporte-card">
+        <div class="card-head">
+          <span class="icono"><i class='bx {{ "bx-pie-chart-alt-2" if b.grafico == "donut" else "bx-bar-chart-alt-2" }}'></i></span>
+          <h6>{{ b.titulo }}</h6>
+        </div>
+        <div class="card-body">
+          <div id="grafico-{{ loop.index0 }}" class="grafico-box"></div>
+          {% if b.datos %}
+          <table class="tabla-dist mt-3">
+            <thead>
+              <tr><th>{{ b.titulo }}</th><th style="width:34%;"></th><th class="text-end">Cant.</th><th class="text-end">%</th></tr>
+            </thead>
+            <tbody>
+              {% for d in b.datos %}
+              {% set pct = (d.valor / reporte.total * 100) if reporte.total else 0 %}
+              <tr>
+                <td><span class="dist-label"><span class="dot" style="background:{{ palette[loop.index0 % palette|length] }}"></span>{{ d.etiqueta }}</span></td>
+                <td><div class="dist-bar"><span style="width:{{ (d.valor / maxv * 100) if maxv else 0 }}%"></span></div></td>
+                <td class="dist-count">{{ d.valor }}</td>
+                <td class="dist-pct">{{ pct | round(1) }}%</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% else %}
+          <div class="vacio-rep">Sin datos registrados.</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+<script>
+  const PALETTE = {{ palette | tojson }};
+  const REPORTE = {{ reporte.bloques | tojson }};
+  const TOTAL = {{ reporte.total }};
+
+  REPORTE.forEach(function (b, i) {
+    let datos = b.datos.map(function (d) { return { label: d.etiqueta, value: d.valor }; });
+    if (!datos.length) return;
+
+    // En barras horizontales, si hay muchas categorías, agrupa el resto en "Otros"
+    if (b.grafico === 'barh' && datos.length > 12) {
+      const top = datos.slice(0, 12);
+      const resto = datos.slice(12).reduce(function (s, d) { return s + d.value; }, 0);
+      top.push({ label: 'Otros', value: resto });
+      datos = top;
+    }
+
+    const labels = datos.map(function (d) { return d.label; });
+    const values = datos.map(function (d) { return d.value; });
+    const colors = datos.map(function (_, k) { return PALETTE[k % PALETTE.length]; });
+
+    let trace, layout;
+    if (b.grafico === 'donut') {
+      trace = {
+        type: 'pie', labels: labels, values: values, hole: 0.55,
+        marker: { colors: colors },
+        textinfo: 'percent', textfont: { color: '#fff', size: 11 },
+        hovertemplate: '<b>%{label}</b><br>%{value} ( %{percent} )<extra></extra>',
+        sort: false
+      };
+      layout = { showlegend: true, legend: { orientation: 'v', font: { size: 11 } }, margin: { t: 10, r: 10, b: 10, l: 10 } };
+    } else if (b.grafico === 'barh') {
+      trace = {
+        type: 'bar', orientation: 'h', x: values, y: labels,
+        marker: { color: colors, line: { width: 0 } },
+        text: values, textposition: 'outside',
+        hovertemplate: '<b>%{y}</b><br>%{x}<extra></extra>'
+      };
+      layout = { showlegend: false, margin: { t: 10, r: 34, b: 30, l: 0 }, height: Math.max(240, datos.length * 26), paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)' };
+    } else {
+      trace = {
+        type: 'bar', x: labels, y: values,
+        marker: { color: colors, line: { width: 0 } },
+        text: values, textposition: 'outside',
+        hovertemplate: '<b>%{x}</b><br>%{y}<extra></extra>'
+      };
+      layout = { showlegend: false, margin: { t: 10, r: 10, b: 60, l: 40 }, paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)' };
+    }
+
+    Plotly.newPlot('grafico-' + i, [trace], layout, { responsive: true, displayModeBar: false });
+  });
+</script>
+{% endblock %}

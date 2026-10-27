@@ -113,8 +113,11 @@ def api_guardar_cotizacion():
 
         CotizacionesModel.guardar_detalle_masivo(cotizacion_id, items, session.get('user_id'))
         return jsonify({'success': True, 'msg': 'Guardado correctamente'})
-    except Exception as e:
-        return jsonify({'success': False, 'msg': str(e)}), 500
+    except ValueError as e:
+        # Datos inválidos enviados por el cliente (ids inexistentes, semana fuera de rango)
+        return jsonify({'success': False, 'msg': str(e)}), 400
+    except Exception:
+        return jsonify({'success': False, 'msg': 'No se pudo guardar. Intenta de nuevo.'}), 500
 
 
 @cotizaciones_bp.route('/<int:cotizacion_id>/estado', methods=['POST'])

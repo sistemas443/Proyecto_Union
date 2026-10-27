@@ -213,6 +213,20 @@
     .btn-accion.accion-on:hover { color: #1c6b43; border-color: #cfe5d8; background-color: #eef7f1; }
     .btn-accion.accion-eliminar:hover { color: #a12b22; border-color: #eccfca; background-color: #fdf1ef; }
 
+    /* ---- Historial entregas EPP (SST) ---- */
+    #entregasSST .epp-grupo { border: 1px solid #e6e1dd; border-radius: 8px; background: #fff; margin-bottom: .4rem; }
+    #entregasSST .epp-grupo summary {
+        list-style: none; cursor: pointer; display: flex; align-items: center; gap: .5rem;
+        padding: .45rem .6rem; font-size: .8rem; font-weight: 600; color: #2c2825;
+    }
+    #entregasSST .epp-grupo summary::-webkit-details-marker { display: none; }
+    #entregasSST .epp-grupo summary > i.fa-solid { color: #97271C; font-size: .95rem; width: 1.2rem; text-align: center; }
+    #entregasSST .epp-grupo-count { margin-left: auto; font-size: .68rem; color: #8b837d; font-weight: 500; white-space: nowrap; }
+    #entregasSST .epp-grupo summary .chev { color: #8b837d; transition: transform .15s ease; }
+    #entregasSST .epp-grupo[open] summary .chev { transform: rotate(180deg); }
+    #entregasSST .epp-grupo-body { padding: .2rem .6rem .5rem; border-top: 1px solid #f0ece8; }
+    #entregasSST .epp-grupo-body .table { font-size: .76rem; }
+
     /* Modal accordion */
     .accordion-button { font-size: 0.85rem; font-weight: 600; }
     .accordion-body { padding: 1rem; }
@@ -441,7 +455,7 @@
                                     <i class='bx bx-show'></i>
                                 </button>
                                 <button class="btn btn-sm btn-accion accion-eliminar"
-                                    onclick="eliminarColaborador({{ c.id }}, {{ c.nombre_completo | tojson }})"
+                                    onclick='eliminarColaborador({{ c.id }}, {{ c.nombre_completo | tojson }})'
                                     title="Eliminar (soft delete)" aria-label="Eliminar">
                                     <i class='bx bx-trash'></i>
                                 </button>
@@ -493,7 +507,7 @@
                 {% endif %}
             </div>
             <div class="colab-card-actions">
-                <button class="btn btn-sm btn-outline-secondary flex-fill btn-editar" data-id="{{ c.id }}"><i class='bx bx-edit me-1'></i>Editar</button>
+                <button class="btn btn-sm btn-outline-secondary flex-fill btn-editar-colab" data-id="{{ c.id }}"><i class='bx bx-edit me-1'></i>Editar</button>
                 <button class="btn btn-sm {% if c.estado=='Activo' %}btn-outline-danger{% else %}btn-outline-success{% endif %} flex-fill" onclick="toggleEstado({{ c.id }})">
                     <i class='bx {% if c.estado=='Activo' %}bx-user-x{% else %}bx-user-check{% endif %} me-1'></i>{% if c.estado=='Activo' %}Desactivar{% else %}Activar{% endif %}
                 </button>
@@ -508,15 +522,15 @@
     <nav aria-label="Paginación colaboradores" class="px-2">
         <ul class="pagination pagination-sm justify-content-center mb-0">
             <li class="page-item {% if pagina == 1 %}disabled{% endif %}">
-                <a class="page-link" href="{{ url_for('talento_humano.colaboradores', pagina=pagina-1, **request.args) }}">&laquo;</a>
+                <a class="page-link" href="{{ url_for('talento_humano.colaboradores', pagina=pagina-1, **params_sin_pagina) }}">&laquo;</a>
             </li>
-            {% for p in range(max(1, pagina-2), min(total_paginas, pagina+2)+1) %}
+            {% for p in range(([1, pagina-2] | max), ([total_paginas, pagina+2] | min) + 1) %}
             <li class="page-item {% if p == pagina %}active{% endif %}">
-                <a class="page-link" href="{{ url_for('talento_humano.colaboradores', pagina=p, **request.args) }}">{{ p }}</a>
+                <a class="page-link" href="{{ url_for('talento_humano.colaboradores', pagina=p, **params_sin_pagina) }}">{{ p }}</a>
             </li>
             {% endfor %}
             <li class="page-item {% if pagina == total_paginas %}disabled{% endif %}">
-                <a class="page-link" href="{{ url_for('talento_humano.colaboradores', pagina=pagina+1, **request.args) }}">&raquo;</a>
+                <a class="page-link" href="{{ url_for('talento_humano.colaboradores', pagina=pagina+1, **params_sin_pagina) }}">&raquo;</a>
             </li>
         </ul>
         <small class="text-muted d-block text-center mt-1">Mostrando {{ ((pagina-1)*50)+1 }}–{{ [pagina*50, total]|min }} de {{ total }} colaboradores</small>

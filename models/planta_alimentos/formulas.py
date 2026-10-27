@@ -35,20 +35,30 @@ class FormulaDetalle:
                         GROUP BY fd.item_id, fd.lote_id
                     )
                     SELECT 
+                        cb.item_id,
                         cb.lote_id AS lote,
-                        ca.nombre AS etapa, 
+                        COALESCE(ca.nombre, 'Sin etapa en catálogo') AS etapa, 
                         e.nombre AS nombre_empresa,
-                        e.costo_maquila,
+                        cl.empresa_id,
+                        COALESCE(e.costo_maquila, 0) AS costo_maquila,
                         
-                        (cb.total_precio_base + cb.total_flete + e.costo_maquila) AS precio_flete_maquila,
-                        (cb.total_con_iva + e.costo_maquila) AS precio_iva_maquila,
-                        (cb.total_con_iva + cb.total_flete + e.costo_maquila) AS precio_flete_iva_maquila
+                        (cb.total_precio_base + cb.total_flete + COALESCE(e.costo_maquila, 0)) AS precio_flete_maquila,
+                        (cb.total_con_iva + COALESCE(e.costo_maquila, 0)) AS precio_iva_maquila,
+                        (cb.total_con_iva + cb.total_flete + COALESCE(e.costo_maquila, 0)) AS precio_flete_iva_maquila,
+
+                        -- Motivo por el cual la dieta no se puede ubicar en la empresa
+                        CASE
+                            WHEN cl.lote IS NULL THEN 'Lote no registrado en cabecera_lotes'
+                            WHEN cl.empresa_id IS NULL THEN 'Lote sin empresa asignada'
+                            WHEN e.id IS NULL THEN 'Empresa no encontrada'
+                            ELSE NULL
+                        END AS motivo_sin_empresa
 
                     FROM CostosBase cb
-                    JOIN catalogo_alimentos ca ON cb.item_id = ca.item_id 
-                    JOIN cabecera_lotes cl ON cb.lote_id = cl.lote 
-                    JOIN empresas e ON cl.empresa_id = e.id
-                    ORDER BY e.nombre, cb.lote_id;
+                    LEFT JOIN catalogo_alimentos ca ON cb.item_id = ca.item_id 
+                    LEFT JOIN cabecera_lotes cl ON cb.lote_id = cl.lote 
+                    LEFT JOIN empresas e ON cl.empresa_id = e.id
+                    ORDER BY e.nombre NULLS FIRST, cb.lote_id;
                 """
                 cur.execute(consulta)
                 columnas = [desc[0] for desc in cur.description]
