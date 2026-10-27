@@ -82,6 +82,7 @@
                                                 <option value="CE">CE - Cédula Extranjería</option>
                                                 <option value="PAS">PAS - Pasaporte</option>
                                                 <option value="TI">TI - Tarjeta Identidad</option>
+                                                <option value="PPT">PPT - Permiso Protección Temporal</option>
                                                 <option value="NIT">NIT</option>
                                             </select>
                                         </div>
@@ -197,6 +198,14 @@
                                                 </select>
                                                 <button type="button" class="btn fw-bold text-white shadow-sm" style="background-color: #97271C; border: none;" onclick="abrirModalNuevoCatalogo('departamento')" title="Crear nuevo departamento"><i class='bx bx-plus'></i></button>
                                             </div>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label fw-bold text-secondary">Zona</label>
+                                            <select class="form-select form-select-sm" name="zona" id="form_zona">
+                                                <option value="">Seleccione</option>
+                                                <option value="Urbano">Urbano</option>
+                                                <option value="Rural">Rural</option>
+                                            </select>
                                         </div>
                                         <div class="col-md-3">
                                             <label class="form-label fw-bold text-secondary">Ciudad Nacimiento</label>
@@ -812,47 +821,6 @@
                                             <input type="text" class="form-control form-control-sm" name="enfermedades_cronicas" id="form_enf_cronicas" placeholder="Hipertensión, Diabetes, Asma, Hipotiroidismo...">
                                         </div>
                                         <div class="col-md-12">
-                                            <label class="form-label fw-bold text-secondary">Vacunas</label>
-                                            <div class="row g-2">
-                                                <div class="col-md-3">
-                                                    <label class="form-label small">COVID</label>
-                                                    <div class="input-group input-group-sm">
-                                                        <input type="date" class="form-control" name="vacuna_covid_fecha" id="form_vac_covid_fecha">
-                                                        <select class="form-select form-select-sm" name="vacuna_covid_dosis" id="form_vac_covid_dosis" style="width: 80px;">
-                                                            <option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-3">
-                                                    <label class="form-label small">Influenza</label>
-                                                    <input type="date" class="form-control form-control-sm" name="vacuna_influenza_fecha" id="form_vac_influenza">
-                                                </div>
-                                                <div class="col-md-3">
-                                                    <label class="form-label small">Hepatitis B</label>
-                                                    <input type="date" class="form-control form-control-sm" name="vacuna_hepatitis_fecha" id="form_vac_hepatitis">
-                                                </div>
-                                                <div class="col-md-3">
-                                                    <label class="form-label small">Tétanos</label>
-                                                    <input type="date" class="form-control form-control-sm" name="vacuna_tetanos_fecha" id="form_vac_tetanos">
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div class="col-md-12">
-                                            <label class="form-label fw-bold text-secondary">Otras Vacunas y Carné de Vacunación</label>
-                                            <div class="row g-2">
-                                                <div class="col-md-3">
-                                                    <label class="form-label small">Fiebre Amarilla</label>
-                                                    <input type="date" class="form-control form-control-sm" name="vacuna_fiebre_amarilla_fecha" id="form_vac_fiebre_amarilla">
-                                                </div>
-                                                <div class="col-md-4">
-                                                    <label class="form-label small">Otras vacunas</label>
-                                                    <input type="text" class="form-control form-control-sm" name="vacuna_otras" id="form_vac_otras" placeholder="Neumococo, Varicela, Triple viral...">
-                                                </div>
-                                                </div>
-                                        </div>
-
-                                        <div class="col-md-12">
                                             <label class="form-label fw-bold text-secondary">Exámenes Complementarios</label>
                                             <div class="row g-2">
                                                 <div class="col-md-3">
@@ -886,73 +854,14 @@
                                         </div>
 
                                         <div class="col-md-12">
-                                            <label class="form-label fw-bold text-secondary">EPP Asignado (Entrega de Elementos de Protección Personal)</label>
-                                            <div class="row g-2">
-                                                <div class="col-md-2">
-                                                    <div class="form-check form-check-inline">
-                                                        <input class="form-check-input" type="checkbox" name="epp_casco" id="form_epp_casco" value="1">
-                                                        <label class="form-check-label small" for="form_epp_casco">Casco</label>
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-2">
-                                                    <div class="form-check form-check-inline">
-                                                        <input class="form-check-input" type="checkbox" name="epp_botas" id="form_epp_botas" value="1">
-                                                        <label class="form-check-label small" for="form_epp_botas">Botas</label>
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-2">
-                                                    <div class="form-check form-check-inline">
-                                                        <input class="form-check-input" type="checkbox" name="epp_guantes" id="form_epp_guantes" value="1">
-                                                        <label class="form-check-label small" for="form_epp_guantes">Guantes</label>
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-2">
-                                                    <div class="form-check form-check-inline">
-                                                        <input class="form-check-input" type="checkbox" name="epp_gafas" id="form_epp_gafas" value="1">
-                                                        <label class="form-check-label small" for="form_epp_gafas">Gafas</label>
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-2">
-                                                    <div class="form-check form-check-inline">
-                                                        <input class="form-check-input" type="checkbox" name="epp_tapabocas" id="form_epp_tapabocas" value="1">
-                                                        <label class="form-check-label small" for="form_epp_tapabocas">Tapabocas</label>
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-2">
-                                                    <div class="form-check form-check-inline">
-                                                        <input class="form-check-input" type="checkbox" name="epp_overol" id="form_epp_overol" value="1">
-                                                        <label class="form-check-label small" for="form_epp_overol">Overol</label>
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-2">
-                                                    <div class="form-check form-check-inline">
-                                                        <input class="form-check-input" type="checkbox" name="epp_botas_dielectricas" id="form_epp_botas_diel" value="1">
-                                                        <label class="form-check-label small" for="form_epp_botas_diel">Botas Diel.</label>
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-2">
-                                                    <div class="form-check form-check-inline">
-                                                        <input class="form-check-input" type="checkbox" name="epp_arnes" id="form_epp_arnes" value="1">
-                                                        <label class="form-check-label small" for="form_epp_arnes">Arnés</label>
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-2">
-                                                    <div class="form-check form-check-inline">
-                                                        <input class="form-check-input" type="checkbox" name="epp_chaleco_reflectivo" id="form_epp_chaleco" value="1">
-                                                        <label class="form-check-label small" for="form_epp_chaleco">Chaleco Ref.</label>
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-2">
-                                                    <div class="form-check form-check-inline">
-                                                        <input class="form-check-input" type="checkbox" name="epp_proteccion_auditiva" id="form_epp_auditiva" value="1">
-                                                        <label class="form-check-label small" for="form_epp_auditiva">Prot. Auditiva</label>
-                                                    </div>
-                                                </div>
+                                            <label class="form-label fw-bold text-secondary">Historial de entregas EPP (base SST)</label>
+                                            <div id="entregasSST" class="border rounded bg-white p-2" style="max-height:180px; overflow-y:auto;">
+                                                <div class="text-muted small">Se cargará al editar el colaborador.</div>
                                             </div>
                                         </div>
 
                                         <div class="col-md-12">
-                                            <label class="form-label fw-bold text-secondary">Tallas EPP</label>
+                                            <label class="form-label fw-bold text-secondary">Tallas dotación</label>
                                             <div class="row g-2">
                                                 <div class="col-12 col-sm-6 col-xl-3">
                                                     <label class="form-label small">Camisa</label>
@@ -1208,10 +1117,6 @@
                     <label class="form-label fw-bold text-secondary" id="nuevo_catalogo_etiqueta">Nombre <span class="text-danger">*</span></label>
                     <input type="text" class="form-control form-control-sm shadow-sm" id="nuevo_catalogo_nombre" required>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label fw-bold text-secondary">Código</label>
-                    <input type="text" class="form-control form-control-sm shadow-sm" id="nuevo_catalogo_codigo" placeholder="Opcional">
-                </div>
                 <button type="button" class="btn w-100 fw-bold text-white shadow-sm" style="background-color: #97271C;" id="btnGuardarCatalogo" onclick="guardarNuevoCatalogo()">Crear registro</button>
             </div>
         </div>
@@ -1269,7 +1174,7 @@
     <div class="modal-dialog modal-dialog-centered modal-sm">
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header text-white border-0" style="background-color: #343a40;">
-                <h5 class="modal-title fw-bold"><i class='bx bx-ruler me-2'></i>Nueva talla de <span id="nueva_talla_titulo">EPP</span></h5>
+                <h5 class="modal-title fw-bold"><i class='bx bx-ruler me-2'></i>Nueva talla de <span id="nueva_talla_titulo">dotación</span></h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4 bg-light">

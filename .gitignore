@@ -4,6 +4,9 @@ __pycache__/
 *.pyc
 .env
 
+# Respaldos locales (archivos .bak y volcados de BD)
+respaldos/
+
 # Archivos de configuración de OpenCode (no subir a producción)
 AGENTS.md
 opencode.json

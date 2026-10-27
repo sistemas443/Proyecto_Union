@@ -67,22 +67,19 @@ class Colaborador:
         mapped = {}
         campos_fecha = (
             'fecha_expedicion_doc', 'fecha_vencimiento_doc', 'fecha_nacimiento', 'fecha_ingreso',
-            'fecha_ultimo_examen_medico', 'vacuna_covid_fecha',
-            'vacuna_influenza_fecha', 'vacuna_hepatitis_fecha', 'vacuna_tetanos_fecha',
-            'vacuna_fiebre_amarilla_fecha', 'examen_visual_fecha', 'examen_auditivo_fecha',
+            'fecha_ultimo_examen_medico',
+            'examen_visual_fecha', 'examen_auditivo_fecha',
             'espirometria_fecha',
             'certificado_discapacidad_vencimiento'
         )
         campos_int = (
             'estrato', 'num_hijos', 'num_dependientes_economicos', 'tiempo_traslado_minutos',
-            'certificado_discapacidad_porcentaje', 'vacuna_covid_dosis',
+            'certificado_discapacidad_porcentaje',
             'certificado_discapacidad_porcentaje'
         )
         campos_bool = (
             'discapacidad', 'victima_conflicto', 'comunidad_lgtbi',
             'desplazado', 'tiene_servicios_publicos', 'tiene_internet',
-            'epp_casco', 'epp_botas', 'epp_guantes', 'epp_gafas', 'epp_tapabocas', 'epp_overol',
-            'epp_botas_dielectricas', 'epp_arnes', 'epp_chaleco_reflectivo', 'epp_proteccion_auditiva',
             'vive_con_colaborador', 'dependiente_economico', 'estudia', 'trabaja'
         )
         
@@ -278,6 +275,7 @@ class Colaborador:
             ('direccion', parse_empty(data.get('direccion'))),
             ('ciudad', parse_empty(data.get('ciudad'))),
             ('departamento', parse_empty(data.get('departamento'))),
+            ('zona', parse_empty(data.get('zona'))),
             ('contacto_emergencia_nombre', parse_empty(data.get('contacto_emergencia_nombre'))),
             ('contacto_emergencia_telefono', parse_empty(data.get('contacto_emergencia_telefono'))),
             ('contacto_emergencia_parentesco', parse_empty(data.get('contacto_emergencia_parentesco'))),
@@ -368,13 +366,6 @@ class Colaborador:
             ('medicamentos_uso_continuo', ce.get('medicamentos_uso_continuo')),
             ('enfermedades_cronicas', ce.get('enfermedades_cronicas')),
             ('factor_riesgo_cardiovascular', ce.get('factor_riesgo_cardiovascular')),
-            ('vacuna_covid_fecha', ce.get('vacuna_covid_fecha')),
-            ('vacuna_covid_dosis', ce.get('vacuna_covid_dosis')),
-            ('vacuna_influenza_fecha', ce.get('vacuna_influenza_fecha')),
-            ('vacuna_hepatitis_fecha', ce.get('vacuna_hepatitis_fecha')),
-            ('vacuna_tetanos_fecha', ce.get('vacuna_tetanos_fecha')),
-            ('vacuna_fiebre_amarilla_fecha', ce.get('vacuna_fiebre_amarilla_fecha')),
-            ('vacuna_otras', ce.get('vacuna_otras')),
             ('examen_visual_fecha', ce.get('examen_visual_fecha')),
             ('examen_visual_resultado', ce.get('examen_visual_resultado')),
             ('examen_auditivo_fecha', ce.get('examen_auditivo_fecha')),
@@ -382,17 +373,7 @@ class Colaborador:
             ('espirometria_fecha', ce.get('espirometria_fecha')),
             ('espirometria_resultado', ce.get('espirometria_resultado')),
 
-            # --- EPP y tallas ---
-            ('epp_casco', ce.get('epp_casco')),
-            ('epp_botas', ce.get('epp_botas')),
-            ('epp_guantes', ce.get('epp_guantes')),
-            ('epp_gafas', ce.get('epp_gafas')),
-            ('epp_tapabocas', ce.get('epp_tapabocas')),
-            ('epp_overol', ce.get('epp_overol')),
-            ('epp_botas_dielectricas', ce.get('epp_botas_dielectricas')),
-            ('epp_arnes', ce.get('epp_arnes')),
-            ('epp_chaleco_reflectivo', ce.get('epp_chaleco_reflectivo')),
-            ('epp_proteccion_auditiva', ce.get('epp_proteccion_auditiva')),
+            # --- Tallas ---
             ('talla_camisa', ce.get('talla_camisa')),
             ('talla_pantalon', ce.get('talla_pantalon')),
             ('talla_botas', ce.get('talla_botas')),

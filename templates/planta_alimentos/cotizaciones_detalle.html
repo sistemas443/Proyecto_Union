@@ -33,15 +33,16 @@
     position: sticky;
     top: 0;
     z-index: 10;
-    background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
-    border-bottom: 2px solid var(--border-color);
+    background-color: var(--table-header-bg);
+    background-image: none;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.25);
     font-size: 0.7rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    color: #495057;
+    color: var(--table-header-text);
     font-weight: 600;
     white-space: nowrap;
-    padding: 0.5rem 0.25rem;
+    padding: 0.55rem 0.5rem;
 }
 
 #tablaCotizacion thead th:first-child {
@@ -117,6 +118,51 @@
     font-size: 0.75rem;
     color: #6c757d;
     min-width: 120px;
+}
+
+/* Columna de acciones fija a la derecha (siempre visible al hacer scroll) */
+#tablaCotizacion thead th.col-acciones {
+    position: sticky;
+    right: 0;
+    z-index: 25;
+    background-color: var(--table-header-bg) !important;
+    background-image: none !important;
+}
+
+#tablaCotizacion tbody td.col-acciones {
+    position: sticky;
+    right: 0;
+    z-index: 3;
+    background: inherit;
+    box-shadow: -2px 0 4px -2px rgba(0, 0, 0, 0.08);
+}
+
+/* Botón eliminar: discreto en reposo, rojo solo al pasar el mouse */
+#tablaCotizacion .btn-eliminar-fila {
+    background-color: transparent;
+    border: 1px solid transparent;
+    color: var(--text-muted);
+    padding: 0.25rem 0.45rem;
+    line-height: 1;
+    border-radius: 6px;
+    transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+}
+
+#tablaCotizacion .btn-eliminar-fila i {
+    font-size: 1.05rem;
+    vertical-align: middle;
+}
+
+#tablaCotizacion .btn-eliminar-fila:hover,
+#tablaCotizacion .btn-eliminar-fila:focus-visible {
+    color: var(--danger);
+    background-color: #fdecee;
+    border-color: #f5c2c7;
+}
+
+#tablaCotizacion .btn-eliminar-fila:focus-visible {
+    outline: 2px solid rgba(220, 53, 69, 0.35);
+    outline-offset: 1px;
 }
 
 .proveedor-row.best-row td:first-child {
@@ -418,6 +464,11 @@ a:focus-visible {
 }
 
 /* Resaltado de columna de semana */
+#tablaCotizacion thead th.semana-col-resaltada {
+    background-color: var(--action-primary) !important;
+    background-image: none !important;
+}
+
 .semana-col-resaltada .precio-input {
     background: #f0f7ff !important;
     border-color: #0d6efd !important;
@@ -436,6 +487,16 @@ a:focus-visible {
 .proveedor-row.best-row td:nth-child(2) {
     border-left-color: var(--color-best);
     background: #f0fff4;
+}
+
+/* Proveedor con el mejor precio: nombre subrayado en verde */
+#tablaCotizacion .proveedor-row.best-row td:nth-child(2) {
+    color: var(--text-primary);
+    font-weight: 600;
+    text-decoration: underline;
+    text-decoration-color: var(--success);
+    text-decoration-thickness: 2px;
+    text-underline-offset: 3px;
 }
 
 /* Responsive para nueva columna */
@@ -487,79 +548,107 @@ a:focus-visible {
     position: sticky;
     top: 0;
     z-index: 10;
-    background: linear-gradient(180deg, #fff3cd 0%, #ffeeba 100%);
-    border-bottom: 2px solid #ffc107;
+    background-color: var(--table-header-bg) !important;
+    color: var(--table-header-text) !important;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.25) !important;
     font-size: 0.7rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    color: #856404;
     font-weight: 600;
     white-space: nowrap;
-    padding: 0.5rem 0.25rem;
+    padding: 0.55rem 0.5rem;
 }
 
 #tablaConsolidado thead th:first-child {
     left: 0;
     z-index: 20;
-    box-shadow: 2px 0 4px -2px rgba(0,0,0,0.1);
 }
 
 #tablaConsolidado thead th:nth-child(2) {
     left: 200px;
     z-index: 15;
-    box-shadow: 2px 0 4px -2px rgba(0,0,0,0.1);
 }
 
-.consolidado-row {
+.consolidado-row td {
     transition: background-color 0.15s ease;
-}
-
-.consolidado-row.even {
-    background-color: #fffdf5;
-}
-
-.consolidado-row.odd {
-    background-color: #ffffff;
-}
-
-.consolidado-row:hover {
-    background-color: #fff8e1 !important;
-    box-shadow: inset 3px 0 0 #ffc107;
 }
 
 .consolidado-row td:first-child {
     position: sticky;
     left: 0;
     z-index: 5;
-    background: inherit;
-    border-left: 3px solid #ffc107;
-    font-weight: 600;
-    font-size: 0.8rem;
+    border-left: 3px solid var(--action-primary);
+    box-shadow: 2px 0 4px -2px rgba(0, 0, 0, 0.08);
 }
 
 .consolidado-row td:nth-child(2) {
     position: sticky;
     left: 200px;
     z-index: 4;
-    background: inherit;
-    font-size: 0.75rem;
     min-width: 150px;
+    box-shadow: 2px 0 4px -2px rgba(0, 0, 0, 0.08);
 }
 
-/* Ahorro badge */
-.badge.bg-success .fas.fa-arrow-down,
-.badge.bg-danger .fas.fa-arrow-up {
-    font-size: 0.55rem;
+/* ============================================================
+   MODAL DE CONFIRMACIÓN DE ELIMINACIÓN (SweetAlert2)
+   ============================================================ */
+.swal2-container.swal-eliminar-backdrop,
+.swal2-container.swal-eliminar-backdrop.swal2-backdrop-show {
+    background-color: rgba(26, 32, 44, 0.45) !important;
 }
 
-/* Total row */
-#tablaConsolidado tbody tr.table-active {
-    background: linear-gradient(90deg, #fff8e1 0%, #fff3cd 100%) !important;
-    border-top: 2px solid #ffc107;
+.swal-eliminar-popup {
+    border-top: 3px solid var(--danger) !important;
+    border-radius: 0.5rem !important;
+    padding: 1.25rem 1.25rem 1rem !important;
 }
 
-#tablaConsolidado tbody tr.table-active td {
-    font-size: 0.8rem;
+.swal-eliminar-popup .swal2-title {
+    font-size: 1.05rem !important;
+    font-weight: 700 !important;
+    color: var(--text-primary) !important;
+    padding: 0.5rem 0 0.25rem !important;
+}
+
+.swal-eliminar-popup .swal2-html-container {
+    font-size: 0.85rem !important;
+    margin: 0.5rem 0 0 !important;
+}
+
+.swal-eliminar-popup .swal2-icon {
+    margin: 0.25rem auto 0.75rem !important;
+}
+
+.swal-eliminar-popup .swal2-actions {
+    margin-top: 1rem !important;
+    gap: 0.5rem;
+}
+
+.swal-eliminar-popup .swal2-confirm,
+.swal-eliminar-popup .swal2-cancel {
+    font-size: 0.82rem !important;
+    font-weight: 600 !important;
+    padding: 0.5rem 1.1rem !important;
+    border-radius: 0.35rem !important;
+}
+
+/* En el consolidado solo el mejor precio de la semana va en verde; el resto en negro */
+#tablaConsolidado td.precio-mejor-semana {
+    color: var(--success) !important;
+    font-weight: 800 !important;
+}
+
+/* La columna MEJOR SEMANA usa la misma etiqueta de la tabla de productos */
+#tablaConsolidado .semana-badge-pill {
+    font-size: 0.62rem;
+}
+
+/* Proveedor con el mejor precio: mismo subrayado que en la tabla de captura */
+#tablaConsolidado .mejor-proveedor-nombre {
+    text-decoration: underline;
+    text-decoration-color: var(--success);
+    text-decoration-thickness: 2px;
+    text-underline-offset: 3px;
 }
 
 /* Responsive para tabla consolidado */
@@ -795,12 +884,17 @@ section[aria-labelledby="tabla2-title"] {
   border-bottom: 2px solid rgba(255, 255, 255, 0.25) !important;
 }
 
-/* La primera columna (producto) va alineada a la izquierda */
+/* En el grid la primera columna (producto) va a la izquierda */
 #tablaCotizacion thead th:first-child,
-#tablaCotizacion tbody td:first-child,
-#tablaConsolidado thead th:first-child,
-#tablaConsolidado tbody td:first-child {
+#tablaCotizacion tbody td:first-child {
   text-align: left;
+}
+
+/* El consolidado va centrado por completo */
+#tablaConsolidado thead th,
+#tablaConsolidado tbody td,
+#tablaConsolidado tbody th {
+  text-align: center !important;
 }
 
 /* Fila separadora de producto dentro del grid */
@@ -864,11 +958,34 @@ section[aria-labelledby="tabla2-title"] {
 
 {% block content %}
 <!-- Template version: 2026-10-12-v16 - Fixed SyntaxError: Unexpected end of input, fixed save with direct data-attributes, COP format with $ suffix, added safety checks -->
-{# Macro para formatear COP con $ al final #}
+{# Formato COP: miles con punto, sin decimales si el valor es entero, $ al final #}
 {% macro to_cop_with_suffix(val) %}
-    {% if val is none or val == '' or val == 0 %}—{% else %}
-        ${{ ('%.2f' % (val | float)) | replace('.',',') }}$
-    {% endif %}
+    {%- if val is undefined or val is none or val == '' -%}
+        —
+    {%- else -%}
+        {%- set n = val | float -%}
+        {%- if n == 0 -%}
+            —
+        {%- elif n == (n | round(0)) -%}
+            {{ '{:,.0f}'.format(n) | replace(',', '.') }}$
+        {%- else -%}
+            {{ '{:,.2f}'.format(n) | replace(',', '@') | replace('.', ',') | replace('@', '.') }}$
+        {%- endif -%}
+    {%- endif -%}
+{% endmacro %}
+
+{# Valor inicial de un input de precio: entero si no tiene centavos (10000 → 10000) #}
+{% macro valor_input(val) %}
+    {%- if val is undefined or val is none or val == '' -%}
+    {%- else -%}
+        {%- set n = val | float -%}
+        {%- if n == 0 -%}
+        {%- elif n == (n | round(0)) -%}
+            {{ n | int }}
+        {%- else -%}
+            {{ (n | string) | replace('.', ',') }}
+        {%- endif -%}
+    {%- endif -%}
 {% endmacro %}
 
 <div class="container-fluid mt-4">
@@ -895,9 +1012,6 @@ section[aria-labelledby="tabla2-title"] {
                class="btn btn-outline-primary btn-sm" title="Exportar a Excel (Alt+E)">
                 <i class="fas fa-file-excel me-1"></i> Exportar Excel
             </a>
-            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.toggleColumnas()" title="Mostrar/ocultar columnas (Alt+C)">
-                <i class="fas fa-columns me-1"></i> Columnas
-            </button>
         </div>
     </div>
 
@@ -994,14 +1108,15 @@ section[aria-labelledby="tabla2-title"] {
                     <table class="table table-design table-hover align-middle mb-0{{ ' grid-bloqueada' if cotizacion.estado != 'ACTIVA' else '' }}" id="tablaCotizacion" style="font-size: 0.8rem;">
                     <thead>
                         <tr>
-                            <th style="width: 28%; min-width: 200px; position: sticky; left: 0; z-index: 1;">PRODUCTO</th>
-                            <th style="width: 14%; min-width: 120px; position: sticky; left: 200px; z-index: 1;">PROVEEDOR</th>
-                            <th style="width: 12%; text-align: center;">SEMANA 1</th>
-                            <th style="width: 12%; text-align: center;">SEMANA 2</th>
-                            <th style="width: 12%; text-align: center;">SEMANA 3</th>
-                            <th style="width: 12%; text-align: center;">SEMANA 4</th>
-                            <th style="width: 11%; text-align: center;">PROMEDIO</th>
-                            <th style="width: 11%; text-align: center;">ESTADO</th>
+                            <th style="width: 200px; min-width: 200px;">PRODUCTO</th>
+                            <th style="width: 210px; min-width: 210px; left: 200px;">PROVEEDOR</th>
+                            <th style="text-align: center;">SEMANA 1</th>
+                            <th style="text-align: center;">SEMANA 2</th>
+                            <th style="text-align: center;">SEMANA 3</th>
+                            <th style="text-align: center;">SEMANA 4</th>
+                            <th style="text-align: center; min-width: 110px;">PROMEDIO</th>
+                            <th style="text-align: center; min-width: 165px;">ESTADO</th>
+                            <th class="col-acciones" style="text-align: center; width: 88px; min-width: 88px;">ACCIONES</th>
                         </tr>
                     </thead>
                     <tbody id="tbodyCotizacion">
@@ -1019,18 +1134,8 @@ section[aria-labelledby="tabla2-title"] {
                         {% endfor %}
                         
                         {% for producto, proveedores_data in productos_agrupados.items() %}
-                            {% set mejor_precio = 999999 %}
-                            {% set mejor_proveedor = '' %}
-                            {% for prov, data in proveedores_data.items() %}
-                                {% set prov_promedio = ((data.sum | float) / (data.count | int)) if (data.count | int) > 0 else 0 %}
-                                {% if prov_promedio < mejor_precio %}
-                                    {% set mejor_precio = prov_promedio %}
-                                    {% set mejor_proveedor = prov %}
-                                {% endif %}
-                            {% endfor %}
-                            
                             <tr class="producto-header">
-                                <td class="fw-bold" colspan="8">{{ producto }}</td>
+                                <td class="fw-bold" colspan="9">{{ producto }}</td>
                             </tr>
                             {% for prov, data in proveedores_data.items() %}
                                 {% set precios = data.precios %}
@@ -1044,7 +1149,7 @@ section[aria-labelledby="tabla2-title"] {
                                                {% if cotizacion.estado != 'ACTIVA' %}disabled{% endif %}
                                                step="0.01" min="0" max="9999999999.99"
                                                pattern="^([1-9]\d{0,2}(\.\d{3})*|0)(,\d{1,2})?$"
-                                               value="{{ (precios[1] | float | string) | replace('.', ',') if precios[1] else '' }}"
+                                               value="{{ valor_input(precios.get(1)) }}"
                                                data-producto="{{ producto }}"
                                                data-proveedor="{{ prov }}"
                                                data-semana="1"
@@ -1068,7 +1173,7 @@ section[aria-labelledby="tabla2-title"] {
                                                {% if cotizacion.estado != 'ACTIVA' %}disabled{% endif %}
                                                step="0.01" min="0" max="9999999999.99"
                                                pattern="^([1-9]\d{0,2}(\.\d{3})*|0)(,\d{1,2})?$"
-                                               value="{{ (precios[2] | float | string) | replace('.', ',') if precios[2] else '' }}"
+                                               value="{{ valor_input(precios.get(2)) }}"
                                                data-producto="{{ producto }}"
                                                data-proveedor="{{ prov }}"
                                                data-semana="2"
@@ -1091,7 +1196,7 @@ section[aria-labelledby="tabla2-title"] {
                                                {% if cotizacion.estado != 'ACTIVA' %}disabled{% endif %}
                                                step="0.01" min="0" max="9999999999.99"
                                                pattern="^([1-9]\d{0,2}(\.\d{3})*|0)(,\d{1,2})?$"
-                                               value="{{ (precios[3] | float | string) | replace('.', ',') if precios[3] else '' }}"
+                                               value="{{ valor_input(precios.get(3)) }}"
                                                data-producto="{{ producto }}"
                                                data-proveedor="{{ prov }}"
                                                data-semana="3"
@@ -1114,7 +1219,7 @@ section[aria-labelledby="tabla2-title"] {
                                                {% if cotizacion.estado != 'ACTIVA' %}disabled{% endif %}
                                                step="0.01" min="0" max="9999999999.99"
                                                pattern="^([1-9]\d{0,2}(\.\d{3})*|0)(,\d{1,2})?$"
-                                               value="{{ (precios[4] | float | string) | replace('.', ',') if precios[4] else '' }}"
+                                               value="{{ valor_input(precios.get(4)) }}"
                                                data-producto="{{ producto }}"
                                                data-proveedor="{{ prov }}"
                                                data-semana="4"
@@ -1144,6 +1249,19 @@ section[aria-labelledby="tabla2-title"] {
                                             <span class="semana-badge-container" data-semana="3" style="display: none;"></span>
                                             <span class="semana-badge-container" data-semana="4" style="display: none;"></span>
                                         </div>
+                                    </td>
+                                    <td class="col-acciones text-center">
+                                        {% if cotizacion.estado == 'ACTIVA' %}
+                                        <button type="button"
+                                                class="btn btn-sm btn-outline-danger btn-eliminar-fila"
+                                                title="Eliminar este registro ({{ producto }} · {{ prov }})"
+                                                aria-label="Eliminar registro de {{ producto }} con {{ prov }}"
+                                                onclick='window.eliminarFilaCotizacion(this, {{ data.mp_id }}, {{ data.prov_id }}, {{ producto | tojson }}, {{ prov | tojson }})'>
+                                            <i class="bx bx-trash"></i>
+                                        </button>
+                                        {% else %}
+                                        <i class="fas fa-lock text-muted" title="Cotización cerrada"></i>
+                                        {% endif %}
                                     </td>
                                 </tr>
                             {% endfor %}
@@ -1184,142 +1302,45 @@ section[aria-labelledby="tabla2-title"] {
                         <table class="table table-design table-hover align-middle mb-0" id="tablaConsolidado" style="font-size: 0.8rem;">
                     <thead>
                         <tr>
-                            <th style="width: 35%; min-width: 200px; position: sticky; left: 0; z-index: 1;">PRODUCTO</th>
-                            <th style="width: 20%; min-width: 150px; text-align: center;">MEJOR PROVEEDOR</th>
-                            <th style="width: 13%; text-align: center;">SEMANA 1</th>
-                            <th style="width: 13%; text-align: center;">SEMANA 2</th>
-                            <th style="width: 13%; text-align: center;">SEMANA 3</th>
-                            <th style="width: 13%; text-align: center;">SEMANA 4</th>
-                            <th style="width: 13%; text-align: center;">PROMEDIO (COP)</th>
-                            <th style="width: 10%; text-align: center;">AHORRO vs PROMEDIO</th>
+                            <th style="width: 200px; min-width: 200px;">PRODUCTO</th>
+                            <th style="width: 190px; min-width: 190px;">MEJOR PROVEEDOR</th>
+                            <th>SEMANA 1</th>
+                            <th>SEMANA 2</th>
+                            <th>SEMANA 3</th>
+                            <th>SEMANA 4</th>
+                            <th style="min-width: 128px;">MEJOR SEMANA</th>
                         </tr>
                     </thead>
                     <tbody id="tbodyConsolidado">
-                        {% for producto, proveedores_data in productos_agrupados.items() %}
-                            {% set mejor_precio = 999999999999 %}
-                            {% set mejor_proveedor = '' %}
-                            {% set mejor_precios_semana = {} %}
-                            {% for prov, data in proveedores_data.items() %}
-                                {% set prov_promedio = ((data.sum | float) / (data.count | int)) if (data.count | int) > 0 else 0 %}
-                                {% if prov_promedio < mejor_precio %}
-                                    {% set mejor_precio = prov_promedio %}
-                                    {% set mejor_proveedor = prov %}
-                                {% endif %}
-                            {% endfor %}
-                            
-                            {# Solo renderizar si hay un mejor proveedor válido #}
-                            {% if mejor_proveedor %}
-                                {% set precios_mejor = proveedores_data[mejor_proveedor].precios if mejor_proveedor in proveedores_data else {} %}
-                                {% set promedio_general = ((proveedores_data[mejor_proveedor].sum | float) / (proveedores_data[mejor_proveedor].count | int)) if (proveedores_data[mejor_proveedor].count | int) > 0 else 0 %}
-                                
-                                {# Calcular promedio de todos los proveedores para el ahorro #}
-                                {% set total_suma_todos = 0 %}
-                                {% set total_count_todos = 0 %}
-                                {% for prov, data in proveedores_data.items() %}
-                                    {% set total_suma_todos = total_suma_todos + (data.sum | float) %}
-                                    {% set total_count_todos = total_count_todos + (data.count | int) %}
-                                {% endfor %}
-                                {% set promedio_todos = (total_suma_todos / total_count_todos) if total_count_todos > 0 else 0 %}
-                                {% set ahorro = (promedio_todos - promedio_general) if promedio_general > 0 and promedio_todos > 0 else 0 %}
-                                
-                                {# Extraer precios semanales del mejor proveedor con claves string #}
-                                {% set p1 = precios_mejor.get('1') %}
-                                {% set p2 = precios_mejor.get('2') %}
-                                {% set p3 = precios_mejor.get('3') %}
-                                {% set p4 = precios_mejor.get('4') %}
-                                
-                                <tr class="consolidado-row {% if loop.index0 % 2 == 0 %}even{% else %}odd{% endif %}" data-producto="{{ producto }}">
-                                    <td class="fw-bold" style="position: sticky; left: 0; z-index: 2; background: white;">
-                                        {{ producto }}
-                                    </td>
-                                    <td class="text-center fw-medium text-success" style="position: sticky; left: 200px; z-index: 1; background: white;">
-                                        <i class="fas fa-trophy text-warning me-1"></i>
-                                        {{ mejor_proveedor or '—' }}
-                                    </td>
-                                    <td class="text-center fw-bold text-success">
-                                        {% if p1 %}{{ to_cop_with_suffix(p1 | float) }}{% else %}—{% endif %}
-                                    </td>
-                                    <td class="text-center fw-bold text-success">
-                                        {% if p2 %}{{ to_cop_with_suffix(p2 | float) }}{% else %}—{% endif %}
-                                    </td>
-                                    <td class="text-center fw-bold text-success">
-                                        {% if p3 %}{{ to_cop_with_suffix(p3 | float) }}{% else %}—{% endif %}
-                                    </td>
-                                    <td class="text-center fw-bold text-success">
-                                        {% if p4 %}{{ to_cop_with_suffix(p4 | float) }}{% else %}—{% endif %}
-                                    </td>
-                                    <td class="text-end fw-bold text-primary" style="font-family: 'SF Mono', monospace; font-size: 0.85rem;">
-                                        {% if promedio_general > 0 %}{{ to_cop_with_suffix(promedio_general) }}{% else %}-{% endif %}
-                                    </td>
-                                    <td class="text-center">
-                                        {% if ahorro > 0 %}
-                                            <span class="badge bg-success fw-normal" style="font-size: 0.7rem;">
-                                                <i class="fas fa-arrow-down me-1"></i>
-                                                {{ to_cop_with_suffix(ahorro) }}
-                                            </span>
-                                        {% elif ahorro < 0 %}
-                                            <span class="badge bg-danger fw-normal" style="font-size: 0.7rem;">
-                                                <i class="fas fa-arrow-up me-1"></i>
-                                                {{ to_cop_with_suffix(ahorro * -1) }}
-                                            </span>
-                                        {% else %}
-                                            <span class="text-muted small">—</span>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                            {% endif %}
-                        {% endfor %}
-                        {# Fila de totales #}
-                        {% if productos_agrupados %}
-                        <tr class="table-active fw-bold">
-                            <td>TOTAL GENERAL</td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                            <td class="text-end text-primary">
-                                {% set gran_total_suma = 0 %}
-                                {% set gran_total_count = 0 %}
-                                {% for producto, proveedores_data in productos_agrupados.items() %}
-                                    {% for prov, data in proveedores_data.items() %}
-                                        {% set gran_total_suma = gran_total_suma + (data.sum | float) %}
-                                        {% set gran_total_count = gran_total_count + (data.count | int) %}
-                                    {% endfor %}
-                                {% endfor %}
-                                {% if gran_total_count > 0 %}
-                                    {% if gran_total_count > 0 %}{{ to_cop_with_suffix(gran_total_suma / gran_total_count) }}{% else %}-{% endif %}
-                                {% else %}-{% endif %}
+                        {% for fila in data.consolidado %}
+                        <tr class="consolidado-row" data-producto="{{ fila.producto }}">
+                            <td class="col-center fw-semibold">
+                                {{ fila.producto }}
                             </td>
-                            <td class="text-center">
-                                {% set gran_ahorro = 0 %}
-                                {% for producto, proveedores_data in productos_agrupados.items() %}
-                                    {% set mejor_precio = 999999999999 %}
-                                    {% for prov, data in proveedores_data.items() %}
-                                        {% set prov_promedio = ((data.sum | float) / (data.count | int)) if (data.count | int) > 0 else 0 %}
-                                        {% if prov_promedio < mejor_precio %}
-                                            {% set mejor_precio = prov_promedio %}
-                                        {% endif %}
-                                    {% endfor %}
-                                    {% set total_suma_todos = 0 %}
-                                    {% set total_count_todos = 0 %}
-                                    {% for prov, data in proveedores_data.items() %}
-                                        {% set total_suma_todos = total_suma_todos + (data.sum | float) %}
-                                        {% set total_count_todos = total_count_todos + (data.count | int) %}
-                                    {% endfor %}
-                                    {% set promedio_todos = (total_suma_todos / total_count_todos) if total_count_todos > 0 else 0 %}
-                                    {% if mejor_precio != 999999999999 and promedio_todos > mejor_precio %}
-                                        {% set gran_ahorro = gran_ahorro + ((promedio_todos - mejor_precio) * 4) %}
-                                    {% endif %}
-                                {% endfor %}
-                                {% if gran_ahorro > 0 %}
-                                    <span class="badge bg-success">
-                                        {{ to_cop_with_suffix(gran_ahorro) }}
-                                    </span>
-                                {% else %}—{% endif %}
+                            <td class="col-center">
+                                <span class="d-inline-flex align-items-center gap-1">
+                                    <i class="fas fa-trophy" style="color: var(--warning); font-size: 0.7rem;"></i>
+                                    <span class="fw-semibold mejor-proveedor-nombre" style="color: var(--success);">{{ fila.mejor_proveedor or '—' }}</span>
+                                </span>
+                            </td>
+                            {% for sem in [1, 2, 3, 4] %}
+                            {% set precio_sem = fila.precios.get(sem) %}
+                            {% set es_mejor_semana = precio_sem and fila.mejor_semana == sem %}
+                            <td class="col-center{{ ' precio-mejor-semana' if es_mejor_semana else '' }}" style="color: var(--text-primary); font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace; font-weight: 600; font-variant-numeric: tabular-nums;">
+                                {% if precio_sem %}{{ to_cop_with_suffix(precio_sem) }}{% else %}<span class="text-muted">—</span>{% endif %}
+                            </td>
+                            {% endfor %}
+                            <td class="col-center">
+                                {% if fila.mejor_semana %}
+                                <span class="semana-badge-pill best">
+                                    <i class="fas fa-trophy"></i> MEJOR · SEMANA {{ fila.mejor_semana }}
+                                </span>
+                                {% else %}
+                                <span class="text-muted">—</span>
+                                {% endif %}
                             </td>
                         </tr>
-                        {% endif %}
+                        {% endfor %}
                     </tbody>
                 </table>
             </div>
@@ -1388,17 +1409,18 @@ async function guardarNuevaFila(event) {
         return;
     }
 
-    // Crear items para cada semana que tenga precio (usando querySelector directamente)
+    // Crear items para cada semana que tenga precio (acotado al formulario del modal)
+    const observaciones = form.querySelector('[name="observaciones"]').value || '';
     for (let i = 1; i <= 4; i++) {
-        const input = document.querySelector(`[name="precio_semana_${i}"]`);
+        const input = form.querySelector(`[name="precio_semana_${i}"]`);
         const valor = getValorNumerico(input);
         if (input && valor > 0) {
             items.push({
-                materia_prima_id: parseInt(document.getElementById('selectProducto').value),
-                proveedor_id: parseInt(document.getElementById('selectProveedor').value),
+                materia_prima_id: parseInt(productoId),
+                proveedor_id: parseInt(proveedorId),
                 semana: i,
                 precio: valor,
-                observaciones: document.querySelector('[name="observaciones"]').value || ''
+                observaciones: observaciones
             });
         }
     }
@@ -1408,7 +1430,7 @@ async function guardarNuevaFila(event) {
         return;
     }
 
-    const btn = event.target;
+    const btn = (event && (event.currentTarget || event.target)) || document.querySelector('#modalAgregarFila .modal-footer .btn-primary');
     const originalHtml = btn.innerHTML;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Guardando...';
     btn.disabled = true;
@@ -1427,20 +1449,108 @@ async function guardarNuevaFila(event) {
         const data = await response.json();
 
         if (data.success) {
-            // Recargar la página para ver los cambios
+            // Cerrar el modal y recargar para ver la fila nueva en el grid
+            const modal = bootstrap.Modal.getInstance(document.getElementById('modalAgregarFila'));
+            if (modal) modal.hide();
             window.location.reload();
         } else {
-            alert('Error: ' + (data.msg || 'No se pudo guardar'));
+            alert('No se pudo guardar: ' + (data.msg || 'error desconocido'));
         }
     } catch (err) {
         console.error(err);
         alert('Error de conexión: ' + err.message);
     } finally {
-        btn.innerHTML = '<i class="fas fa-plus me-1"></i> Agregar a la Cotización';
+        // Si falló, el modal queda abierto con los datos para reintentar
+        btn.innerHTML = originalHtml;
         btn.disabled = false;
-        // Cerrar modal
-        const modal = bootstrap.Modal.getInstance(document.getElementById('modalAgregarFila'));
-        if (modal) modal.hide();
+    }
+}
+
+// Eliminar un registro completo (producto + proveedor, todas las semanas) desde el grid
+async function eliminarFilaCotizacion(boton, materiaPrimaId, proveedorId, producto, proveedor) {
+    if (COTIZACION_CERRADA) {
+        alert('La cotización está cerrada. Reábrela para eliminarla.');
+        return;
+    }
+    const escapar = (txt) => String(txt == null ? '' : txt)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+    const detalle = `
+        <div class="text-start">
+            <div class="mb-2">
+                <span class="text-muted d-block" style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.4px;">Producto</span>
+                <span class="fw-semibold">${escapar(producto)}</span>
+            </div>
+            <div class="mb-2">
+                <span class="text-muted d-block" style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.4px;">Proveedor</span>
+                <span class="fw-semibold">${escapar(proveedor)}</span>
+            </div>
+            <div class="alert alert-warning py-2 px-3 mb-0 mt-3" style="font-size: 0.78rem;">
+                <i class="fas fa-triangle-exclamation me-1"></i>
+                Se borrarán los precios de las 4 semanas. Esta acción no se puede deshacer.
+            </div>
+        </div>`;
+
+    let confirmado = false;
+    if (typeof Swal !== 'undefined') {
+        const respuesta = await Swal.fire({
+            title: '¿Eliminar este registro?',
+            html: detalle,
+            icon: 'warning',
+            iconColor: '#dc3545',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d',
+            reverseButtons: true,
+            focusCancel: true,
+            customClass: {
+                container: 'swal-eliminar-backdrop',
+                popup: 'swal-eliminar-popup'
+            }
+        });
+        confirmado = respuesta.isConfirmed;
+    } else {
+        confirmado = confirm(`¿Eliminar el registro de "${producto}" con "${proveedor}"?`);
+    }
+    if (!confirmado) return;
+
+    const items = [1, 2, 3, 4].map(semana => ({
+        materia_prima_id: materiaPrimaId,
+        proveedor_id: proveedorId,
+        semana: semana,
+        precio: 0,
+        observaciones: ''
+    }));
+
+    if (boton) {
+        boton.disabled = true;
+        boton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    }
+
+    try {
+        const response = await fetch('{{ url_for("planta_alimentos.cotizaciones.api_guardar_cotizacion") }}', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cotizacion_id: cotizacionId, items: items })
+        });
+        const data = await response.json();
+        if (data.success) {
+            window.location.reload();
+        } else {
+            alert('No se pudo eliminar: ' + (data.msg || 'error desconocido'));
+        }
+    } catch (err) {
+        console.error(err);
+        alert('Error de conexión: ' + err.message);
+    } finally {
+        if (boton) {
+            boton.disabled = false;
+            boton.innerHTML = '<i class="bx bx-trash"></i>';
+        }
     }
 }
 
@@ -1608,6 +1718,7 @@ function validarInput(input) {
     if (valorSinPeso === '') {
         // Vacío es válido (opcional)
         input.classList.remove('is-invalid');
+        input.setCustomValidity('');
         return true;
     }
     
@@ -1665,6 +1776,16 @@ function getValorNumerico(input) {
     return parseFloat(valor) || 0;
 }
 
+// Formato COP para textos: miles con punto, sin decimales cuando el valor es entero
+function formatearCop(valor) {
+    const num = Number(valor) || 0;
+    const decimales = Math.abs(num - Math.round(num)) > 0.004 ? 2 : 0;
+    return num.toLocaleString('es-CO', {
+        minimumFractionDigits: decimales,
+        maximumFractionDigits: decimales
+    }) + '$';
+}
+
 // Calcular promedio y actualizar MEJOR para una fila
 function calcularFila(input) {
     const row = input.closest('tr.proveedor-row');
@@ -1692,7 +1813,7 @@ function calcularFila(input) {
         if (count > 0) {
             const promedio = suma / count;
             // Formatear en COP completo con separadores colombianos (miles: punto, decimales: coma) y $ al final
-            promedioCell.textContent = promedio.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '$';
+            promedioCell.textContent = formatearCop(promedio);
             promedioCell.dataset.promedio = promedio.toFixed(2);
         } else {
             promedioCell.textContent = '-';
@@ -1702,6 +1823,8 @@ function calcularFila(input) {
     
     // Actualizar MEJOR para todas las filas del mismo producto
     actualizarMejor(producto);
+    // Recalcular la etiqueta de la semana con el mejor precio
+    actualizarResumenProducto(producto);
 }
 
 // Actualizar badges MEJOR para un producto
@@ -1722,6 +1845,12 @@ function actualizarMejor(producto) {
         }
     });
     
+    // Marcar la fila del proveedor con mejor promedio (la usa el filtro "Solo mejor")
+    filas.forEach(fila => {
+        const esMejor = !!mejorProveedor && fila.dataset.proveedor === mejorProveedor;
+        fila.classList.toggle('best-row', esMejor);
+    });
+
     // Actualizar MEJOR consolidado en el header del producto (cotización actual)
     const header = document.querySelector(`tr.producto-header .mejor-consolidado[data-producto="${producto}"]`);
     if (header) {
@@ -1732,7 +1861,7 @@ function actualizarMejor(producto) {
         if (mejorProveedor && mejorPromedio !== Infinity) {
             proveedorSpan.textContent = mejorProveedor;
             proveedorSpan.className = 'mejor-proveedor fw-bold text-success';
-            precioSpan.textContent = '(' + mejorPromedio.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '$)';
+            precioSpan.textContent = '(' + formatearCop(mejorPromedio) + ')';
             precioSpan.className = 'mejor-precio ms-2 text-success';
             actualDiv.style.display = 'block';
         } else {
@@ -1765,7 +1894,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (promedioCell && count > 0) {
             const promedio = suma / count;
             // Formatear en COP completo con separadores colombianos (miles: punto, decimales: coma) y $ al final
-            promedioCell.textContent = promedio.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '$';
+            promedioCell.textContent = formatearCop(promedio);
             promedioCell.dataset.promedio = promedio.toFixed(2);
         }
     });
@@ -1780,7 +1909,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Actualizar resumen global y KPIs
     actualizarResumenRapido();
     
-    // Inicializar badges MEJOR/PEOR por producto
+    // Inicializar la etiqueta MEJOR (semana con el mejor precio) por producto
     const productosInit = new Set();
     document.querySelectorAll('tr.proveedor-row').forEach(fila => {
         productosInit.add(fila.dataset.producto);
@@ -1807,6 +1936,7 @@ document.addEventListener('DOMContentLoaded', function() {
             iconCollapse.classList.add('fa-chevron-down');
         });
     }
+});
 // Estado global de la tabla
 let tablaState = {
     hasUnsavedChanges: false,
@@ -1935,12 +2065,48 @@ function actualizarResumenRapido() {
     
     }
 
-// Actualizar resumen por producto (badges mejor/peor semana)
+// Actualizar resumen por producto: una sola etiqueta con la semana del mejor precio
 function actualizarResumenProducto(producto) {
     const filas = document.querySelectorAll(`tr.proveedor-row[data-producto="${producto}"]:not([style*="display: none"])`);
     if (filas.length === 0) return;
-    
-    // Por cada semana, encontrar mejor y peor
+
+    // Limpiar etiquetas de todas las filas del producto (también las ocultas)
+    document.querySelectorAll(`tr.proveedor-row[data-producto="${producto}"] .semana-badge-container`).forEach(c => {
+        c.innerHTML = '';
+        c.classList.remove('visible');
+        c.style.display = 'none';
+    });
+
+    // Semana con el mejor precio del producto (el menor entre proveedores y semanas)
+    let mejorGlobal = Infinity;
+    let filaGanadora = null;
+    let semanaGanadora = null;
+    filas.forEach(fila => {
+        for (let s = 1; s <= 4; s++) {
+            const inp = fila.querySelector(`.precio-input[data-semana="${s}"]`);
+            if (!inp) continue;
+            const v = getValorNumerico(inp);
+            if (v > 0 && v < mejorGlobal) {
+                mejorGlobal = v;
+                filaGanadora = fila;
+                semanaGanadora = s;
+            }
+        }
+    });
+
+    if (filaGanadora && semanaGanadora) {
+        const cont = filaGanadora.querySelector(`.semana-badge-container[data-semana="${semanaGanadora}"]`);
+        if (cont) {
+            cont.innerHTML = `
+                <span class="semana-badge-pill best" title="Mejor precio del producto: semana ${semanaGanadora} con ${filaGanadora.dataset.proveedor}">
+                    <i class="fas fa-trophy"></i> MEJOR · SEMANA ${semanaGanadora}
+                </span>`;
+            cont.classList.add('visible');
+            cont.style.display = 'inline-block';
+        }
+    }
+
+    // Por cada semana, encontrar mejor y peor (solo para el resaltado de celdas)
     for (let semana = 1; semana <= 4; semana++) {
         let mejorValor = Infinity;
         let peorValor = -Infinity;
@@ -1960,46 +2126,6 @@ function actualizarResumenProducto(producto) {
                         peorValor = val;
                         peorProveedor = fila.dataset.proveedor;
                     }
-                }
-            }
-        });
-        
-        // Actualizar badges en estado column de la tabla principal
-        filas.forEach(fila => {
-            const container = fila.querySelector(`.semana-badge-container[data-semana="${semana}"]`);
-            if (!container) return;
-            
-            const input = fila.querySelector(`.precio-input[data-semana="${semana}"]`);
-            const val = getValorNumerico(input);
-            
-            // Limpiar badges anteriores
-            container.innerHTML = '';
-            container.classList.remove('visible');
-            container.style.display = 'none';
-            
-            if (val > 0) {
-                let badgeHtml = '';
-                const isMejor = (mejorValor !== Infinity && val === mejorValor);
-                const isPeor = (peorValor !== -Infinity && val === peorValor && peorValor !== mejorValor);
-                
-                if (isMejor) {
-                    badgeHtml = `
-                        <span class="semana-badge-pill best">
-                            <span class="semana-num">S${semana}</span>
-                            <i class="fas fa-trophy"></i> MEJOR
-                        </span>`;
-                } else if (isPeor) {
-                    badgeHtml = `
-                        <span class="semana-badge-pill worst">
-                            <span class="semana-num">S${semana}</span>
-                            <i class="fas fa-arrow-up"></i> PEOR
-                        </span>`;
-                }
-                
-                if (badgeHtml) {
-                    container.innerHTML = badgeHtml;
-                    container.classList.add('visible');
-                    container.style.display = 'inline-block';
                 }
             }
         });
@@ -2038,7 +2164,6 @@ function resaltarSemana(input, semana) {
             const semanaHeader = idx - 1;
             if (semanaHeader === semana) {
                 th.classList.add('semana-col-resaltada');
-                th.style.background = 'linear-gradient(180deg, #e7f1ff 0%, #d0e7ff 100%)';
             }
         }
     });
@@ -2060,7 +2185,6 @@ function quitarResalteSemana(semana) {
     headers.forEach((th, idx) => {
         if (idx >= 2 && idx <= 5) {
             th.classList.remove('semana-col-resaltada');
-            th.style.background = '';
         }
     });
     
@@ -2133,13 +2257,6 @@ function navegarTabla(event, input) {
             }
             break;
     }
-}
-
-// Toggle columnas
-function toggleColumnas() {
-    const cols = ['SEMANA 1', 'SEMANA 2', 'SEMANA 3', 'SEMANA 4', 'PROMEDIO', 'MEJOR'];
-    // Simple toggle - could be enhanced with a dropdown menu
-    alert('Función de toggle de columnas - usar menú contextual en headers');
 }
 
 // Filtros de tabla
@@ -2254,37 +2371,31 @@ function exportarConsolidadoExcel() {
         { wch: 15 }, // SEMANA 2
         { wch: 15 }, // SEMANA 3
         { wch: 15 }, // SEMANA 4
-        { wch: 18 }, // PROMEDIO
-        { wch: 20 }  // AHORRO
+        { wch: 18 }  // MEJOR SEMANA
     ];
     ws['!cols'] = cols;
     
-    // Estilo header
+    // Estilo header (mismo encabezado oscuro del design system)
     const range = XLSX.utils.decode_range(ws['!ref']);
     for (let C = range.s.c; C <= range.e.c; ++C) {
         const cellRef = XLSX.utils.encode_cell({ r: 0, c: C });
         if (ws[cellRef]) {
             ws[cellRef].s = {
                 font: { bold: true, color: { rgb: 'FFFFFF' } },
-                fill: { fgColor: { rgb: 'FFC107' } },
+                fill: { fgColor: { rgb: '1A202C' } },
                 alignment: { horizontal: 'center', vertical: 'center' },
                 border: { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } }
             };
         }
     }
     
-    // Formato número para columnas de precio
+    // Formato número para columnas de precio (SEMANA 1 a SEMANA 4)
     for (let R = 1; R <= range.e.r; ++R) {
-        for (let C = 2; C <= 7; ++C) { // Columnas de precios (índice 2-7)
+        for (let C = 2; C <= 5; ++C) {
             const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
             if (ws[cellRef] && ws[cellRef].v) {
                 ws[cellRef].z = '#,##0.00';
             }
-        }
-        // Formato ahorro
-        const ahorroRef = XLSX.utils.encode_cell({ r: R, c: 7 });
-        if (ws[ahorroRef] && ws[ahorroRef].v) {
-            ws[ahorroRef].z = '#,##0.00';
         }
     }
     
@@ -2341,6 +2452,7 @@ void 0;
 
 // Explicitly attach all functions to window to ensure global availability
 window.formatearNumero = formatearNumero;
+window.formatearCop = formatearCop;
 window.getValorNumerico = getValorNumerico;
 window.calcularFila = calcularFila;
 window.actualizarMejor = actualizarMejor;
@@ -2352,64 +2464,13 @@ window.actualizarResumenProducto = actualizarResumenProducto;
 window.resaltarSemana = resaltarSemana;
 window.quitarResalteSemana = quitarResalteSemana;
 window.navegarTabla = navegarTabla;
-window.toggleColumnas = toggleColumnas;
 window.filtrarTabla = filtrarTabla;
 window.exportarConsolidadoExcel = exportarConsolidadoExcel;
 window.mostrarToast = mostrarToast;
 window.guardarNuevaFila = guardarNuevaFila;
+window.eliminarFilaCotizacion = eliminarFilaCotizacion;
 window.guardarTodo = guardarTodo;
-window.toggleColumnas = toggleColumnas;
 window.getIdsFromNames = getIdsFromNames;
-window.actualizarContadorOtras = actualizarContadorOtras;
-
-// Verify all functions are defined
-console.log('[cotizaciones_detalle] Functions loaded:', {
-    formatearNumero: typeof formatearNumero,
-    getValorNumerico: typeof getValorNumerico,
-    calcularFila: typeof calcularFila,
-    actualizarMejor: typeof actualizarMejor,
-    marcarCambio: typeof marcarCambio,
-    actualizarResumenRapido: typeof actualizarResumenRapido,
-    actualizarResumenProducto: typeof actualizarResumenProducto,
-    resaltarSemana: typeof resaltarSemana,
-    quitarResalteSemana: typeof quitarResalteSemana,
-    navegarTabla: typeof navegarTabla,
-    toggleColumnas: typeof toggleColumnas,
-    filtrarTabla: typeof filtrarTabla,
-    exportarConsolidadoExcel: typeof exportarConsolidadoExcel,
-    mostrarToast: typeof mostrarToast,
-    guardarNuevaFila: typeof guardarNuevaFila,
-    guardarTodo: typeof guardarTodo,
-    actualizarContadorOtras: typeof actualizarContadorOtras,
-    getIdsFromNames: typeof getIdsFromNames,
-    toggleColumnas: typeof toggleColumnas,
-    filtrarTabla: typeof filtrarTabla,
-    actualizarContadorOtras: typeof actualizarContadorOtras,
-});
-
-// Force parser completion - prevents "Unexpected end of input" in some browsers
-void 0;
-
-// Safety check: verify all critical functions are defined
-(function() {
-    const requiredFunctions = [
-        'formatearNumero', 'getValorNumerico', 'calcularFila', 'actualizarMejor',
-        'marcarCambio', 'actualizarResumenRapido', 'actualizarResumenProducto',
-        'resaltarSemana', 'quitarResalteSemana', 'navegarTabla', 'toggleColumnas',
-        'filtrarTabla', 'exportarConsolidadoExcel', 'mostrarToast',
-        'guardarNuevaFila', 'guardarTodo', 'actualizarContadorOtras', 'getIdsFromNames'
-    ];
-    
-    const missing = requiredFunctions.filter(fn => typeof window[fn] !== 'function');
-    if (missing.length > 0) {
-        console.error('[cotizaciones_detalle] Missing functions:', missing);
-    } else {
-        console.log('[cotizaciones_detalle] All functions loaded successfully');
-    }
-})();
-
-// Force parser completion - prevents "Unexpected end of input" in some browsers
-void 0;
 </script>
 
 <!-- Modal Agregar Fila -->
@@ -2421,10 +2482,10 @@ void 0;
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
             <div class="modal-body">
-                <form id="formAgregarFila">
+                <form id="formAgregarFila" novalidate>
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label fw-bold">Materia Prima <span class="text-danger">*</span></label>
+                            <label class="form-label-design" for="selectProducto">Materia prima <span class="text-danger">*</span></label>
                             <select class="form-select form-select-sm" id="selectProducto" name="materia_prima_id" required>
                                 <option value="" disabled selected>Seleccionar materia prima...</option>
                                 {% for mp in data.productos %}
@@ -2433,7 +2494,7 @@ void 0;
                             </select>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-bold">Proveedor <span class="text-danger">*</span></label>
+                            <label class="form-label-design" for="selectProveedor">Proveedor <span class="text-danger">*</span></label>
                             <select class="form-select form-select-sm" id="selectProveedor" name="proveedor_id" required>
                                 <option value="" disabled selected>Seleccionar proveedor...</option>
                                 {% for p in data.proveedores %}
@@ -2443,28 +2504,33 @@ void 0;
                         </div>
                     </div>
                     <hr class="my-3">
-                    <h6 class="fw-bold text-primary">Precios por Semana (COP)</h6>
+                    <div class="d-flex justify-content-between align-items-baseline flex-wrap gap-2 mb-2">
+                        <h6 class="fw-bold mb-0" style="color: var(--action-primary); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.4px;">
+                            Precios por semana (COP)
+                        </h6>
+                        <span class="form-text-muted">Formato: 1.000.000,00 · deja vacías las semanas sin precio</span>
+                    </div>
                     <div class="row g-3">
-                        <div class="col-md-3">
-                            <label class="form-label fw-bold small">Semana 1</label>
-                            <input type="text" class="form-control form-control-sm text-end precio-input" name="precio_semana_1" step="0.01" min="0" max="9999999999.99" pattern="^([1-9]\d{0,2}(\.\d{3})*|0)(,\d{1,2})?$" placeholder="$ 0,00" title="Formato: 1.000.000,00" oninput="window.formatearNumero(this); window.validarInput(this);">
+                        <div class="col-6 col-md-3">
+                            <label class="form-label-design" for="precio_semana_1">Semana 1</label>
+                            <input type="text" inputmode="decimal" autocomplete="off" class="form-control form-control-sm text-end precio-input" id="precio_semana_1" name="precio_semana_1" placeholder="$ 0,00" title="Formato: 1.000.000,00" oninput="window.formatearNumero(this); window.validarInput(this);">
                         </div>
-                        <div class="col-md-3">
-                            <label class="form-label fw-bold small">Semana 2</label>
-                            <input type="text" class="form-control form-control-sm text-end precio-input" name="precio_semana_2" step="0.01" min="0" max="9999999999.99" pattern="^([1-9]\d{0,2}(\.\d{3})*|0)(,\d{1,2})?$" placeholder="$ 0,00" title="Formato: 1.000.000,00" oninput="window.formatearNumero(this); window.validarInput(this);">
+                        <div class="col-6 col-md-3">
+                            <label class="form-label-design" for="precio_semana_2">Semana 2</label>
+                            <input type="text" inputmode="decimal" autocomplete="off" class="form-control form-control-sm text-end precio-input" id="precio_semana_2" name="precio_semana_2" placeholder="$ 0,00" title="Formato: 1.000.000,00" oninput="window.formatearNumero(this); window.validarInput(this);">
                         </div>
-                        <div class="col-md-3">
-                            <label class="form-label fw-bold small">Semana 3</label>
-                            <input type="text" class="form-control form-control-sm text-end precio-input" name="precio_semana_3" step="0.01" min="0" max="9999999999.99" pattern="^([1-9]\d{0,2}(\.\d{3})*|0)(,\d{1,2})?$" placeholder="$ 0,00" title="Formato: 1.000.000,00" oninput="window.formatearNumero(this); window.validarInput(this);">
+                        <div class="col-6 col-md-3">
+                            <label class="form-label-design" for="precio_semana_3">Semana 3</label>
+                            <input type="text" inputmode="decimal" autocomplete="off" class="form-control form-control-sm text-end precio-input" id="precio_semana_3" name="precio_semana_3" placeholder="$ 0,00" title="Formato: 1.000.000,00" oninput="window.formatearNumero(this); window.validarInput(this);">
                         </div>
-                        <div class="col-md-3">
-                            <label class="form-label fw-bold small">Semana 4</label>
-                            <input type="text" class="form-control form-control-sm text-end precio-input" name="precio_semana_4" step="0.01" min="0" max="9999999999.99" pattern="^([1-9]\d{0,2}(\.\d{3})*|0)(,\d{1,2})?$" placeholder="$ 0,00" title="Formato: 1.000.000,00" oninput="window.formatearNumero(this); window.validarInput(this);">
+                        <div class="col-6 col-md-3">
+                            <label class="form-label-design" for="precio_semana_4">Semana 4</label>
+                            <input type="text" inputmode="decimal" autocomplete="off" class="form-control form-control-sm text-end precio-input" id="precio_semana_4" name="precio_semana_4" placeholder="$ 0,00" title="Formato: 1.000.000,00" oninput="window.formatearNumero(this); window.validarInput(this);">
                         </div>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold small">Observaciones</label>
-                        <textarea class="form-control form-control-sm" name="observaciones" rows="2" placeholder="Observaciones opcionales..."></textarea>
+                    <div class="mt-3">
+                        <label class="form-label-design" for="obsNuevaFila">Observaciones</label>
+                        <textarea class="form-control form-control-sm" id="obsNuevaFila" name="observaciones" rows="2" placeholder="Observaciones opcionales..."></textarea>
                     </div>
                 </form>
             </div>

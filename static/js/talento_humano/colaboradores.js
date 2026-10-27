@@ -170,6 +170,8 @@ function aplicarFiltrosUrl() {
 function abrirModalNuevo() {
     resetFormulario();
     aplicarCatalogosPorDefecto();
+    const cont = document.getElementById('entregasSST');
+    if (cont) cont.innerHTML = '<div class="text-muted small">Se cargará al editar el colaborador.</div>';
     document.getElementById('modalColaboradorTitulo').innerHTML = "<i class='bx bx-user-plus me-2'></i>Registrar Colaborador";
     document.getElementById('btnGuardarTexto').textContent = "Guardar Colaborador";
     const form = document.getElementById('formColaborador');
@@ -210,12 +212,92 @@ function abrirModalEditar(id) {
             colaboradorActualId = data.colaborador.id;
             activarTabColaborador('tabDatos');
             cargarPestanasAuxiliares();
+            cargarEntregasEPP(id);
 
             modalColaboradorUI.show();
         })
         .catch(err => {
             console.error(err);
             Swal.fire('Error', 'No se pudo cargar la información del colaborador', 'error');
+        });
+}
+
+// ============================================================
+// ENTREGAS EPP (CONSULTA BASE MASTER_SST - SOLO LECTURA)
+// ============================================================
+function iconoEPP(nombre) {
+    const n = (nombre || '').toLowerCase();
+    const mapa = [
+        ['casco', 'fa-solid fa-helmet-safety'],
+        ['tapaboca', 'fa-solid fa-head-side-mask'], ['cofia', 'fa-solid fa-head-side-mask'],
+        ['mascarilla', 'fa-solid fa-head-side-mask'], ['mascara', 'fa-solid fa-head-side-mask'],
+        ['respirador', 'fa-solid fa-head-side-mask'], ['careta', 'fa-solid fa-head-side-mask'],
+        ['guante', 'fa-solid fa-hand'],
+        ['gafa', 'fa-solid fa-glasses'], ['lente', 'fa-solid fa-glasses'], ['visual', 'fa-solid fa-glasses'],
+        ['audit', 'fa-solid fa-headphones'], ['oido', 'fa-solid fa-headphones'],
+        ['orejera', 'fa-solid fa-headphones'], ['ruido', 'fa-solid fa-headphones'],
+        ['bot', 'fa-solid fa-shoe-prints'], ['zapato', 'fa-solid fa-shoe-prints'],
+        ['calzado', 'fa-solid fa-shoe-prints'], ['dielectric', 'fa-solid fa-shoe-prints'],
+        ['chaleco', 'fa-solid fa-vest'], ['reflect', 'fa-solid fa-vest'],
+        ['overol', 'fa-solid fa-shirt'], ['pantal', 'fa-solid fa-shirt'], ['camis', 'fa-solid fa-shirt'],
+        ['uniforme', 'fa-solid fa-shirt'], ['ropa', 'fa-solid fa-shirt'], ['delantal', 'fa-solid fa-shirt'],
+        ['arnes', 'fa-solid fa-shield-halved'], ['eslinga', 'fa-solid fa-shield-halved'], ['anclaje', 'fa-solid fa-shield-halved'],
+        ['filtro', 'fa-solid fa-wind'],
+    ];
+    for (const [kw, icono] of mapa) {
+        if (n.includes(kw)) return icono;
+    }
+    return 'fa-solid fa-box-open';
+}
+
+function cargarEntregasEPP(id) {
+    const contenedor = document.getElementById('entregasSST');
+    if (!contenedor) return;
+    contenedor.innerHTML = '<div class="text-muted small"><span class="spinner-border spinner-border-sm me-1"></span>Cargando entregas…</div>';
+
+    fetch(`/talento_humano/api/colaboradores/${id}/epp`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.status !== 'ok') {
+                contenedor.innerHTML = '<div class="text-muted small">' + (data.msg || 'Sin información SST') + '</div>';
+                return;
+            }
+            const entregas = data.entregas || [];
+            if (!entregas.length) {
+                contenedor.innerHTML = '<div class="text-muted small">Sin entregas EPP en la base SST.</div>';
+                return;
+            }
+
+            // Agrupar por elemento (nombre) preservando el orden alfabético
+            const grupos = {};
+            entregas.forEach(e => {
+                const nombre = e.nombre_elemento_epp || e.elemento_epp || 'Otros';
+                if (!grupos[nombre]) grupos[nombre] = { nombre, entregas: [] };
+                grupos[nombre].entregas.push(e);
+            });
+            const nombres = Object.keys(grupos).sort((a, b) => a.localeCompare(b));
+
+            let html = '';
+            nombres.forEach(nombre => {
+                const g = grupos[nombre];
+                html += `<details class="epp-grupo">`;
+                html += `<summary><i class="${iconoEPP(nombre)}"></i><span>${nombre}</span>`;
+                html += `<span class="epp-grupo-count">${g.entregas.length} entrega${g.entregas.length !== 1 ? 's' : ''}</span>`;
+                html += `<i class='bx bx-chevron-down chev'></i></summary>`;
+                html += `<div class="epp-grupo-body"><table class="table table-sm table-striped align-middle mb-0">`;
+                html += '<thead><tr><th>Fecha</th><th class="text-center">Cant.</th><th>Área</th></tr></thead><tbody>';
+                g.entregas.forEach(e => {
+                    const fecha = (e.fecha || '') + (e.hora ? ' ' + e.hora.slice(0, 5) : '');
+                    const cant = (e.cantidad !== null && e.cantidad !== undefined) ? e.cantidad : '—';
+                    const area = e.area || '—';
+                    html += `<tr><td class="text-nowrap small">${fecha || '—'}</td><td class="text-center small">${cant}</td><td class="small">${area}</td></tr>`;
+                });
+                html += '</tbody></table></div></details>';
+            });
+            contenedor.innerHTML = html;
+        })
+        .catch(() => {
+            contenedor.innerHTML = '<div class="text-muted small">No se pudo consultar la base SST.</div>';
         });
 }
 
