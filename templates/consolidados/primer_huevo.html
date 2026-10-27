@@ -3,11 +3,17 @@
 {% block content %}
 <style>
   .tabla-compacta th, .tabla-compacta td {
-    padding: 2px 4px;
-    font-size: 0.72rem;
+    width: 60px;
+    min-width: 60px;
+    max-width: 60px;
+    padding: 1px 2px;
+    font-size: 0.62rem;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
-  .tabla-compacta td.num { text-align: right; }
+  .tabla-compacta { width: max-content; }
+  .tabla-compacta th, .tabla-compacta td { text-align: center; }
   .tabla-compacta thead th {
     position: sticky;
     top: 0;
@@ -20,18 +26,26 @@
     left: 0;
     z-index: 10;
     background-color: #f8f9fa;
-    min-width: 70px;
+    width: 58px;
+    min-width: 58px;
+    max-width: 58px;
+    text-align: center;
   }
   .tabla-compacta .col-dia {
     position: sticky;
-    left: 70px;
+    left: 58px;
     z-index: 10;
     background-color: #f8f9fa;
-    min-width: 60px;
+    width: 46px;
+    min-width: 46px;
+    max-width: 46px;
+    text-align: center;
   }
   .tabla-compacta thead .col-semana,
+  .tabla-compacta thead .col-dia { white-space: nowrap; overflow: visible; text-overflow: clip; font-size: 0.58rem; }
+  .tabla-compacta thead .col-semana,
   .tabla-compacta thead .col-dia { z-index: 30; }
-  .tabla-compacta .col-lote { min-width: 95px; }
+  .tabla-compacta .col-lote { width: 60px; min-width: 60px; max-width: 60px; }
   .tabla-compacta th.lote-lohmann { background-color: #ED7D31 !important; color: #fff; }
   .tabla-compacta th.lote-hyline { background-color: #4472C4 !important; color: #fff; }
   .celda-cerca-1pct { background-color: #FFF200 !important; color: #000; font-weight: 700; }

@@ -1,0 +1,76 @@
+/* Tablas matriciales de Consolidados: celdas ajustadas al contenido */
+.contenedor-matriz { overflow-x: auto; overflow-y: auto; max-height: 80vh; min-width: 0; width: 100%; }
+
+.tabla-compacta { width: max-content; }
+.tabla-compacta th,
+.tabla-compacta td {
+  width: 60px;
+  min-width: 60px;
+  max-width: 60px;
+  padding: 1px 2px;
+  font-size: 0.62rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tabla-compacta th,
+.tabla-compacta td { text-align: center; }
+
+.tabla-compacta thead th {
+  background-color: #212529;
+  color: #fff;
+}
+
+.tabla-compacta .col-semana {
+  position: sticky;
+  left: 0;
+  z-index: 10;
+  background-color: #f8f9fa;
+  width: 58px;
+  min-width: 58px;
+  max-width: 58px;
+  padding: 1px 2px;
+  text-align: center;
+}
+.tabla-compacta .col-prom {
+  position: sticky;
+  left: 58px;
+  z-index: 10;
+  background-color: #f8f9fa;
+  width: 46px;
+  min-width: 46px;
+  max-width: 46px;
+  padding: 1px 2px;
+  text-align: center;
+  font-weight: 700;
+}
+.tabla-compacta .col-tabla {
+  position: sticky;
+  left: 104px;
+  z-index: 10;
+  background-color: #f8f9fa;
+  width: 46px;
+  min-width: 46px;
+  max-width: 46px;
+  padding: 1px 2px;
+  text-align: center;
+  font-weight: 700;
+}
+.tabla-compacta thead .col-semana,
+.tabla-compacta thead .col-prom,
+.tabla-compacta thead .col-tabla {
+  z-index: 30;
+  background-color: #212529;
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.58rem;
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
+}
+.tabla-compacta thead th.col-excluida { background-color: #6c757d !important; }
+
+/* Resaltado de fila y columna con el mouse (lo activa consolidados_tabla.js) */
+.tabla-compacta tbody td.hover-fila,
+.tabla-compacta tbody td.hover-columna { background-color: rgba(180, 180, 180, 0.5) !important; }

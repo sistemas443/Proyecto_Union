@@ -1,40 +1,11 @@
 {% extends 'generales/layout.html' %}
 {% block title %}Datos de Levante – Avícola San Martín{% endblock %}
 {% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/consolidados.css') }}">
 <style>
-  .tabla-compacta th, .tabla-compacta td {
-    padding: 2px 4px;
-    font-size: 0.72rem;
-    white-space: nowrap;
-  }
-  .tabla-compacta td.num { text-align: right; }
-  .tabla-compacta thead th {
-    position: sticky;
-    top: 0;
-    z-index: 20;
-    background-color: #212529;
-    color: #fff;
-  }
-  .tabla-compacta .col-fija {
-    position: sticky;
-    left: 0;
-    z-index: 10;
-    background-color: #f8f9fa;
-    min-width: 70px;
-  }
-  .tabla-compacta thead .col-fija {
-    z-index: 30;
-    background-color: #212529;
-    color: #fff;
-    font-weight: 700;
-  }
-  .tabla-compacta .col-lote { min-width: 110px; }
-  .tabla-compacta thead th.col-excluida { background-color: #6c757d !important; }
-  .tabla-compacta { width: 100%; }
-  .contenedor-matriz { overflow: auto; max-height: 80vh; }
-  .nav-pills .nav-link { color: #212529; font-weight: 700; }
-  .nav-pills .nav-link.active { background-color: #97271C; color: #fff; }
-  .chk-lote { margin-right: 8px; }
+  .nav-pills .nav-link {color: #212529; font-weight: 700; }
+  .nav-pills .nav-link.active {background-color: #97271C; color: #fff; }
+  .chk-lote {margin-right: 8px; }
 </style>
 <div class="container-fluid px-4 py-3 h-100 d-flex flex-column">
   <div class="d-flex flex-wrap align-items-center mb-3 px-3 py-2 rounded shadow-sm" style="background-color: #212529;">
@@ -182,4 +153,5 @@
     }
   });
 </script>
+<script src="{{ url_for('static', filename='js/consolidados_tabla.js') }}"></script>
 {% endblock %}

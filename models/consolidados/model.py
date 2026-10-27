@@ -350,20 +350,20 @@ def fetch_haa() -> list:
 
 
 def fetch_gramos_aves() -> list:
-    """Devuelve sem_prod, lote, gr_ave_dia_graf y metadata de cabecera."""
+    """Devuelve sem_prod, lote, kg_sem, saldo_ave y metadata de cabecera."""
     conn = get_db_connection()
     cur = conn.cursor()
     try:
         cur.execute("""
-            SELECT b.sem_prod, b.lote, b.gr_ave_dia_graf,
+            SELECT b.sem_prod, b.lote, b.kg_sem, b.saldo_ave,
                    c.fecha_recepcion, c.no_pollitas_recibidas
             FROM bd_vargas b
             LEFT JOIN cabecera_lotes c ON c.id = b.id_lote
             ORDER BY b.sem_prod, b.lote
         """)
         return [
-            {'sem_prod': r[0], 'lote': r[1], 'gr_ave_dia_graf': r[2],
-             'fecha_recepcion': r[3], 'aves_enc': r[4]}
+            {'sem_prod': r[0], 'lote': r[1], 'kg_sem': r[2], 'saldo_ave': r[3],
+             'fecha_recepcion': r[4], 'aves_enc': r[5]}
             for r in cur.fetchall()
         ]
     finally:

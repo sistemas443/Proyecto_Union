@@ -625,9 +625,20 @@ def get_haa_detalle() -> dict:
     }
 
 
-def get_gramos_aves_detalle() -> dict:
-    """Arma la matriz Semana x Lote de gramos/ave/dia (gr_ave_dia_graf).
+def _gramos_ave_dia(kg_sem, saldo_ave):
+    """Gramos por ave por dia: (kg_sem / 7) / saldo_ave * 1000, a 1 decimal. None si no se puede calcular."""
+    kg = _a_num(kg_sem)
+    saldo = _a_num(saldo_ave)
+    if kg is None or not saldo:
+        return None
+    return round((kg / 7.0) / saldo * 1000.0, 1)
 
+
+def get_gramos_aves_detalle() -> dict:
+    """Arma la matriz Semana x Lote de gramos/ave/dia.
+
+    Celda = (kg_sem / 7) / saldo_ave * 1000 (misma formula de la hoja H13 del Excel).
+    Si falta kg_sem o saldo_ave, o el saldo es 0, la celda queda vacia.
     PROM = promedio aritmetico de incluidos (calculado por JS).
     TABLA = guia estatica externa.
     """
@@ -650,7 +661,7 @@ def get_gramos_aves_detalle() -> dict:
     for f in filas:
         if f['sem_prod'] is None or not f['lote']:
             continue
-        matriz[f['sem_prod']][f['lote']] = _a_num(f['gr_ave_dia_graf'])
+        matriz[f['sem_prod']][f['lote']] = _gramos_ave_dia(f['kg_sem'], f['saldo_ave'])
 
     return {
         'lotes': [meta[l] for l in lotes],

@@ -316,7 +316,8 @@ def procesar_excel_diario(archivo, lote_nombre):
     try:
         # 1. Obtener ID del lote
         lote_variante = f"LOTE {lote_nombre}" if not lote_nombre.upper().startswith("LOTE") else lote_nombre.replace("LOTE ", "")
-        cur.execute("SELECT id FROM cabecera_lotes WHERE lote = %s OR lote = %s", (lote_nombre, lote_variante))
+        # Bloquea el lote para que dos cargas del mismo lote se hagan una después de otra
+        cur.execute("SELECT id FROM cabecera_lotes WHERE lote = %s OR lote = %s FOR UPDATE", (lote_nombre, lote_variante))
         lote_row = cur.fetchone()
         
         if not lote_row:
@@ -339,11 +340,9 @@ def procesar_excel_diario(archivo, lote_nombre):
 
         # 3. Preparar los datos
         valores_a_insertar = []
-        fechas_a_cargar = [] 
 
         for index, fila in df.iterrows():
             fecha_str = str(fila[0].date()) if hasattr(fila[0], 'date') else str(fila[0])
-            fechas_a_cargar.append(fecha_str)
             
             # --- CÁLCULO PERFECTO DE LA SEMANA ---
             dias_valor = fila[1]
@@ -376,12 +375,8 @@ def procesar_excel_diario(archivo, lote_nombre):
         if not valores_a_insertar:
             return False, "El archivo está vacío o no tiene datos válidos."
 
-        # Prevención de duplicados usando el ID real para evitar fallos por texto
-        if fechas_a_cargar:
-            cur.execute(
-                "DELETE FROM data_diario WHERE id_lote = %s AND fecha_dia = ANY(%s)", 
-                (id_lote, fechas_a_cargar)
-            )
+        # Barrido: se borran TODOS los registros previos del lote antes de insertar el archivo
+        cur.execute("DELETE FROM data_diario WHERE id_lote = %s", (id_lote,))
 
         # 4. Inserción Masiva
         query_insert = """

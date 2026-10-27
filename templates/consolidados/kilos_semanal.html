@@ -1,56 +1,7 @@
 {% extends 'generales/layout.html' %}
 {% block title %}Kilos Semanal – Avícola San Martín{% endblock %}
 {% block content %}
-<style>
-  .tabla-compacta th, .tabla-compacta td {
-    padding: 2px 4px;
-    font-size: 0.72rem;
-    white-space: nowrap;
-  }
-  .tabla-compacta td.num { text-align: right; }
-  .tabla-compacta thead tr:nth-child(1) th { position: sticky; top: 0; z-index: 20; }
-  .tabla-compacta thead tr:nth-child(2) th { position: sticky; top: 26px; z-index: 20; }
-  .tabla-compacta thead tr:nth-child(3) th { position: sticky; top: 52px; z-index: 20; }
-  .tabla-compacta thead th {
-    background-color: #212529;
-    color: #fff;
-  }
-  .tabla-compacta .col-semana {
-    position: sticky;
-    left: 0;
-    z-index: 10;
-    background-color: #f8f9fa;
-    min-width: 70px;
-  }
-  .tabla-compacta .col-total {
-    position: sticky;
-    left: 70px;
-    z-index: 10;
-    background-color: #f8f9fa;
-    min-width: 90px;
-    font-weight: 700;
-  }
-  .tabla-compacta thead .col-semana,
-  .tabla-compacta thead .col-total,
-  .tabla-compacta thead .col-nro {
-    z-index: 30;
-    background-color: #212529;
-    color: #fff;
-    font-weight: 700;
-  }
-  .tabla-compacta .col-nro {
-    position: sticky;
-    left: 160px;
-    z-index: 10;
-    background-color: #f8f9fa;
-    min-width: 60px;
-    font-weight: 700;
-  }
-  .tabla-compacta .col-lote { min-width: 110px; }
-  .tabla-compacta thead th.col-excluida { background-color: #6c757d !important; }
-  .tabla-compacta { width: 100%; }
-  .contenedor-matriz { overflow: auto; max-height: 80vh; }
-</style>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/consolidados.css') }}">
 <div class="container-fluid px-4 py-3 h-100 d-flex flex-column">
   <div class="d-flex flex-wrap align-items-center mb-3 px-3 py-2 rounded shadow-sm" style="background-color: #212529;">
     <a href="{{ url_for('consolidados.vista_consolidados') }}" class="btn btn-sm btn-outline-light fw-bold me-3">
@@ -163,4 +114,5 @@
     }
   });
 </script>
+<script src="{{ url_for('static', filename='js/consolidados_tabla.js') }}"></script>
 {% endblock %}

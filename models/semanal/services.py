@@ -1179,7 +1179,8 @@ def procesar_excel_semanal_produccion(archivo, lote_nombre):
     try:
         # 1. Validar y obtener Lote
         lote_variante = f"LOTE {lote_nombre}" if not lote_nombre.upper().startswith("LOTE") else lote_nombre.replace("LOTE ", "")
-        cur.execute("SELECT id FROM cabecera_lotes WHERE lote = %s OR lote = %s", (lote_nombre, lote_variante))
+        # Bloquea el lote para que dos cargas del mismo lote se hagan una después de otra
+        cur.execute("SELECT id FROM cabecera_lotes WHERE lote = %s OR lote = %s FOR UPDATE", (lote_nombre, lote_variante))
         lote_row = cur.fetchone()
         
         if not lote_row:
@@ -1197,7 +1198,6 @@ def procesar_excel_semanal_produccion(archivo, lote_nombre):
         df = df.replace({np.nan: None})
 
         valores_a_insertar = []
-        semanas_a_cargar = []
 
         # 3. Mapeo de Columnas Limpiando Numéricos
         for index, fila in df.iterrows():
@@ -1208,8 +1208,6 @@ def procesar_excel_semanal_produccion(archivo, lote_nombre):
             # Semana (Columna C = 2)
             semana = clean_num(fila[2])
             semana = int(semana) if semana is not None else None
-            if semana is not None:
-                semanas_a_cargar.append(semana)
             
             valores = (
                 lote_nombre,                # lote
@@ -1261,13 +1259,8 @@ def procesar_excel_semanal_produccion(archivo, lote_nombre):
         if not valores_a_insertar:
             return False, "El archivo está vacío o no contiene semanas válidas."
 
-        # 4. Prevención de duplicados
-        semanas_unicas = list(set(semanas_a_cargar))
-        if semanas_unicas:
-            cur.execute(
-                "DELETE FROM bd_vargas WHERE lote = %s AND sem_prod = ANY(%s)", 
-                (lote_nombre, semanas_unicas)
-            )
+        # 4. Barrido: se borran TODOS los registros previos del lote antes de insertar el archivo
+        cur.execute("DELETE FROM bd_vargas WHERE id_lote = %s", (id_lote,))
 
         # 5. Inserción Masiva
         query_insert = """
