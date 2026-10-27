@@ -14,6 +14,14 @@ class Config:
     DB_PASSWORD = os.environ.get('DB_PASSWORD')
     DB_PORT = os.environ.get('DB_PORT', '5432')
 
+    # Segunda base (seguridad y salud en el trabajo). Reutiliza las credenciales
+    # principales salvo que se definan variables MASTER_SST_* propias.
+    MASTER_SST_HOST = os.environ.get('MASTER_SST_HOST', DB_HOST)
+    MASTER_SST_PORT = os.environ.get('MASTER_SST_PORT', DB_PORT)
+    MASTER_SST_NAME = os.environ.get('MASTER_SST_DB_NAME', 'master_sst')
+    MASTER_SST_USER = os.environ.get('MASTER_SST_USER', DB_USER)
+    MASTER_SST_PASSWORD = os.environ.get('MASTER_SST_PASSWORD', DB_PASSWORD)
+
 try:
     conn = psycopg2.connect(
         host=Config.DB_HOST,

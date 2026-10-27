@@ -73,6 +73,24 @@
         border: 1px solid #b7e4c7; margin: 0 .2rem .25rem 0;
     }
 
+    .epp-grupo { border: 1px solid #e6e1dd; border-radius: 8px; background: #fff; margin-bottom: .45rem; }
+    .epp-grupo summary {
+        list-style: none; cursor: pointer; display: flex; align-items: center; gap: .5rem;
+        padding: .5rem .65rem; font-size: .82rem; font-weight: 600; color: #2c2825;
+    }
+    .epp-grupo summary::-webkit-details-marker { display: none; }
+    .epp-grupo summary > i.fa-solid { color: #97271C; font-size: 1rem; width: 1.2rem; text-align: center; }
+    .epp-grupo-count { margin-left: auto; font-size: .7rem; color: #8b837d; font-weight: 500; white-space: nowrap; }
+    .epp-grupo summary .chev { color: #8b837d; transition: transform .15s ease; }
+    .epp-grupo[open] summary .chev { transform: rotate(180deg); }
+    .epp-grupo-body { padding: .25rem .65rem .55rem; border-top: 1px solid #f0ece8; }
+    .epp-grupo-body .table { font-size: .78rem; }
+
+    @media print {
+        details.epp-grupo:not([open]) > :not(summary) { display: block !important; }
+        details.epp-grupo summary .chev { display: none !important; }
+    }
+
     @media print {
         .sidebar-rapido, .sidebar-th, .navbar, .no-print, .toast-container { display: none !important; }
         body { background: #fff !important; }
@@ -310,17 +328,6 @@
                     </div>
 
                     <hr class="my-3">
-                    <span class="etiqueta mb-2">Vacunas</span>
-                    <div class="row g-2">
-                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">COVID-19</span>{{ v(f(c.vacuna_covid_fecha)) }}{% if c.vacuna_covid_dosis %} · {{ c.vacuna_covid_dosis }} dosis{% endif %}</div></div>
-                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Influenza</span>{{ v(f(c.vacuna_influenza_fecha)) }}</div></div>
-                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Hepatitis</span>{{ v(f(c.vacuna_hepatitis_fecha)) }}</div></div>
-                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Tétanos</span>{{ v(f(c.vacuna_tetanos_fecha)) }}</div></div>
-                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Fiebre amarilla</span>{{ v(f(c.vacuna_fiebre_amarilla_fecha)) }}</div></div>
-                        <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Otras vacunas</span>{{ v(c.vacuna_otras) }}</div></div>
-                    </div>
-
-                    <hr class="my-3">
                     <span class="etiqueta mb-2">Exámenes y pruebas</span>
                     <div class="row g-2">
                         <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Visual</span>{{ v(f(c.examen_visual_fecha)) }}{% if c.examen_visual_resultado %} · {{ c.examen_visual_resultado }}{% endif %}</div></div>
@@ -328,28 +335,51 @@
                         <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Espirometría</span>{{ v(f(c.espirometria_fecha)) }}{% if c.espirometria_resultado %} · {{ c.espirometria_resultado }}{% endif %}</div></div>
                     </div>
 
-                    <hr class="my-3">
-                    <span class="etiqueta mb-2">Elementos de protección personal (EPP)</span>
-                    <div class="mt-1">
-                        {% set epps = [
-                            ('Casco', c.epp_casco), ('Botas', c.epp_botas), ('Guantes', c.epp_guantes),
-                            ('Gafas', c.epp_gafas), ('Tapabocas', c.epp_tapabocas), ('Overol', c.epp_overol),
-                            ('Botas dieléctricas', c.epp_botas_dielectricas), ('Arnés', c.epp_arnes),
-                            ('Chaleco reflectivo', c.epp_chaleco_reflectivo), ('Protección auditiva', c.epp_proteccion_auditiva)
-                        ] %}
-                        {% for nombre, tiene in epps if tiene %}
-                        <span class="epp-chip"><i class='bx bx-check'></i> {{ nombre }}</span>
-                        {% endfor %}
-                        {% if not (c.epp_casco or c.epp_botas or c.epp_guantes or c.epp_gafas or c.epp_tapabocas or c.epp_overol or c.epp_botas_dielectricas or c.epp_arnes or c.epp_chaleco_reflectivo or c.epp_proteccion_auditiva) %}
-                        <span class="valor vacio">Sin EPP registrado</span>
-                        {% endif %}
-                    </div>
                     <div class="row g-2 mt-1">
                         <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Talla camisa</span>{{ v(c.talla_camisa) }}</div></div>
                         <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Talla pantalón</span>{{ v(c.talla_pantalon) }}</div></div>
                         <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Talla botas</span>{{ v(c.talla_botas) }}</div></div>
                         <div class="col-6 col-md-3"><div class="campo"><span class="etiqueta">Talla casco</span>{{ v(c.talla_casco) }}</div></div>
                     </div>
+
+                    <hr class="my-3">
+                    <span class="etiqueta mb-2">Entregas EPP registradas (base SST)</span>
+                    {% if grupos_epp %}
+                    <div class="mt-1">
+                        {% for g in grupos_epp %}
+                        <details class="epp-grupo">
+                            <summary>
+                                <i class="{{ g.icono }}"></i>
+                                <span>{{ g.elemento }}</span>
+                                <span class="epp-grupo-count">{{ g.entregas|length }} entrega{% if g.entregas|length != 1 %}s{% endif %}</span>
+                                <i class='bx bx-chevron-down chev'></i>
+                            </summary>
+                            <div class="epp-grupo-body">
+                                <table class="table table-sm table-striped align-middle mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Fecha</th>
+                                            <th class="text-center">Cant.</th>
+                                            <th>Área</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for e in g.entregas %}
+                                        <tr>
+                                            <td class="text-nowrap">{{ e.fecha }}{% if e.hora %} <small class="text-muted">{{ e.hora[:5] }}</small>{% endif %}</td>
+                                            <td class="text-center">{{ e.cantidad if e.cantidad is not none else '—' }}</td>
+                                            <td>{{ e.area or '—' }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </details>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <span class="valor vacio">Sin entregas EPP en la base SST</span>
+                    {% endif %}
                 </div>
             </div>
         </div>

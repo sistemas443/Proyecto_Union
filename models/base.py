@@ -25,6 +25,18 @@ def get_db_connection():
         client_encoding='utf8'
     )
 
+
+def get_master_sst_connection():
+    """Conexión de solo lectura a la base de Seguridad y Salud en el Trabajo."""
+    return psycopg2.connect(
+        host=Config.MASTER_SST_HOST,
+        database=Config.MASTER_SST_NAME,
+        user=Config.MASTER_SST_USER,
+        password=Config.MASTER_SST_PASSWORD,
+        port=Config.MASTER_SST_PORT,
+        client_encoding='utf8'
+    )
+
 def parse_empty(value):
     return value if value and str(value).strip() != '' else None
 

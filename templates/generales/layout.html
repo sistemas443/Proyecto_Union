@@ -224,6 +224,50 @@
       opacity: 1;
     }
 
+    /* --- Submenú plegable (Reportes) --- */
+    .sidebar-rapido .rail-parent,
+    .sidebar-th .rail-parent {
+      cursor: pointer;
+    }
+    .sidebar-rapido .rail-parent .rail-chev,
+    .sidebar-th .rail-parent .rail-chev {
+      flex: 0 0 auto;
+      width: auto;
+      margin-left: auto;
+      font-size: 1rem;
+      color: #8f949e;
+      opacity: 0;
+      transition: opacity 0.16s ease, transform 0.18s ease;
+    }
+    .sidebar-rapido:hover .rail-parent .rail-chev,
+    .sidebar-th:hover .rail-parent .rail-chev,
+    .sidebar-rapido:focus-within .rail-parent .rail-chev,
+    .sidebar-th:focus-within .rail-parent .rail-chev {
+      opacity: 1;
+    }
+    .sidebar-rapido .rail-parent.is-open .rail-chev,
+    .sidebar-th .rail-parent.is-open .rail-chev {
+      transform: rotate(180deg);
+    }
+    .sidebar-rapido .rail-sub,
+    .sidebar-th .rail-sub {
+      display: none;
+    }
+    .sidebar-rapido .rail-sub.is-open,
+    .sidebar-th .rail-sub.is-open {
+      display: block;
+    }
+    .sidebar-rapido .rail-sub a,
+    .sidebar-th .rail-sub a {
+      height: 34px;
+      padding-left: 30px;
+      font-size: 0.8rem;
+    }
+    .sidebar-rapido:not(:hover):not(:focus-within) .rail-sub,
+    .sidebar-th:not(:hover):not(:focus-within) .rail-sub {
+      display: none !important;
+    }
+
     /* --- Separadores y títulos de sección --- */
     .sidebar-divider {
       height: 1px;
@@ -270,6 +314,16 @@
       .sidebar-rapido .badge-soon,
       .sidebar-th .badge-soon {
         opacity: 1;
+      }
+
+      .sidebar-rapido .rail-parent .rail-chev,
+      .sidebar-th .rail-parent .rail-chev {
+        opacity: 1;
+      }
+
+      body.sidebar-activa .sidebar-rapido:not(:hover):not(:focus-within) .rail-sub.is-open,
+      body.sidebar-th-activa .sidebar-th:not(:hover):not(:focus-within) .rail-sub.is-open {
+        display: block !important;
       }
     }
 
@@ -395,6 +449,7 @@
   {% if session.get('user_rol') == 'Talento humano' %}
   {% set ep = request.endpoint or '' %}
   {% set en_documentos = ep == 'talento_humano.documentos_colaborador' %}
+  {% set en_reporte = request.view_args.get('tema') if (ep == 'talento_humano.reporte_tema' and request.view_args) else None %}
   <div class="sidebar-th" role="navigation" aria-label="Menú de Talento Humano">
     <div class="sidebar-header">Talento humano</div>
     {{ rail_link(url_for('talento_humano.colaboradores'), 'bx-group', 'Colaboradores',
@@ -404,6 +459,24 @@
     <div class="sidebar-divider"></div>
     <div class="sidebar-header">Documentos</div>
     {{ rail_link(url_for('talento_humano.documentos_colaborador'), 'bx-file', 'Documentos', en_documentos) }}
+
+    <div class="sidebar-divider"></div>
+    <a href="#" class="rail-parent{{ ' is-open' if en_reporte }}" role="button" aria-expanded="{{ 'true' if en_reporte else 'false' }}" aria-controls="railReportes" onclick="toggleRailSub(event, this)">
+      <i class='bx bx-bar-chart-alt-2'></i><span>Reportes</span>
+      <i class='bx bx-chevron-down rail-chev'></i>
+    </a>
+    <div class="rail-sub{{ ' is-open' if en_reporte }}" id="railReportes">
+      {{ rail_link(url_for('talento_humano.reporte_tema', tema='nacionalidad_residencia'), 'bx-globe', 'Nacionalidad / Residencia', en_reporte == 'nacionalidad_residencia') }}
+      {{ rail_link(url_for('talento_humano.reporte_tema', tema='sexo_edad'), 'bx-user', 'Sexo / Edad', en_reporte == 'sexo_edad') }}
+      {{ rail_link(url_for('talento_humano.reporte_tema', tema='escolaridad'), 'bx-graduation', 'Escolaridad', en_reporte == 'escolaridad') }}
+      {{ rail_link(url_for('talento_humano.reporte_tema', tema='antiguedad_contrato'), 'bx-briefcase', 'Antigüedad / Contrato', en_reporte == 'antiguedad_contrato') }}
+      {{ rail_link(url_for('talento_humano.reporte_tema', tema='poblacion_especial'), 'bx-heart', 'Población especial', en_reporte == 'poblacion_especial') }}
+      {{ rail_link(url_for('talento_humano.reporte_tema', tema='vivienda_servicios'), 'bx-home', 'Vivienda / Servicios', en_reporte == 'vivienda_servicios') }}
+      {{ rail_link(url_for('talento_humano.reporte_tema', tema='tallaje'), 'bx-ruler', 'Tallaje', en_reporte == 'tallaje') }}
+      {{ rail_link('#', 'bx-pie-chart-alt-2', 'Inversión social', False, True) }}
+      {{ rail_link('#', 'bx-refresh', 'Rotación de personal', False, True) }}
+      {{ rail_link('#', 'bx-sync', 'Rotación específica', False, True) }}
+    </div>
 
     <div class="sidebar-divider"></div>
     <div class="sidebar-header">Configuración</div>
@@ -473,6 +546,16 @@
       } else {
         localStorage.setItem('estadoSidebarTH', 'cerrada');
       }
+    }
+
+    // Submenú plegable "Reportes" dentro del rail lateral
+    function toggleRailSub(event, el) {
+      event.preventDefault();
+      event.stopPropagation();
+      const sub = el.nextElementSibling;
+      const abierto = el.classList.toggle('is-open');
+      sub.classList.toggle('is-open', abierto);
+      el.setAttribute('aria-expanded', abierto ? 'true' : 'false');
     }
   </script>
 

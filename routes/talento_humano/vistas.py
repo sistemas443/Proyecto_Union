@@ -19,6 +19,8 @@ from models.talento_humano.maestros import EPS, ARL, Talla, Catalogo
 from models.talento_humano.documentos import Documento
 from models.talento_humano.estudios import Estudio
 from models.talento_humano.cursos import Curso
+from models.talento_humano.epp_sst import EppSST
+from models.talento_humano.reportes import ReportesTH
 
 # Decorador específico para Talento Humano
 def talento_humano_requerido(f):
@@ -70,6 +72,8 @@ def colaboradores():
 
     pagina = request.args.get('pagina', 1, type=int)
     por_pagina = 50
+    # Params de consulta sin 'pagina' para construir los enlaces de paginación
+    params_sin_pagina = {k: v for k, v in request.args.items() if k != 'pagina'}
 
     colaboradores_lista, total = Colaborador.get_all(filtros, pagina, por_pagina)
     total_paginas = (total + por_pagina - 1) // por_pagina
@@ -84,6 +88,7 @@ def colaboradores():
         colaboradores=colaboradores_lista,
         filtros=filtros,
         pagina=pagina,
+        params_sin_pagina=params_sin_pagina,
         total_paginas=total_paginas,
         total=total,
         areas=areas,
@@ -122,6 +127,59 @@ def ficha_colaborador(id):
         resumen_docs=Documento.get_resumen(id),
         hoy=datetime.date.today(),
         por_vencer_hasta=datetime.date.today() + datetime.timedelta(days=30),
+        grupos_epp=EppSST.agrupar_por_elemento(
+            _entregas_epp_seguras(colaborador.get('num_doc'))
+        ),
+    )
+
+
+def _entregas_epp_seguras(num_doc):
+    """Consulta master_sst sin tumbar la ficha si la base SST no responde."""
+    try:
+        return EppSST.get_entregas_por_documento(num_doc)
+    except Exception:
+        current_app.logger.warning(
+            'No se pudo consultar master_sst para documento %s', num_doc, exc_info=True
+        )
+        return []
+
+
+# ============================================================
+# API: ENTREGAS EPP DESDE MASTER_SST (SOLO LECTURA)
+# ============================================================
+@talento_humano_bp.route('/api/colaboradores/<int:id>/epp')
+@login_requerido
+@talento_humano_requerido
+def api_colaborador_epp(id):
+    """Devuelve el historial de entregas EPP del colaborador (base master_sst)."""
+    colaborador = Colaborador.get_by_id(id)
+    if not colaborador:
+        return jsonify({'status': 'error', 'msg': 'Colaborador no encontrado'}), 404
+    try:
+        entregas = EppSST.get_entregas_por_documento(colaborador.get('num_doc'))
+    except Exception:
+        current_app.logger.warning(
+            'No se pudo consultar master_sst en el endpoint EPP', exc_info=True
+        )
+        return jsonify({'status': 'error', 'msg': 'No se pudo consultar la base SST'}), 502
+    return jsonify({'status': 'ok', 'entregas': entregas})
+
+
+# ============================================================
+# REPORTES / INDICADORES DE TALENTO HUMANO
+# ============================================================
+@talento_humano_bp.route('/reportes/<tema>')
+@login_requerido
+@talento_humano_requerido
+def reporte_tema(tema):
+    """Vista de un indicador/reporte construido desde colaboradores."""
+    reporte = ReportesTH.obtener(tema)
+    if not reporte:
+        abort(404)
+    return render_template(
+        'talento_humano/reportes/reporte.html',
+        tema=tema,
+        reporte=reporte,
     )
 
 
@@ -516,8 +574,6 @@ def api_catalogo_toggle(campo, id):
 CAMPOS_BOOL_FORM = (
     'discapacidad', 'victima_conflicto', 'comunidad_lgtbi',
     'desplazado', 'tiene_servicios_publicos', 'tiene_internet',
-    'epp_casco', 'epp_botas', 'epp_guantes', 'epp_gafas', 'epp_tapabocas', 'epp_overol',
-    'epp_botas_dielectricas', 'epp_arnes', 'epp_chaleco_reflectivo', 'epp_proteccion_auditiva',
 )
 
 # Campos que llegan como múltiples valores (checkbox) y se guardan como texto separado por comas
