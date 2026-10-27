@@ -1,0 +1,185 @@
+{% extends 'generales/layout.html' %}
+{% block title %}Datos de Levante – Avícola San Martín{% endblock %}
+{% block content %}
+<style>
+  .tabla-compacta th, .tabla-compacta td {
+    padding: 2px 4px;
+    font-size: 0.72rem;
+    white-space: nowrap;
+  }
+  .tabla-compacta td.num { text-align: right; }
+  .tabla-compacta thead th {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background-color: #212529;
+    color: #fff;
+  }
+  .tabla-compacta .col-fija {
+    position: sticky;
+    left: 0;
+    z-index: 10;
+    background-color: #f8f9fa;
+    min-width: 70px;
+  }
+  .tabla-compacta thead .col-fija {
+    z-index: 30;
+    background-color: #212529;
+    color: #fff;
+    font-weight: 700;
+  }
+  .tabla-compacta .col-lote { min-width: 110px; }
+  .tabla-compacta thead th.col-excluida { background-color: #6c757d !important; }
+  .tabla-compacta { width: 100%; }
+  .contenedor-matriz { overflow: auto; max-height: 80vh; }
+  .nav-pills .nav-link { color: #212529; font-weight: 700; }
+  .nav-pills .nav-link.active { background-color: #97271C; color: #fff; }
+  .chk-lote { margin-right: 8px; }
+</style>
+<div class="container-fluid px-4 py-3 h-100 d-flex flex-column">
+  <div class="d-flex flex-wrap align-items-center mb-3 px-3 py-2 rounded shadow-sm" style="background-color: #212529;">
+    <a href="{{ url_for('consolidados.vista_consolidados') }}" class="btn btn-sm btn-outline-light fw-bold me-3">
+      <i class='bx bx-arrow-back me-1'></i>VOLVER
+    </a>
+    <h5 class="mb-0 fw-bold text-uppercase text-white" style="letter-spacing: 0.5px;">
+      <i class='bx bx-clipboard-data me-2'></i>DATOS DE LEVANTE
+    </h5>
+  </div>
+
+  <div class="card shadow-sm mb-3">
+    <div class="card-body py-2" id="panelLotes">
+      <span class="fw-bold text-secondary small me-2">LOTES:</span>
+      {% for t in datos.todos %}
+      <label class="chk-lote small">
+        <input type="checkbox" class="chk-lote-cb form-check-input me-1" value="{{ t.nombre }}" {% if t.activo %}checked{% endif %}>
+        {{ t.nombre }}
+      </label>
+      {% endfor %}
+      <button type="button" class="btn btn-sm fw-bold text-white ms-2" style="background-color: #97271C;" id="btnAplicarLotes">Aplicar</button>
+    </div>
+  </div>
+
+  <ul class="nav nav-pills mb-3" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tab-serie" type="button" role="tab">Serie semanal</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-consumo" type="button" role="tab">Consumo en granja</button>
+    </li>
+  </ul>
+
+  <div class="tab-content">
+    {% if not datos.lotes %}
+    <div class="alert alert-info">Selecciona uno o varios lotes y pulsa Aplicar para ver la serie consolidada.</div>
+    {% endif %}
+    <div class="tab-pane fade show active" id="tab-serie" role="tabpanel">
+      <div class="contenedor-matriz shadow-sm border rounded">
+        <table class="table table-sm table-bordered mb-0 tabla-compacta">
+          <thead>
+            <tr>
+              <th class="col-fija">SEM</th>
+              <th colspan="3">Peso</th>
+              <th colspan="2">Ganancia</th>
+              <th>Unif</th>
+              <th colspan="3">Gr.A.D.</th>
+              <th colspan="2">Cons Ac</th>
+              <th colspan="2">Conv</th>
+              <th>Mort</th>
+              <th>Mort Acum</th>
+              <th>Saldo</th>
+              <th>Nro</th>
+              <th>Viab %</th>
+            </tr>
+            <tr>
+              <th class="col-fija"></th>
+              <th>Real</th><th>Tab</th><th>%</th>
+              <th>Real</th><th>Tab</th>
+              <th>Real</th>
+              <th>Real</th><th>Tab</th><th>%</th>
+              <th>Real</th><th>Tab</th>
+              <th>Real</th><th>Tab</th>
+              <th>Real</th>
+              <th>Real</th>
+              <th>Real</th>
+              <th>Nro</th>
+              <th>%</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for f in datos.serie %}
+            <tr>
+              <td class="col-fija fw-bold">{{ f.sem }}</td>
+              <td class="num">{{ '{:,.2f}'.format(f.peso_real) if f.peso_real is not none else '' }}</td>
+              <td class="num">{{ '{:,.0f}'.format(f.peso_tab).replace(',', '.') if f.peso_tab is not none else '' }}</td>
+              <td class="num">{{ '{:,.2f}'.format(f.pct_peso) if f.pct_peso is not none else '' }}</td>
+              <td class="num">{{ '{:,.2f}'.format(f.ganancia) if f.ganancia is not none else '' }}</td>
+              <td class="num">{{ '{:,.0f}'.format(f.ganancia_tab) if f.ganancia_tab is not none else '' }}</td>
+              <td class="num">{{ '{:,.2f}'.format(f.unif) if f.unif is not none else '' }}</td>
+              <td class="num">{{ '{:,.2f}'.format(f.grad_real) if f.grad_real is not none else '' }}</td>
+              <td class="num">{{ '{:,.0f}'.format(f.grad_tab).replace(',', '.') if f.grad_tab is not none else '' }}</td>
+              <td class="num">{{ '{:,.2f}'.format(f.pct_grad) if f.pct_grad is not none else '' }}</td>
+              <td class="num">{{ '{:,.2f}'.format(f.cons_acum) if f.cons_acum is not none else '' }}</td>
+              <td class="num">{{ '{:,.0f}'.format(f.cons_tab) if f.cons_tab is not none else '' }}</td>
+              <td class="num">{{ '{:,.2f}'.format(f.conv_real) if f.conv_real is not none else '' }}</td>
+              <td class="num">{{ '{:,.2f}'.format(f.conv_tab) if f.conv_tab is not none else '' }}</td>
+              <td class="num">{{ '{:,.0f}'.format(f.mort).replace(',', '.') if f.mort is not none else '' }}</td>
+              <td class="num">{{ '{:,.2f}'.format(f.mort_acum * 100) if f.mort_acum is not none else '' }}</td>
+              <td class="num">{{ '{:,.0f}'.format(f.saldo).replace(',', '.') if f.saldo is not none else '' }}</td>
+              <td class="num">{{ f.nro }}</td>
+              <td class="num">{{ '{:,.2f}'.format(f.viab) if f.viab is not none else '' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="tab-pane fade" id="tab-consumo" role="tabpanel">
+      <div class="contenedor-matriz shadow-sm border rounded">
+        <table class="table table-sm table-bordered mb-0 tabla-compacta" id="tablaConsumoLev">
+          <thead>
+            <tr>
+              <th class="col-fija">SEM</th>
+              {% for l in datos.lotes %}
+              <th class="col-lote">
+                <input type="checkbox" class="chk-incluir form-check-input me-1" data-lote="{{ l }}" checked>
+                {{ l }}
+              </th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in datos.consumo.semanas %}
+            <tr data-semana="{{ s }}">
+              <td class="col-fija fw-bold">{{ s }}</td>
+              {% for l in datos.lotes %}
+              {% set v = datos.consumo.matriz.get(s, {}).get(l) %}
+              <td class="num" data-lote="{{ l }}" data-valor="{{ v if v is not none else '' }}">{{ '{:,.1f}'.format(v) if v is not none else '' }}</td>
+              {% endfor %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    document.getElementById('btnAplicarLotes').addEventListener('click', function () {
+      const sel = [];
+      document.querySelectorAll('.chk-lote-cb:checked').forEach(function (c) { sel.push(c.value); });
+      window.location.href = "{{ url_for('consolidados.datos_levante') }}?lotes=" + encodeURIComponent(sel.join(','));
+    });
+    const tabla = document.getElementById('tablaConsumoLev');
+    if (tabla) {
+      tabla.querySelectorAll('.chk-incluir').forEach(function (chk) {
+        chk.addEventListener('change', function () {
+          const th = chk.closest('th');
+          if (th) th.classList.toggle('col-excluida', !chk.checked);
+        });
+      });
+    }
+  });
+</script>
+{% endblock %}

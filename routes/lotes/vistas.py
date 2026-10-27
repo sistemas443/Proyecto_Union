@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session
 from routes.routes import login_requerido, editor_requerido
 from models.base import get_db_connection
+from models.catalogos import services as catalogos_services
 from models.lotes.services import (
     get_todos_los_lotes, get_opciones_dinamicas,
     guardar_nuevo_lote, actualizar_lote, borrar_lote
@@ -16,9 +17,6 @@ def vista_lotes():
     conn = get_db_connection()
     cur = conn.cursor()
     try:
-        cur.execute("SELECT nombre FROM catalogo_nutricionistas ORDER BY nombre ASC")
-        lista_nutricionistas = [row[0] for row in cur.fetchall()]
-
         cur.execute("SELECT nombre FROM catalogo_responsables ORDER BY nombre ASC")
         lista_responsables = [row[0] for row in cur.fetchall()]
 
@@ -26,19 +24,40 @@ def vista_lotes():
         lista_empresas = [{'id': row[0], 'nombre': row[1]} for row in cur.fetchall()]
     except Exception as e:
         print(f"[ERROR CATALOGOS]: {e}")
-        lista_nutricionistas, lista_responsables, lista_empresas = [], [], []
+        lista_responsables, lista_empresas = [], []
     finally:
         cur.close()
         conn.close()
+
+    # Los 4 catálogos con foto (solo activos)
+    cat_nutr_lev = catalogos_services.listar_catalogo('nutricionista_lev')
+    cat_nutr_prod = catalogos_services.listar_catalogo('nutricionista_prod')
+    cat_variedades = catalogos_services.listar_catalogo('variedad')
+    cat_marcas = catalogos_services.listar_catalogo('marca_galpon')
+
+    def _fotos(tipo, items):
+        return {i['nombre']: catalogos_services.url_foto_por_id(tipo, i['id']) for i in items}
+
+    fotos_catalogo = {
+        'f_nutricionista': _fotos('nutricionista_lev', cat_nutr_lev),
+        'f_nutricionista_prod': _fotos('nutricionista_prod', cat_nutr_prod),
+        'f_variedad': _fotos('variedad', cat_variedades),
+        'f_marca_galpon': _fotos('marca_galpon', cat_marcas),
+    }
 
     return render_template(
         'produccion/lotes.html',
         lotes=get_todos_los_lotes(),
         opciones=get_opciones_dinamicas(),
-        cat_nutricionistas=lista_nutricionistas,
         cat_responsables=lista_responsables,
         empresas=lista_empresas,
-        empresas_map={emp['id']: emp['nombre'] for emp in lista_empresas}
+        empresas_map={emp['id']: emp['nombre'] for emp in lista_empresas},
+        cat_nutr_lev=cat_nutr_lev,
+        cat_nutr_prod=cat_nutr_prod,
+        cat_variedades=cat_variedades,
+        cat_marcas=cat_marcas,
+        fotos_catalogo=fotos_catalogo,
+        user_rol=session.get('user_rol')
     )
 
 

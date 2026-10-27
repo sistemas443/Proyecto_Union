@@ -73,14 +73,14 @@ def insert_lote(datos, lote_nombre, parse_empty):
         cur.execute("""
             INSERT INTO cabecera_lotes (
                 lote, empresa_id, cliente, ciudad, clima, responsable_tecnico, nutricionista, granja_lev, fecha_recepcion, no_pollitas_recibidas, variedad, peso, 
-                unidad_peso, uniformidad, coeficiente_variacion, granja_prod, fecha_encasetamiento, no_aves_encasetadas, tipo_galpon, marca_galpon, unidad_medida, validacion
+                unidad_peso, uniformidad, coeficiente_variacion, granja_prod, fecha_encasetamiento, no_aves_encasetadas, tipo_galpon, marca_galpon, unidad_medida, nutricionista_prod, validacion
             ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, True) RETURNING id
         """, (
             lote_nombre, empresa_id,
             parse_empty(datos.get('cliente')), parse_empty(datos.get('ciudad')), parse_empty(datos.get('clima')), parse_empty(datos.get('responsable_tecnico')), parse_empty(datos.get('nutricionista')),
             parse_empty(datos.get('granja_lev')), parse_empty(datos.get('fecha_recepcion')), parse_empty(datos.get('no_pollitas_recibidas')), parse_empty(datos.get('variedad')), parse_empty(datos.get('peso')), parse_empty(datos.get('unidad_peso')),
             parse_empty(datos.get('uniformidad')), parse_empty(datos.get('coeficiente_variacion')), parse_empty(datos.get('granja_prod')), parse_empty(datos.get('fecha_encasetamiento')), parse_empty(datos.get('no_aves_encasetadas')), parse_empty(datos.get('tipo_galpon')),
-            parse_empty(datos.get('marca_galpon')), parse_empty(datos.get('unidad_medida'))
+            parse_empty(datos.get('marca_galpon')), parse_empty(datos.get('unidad_medida')), parse_empty(datos.get('nutricionista_prod'))
         ))
         id_lote = cur.fetchone()[0]
         conn.commit()
@@ -106,13 +106,13 @@ def update_lote(id_lote, datos, parse_empty):
                 lote = %s, empresa_id = %s, cliente = %s, ciudad = %s, clima = %s, responsable_tecnico = %s, nutricionista = %s, granja_lev = %s, 
                 fecha_recepcion = %s, no_pollitas_recibidas = %s, variedad = %s, peso = %s, unidad_peso = %s, uniformidad = %s, 
                 coeficiente_variacion = %s, granja_prod = %s, fecha_encasetamiento = %s, no_aves_encasetadas = %s, tipo_galpon = %s, marca_galpon = %s, 
-                unidad_medida = %s, validacion = True
+                unidad_medida = %s, nutricionista_prod = %s, validacion = True
             WHERE id = %s
         """, (
             parse_empty(datos.get('lote')), parse_empresa_id(datos.get('empresa_id')), parse_empty(datos.get('cliente')), parse_empty(datos.get('ciudad')), parse_empty(datos.get('clima')), parse_empty(datos.get('responsable_tecnico')), parse_empty(datos.get('nutricionista')),
             parse_empty(datos.get('granja_lev')), parse_empty(datos.get('fecha_recepcion')), parse_empty(datos.get('no_pollitas_recibidas')), parse_empty(datos.get('variedad')), parse_empty(datos.get('peso')), parse_empty(datos.get('unidad_peso')),
             parse_empty(datos.get('uniformidad')), parse_empty(datos.get('coeficiente_variacion')), parse_empty(datos.get('granja_prod')), parse_empty(datos.get('fecha_encasetamiento')), parse_empty(datos.get('no_aves_encasetadas')), parse_empty(datos.get('tipo_galpon')),
-            parse_empty(datos.get('marca_galpon')), parse_empty(datos.get('unidad_medida')), id_lote
+            parse_empty(datos.get('marca_galpon')), parse_empty(datos.get('unidad_medida')), parse_empty(datos.get('nutricionista_prod')), id_lote
         ))
         conn.commit()
     except Exception as e:
@@ -179,7 +179,8 @@ def fetch_opciones_dinamicas():
     opciones = {}
     
     # Lista de columnas de las cuales queremos extraer el historial de respuestas
-    columnas = ['cliente', 'ciudad', 'clima', 'responsable_tecnico', 'nutricionista', 'granja_lev', 'variedad', 'granja_prod', 'tipo_galpon', 'marca_galpon']
+    # 'variedad' y 'marca_galpon' ahora vienen de sus tablas de catálogo con foto
+    columnas = ['cliente', 'ciudad', 'clima', 'responsable_tecnico', 'nutricionista', 'granja_lev', 'granja_prod', 'tipo_galpon']
     
     try:
         for col in columnas:

@@ -113,11 +113,26 @@ function setupPersistenciaLote() {
 
 function setupSelectsInteligentes() {
     document.querySelectorAll('.creatable-select').forEach((el) => {
-        tsInstances[el.id] = new TomSelect(el, {
+        const opciones = {
             create: true,
             sortField: { field: "text", direction: "asc" },
             placeholder: "Seleccione o escriba..."
-        });
+        };
+
+        // Los catálogos con foto muestran miniatura junto al nombre
+        if (el.classList.contains('select-con-foto')) {
+            const pintar = (item, escape) => {
+                const fotos = (window.FOTOS_CATALOGO || {})[el.id] || {};
+                const foto = fotos[item.value] || window.FOTO_PLACEHOLDER || '';
+                return '<div class="d-flex align-items-center gap-2">' +
+                    '<img src="' + escape(foto) + '" alt="" ' +
+                    'style="width:24px;height:24px;object-fit:cover;border-radius:4px;flex:0 0 auto;">' +
+                    '<span>' + escape(item.text) + '</span></div>';
+            };
+            opciones.render = { option: pintar, item: pintar };
+        }
+
+        tsInstances[el.id] = new TomSelect(el, opciones);
     });
 }
 

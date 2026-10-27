@@ -3,6 +3,7 @@ from routes.routes import login_requerido
 from models.primera_semana.services import get_primera_semana_by_lote, get_data_grafico_primera_semana
 from models.cabecera.services import get_cabecera_info
 from models.lotes.services import get_lotes_distintos
+from models.catalogos import services as catalogos_services
 
 primera_semana_bp = Blueprint('primera_semana', __name__)
 
@@ -45,12 +46,16 @@ def grafico_primera_semana():
         lote_seleccionado = session.get('ultimo_lote', '')
 
     datos_grafico = None
+    info_lote = None
     if lote_seleccionado and lote_seleccionado != 'VACIO':
         datos_grafico = get_data_grafico_primera_semana(lote_seleccionado)
+        cab = get_cabecera_info(lote_seleccionado) or {}
+        info_lote = catalogos_services.info_lote_para_grafico(cab, 'nutricionista', 'Nutricionista Levante')
 
     return render_template(
         'graficas/grafico_primera_semana.html',
         lotes=get_lotes_distintos(),
         lote_seleccionado=lote_seleccionado,
-        datos_grafico=datos_grafico
+        datos_grafico=datos_grafico,
+        info_lote=info_lote
     )

@@ -292,7 +292,10 @@ def update_primera_semana_field(id_reg: int, columna: str, valor: str,
         if aves_iniciales <= 0: aves_iniciales = 1.0 
 
         # Ejecución de la rutina matemática de actualización general
-        valores_update, campos_actualizados = recalcular_primera_semana_cascada_interna(lote_nombre, aves_iniciales, cur, id_reg)
+        valores_update, campos_actualizados = recalcular_primera_semana_cascada_interna(
+            lote_nombre, aves_iniciales, cur, id_reg,
+            columna_editada=columna, valor_manual=val_final
+        )
 
         conn.commit()
         return True, campos_actualizados, "Ok"
@@ -389,7 +392,7 @@ def update_dia_0_desde_formulario(lote_nombre, datos_dia_0, usuario_id=None, usu
         conn.close()
 
 
-def recalcular_primera_semana_cascada_interna(lote_nombre, aves_iniciales, cur, id_reg=None):
+def recalcular_primera_semana_cascada_interna(lote_nombre, aves_iniciales, cur, id_reg=None, columna_editada=None, valor_manual=None):
     """
     Motor matemático central que procesa secuencialmente los registros de la primera semana.
     Calcula los saldos dinámicos de aves, la acumulación de mortalidades y los consumos reales
@@ -443,7 +446,13 @@ def recalcular_primera_semana_cascada_interna(lote_nombre, aves_iniciales, cur, 
         porc_mort_acum = round((acum_mort / aves_iniciales) * 100, 2)
         
         # Consumo Real Diaria = E16 * 1000 / M16
-        real_diaria = round((c_kg * 1000.0) / float(saldo_entero), 2) if saldo_entero > 0 else 0.0
+        # Si el usuario editó manualmente esta celda, se respeta su valor
+        if (id_reg and int(f_id) == int(id_reg)
+                and columna_editada == 'consumo_gr_a_d'
+                and valor_manual is not None):
+            real_diaria = round(float(valor_manual), 2)
+        else:
+            real_diaria = round((c_kg * 1000.0) / float(saldo_entero), 2) if saldo_entero > 0 else 0.0
         
         # REGLA 3: Suma consecutiva de la columna 'real_diaria' desde el día inicial
         acum_gr_real_ave += real_diaria

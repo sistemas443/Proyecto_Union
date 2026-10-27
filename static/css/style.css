@@ -203,3 +203,16 @@ input[type="number"] {
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-15px); }
 }
+
+/* Ocultar el nombre de la empresa en pantallas < 1300px (todas las vistas) */
+@media (max-width: 1299.98px) {
+  nav.navbar .navbar-brand span {
+    display: none !important;
+  }
+}
+
+/* Navbar compacto en todas las vistas (sin zoom: no rompe tooltips Plotly) */
+nav.navbar { padding-top: 0.25rem; padding-bottom: 0.25rem; }
+nav.navbar .navbar-brand img { height: 28px !important; }
+nav.navbar .navbar-brand span { font-size: 0.8rem !important; }
+nav.navbar .nav-link { font-size: 0.85rem; padding-top: 0.25rem; padding-bottom: 0.25rem; }

@@ -22,14 +22,36 @@
     flex: 1 1 auto;
     padding: 10px;
   }
+  /* Sidebar compacto SOLO en vistas de gráficos */
+  .sidebar-rapido { width: 40px !important; }
+  .sidebar-rapido:hover { width: 170px !important; }
+  .sidebar-rapido i { font-size: 1.25rem !important; min-width: 20px !important; }
+  .sidebar-rapido span { font-size: 0.7rem !important; margin-left: 8px !important; white-space: nowrap !important; }
+  .sidebar-rapido a { padding: 8px 10px !important; }
+  .sidebar-rapido { top: 47px !important; max-height: calc(100vh - 47px) !important; }
+  body.sidebar-activa main.container-fluid { padding-left: 55px !important; }
+  @media (max-width: 991.98px) {
+    .sidebar-rapido.expandido-tactil { width: 170px !important; }
+    .sidebar-rapido.expandido-tactil span { opacity: 1 !important; }
+  }
+  /* Franja de fotos del lote (siempre visible, no colapsable) */
+  .franja-lote { flex-shrink: 0; }
+  .foto-lote { width: 40px; height: 40px; object-fit: cover; border-radius: 50%; border: 2px solid #dee2e6; }
+  .etiqueta-lote { font-size: 0.65rem; color: #6c757d; text-transform: uppercase; }
+  .nombre-lote { font-size: 0.85rem; font-weight: 700; }
+  @media (max-width: 767.98px) {
+    .texto-lote { display: none; }
+    .franja-lote { gap: 1rem !important; }
+    .card-filtro h5 { font-size: 0.9rem; }
+  }
 </style>
 <div class="container-fluid px-4 py-3 h-100 d-flex flex-column">
-    <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 px-3 py-2 rounded shadow-sm card-filtro" style="background-color: #212529;">
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-1 px-3 py-1 rounded shadow-sm card-filtro" style="background-color: #212529;">
       <h5 class="mb-0 fw-bold text-uppercase text-white" style="letter-spacing: 0.5px;">
         <i class='bx bx-line-chart-down me-2'></i>GRÁFICO DE LEVANTE HY LINE BROWN
       </h5>
       <div class="mx-auto">
-        <form method="POST" action="{{ url_for('semanal_levante.grafico_semanal_levante') }}" class="d-flex align-items-center gap-2 m-0">
+        <form method="POST" action="{{ url_for('semanal_levante.grafico_semanal_levante') }}" class="d-flex flex-wrap align-items-center gap-2 m-0">
           <label for="lote" class="mb-0 fw-bold text-light text-nowrap" style="font-size: 0.9rem;">SELECCIONE UN LOTE:</label>
           <select name="lote" id="lote" class="form-select form-select-sm border-0 fw-bold shadow-none" style="width: 220px; {% if lote_seleccionado %}border: 2px solid #97271C;{% endif %}" onchange="this.form.submit()">
             <option value="">-- Seleccione --</option>
@@ -43,6 +65,20 @@
       <div style="width: 320px;" class="d-none d-lg-block"></div>
     </div>
     {% if lote_seleccionado %}
+    {% if info_lote %}
+    <div class="franja-lote d-flex justify-content-center gap-3 py-1 mb-1 rounded shadow-sm bg-white">
+      {% for clave in ['nutricionista', 'variedad', 'marca'] %}
+      {% set item = info_lote[clave] %}
+      <div class="tarjeta-lote d-flex align-items-center gap-2">
+        <img src="{{ item.foto }}" alt="{{ item.etiqueta }}" class="foto-lote">
+        <div class="texto-lote">
+          <div class="etiqueta-lote">{{ item.etiqueta }}</div>
+          <div class="nombre-lote">{{ item.nombre }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
         <div class="card shadow border-0 card-grafico">
             <div class="card-body d-flex flex-column p-2">
                 {% if datos_grafico and datos_grafico.etiquetas|length > 0 %}
@@ -69,7 +105,7 @@
 <script>
     function construirGraficoLevante(datos, graficoDiv) {
         const aHueco = (arr) => (arr || []).map(v => (v === null || v === undefined || v === 0) ? null : v);
-        const etiquetas = datos.etiquetas;
+        const etiquetas = (datos.etiquetas || []).map(x => x.toString().replace(/Semana\s+/i, '').trim());
         const consumoReal = aHueco(datos.consumo_real);
         const consumoTab = aHueco(datos.consumo_tab);
         const pesoReal = aHueco(datos.peso_real);
@@ -84,7 +120,7 @@
                 mode: 'lines+markers',
                 line: { color: '#FF8C00', width: 2, shape: 'spline' },
                 marker: { color: '#FF8C00', symbol: 'circle', size: 6 },
-                connectgaps: false,
+                connectgaps: true,
                 yaxis: 'y',
                 hovertemplate: 'Serie "Consumo Real" Semana %{x}<br>Valor: %{y:.1f} g<extra></extra>'
             },
@@ -107,7 +143,7 @@
                 mode: 'lines+markers',
                 line: { color: '#87CEEB', width: 2, shape: 'spline' },
                 marker: { color: '#87CEEB', symbol: 'diamond', size: 7 },
-                connectgaps: false,
+                connectgaps: true,
                 yaxis: 'y2',
                 hovertemplate: 'Serie "Peso Real" Semana %{x}<br>Valor: %{y:.1f} g<extra></extra>'
             },
@@ -134,65 +170,78 @@
                 hovertemplate: 'Serie "Lineal Peso Tab" Semana %{x}<br>Valor: %{y:.1f} g<extra></extra>'
             }
         ];
+        const isMobile = window.innerWidth < 768;
         const layout = {
-            hoverdistance: 20,
-            spikedistance: -1,
             title: {
                 text: 'Gráfico de Levante Hy Line Brown',
-                font: { size: 16, family: 'Arial, sans-serif', color: '#000000' }
+                font: { size: isMobile ? 13 : 16, family: 'Arial, sans-serif', color: '#000000' }
             },
-            margin: { t: 55, l: 70, r: 70, b: 70 },
+            margin: { t: 55, l: isMobile ? 35 : 70, r: isMobile ? 35 : 70, b: isMobile ? 95 : 70 },
             xaxis: {
-                title: { text: 'Semanas' },
+                title: { text: 'Semanas', font: { size: isMobile ? 11 : 12 } },
                 type: 'category',
-                showgrid: false
+                showgrid: false,
+                tickfont: { size: isMobile ? 10 : 12 }
             },
             hovermode: 'closest',
-            hoverlabel: { bgcolor: '#F5F5F0', bordercolor: '#999999', font: { size: 12, color: '#333333' } },
+            hoverlabel: { bgcolor: '#F5F5F0', bordercolor: '#999999', font: { size: 12, color: '#333333', family: 'Arial' } },
             yaxis: {
-                title: { text: 'Consumo (gramos)' },
+                title: { text: 'Consumo (gramos)', font: { size: isMobile ? 11 : 12 } },
                 range: [0, 7500],
                 dtick: 500,
                 side: 'left',
                 showgrid: true,
                 gridcolor: '#E5E5E5',
                 zeroline: false,
-                showspikes: true,
-                spikemode: 'toaxis+marker',
-                spikesnap: 'cursor',
-                spikedash: 'dot',
-                spikecolor: '#1a73e8',
-                spikethickness: 1
+                showspikes: false,
+                tickfont: { size: isMobile ? 10 : 12 }
             },
             yaxis2: {
-                title: { text: 'Peso corporal (gramos)' },
+                title: { text: 'Peso corporal (gramos)', font: { size: isMobile ? 11 : 12 } },
                 range: [0, 1600],
                 dtick: 200,
                 side: 'right',
                 overlaying: 'y',
                 showgrid: false,
                 zeroline: false,
-                showspikes: true,
-                spikemode: 'toaxis+marker',
-                spikesnap: 'cursor',
-                spikedash: 'dot',
-                spikecolor: '#1a73e8',
-                spikethickness: 1
+                showspikes: false,
+                tickfont: { size: isMobile ? 10 : 12 }
             },
             legend: {
                 orientation: 'h',
                 x: 0.5,
                 xanchor: 'center',
-                y: -0.18,
-                bordercolor: '#000000',
-                borderwidth: 1,
-                font: { size: 11 }
+                y: isMobile ? -0.32 : -0.18,
+                font: { size: isMobile ? 9 : 11 }
             },
             plot_bgcolor: '#FFFFFF',
             paper_bgcolor: '#FFFFFF',
             autosize: true
         };
-        Plotly.newPlot(graficoDiv, trazas, layout, { responsive: true, displaylogo: false });
+        // Compensación de espaciado en la leyenda por desfase de cálculo de SVG bajo zoom CSS
+        trazas.forEach(t => t.name = t.name + '    ');
+        
+        const config = {
+            responsive: true,
+            displayModeBar: true,
+            displaylogo: false,
+            modeBarButtonsToAdd: [{
+                name: 'Pantalla Completa',
+                icon: {
+                    'width': 500, 'height': 500,
+                    'path': 'M80,80 H180 V120 H120 V180 H80 Z M320,80 H420 V180 H380 V120 H320 Z M80,320 H120 V380 H180 V420 H80 Z M380,320 H420 V420 H320 V380 H380 Z'
+                },
+                click: function(gd) {
+                    if (!document.fullscreenElement) {
+                        if (gd.requestFullscreen) gd.requestFullscreen();
+                        else if (gd.webkitRequestFullscreen) gd.webkitRequestFullscreen();
+                    } else {
+                        if (document.exitFullscreen) document.exitFullscreen();
+                    }
+                }
+            }]
+        };
+        Plotly.newPlot(graficoDiv, trazas, layout, config);
     }
     document.addEventListener("DOMContentLoaded", function() {
         const graficoDiv = document.getElementById('graficoPlotly');
@@ -219,6 +268,24 @@
             });
             observer.observe(document.body);
         }
+    });
+    // Expansión táctil del sidebar: primer toque expande, segundo navega
+    document.addEventListener("DOMContentLoaded", function () {
+        const sb = document.querySelector('.sidebar-rapido');
+        if (!sb) return;
+        sb.addEventListener('click', function (e) {
+            if (window.innerWidth >= 992) return;
+            if (!sb.classList.contains('expandido-tactil')) {
+                e.preventDefault();
+                e.stopPropagation();
+                sb.classList.add('expandido-tactil');
+            }
+        });
+        document.addEventListener('click', function (e) {
+            if (window.innerWidth < 992 && !e.target.closest('.sidebar-rapido')) {
+                sb.classList.remove('expandido-tactil');
+            }
+        });
     });
 </script>
 {% endblock %}

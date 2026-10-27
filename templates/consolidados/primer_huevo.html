@@ -1,0 +1,116 @@
+{% extends 'generales/layout.html' %}
+{% block title %}Primer Huevo – Avícola San Martín{% endblock %}
+{% block content %}
+<style>
+  .tabla-compacta th, .tabla-compacta td {
+    padding: 2px 4px;
+    font-size: 0.72rem;
+    white-space: nowrap;
+  }
+  .tabla-compacta td.num { text-align: right; }
+  .tabla-compacta thead th {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background-color: #212529;
+    color: #fff;
+  }
+  .tabla-compacta .col-semana {
+    position: sticky;
+    left: 0;
+    z-index: 10;
+    background-color: #f8f9fa;
+    min-width: 70px;
+  }
+  .tabla-compacta .col-dia {
+    position: sticky;
+    left: 70px;
+    z-index: 10;
+    background-color: #f8f9fa;
+    min-width: 60px;
+  }
+  .tabla-compacta thead .col-semana,
+  .tabla-compacta thead .col-dia { z-index: 30; }
+  .tabla-compacta .col-lote { min-width: 95px; }
+  .tabla-compacta th.lote-lohmann { background-color: #ED7D31 !important; color: #fff; }
+  .tabla-compacta th.lote-hyline { background-color: #4472C4 !important; color: #fff; }
+  .badge-primer {
+    background-color: #97271C;
+    color: #fff;
+    font-size: 0.65rem;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-weight: 700;
+  }
+  .contenedor-matriz { overflow: auto; max-height: 65vh; }
+</style>
+<div class="container-fluid px-4 py-3 h-100 d-flex flex-column">
+  <div class="d-flex flex-wrap align-items-center mb-3 px-3 py-2 rounded shadow-sm" style="background-color: #212529;">
+    <a href="{{ url_for('consolidados.vista_consolidados') }}" class="btn btn-sm btn-outline-light fw-bold me-3">
+      <i class='bx bx-arrow-back me-1'></i>VOLVER
+    </a>
+    <h5 class="mb-0 fw-bold text-uppercase text-white" style="letter-spacing: 0.5px;">
+      <i class='bx bx-egg me-2'></i>PRIMER HUEVO (#1)
+    </h5>
+  </div>
+
+  <h6 class="fw-bold text-secondary text-uppercase">Indicadores por lote (último dato válido)</h6>
+  <div class="contenedor-matriz shadow-sm border rounded mb-3">
+    <table class="table table-sm table-bordered mb-0 tabla-compacta">
+      <thead>
+        <tr>
+          <th class="col-semana">Indicador</th>
+          {% for lote in matriz.lotes %}
+          <th class="col-lote {{ matriz.clases.get(lote, '') }}">{{ lote }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for ind in matriz.indicadores %}
+        <tr>
+          <td class="col-semana fw-bold">{{ ind.nombre }}</td>
+          {% for lote in matriz.lotes %}
+          <td class="num">{{ ('%.2f' % ind.valores.get(lote)) + ind.sufijo if ind.valores.get(lote) is not none else '' }}</td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <h6 class="fw-bold text-secondary text-uppercase">Matriz Semana / Día x Lote (días {{ matriz.rango.min }}–{{ matriz.rango.max }})</h6>
+  <div class="contenedor-matriz shadow-sm border rounded">
+    <table class="table table-sm table-bordered mb-0 tabla-compacta">
+      <thead>
+        <tr>
+          <th class="col-semana">Semana</th>
+          <th class="col-dia">Día</th>
+          {% for lote in matriz.lotes %}
+          <th class="col-lote {{ matriz.clases.get(lote, '') }}">{{ lote }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for fila in matriz.filas %}
+        <tr>
+          {% if fila.span_sem is defined %}
+          <td class="col-semana fw-bold" rowspan="{{ fila.span_sem }}">{{ fila.sem_num }}</td>
+          {% endif %}
+          <td class="col-dia">{{ fila.dia }}</td>
+          {% for lote in matriz.lotes %}
+          {% set celda = fila.celdas.get(lote) %}
+          <td class="num">
+            {% if celda and celda.es_primer %}
+            <span class="badge-primer">1er huevo</span>
+            {% elif celda and celda.valor is not none %}
+            {{ '%.2f%%' % (celda.valor * 100) }}
+            {% endif %}
+          </td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
