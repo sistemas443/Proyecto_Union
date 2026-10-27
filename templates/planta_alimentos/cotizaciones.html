@@ -200,7 +200,7 @@
 
                                     <form method="POST" class="d-inline"
                                           action="{{ url_for('planta_alimentos.cotizaciones.eliminar_cotizacion', cotizacion_id=cot.id) }}"
-                                          onsubmit="return confirm('¿Eliminar la cotización de {{ mes_nombres[cot.mes] }} {{ cot.anio }}? Se borrarán también sus {{ cot.total_items or 0 }} precios.');">
+                                          data-confirm="Vas a eliminar la cotización de <strong>{{ mes_nombres[cot.mes] }} {{ cot.anio }}</strong>. Se borrarán también sus {{ cot.total_items or 0 }} precios." data-confirm-title="¿Eliminar cotización?" data-confirm-ok="Sí, eliminar">
                                         <button type="submit" class="btn-accion is-danger"
                                                 title="Eliminar cotización"
                                                 aria-label="Eliminar cotización de {{ mes_nombres[cot.mes] }} {{ cot.anio }}">

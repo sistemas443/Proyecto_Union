@@ -14,8 +14,8 @@
 
   <style>
     .modal-backdrop.show {
-      backdrop-filter: none !important;
-      -webkit-backdrop-filter: none !important;
+      backdrop-filter: blur(4px) !important;
+      -webkit-backdrop-filter: blur(4px) !important;
       background-color: rgba(0, 0, 0, 0.5) !important;
       opacity: 1 !important;
       /* Cobertura total bajo zoom CSS (0.8 → 1/0.8 = 125%) */
@@ -323,11 +323,16 @@
       margin-right: 12px;
     }
 
-    /* Fondo transparente (sin oscurecer) */
+    /* Fondo transparente (sin oscurecer). Solo los modales llevan desenfoque (clase swal-desenfoque) */
     .swal2-container.swal2-backdrop-show,
     .swal2-container.swal2-noanimation,
     .swal2-container {
       background-color: transparent !important;
+    }
+
+    .swal2-container.swal-desenfoque {
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
     }
 
     .swal2-popup {
@@ -780,6 +785,37 @@
       </div>
     </div>
   </div>
+  {% endif %}
+
+  {% if session.get('user_id') %}
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      if (!window.location.pathname.startsWith('/consolidados/')) return;
+
+      let versionActual = null;
+      let recargando = false;
+
+      async function consultarVersion() {
+        if (document.visibilityState !== 'visible' || recargando) return;
+        try {
+          const resp = await fetch("{{ url_for('consolidados.consolidados_version') }}", { cache: 'no-store' });
+          if (!resp.ok) return;
+          const data = await resp.json();
+          if (versionActual === null) {
+            versionActual = data.version;
+          } else if (data.version !== versionActual) {
+            recargando = true;
+            window.location.reload();
+          }
+        } catch (e) {
+          // Silencio: no interrumpir si falla la red.
+        }
+      }
+
+      consultarVersion();
+      setInterval(consultarVersion, 15000);
+    });
+  </script>
   {% endif %}
 
   {% block scripts %}{% endblock %}

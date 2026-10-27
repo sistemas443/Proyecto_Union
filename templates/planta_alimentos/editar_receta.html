@@ -64,7 +64,7 @@
                         {% if es_ultima_version %}
                         <form method="POST"
                             action="{{ url_for('planta_alimentos.crear_version_receta', item_id=item_id, lote_id=lote_id) }}"
-                            onsubmit="return confirm('¿Seguro que deseas congelar la Versión {{ version_actual }} y crear la Versión {{ version_actual + 1 }}?');">
+                            data-confirm="Vas a congelar la <strong>Versión {{ version_actual }}</strong> y crear la <strong>Versión {{ version_actual + 1 }}</strong>." data-confirm-title="¿Crear nueva versión?" data-confirm-ok="Sí, crear">
                             <button type="submit" class="btn btn-sm btn-primary fw-bold shadow-sm">
                                 <i class="fas fa-code-branch me-1"></i> Nueva Versión
                             </button>
@@ -220,7 +220,7 @@
                                         <!-- Formulario y Botón Eliminar (Papelera SVG) -->
                                         <form method="POST"
                                             action="{{ url_for('planta_alimentos.eliminar_insumo_receta', id_registro=insumo['id']) }}"
-                                            onsubmit="return confirm('¿Eliminar insumo?');" class="d-inline">
+                                            data-confirm="Vas a eliminar el insumo <strong>{{ insumo['insumo'] }}</strong> de esta receta." data-confirm-title="¿Eliminar insumo?" data-confirm-ok="Sí, eliminar" class="d-inline">
                                             <input type="hidden" name="item_id" value="{{ item_id }}">
                                             <input type="hidden" name="lote_id" value="{{ lote_id }}">
                                             <button type="submit" class="btn btn-sm btn-outline-danger border-0 p-1"
@@ -488,7 +488,7 @@
                                         <!-- Formulario y Botón Eliminar (Papelera SVG) -->
                                         <form method="POST"
                                             action="{{ url_for('planta_alimentos.eliminar_produccion_diaria', id_registro=reg['id']) }}"
-                                            onsubmit="return confirm('¿Eliminar registro?');" class="d-inline">
+                                            data-confirm="Vas a eliminar el registro del <strong>{{ reg['fecha'].strftime('%d/%m/%Y') }}</strong> ({{ "{:,.0f}".format(reg['toneladas']) }} Ton)." data-confirm-title="¿Eliminar registro?" data-confirm-ok="Sí, eliminar" class="d-inline">
                                             <input type="hidden" name="item_id" value="{{ item_id }}">
                                             <input type="hidden" name="lote_id" value="{{ lote_id }}">
                                             <button type="submit" class="btn btn-sm btn-outline-danger border-0 p-1"
@@ -595,7 +595,7 @@
                                             </button>
                                             <form method="POST"
                                                 action="{{ url_for('planta_alimentos.eliminar_produccion_diaria', id_registro=reg['id']) }}"
-                                                onsubmit="return confirm('¿Eliminar registro?');" class="d-inline">
+                                                data-confirm="Vas a eliminar el registro del <strong>{{ reg['fecha'].strftime('%d/%m/%Y') }}</strong> ({{ "{:,.0f}".format(reg['toneladas']) }} Ton)." data-confirm-title="¿Eliminar registro?" data-confirm-ok="Sí, eliminar" class="d-inline">
                                                 <input type="hidden" name="item_id" value="{{ item_id }}">
                                                 <input type="hidden" name="lote_id" value="{{ lote_id }}">
                                                 <button type="submit" class="btn btn-sm btn-outline-danger border-0 p-1"

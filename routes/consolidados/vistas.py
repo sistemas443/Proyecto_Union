@@ -1,7 +1,9 @@
 """Grilla de Consolidados L+P. En Fase A ninguna vista destino existe:
 todos los botones se muestran como Próximamente."""
-from flask import Blueprint, render_template, request
+import hashlib
+from flask import Blueprint, render_template, request, jsonify
 from routes.routes import login_requerido
+from models.base import get_db_connection
 
 consolidados_bp = Blueprint('consolidados', __name__)
 
@@ -42,6 +44,38 @@ BOTONES = [
 def vista_consolidados():
     """Muestra la grilla de botones de Consolidados L+P."""
     return render_template('consolidados/index.html', botones=BOTONES)
+
+
+@consolidados_bp.route('/api/consolidados/version')
+@login_requerido
+def consolidados_version():
+    """Devuelve un hash del estado actual de las tablas que alimentan consolidados.
+
+    El frontend consulta este endpoint cada 15s; si el hash cambia, recarga la vista
+    para reflejar los datos actualizados sin intervencion manual.
+    """
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            SELECT
+                (SELECT COALESCE(MAX(fecha)::text, '') FROM auditoria_cambios),
+                (SELECT COUNT(*)::text || ':' || COALESCE(MAX(fecha_fin_sem)::text, '') FROM bd_vargas),
+                (SELECT COUNT(*)::text || ':' || COALESCE(MAX(fecha_dia)::text, '') FROM data_diario),
+                (SELECT COUNT(*)::text FROM semanal_levante),
+                (SELECT COUNT(*)::text FROM primera_semana),
+                (SELECT COUNT(*)::text FROM cabecera_lotes),
+                (SELECT COUNT(*)::text FROM clasificacion_produccion)
+        """)
+        estado = '|'.join(str(x) for x in cur.fetchone())
+        version = hashlib.md5(estado.encode('utf-8')).hexdigest()
+        return jsonify({'version': version})
+    except Exception as e:
+        print(f"[CONSOLIDADOS VERSION] {e}")
+        return jsonify({'version': 'error'})
+    finally:
+        cur.close()
+        conn.close()
 
 
 @consolidados_bp.route('/consolidados/primer-huevo')

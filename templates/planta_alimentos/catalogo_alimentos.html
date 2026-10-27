@@ -347,7 +347,7 @@
                                             
                                             <!-- 3. Eliminar -->
                                             <form method="POST" action="{{ url_for('planta_alimentos.eliminar_dieta', item_id=alimento.item_id) }}" 
-                                                onsubmit="return confirm('¿Seguro que deseas eliminar la dieta {{ alimento.nombre }}? Esto podría afectar las fórmulas asociadas.');" 
+                                                data-confirm="Vas a eliminar la dieta <strong>{{ alimento.nombre }}</strong>. Esto podría afectar las fórmulas asociadas." data-confirm-title="¿Eliminar dieta?" data-confirm-ok="Sí, eliminar" 
                                                 class="d-inline">
                                                 <button type="submit" class="btn btn-outline-danger btn-action" title="Eliminar Dieta">
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-trash3" viewBox="0 0 16 16">

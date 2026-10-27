@@ -417,6 +417,14 @@ def procesar_excel_clasificacion(archivo_excel, lote_nombre):
             texto = ''.join(c for c in unicodedata.normalize('NFD', texto) if unicodedata.category(c) != 'Mn')
             return ' '.join(texto.replace('\n', ' ').split())
 
+        def normalizar_columna(texto):
+            """Normaliza encabezados: minusculas, sin tildes, sin apostrofos ni comillas."""
+            texto = str(texto).lower().strip()
+            texto = ''.join(c for c in unicodedata.normalize('NFD', texto) if unicodedata.category(c) != 'Mn')
+            texto = re.sub(r"['\u2019\u2018`\"\u201c\u201d]", '', texto)
+            texto = re.sub(r'[^a-z0-9\s]', ' ', texto)
+            return ' '.join(texto.split())
+
         # 3. Escáner: buscar la fila con los sub-encabezados reales
         for nombre_hoja, hoja_df in hojas.items():
             for i, row in hoja_df.iterrows():
@@ -548,13 +556,15 @@ def procesar_excel_clasificacion(archivo_excel, lote_nombre):
             for palabra_clave, col_db in mapeo_columnas.items():
                 if col_db in columnas_ya_procesadas:
                     continue
+                clave_norm = normalizar_columna(palabra_clave)
                 col_encontrada = None
                 for c in df.columns:
-                    c_lower = str(c).lower().strip()
-                    if '__dup' in c_lower:
+                    c_norm = normalizar_columna(c)
+                    if '__dup' in c_norm:
                         continue
-                    palabras = c_lower.split()
-                    if palabra_clave in palabras or c_lower == palabra_clave:
+                    # Coincidencia robusta: igualdad o prefijo normalizado
+                    # (cubre "totiao", "totia'o", "TOTIAO", etc.)
+                    if c_norm == clave_norm or c_norm.startswith(clave_norm):
                         col_encontrada = c
                         break
 

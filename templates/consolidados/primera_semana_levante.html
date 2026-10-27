@@ -68,9 +68,10 @@
     {'id': 'mort', 'titulo': 'Mortalidad por día', 'datos': datos.mort},
   ] %}
   {% for sec in secciones %}
+  {% set dec = 0 if sec.id == 'mort' else 2 %}
   <h6 class="fw-bold text-secondary text-uppercase">{{ sec.titulo }}</h6>
   <div class="contenedor-matriz shadow-sm border rounded mt-3 mb-4" id="contenedor-{{ sec.id }}">
-    <table class="table table-sm table-bordered mb-0 tabla-compacta tabla-seccion" id="tabla-{{ sec.id }}">
+    <table class="table table-sm table-bordered mb-0 tabla-compacta tabla-seccion" id="tabla-{{ sec.id }}" data-decimales="{{ dec }}">
       <thead>
         <tr>
           <th class="col-dia">FECHA REC.</th>
@@ -105,10 +106,10 @@
         <tr data-dia="{{ d }}">
           <td class="col-dia fw-bold">{{ d }}</td>
           <td class="col-prom num" data-prom></td>
-          <td class="col-tabla num">{{ '{:,.0f}'.format(sec.datos.tabla.get(d)).replace(',', '.') if sec.datos.tabla.get(d) is not none else '' }}</td>
+          <td class="col-tabla num">{{ '{:,.{}f}'.format(sec.datos.tabla.get(d), dec).replace(',', 'X').replace('.', ',').replace('X', '.') if sec.datos.tabla.get(d) is not none else '' }}</td>
           {% for l in datos.lotes %}
           {% set v = sec.datos.matriz.get(d, {}).get(l.nombre) %}
-          <td class="num" data-lote="{{ l.nombre }}" data-valor="{{ v if v is not none else '' }}">{{ '{:,.1f}'.format(v) if v is not none else '' }}</td>
+          <td class="num" data-lote="{{ l.nombre }}" data-valor="{{ v if v is not none else '' }}">{{ '{:,.{}f}'.format(v, dec).replace(',', 'X').replace('.', ',').replace('X', '.') if v is not none else '' }}</td>
           {% endfor %}
         </tr>
         {% endfor %}
@@ -119,8 +120,13 @@
 </div>
 <script>
   document.addEventListener("DOMContentLoaded", function () {
-    const fmt1 = (n) => n.toFixed(1);
     document.querySelectorAll('table.tabla-seccion').forEach(function (tabla) {
+      const dec = parseInt(tabla.dataset.decimales || '2', 10);
+      const fmt = (n) => {
+        const partes = n.toFixed(dec).split('.');
+        partes[0] = partes[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        return partes.join(',');
+      };
       const recalcular = () => {
         tabla.querySelectorAll('.chk-incluir').forEach(function (chk) {
           const th = chk.closest('th');
@@ -138,7 +144,7 @@
               }
             }
           });
-          tr.querySelector('[data-prom]').textContent = n > 0 ? fmt1(suma / n) : '';
+          tr.querySelector('[data-prom]').textContent = n > 0 ? fmt(suma / n) : '';
         });
       };
       tabla.querySelectorAll('.chk-incluir').forEach(function (chk) {

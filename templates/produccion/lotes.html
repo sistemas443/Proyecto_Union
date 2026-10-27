@@ -100,7 +100,7 @@
                             <button class="btn btn-sm btn-naranja btn-editar text-white"
                                 data-lote="{{ lote | tojson | forceescape }}" title="Editar lote"><i
                                     class='bx bx-edit'></i></button>
-                            <button class="btn btn-sm btn-danger btn-borrar" data-id="{{ lote.id }}"
+                            <button class="btn btn-sm btn-danger btn-borrar" data-id="{{ lote.id }}" data-nombre="{{ lote.lote }}"
                                 title="Borrar lote"><i class='bx bx-trash'></i></button>
                             {% endif %}
                         </td>

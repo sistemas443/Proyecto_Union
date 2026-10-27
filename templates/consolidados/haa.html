@@ -97,10 +97,10 @@
         <tr data-semana="{{ s }}">
           <td class="col-semana fw-bold">{{ s }}</td>
           <td class="col-prom num" data-prom></td>
-          <td class="col-tabla num">{{ '{:,.1f}'.format(datos.tabla.get(s)) if datos.tabla.get(s) is not none else '' }}</td>
+          <td class="col-tabla num">{{ '{:,.2f}'.format(datos.tabla.get(s)) if datos.tabla.get(s) is not none else '' }}</td>
           {% for l in datos.lotes %}
           {% set v = datos.matriz.get(s, {}).get(l.nombre) %}
-          <td class="num" data-lote="{{ l.nombre }}" data-valor="{{ v if v is not none else '' }}">{{ '{:,.1f}'.format(v) if v is not none else '' }}</td>
+          <td class="num" data-lote="{{ l.nombre }}" data-valor="{{ v if v is not none else '' }}">{{ '{:,.2f}'.format(v) if v is not none else '' }}</td>
           {% endfor %}
         </tr>
         {% endfor %}
@@ -112,7 +112,7 @@
   document.addEventListener("DOMContentLoaded", function () {
     const tabla = document.getElementById('tablaHaa');
     if (!tabla) return;
-    const fmt1 = (n) => n.toFixed(1);
+    const fmt2 = (n) => n.toFixed(2);
     const recalcular = () => {
       tabla.querySelectorAll('.chk-incluir').forEach(function (chk) {
         const th = chk.closest('th');
@@ -130,7 +130,7 @@
             }
           }
         });
-        tr.querySelector('[data-prom]').textContent = n > 0 ? fmt1(suma / n) : '';
+        tr.querySelector('[data-prom]').textContent = n > 0 ? fmt2(suma / n) : '';
       });
     };
     tabla.querySelectorAll('.chk-incluir').forEach(function (chk) {

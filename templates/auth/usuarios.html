@@ -176,7 +176,8 @@
                             <!-- BOTON BLOQUEAR/DESBLOQUEAR -->
                             {% if session.get('user_id') != u[0] %}
                             <button class="btn btn-sm shadow-sm {% if u[3] %}btn-outline-danger{% else %}btn-outline-success{% endif %}"
-                                onclick="toggleUsuario('{{ u[0] }}')"
+                                data-id="{{ u[0] }}" data-nombre="{{ u[1] }}" data-activo="{{ 'true' if u[3] else 'false' }}"
+                                onclick="toggleUsuario(this)"
                                 title="{% if u[3] %}Desactivar Acceso{% else %}Reactivar Acceso{% endif %}">
                                 <i class='bx {% if u[3] %}bx-user-x{% else %}bx-user-check{% endif %}'></i>
                             </button>
@@ -458,18 +459,41 @@
         modalUser.show();
     }
 
-    function toggleUsuario(id) {
-        if (confirm("¿Estás seguro de cambiar el estado de acceso de este usuario?")) {
+    function toggleUsuario(boton) {
+        const id = boton.dataset.id;
+        const nombre = boton.dataset.nombre;
+        const desactivar = boton.dataset.activo === 'true';
+        Swal.fire({
+            title: desactivar ? '¿Desactivar acceso?' : '¿Reactivar acceso?',
+            html: (desactivar
+                ? 'El usuario <strong>' + escaparHtmlUsuario(nombre) + '</strong> dejará de poder ingresar al sistema.'
+                : 'El usuario <strong>' + escaparHtmlUsuario(nombre) + '</strong> podrá volver a ingresar al sistema.'),
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: desactivar ? 'Sí, desactivar' : 'Sí, reactivar',
+            cancelButtonText: 'Cancelar',
+            reverseButtons: true,
+            focusCancel: true,
+            confirmButtonColor: '#97271C',
+            cancelButtonColor: '#6c757d'
+        }).then((result) => {
+            if (!result.isConfirmed) return;
             fetch(`/api/usuarios/toggle/${id}`, { method: 'POST' })
                 .then(r => r.json())
                 .then(data => {
                     if (data.status === 'ok') {
                         window.location.reload();
                     } else {
-                        alert('Error: ' + data.msg);
+                        appError(data.msg, 'No se pudo cambiar el acceso');
                     }
                 });
-        }
+        });
+    }
+
+    function escaparHtmlUsuario(texto) {
+        const div = document.createElement('div');
+        div.textContent = texto || '';
+        return div.innerHTML;
     }
 
     function abrirModalRol() {
@@ -483,7 +507,7 @@
         const descRol = document.getElementById('nuevo_rol_desc').value.trim();
 
         if (!nombreRol) {
-            alert("El nombre del rol es obligatorio.");
+            appWarning("El nombre del rol es obligatorio.", "Campo requerido");
             return;
         }
 
@@ -500,14 +524,14 @@
                     select.add(nuevaOpcion);
                     select.value = data.id;
                     modalRolUI.hide();
-                    alert("¡Rol '" + data.nombre + "' creado exitosamente!");
+                    appSuccess("El rol '" + data.nombre + "' se creó correctamente.", "Rol creado");
                 } else {
-                    alert("Atención: " + data.msg);
+                    appWarning(data.msg, "Atención");
                 }
             })
             .catch(err => {
                 console.error(err);
-                alert("Error de conexión al crear el rol.");
+                appError("No se pudo conectar con el servidor para crear el rol.", "Error de conexión");
             });
     }
 

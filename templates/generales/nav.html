@@ -1,7 +1,7 @@
 <nav class="navbar navbar-expand-lg navbar-dark app-navbar">
   <div class="container-fluid px-3 px-xl-4">
 
-    <a class="navbar-brand app-brand" href="{{ url_for('main.index') }}">
+    <a class="navbar-brand app-brand" href="{{ url_for('main.pantalla_principal') }}">
       <img src="{{ url_for('static', filename='img/LOGO_AVICOLA_SAN_MARTIN.svg') }}" alt="Avícola San Martín" class="app-brand-logo">
       <span class="app-brand-name">AVÍCOLA SAN MARTÍN <span class="app-brand-suffix">S.A.</span></span>
     </a>
@@ -41,12 +41,22 @@
             </a>
             <ul class="dropdown-menu dropdown-menu-dark">
               <li>
-                <a class="dropdown-item fw-semibold" href="#" onclick="toggleSidebarLotes(event)">
+                <a class="dropdown-item fw-semibold" href="{{ url_for('lotes.vista_lotes') }}" onclick="toggleSidebarLotes(event)">
                   <i class='bx bx-sidebar'></i> Lotes
                 </a>
               </li>
-              <li><a class="dropdown-item disabled" href="#" aria-disabled="true">Reportes</a></li>
+              <li>
+                <a class="dropdown-item{{ ' active' if ep.startswith('consolidados.') }}" href="{{ url_for('consolidados.vista_consolidados') }}">
+                  <i class='bx bx-grid-alt'></i> Consolidados
+                </a>
+              </li>
             </ul>
+          </li>
+
+          <li class="nav-item">
+            <a class="nav-link{{ ' is-current' if ep == 'main.index' }}" href="{{ url_for('main.index') }}">
+              <i class='bx bx-file-blank'></i> Reportes
+            </a>
           </li>
 
           <!-- PLANTA DE ALIMENTOS -->
@@ -110,12 +120,22 @@
             </a>
             <ul class="dropdown-menu dropdown-menu-dark">
               <li>
-                <a class="dropdown-item fw-semibold" href="#" onclick="toggleSidebarLotes(event)">
+                <a class="dropdown-item fw-semibold" href="{{ url_for('lotes.vista_lotes') }}" onclick="toggleSidebarLotes(event)">
                   <i class='bx bx-sidebar'></i> Lotes
                 </a>
               </li>
-              <li><a class="dropdown-item disabled" href="#" aria-disabled="true">Reportes</a></li>
+              <li>
+                <a class="dropdown-item{{ ' active' if ep.startswith('consolidados.') }}" href="{{ url_for('consolidados.vista_consolidados') }}">
+                  <i class='bx bx-grid-alt'></i> Consolidados
+                </a>
+              </li>
             </ul>
+          </li>
+
+          <li class="nav-item">
+            <a class="nav-link{{ ' is-current' if ep == 'main.index' }}" href="{{ url_for('main.index') }}">
+              <i class='bx bx-file-blank'></i> Reportes
+            </a>
           </li>
 
           <!-- PLANTA DE ALIMENTOS -->
@@ -193,7 +213,7 @@
       <div class="d-flex align-items-center app-user ms-lg-auto mt-3 mt-lg-0">
         <div class="app-avatar">
           {% if session.get('user_foto') %}
-          <img src="{{ url_for('static', filename='uploads/usuarios/' + session.get('user_foto')) }}" alt="Foto de perfil">
+          <img src="{{ url_for('main.foto_usuario', id=session.get('user_id')) }}" alt="Foto de perfil">
           {% else %}
           <i class='bx bxs-user'></i>
           {% endif %}
@@ -222,7 +242,7 @@
     min-height: 60px;
     padding-top: 0;
     padding-bottom: 0;
-    background: linear-gradient(180deg, #1d1e23 0%, #181519 100%);
+    background-color: #212529;
     border-bottom: 1px solid rgba(255, 255, 255, 0.07);
     box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16);
     z-index: 1050;
@@ -245,7 +265,7 @@
 
   .app-navbar .app-brand-name {
     color: var(--nav-ink);
-    font-size: 0.90rem;
+    font-size: 1rem;
     font-weight: 600;
     letter-spacing: 0.045em;
     white-space: nowrap;
@@ -309,7 +329,7 @@
   }
 
   .app-navbar .navbar-nav .nav-link:focus-visible {
-    outline: 2px solid #d9564a;
+    outline: 2px solid #97271C;
     outline-offset: -2px;
   }
 
@@ -368,7 +388,7 @@
   }
 
   .app-navbar .dropdown-item:focus-visible {
-    outline: 2px solid #d9564a;
+    outline: 2px solid #97271C;
     outline-offset: -2px;
   }
 
@@ -578,12 +598,12 @@
 
   .app-navbar .app-logout:hover {
     background-color: rgba(220, 53, 69, 0.16);
-    border-color: rgba(220, 53, 69, 0.75);
+    border-color: rgba(151, 39, 28, 0.75);
     color: #ffffff;
   }
 
   .app-navbar .app-logout:focus-visible {
-    outline: 2px solid #e05a4c;
+    outline: 2px solid #97271C;
     outline-offset: 2px;
   }
 
@@ -595,7 +615,7 @@
   }
 
   .app-navbar .navbar-toggler:focus {
-    box-shadow: 0 0 0 3px rgba(151, 39, 28, 0.35);
+    box-shadow: 0 0 0 3px rgba(151, 39, 28, 0.45);
   }
 
   /* --- Móvil / tablet --- */

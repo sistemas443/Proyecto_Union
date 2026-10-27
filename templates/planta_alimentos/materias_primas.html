@@ -386,7 +386,7 @@
                                             <!-- Eliminar -->
                                             <form method="POST"
                                                 action="{{ url_for('planta_alimentos.eliminar_materia_prima', id_mp=mp['id']) }}"
-                                                onsubmit="return confirm('¿Deseas eliminar este insumo?');"
+                                                data-confirm="Vas a eliminar el insumo <strong>{{ mp['nombre'] }}</strong>." data-confirm-title="¿Eliminar insumo?" data-confirm-ok="Sí, eliminar"
                                                 class="d-inline">
                                                 <button type="submit" class="btn btn-outline-danger btn-sm p-1" title="Eliminar Insumo">
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14"

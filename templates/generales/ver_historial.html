@@ -191,42 +191,7 @@
                         </tr>
                     </thead>
                     <tbody id="tabla-historial">
-                        {% for c in cambios %}
-                        <tr>
-                            <td>{{ c[3].strftime('%d/%m/%Y %H:%M:%S') if c[3] else '' }}</td>
-                            <td>{{ c[2] }}</td>
-                            <td><span class="badge bg-secondary">{{ c[4] }}</span></td>
-                            <td>
-                                {% if c[10] %}
-                                    Lote {{ c[10] }}, Día {{ c[11] }}
-                                {% elif c[4] == 'primera_semana' %}
-                                    Registro eliminado (ID: {{ c[5] }})
-                                {% else %}
-                                    {{ c[4] }} ID: {{ c[5] }}
-                                {% endif %}
-                            </td>
-                            <td><code>{{ c[6] or '-' }}</code></td>
-                            <td class="text-danger">{{ c[7] or '-' }}</td>
-                            <td class="text-success">{{ c[8] or '-' }}</td>
-                            <td>
-                                {% if c[9] == 'UPDATE' %}
-                                    <span class="badge bg-warning text-dark">ACTUALIZADO</span>
-                                {% elif c[9] == 'INSERT' %}
-                                    <span class="badge bg-success">INSERTADO</span>
-                                {% elif c[9] == 'DELETE' %}
-                                    <span class="badge bg-danger">ELIMINADO</span>
-                                {% elif c[9] == 'IMPORT' %}
-                                    <span class="badge bg-info">IMPORTADO</span>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr>
-                            <td colspan="8" class="text-center text-muted py-4">
-                                No hay registros de cambios
-                            </td>
-                        </tr>
-                        {% endfor %}
+                        <!-- Se llena dinámicamente con JavaScript calculando el límite por pantalla -->
                     </tbody>
                 </table>
             </div>
@@ -247,6 +212,7 @@
 <script>
     const API_URL = "{{ url_for('main.api_auditoria_filtrar') }}";
     const API_OPCIONES = "{{ url_for('main.api_auditoria_opciones') }}";
+    const API_CAMPOS = "{{ url_for('main.api_auditoria_campos') }}";
     
     let filtrosActuales = {
         usuario: '',
@@ -260,8 +226,14 @@
     
     // Opciones cargadas desde el template
     const opcionesFiltros = JSON.parse(document.getElementById('opciones-filtros').textContent || '{}');
-    
-    const API_CAMPOS = "{{ url_for('main.api_auditoria_campos') }}";
+
+    // Función para calcular registros por pantalla
+    function obtenerLimiteDinamico() {
+        const espacioLibre = window.innerHeight - 180; 
+        const altoFila = 38;
+        let limite = Math.floor(espacioLibre / altoFila);
+        return limite < 5 ? 5 : limite; 
+    }
 
     // Función para cargar campos de una tabla
     async function cargarCampos(tabla) {
@@ -298,6 +270,7 @@
                         e.preventDefault();
                         filtrosActuales.campo = this.dataset.valor;
                         actualizarChips();
+                        aplicarFiltros();
                     });
                 });
             }
@@ -306,7 +279,7 @@
         }
     }
 
-    // Cargar opciones de filtros al iniciar
+    // Cargar opciones de filtros al iniciar y aplicar búsqueda adaptativa
     document.addEventListener('DOMContentLoaded', function() {
         // Manejar clicks en items de dropdown
         document.querySelectorAll('[data-filtro]').forEach(item => {
@@ -330,10 +303,21 @@
                 cargarCampos(valor);
             });
         });
+
+        // Carga inicial calculando la pantalla
+        aplicarFiltros();
     });
     
+    // Recalcular si el usuario cambia el tamaño de la ventana
+    let timeoutResize;
+    window.addEventListener('resize', function() {
+        clearTimeout(timeoutResize);
+        timeoutResize = setTimeout(() => {
+            aplicarFiltros(); 
+        }, 300);
+    });
+
     function actualizarChips() {
-        // Definir configuración de chips
         const chips = [
             { id: 'chip-usuario', filtro: 'usuario', nombre: 'Usuario', icono: 'bx-user' },
             { id: 'chip-tabla', filtro: 'tabla', nombre: 'Tabla', icono: 'bx-table' },
@@ -346,9 +330,7 @@
         chips.forEach(chip => {
             const chipEl = document.getElementById(chip.id);
             const textoEl = chipEl.querySelector('.chip-texto');
-            const iconoEl = chipEl.querySelector('.bx:not(.bx-chevron-down)');
             
-            // Verificar si hay valor seleccionado
             let valor = '';
             if (chip.filtro === 'fecha') {
                 const desde = document.getElementById('filtro-fecha-desde').value;
@@ -361,10 +343,7 @@
             }
             
             if (valor) {
-                // Chip activo: mostrar valor y X para quitar
                 chipEl.classList.add('activo');
-                
-                // Buscar el nombre para mostrar
                 let textoMostrar = valor;
                 if (chip.filtro === 'usuario') {
                     const usuario = (opcionesFiltros.usuarios || []).find(u => u.id == valor);
@@ -373,7 +352,6 @@
                 
                 textoEl.textContent = textoMostrar;
                 
-                // Añadir botón X si no existe
                 if (!chipEl.querySelector('.btn-quitar')) {
                     const btnQuitar = document.createElement('button');
                     btnQuitar.className = 'btn-quitar';
@@ -385,11 +363,9 @@
                     chipEl.appendChild(btnQuitar);
                 }
             } else {
-                // Chip inactivo: mostrar nombre original
                 chipEl.classList.remove('activo');
                 textoEl.textContent = chip.nombre;
                 
-                // Remover botón X si existe
                 const btnQuitar = chipEl.querySelector('.btn-quitar');
                 if (btnQuitar) btnQuitar.remove();
             }
@@ -414,7 +390,9 @@
         Object.entries(filtrosActuales).forEach(([key, value]) => {
             if (value) params.append(key, value);
         });
+        
         params.append('pagina', 1);
+        params.append('limite', obtenerLimiteDinamico());
         
         fetch(`${API_URL}?${params}`, {
             method: 'GET',
@@ -509,7 +487,9 @@
         Object.entries(filtrosActuales).forEach(([key, value]) => {
             if (value) params.append(key, value);
         });
+        
         params.append('pagina', pagina);
+        params.append('limite', obtenerLimiteDinamico());
         
         fetch(`${API_URL}?${params}`, {
             method: 'GET',

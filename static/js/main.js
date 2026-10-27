@@ -208,16 +208,148 @@ function configurarModal(accion) {
     inputs.forEach(input => { input.readOnly = false; input.disabled = false; });
 }
 
-function confirmarBorrar(id) {
-    if (confirm("¿Estás seguro de que deseas borrar este lote? Esta acción no se puede deshacer.")) {
+// ---- Helpers globales de notificacion (SweetAlert2, estilo del sistema) ----
+window.appError = function (mensaje, titulo) {
+    Swal.fire({
+        icon: 'error',
+        title: titulo || 'Ocurrió un error',
+        text: mensaje || '',
+        confirmButtonColor: '#97271C'
+    });
+};
+
+window.appWarning = function (mensaje, titulo) {
+    Swal.fire({
+        icon: 'warning',
+        title: titulo || 'Atención',
+        text: mensaje || '',
+        confirmButtonColor: '#97271C'
+    });
+};
+
+window.appSuccess = function (mensaje, titulo) {
+    Swal.fire({
+        icon: 'success',
+        title: titulo || 'Listo',
+        text: mensaje || '',
+        timer: 1800,
+        showConfirmButton: false
+    });
+};
+
+window.appConfirm = function (opciones) {
+    return Swal.fire({
+        title: opciones.titulo || '¿Confirmar acción?',
+        html: opciones.html || '',
+        icon: opciones.icon || 'warning',
+        showCancelButton: true,
+        confirmButtonText: opciones.ok || 'Sí, continuar',
+        cancelButtonText: 'Cancelar',
+        reverseButtons: true,
+        focusCancel: true,
+        confirmButtonColor: '#97271C',
+        cancelButtonColor: '#6c757d'
+    });
+};
+
+// Desenfoque solo en modales (con botón de acción). Las notificaciones (con temporizador o sin botón) no se desenfocan.
+document.addEventListener('DOMContentLoaded', function () {
+    if (!window.Swal || Swal.__desenfoqueAplicado) return;
+    const fireOriginal = Swal.fire.bind(Swal);
+    Swal.fire = function (...args) {
+        let opciones = (args.length === 1 && typeof args[0] === 'object') ? Object.assign({}, args[0]) : { title: args[0], text: args[1], icon: args[2] };
+        const esNotificacion = opciones.toast || opciones.timer || opciones.showConfirmButton === false;
+        const clasesActuales = (opciones.customClass && typeof opciones.customClass === 'object') ? opciones.customClass : {};
+        if (!esNotificacion) {
+            opciones.customClass = Object.assign({}, clasesActuales, {
+                container: [clasesActuales.container, 'swal-desenfoque'].filter(Boolean).join(' ')
+            });
+        }
+        return fireOriginal(opciones);
+    };
+    Swal.__desenfoqueAplicado = true;
+});
+
+// Sustituye alert() nativo por un modal del sistema. El icono se deduce del texto.
+window.alert = function (mensaje) {
+    const texto = String(mensaje ?? '');
+    const esError = /error|no se pudo|hubo un error|fall/i.test(texto);
+    const esAviso = /obligatori|debe |debe$|por favor|seleccion|no hay|cerrada|reábrela|atenci|solo |selecciona|suelta/i.test(texto);
+    const icono = esError ? 'error' : (esAviso ? 'warning' : 'info');
+    const titulo = esError ? 'Ocurrió un error' : (esAviso ? 'Atención' : 'Aviso');
+    Swal.fire({
+        icon: icono,
+        title: titulo,
+        text: texto,
+        confirmButtonColor: '#97271C'
+    });
+};
+
+// Interceptor global para formularios con data-confirm (reemplaza confirm() nativo)
+document.addEventListener('submit', function (e) {
+    const form = e.target;
+    const mensaje = form.getAttribute('data-confirm');
+    if (!mensaje) return;
+    e.preventDefault();
+    appConfirm({
+        titulo: form.getAttribute('data-confirm-title') || '¿Confirmar acción?',
+        html: mensaje,
+        ok: form.getAttribute('data-confirm-ok') || 'Sí, continuar'
+    }).then(function (result) {
+        if (result.isConfirmed) form.submit();
+    });
+});
+
+function escaparHtml(texto) {
+    const div = document.createElement('div');
+    div.textContent = texto;
+    return div.innerHTML;
+}
+
+function confirmarBorrar(id, nombre) {
+    Swal.fire({
+        title: '¿Eliminar lote?',
+        html: 'Vas a eliminar el lote <strong>' + escaparHtml(nombre) + '</strong> y sus datos asociados.<br><span style="color:#97271C">Esta acción no se puede deshacer.</span>',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar',
+        reverseButtons: true,
+        focusCancel: true,
+        confirmButtonColor: '#97271C',
+        cancelButtonColor: '#6c757d'
+    }).then(function (result) {
+        if (!result.isConfirmed) return;
+
         fetch('/api/borrar-lote/' + id, { method: 'POST' })
-        .then(res => res.json())
-        .then(data => {
-            if(data.status === 'ok') location.reload();
-            else alert('Error al borrar: ' + data.msg);
-        })
-        .catch(err => alert("Error de red al intentar borrar el lote."));
-    }
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'ok') {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Lote eliminado',
+                        text: 'El lote se eliminó correctamente.',
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => location.reload());
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'No se pudo eliminar',
+                        text: data.msg || 'Error al borrar el lote.',
+                        confirmButtonColor: '#97271C'
+                    });
+                }
+            })
+            .catch(() => {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error de conexión',
+                    text: 'No se pudo conectar con el servidor.',
+                    confirmButtonColor: '#97271C'
+                });
+            });
+    });
 }
 
 // Delegación de eventos para Ojo, Lápiz y Basura (Previene atascos en Bootstrap)
@@ -274,7 +406,8 @@ function setupBotonesLotes() {
         if (btnBorrar) {
             e.preventDefault();
             const id = btnBorrar.getAttribute('data-id');
-            confirmarBorrar(id);
+            const nombre = btnBorrar.getAttribute('data-nombre') || '';
+            confirmarBorrar(id, nombre);
         }
     });
 }

@@ -1,4 +1,5 @@
 import io
+import math
 import os
 import time
 import random
@@ -482,15 +483,20 @@ def gestion_usuarios():
 
 @bp.route('/api/usuarios/<int:id>/foto')
 def foto_usuario(id):
-    """Sirve la foto de perfil de un usuario desde la BD (BYTEA)."""
+    """Sirve la foto de perfil desde la BD (BYTEA) o desde disco (legacy)."""
     conn = get_db_connection()
     cur = conn.cursor()
     try:
-        cur.execute("SELECT foto_data FROM usuarios WHERE id = %s AND activo = TRUE", (id,))
+        cur.execute("SELECT foto_data, foto_perfil FROM usuarios WHERE id = %s AND activo = TRUE", (id,))
         r = cur.fetchone()
         if r and r[0]:
             return Response(bytes(r[0]), mimetype='image/jpeg')
-        # Sin foto: devuelve un placeholder neutro
+        # Fallback: archivo fisico subido antes de la migracion a BD
+        if r and r[1] and r[1] not in ('', '1'):
+            ruta = os.path.join(current_app.root_path, 'static', 'uploads', 'usuarios', r[1])
+            if os.path.exists(ruta):
+                with open(ruta, 'rb') as fh:
+                    return Response(fh.read(), mimetype='image/jpeg')
         return redirect(url_for('static', filename='img/placeholder-catalogo.png'))
     finally:
         cur.close()
@@ -689,19 +695,22 @@ def ver_historial():
     """Muestra el historial de cambios con paginación y filtros."""
     opciones = obtener_opciones_filtros()
     
-    pagina = request.args.get('pagina', 1, type=int)
-    por_pagina = 100
-    offset = (pagina - 1) * por_pagina
-    
-    cambios = obtener_historial(limite=por_pagina, offset=offset)
+    pagina = max(1, request.args.get('pagina', 1, type=int))
+    limite = request.args.get('limite', type=int)
+    if limite is None or limite <= 0:
+        limite = request.args.get('por_pagina', 15, type=int) or 15
+    offset = (pagina - 1) * limite
+
+    cambios = obtener_historial(limite=limite, offset=offset)
     total = contar_historial()
-    total_paginas = (total + por_pagina - 1) // por_pagina
-    
+    total_paginas = math.ceil(total / limite) if limite else 1
+
     return render_template(
         'generales/ver_historial.html', 
         cambios=cambios,
         opciones=opciones,
         pagina=pagina,
+        limite=limite,
         total_paginas=total_paginas,
         total=total
     )
@@ -723,18 +732,22 @@ def api_auditoria_filtrar():
     # Limpiar filtros vacíos
     filtros = {k: v for k, v in filtros.items() if v}
     
-    pagina = request.args.get('pagina', 1, type=int)
-    por_pagina = request.args.get('por_pagina', 100, type=int)
-    offset = (pagina - 1) * por_pagina
-    
-    cambios = obtener_historial_filtrado(filtros=filtros, limite=por_pagina, offset=offset)
+    pagina = max(1, request.args.get('pagina', 1, type=int))
+    limite = request.args.get('limite', type=int)
+    if limite is None or limite <= 0:
+        limite = request.args.get('por_pagina', 15, type=int) or 15
+    offset = (pagina - 1) * limite
+
+    cambios = obtener_historial_filtrado(filtros=filtros, limite=limite, offset=offset)
     total = contar_historial_filtrado(filtros=filtros)
-    total_paginas = (total + por_pagina - 1) // por_pagina
-    
+    total_paginas = math.ceil(total / limite) if limite else 1
+
     return jsonify({
         'status': 'ok',
         'cambios': cambios,
         'pagina': pagina,
+        'limite': limite,
+        'offset': offset,
         'total_paginas': total_paginas,
         'total': total
     })

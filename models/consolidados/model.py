@@ -468,18 +468,27 @@ def fetch_primera_semana_levante() -> list:
     """Devuelve dia (0-7), lote, peso, uniformidad, consumo, mortalidad diaria y metadata.
 
     Dia = fecha - fecha_recepcion. Solo dias 0 a 7. Mortalidad desde diario.
+    Uniformidad: se toma de semanal_levante.unif_porc_unif (columna %Unif real),
+    asignando una semana por dia: dia 0 -> sem 1, dia 1 -> sem 2, ..., dia 7 -> sem 8.
     """
     conn = get_db_connection()
     cur = conn.cursor()
     try:
         cur.execute("""
             SELECT (p.fecha - c.fecha_recepcion) AS dia, p.lote,
-                   p.peso_real, p.porc_uniformidad,
+                   p.peso_real,
+                   sl.unif_porc_unif AS porc_uniformidad,
                    p.consumo_gr_a_d, d.mortalidad,
                    c.fecha_recepcion, c.no_pollitas_recibidas
             FROM primera_semana p
             LEFT JOIN cabecera_lotes c ON c.id = p.id_lote
             LEFT JOIN data_diario d ON d.id_lote = p.id_lote AND d.fecha_dia = p.fecha::text
+            LEFT JOIN (
+                SELECT id_lote, sem, MAX(unif_porc_unif) AS unif_porc_unif
+                FROM semanal_levante
+                GROUP BY id_lote, sem
+            ) sl ON sl.id_lote = p.id_lote
+                AND sl.sem = (p.fecha - c.fecha_recepcion) + 1
             WHERE c.fecha_recepcion IS NOT NULL
               AND (p.fecha - c.fecha_recepcion) BETWEEN 0 AND 7
             ORDER BY dia, p.lote
