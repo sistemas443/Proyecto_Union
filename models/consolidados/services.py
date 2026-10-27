@@ -18,6 +18,24 @@ def _clase_variedad(variedad) -> str:
     return ''
 
 
+def _aplicar_aves_enc_semana17(filas: list) -> list:
+    """Reemplaza aves_enc en cada fila con el saldo_aves de data_diario semana 17.
+
+    El encabezado AVES ENC de todas las vistas de consolidados debe mostrar
+    el saldo de aves de la semana 17 (sem = '17') de la tabla DIARIO.
+    """
+    if not filas:
+        return filas
+    lotes = [f['lote'] for f in filas if f.get('lote')]
+    if not lotes:
+        return filas
+    aves_enc_map = model.fetch_aves_enc_semana17(lotes)
+    for f in filas:
+        if f.get('lote') in aves_enc_map:
+            f['aves_enc'] = aves_enc_map[f['lote']]
+    return filas
+
+
 def _a_num(valor):
     """Normaliza a float aceptando numeric, texto con coma o punto, o None."""
     if valor is None:
@@ -102,6 +120,9 @@ def get_matriz_primer_huevo() -> dict:
 
     dia_min = min(dia_primer.values()) - 7
     dia_max = max(dia_primer.values()) + 21
+    # Asegurar que el rango llegue al menos hasta el dia 201
+    if dia_max < 201:
+        dia_max = 201
 
     filas_db = model.fetch_matriz_dias(dia_min, dia_max)
 
@@ -123,6 +144,12 @@ def get_matriz_primer_huevo() -> dict:
                 'es_primer': f['dias'] == dia_primer.get(f['lote']),
             }
 
+    # Rellenar dias faltantes en el rango [dia_min, dia_max] para que la tabla
+    # muestre todos los dias aunque no haya datos en data_diario
+    for d in range(dia_min, dia_max + 1):
+        if d not in por_dia:
+            por_dia[d] = {'semana': '', 'dia': d, 'celdas': {}}
+
     indicadores_db = {r['lote']: r for r in model.fetch_ultimos_indicadores_por_lote()}
     lotes = sorted(dia_primer.keys())
     def col_ind(clave):
@@ -141,8 +168,8 @@ def get_matriz_primer_huevo() -> dict:
     semanas_ordenadas = OrderedDict()
     for f in filas_raw:
         # Extraer numero de semana entero de "14 + 5/7" -> 14
-        sem_str = str(f['semana'])
-        sem_num = int(sem_str.split(' ')[0]) if ' ' in sem_str else int(sem_str)
+        sem_str = str(f['semana']) if f['semana'] else ''
+        sem_num = int(sem_str.split(' ')[0]) if ' ' in sem_str else (int(sem_str) if sem_str.isdigit() else 0)
         f['sem_num'] = sem_num
         semanas_ordenadas.setdefault(sem_num, []).append(f)
 
@@ -153,6 +180,38 @@ def get_matriz_primer_huevo() -> dict:
     # Clase de color por variedad (para pintar el nombre del lote)
     variedades = model.fetch_variedades_por_lote(lotes)
     clases = {l: _clase_variedad(variedades.get(l)) for l in lotes}
+
+    # Reglas de color por porcentaje objetivo (fracción), en orden de prioridad.
+    # Una celda solo recibe una clase: la primera regla que la "reclame".
+    REGLAS_COLOR = [
+        (0.01, 'celda-cerca-1pct'),   # 1% amarillo
+        (0.05, 'celda-cerca-5pct'),   # 5% rosa
+        (0.20, 'celda-cerca-20pct'),  # 20% azul claro
+        (0.50, 'celda-cerca-50pct'),  # 50% azul oscuro
+        (0.90, 'celda-cerca-90pct'),  # 90% verde claro
+    ]
+
+    # Inicializar clase de color vacía en cada celda
+    for f in filas_raw:
+        for lote in lotes:
+            celda = f['celdas'].get(lote)
+            if celda:
+                celda['color_clase'] = ''
+
+    # Asignar color a cada lote según cada regla (prioridad por orden)
+    for target, clase in REGLAS_COLOR:
+        for lote in lotes:
+            mejor_idx = None
+            mejor_diff = None
+            for idx, f in enumerate(filas_raw):
+                celda = f['celdas'].get(lote)
+                if celda and celda.get('valor') is not None and celda.get('color_clase') == '':
+                    diff = abs(celda['valor'] - target)
+                    if mejor_diff is None or diff < mejor_diff:
+                        mejor_diff = diff
+                        mejor_idx = idx
+            if mejor_idx is not None:
+                filas_raw[mejor_idx]['celdas'][lote]['color_clase'] = clase
 
     return {
         'lotes': lotes,
@@ -189,6 +248,7 @@ def get_huevos_semanal_detalle() -> dict:
     y totales (suma de lotes con dato, sin None).
     """
     filas = model.fetch_huevos_semanal_detalle()
+    filas = _aplicar_aves_enc_semana17(filas)
 
     meta = {}
     for f in filas:
@@ -229,6 +289,7 @@ def get_kilos_semanal_detalle() -> dict:
     (lotes incluidos con kilos > 0, calculado en el template por JS).
     """
     filas = model.fetch_kilos_semanal_detalle()
+    filas = _aplicar_aves_enc_semana17(filas)
 
     meta = {}
     for f in filas:
@@ -377,6 +438,7 @@ def get_saldo_aves_detalle() -> dict:
     totales y NRO (lotes incluidos con saldo > 0, calculado por JS).
     """
     filas = model.fetch_saldo_aves()
+    filas = _aplicar_aves_enc_semana17(filas)
 
     meta = {}
     for f in filas:
@@ -420,6 +482,7 @@ def get_porc_produccion_detalle() -> dict:
     incluidos con valor > 0 (calculada por JS). TABLA = guia estatica.
     """
     filas = model.fetch_porc_produccion()
+    filas = _aplicar_aves_enc_semana17(filas)
 
     meta = {}
     for f in filas:
@@ -458,6 +521,7 @@ def get_mort_acumulada_detalle() -> dict:
     aritmetico de incluidos (calculado por JS). TABLA = guia estatica.
     """
     filas = model.fetch_mort_acumulada()
+    filas = _aplicar_aves_enc_semana17(filas)
 
     meta = {}
     for f in filas:
@@ -490,12 +554,13 @@ def get_mort_acumulada_detalle() -> dict:
 
 
 def get_mort_semanal_detalle() -> dict:
-    """Arma la matriz Semana x Lote de % mortalidad semanal.
+    """Arma la matriz Semana x Lote de mortalidad semanal.
 
-    Celda = percent_mort_sem / 100 (fraccion). PROM = promedio
-    aritmetico de incluidos (calculado por JS). TABLA = serie estatica.
+    Celda = mort_sem de bd_vargas (numero de aves muertas, NO porcentaje).
+    PROM = promedio aritmetico de incluidos (calculado por JS). TABLA = serie estatica.
     """
     filas = model.fetch_mort_semanal()
+    filas = _aplicar_aves_enc_semana17(filas)
 
     meta = {}
     for f in filas:
@@ -531,6 +596,7 @@ def get_haa_detalle() -> dict:
     aritmetico de incluidos (calculado por JS).
     """
     filas = model.fetch_haa()
+    filas = _aplicar_aves_enc_semana17(filas)
 
     meta = {}
     for f in filas:
@@ -566,6 +632,7 @@ def get_gramos_aves_detalle() -> dict:
     TABLA = guia estatica externa.
     """
     filas = model.fetch_gramos_aves()
+    filas = _aplicar_aves_enc_semana17(filas)
 
     meta = {}
     for f in filas:
@@ -600,6 +667,7 @@ def get_conv_semanal_detalle() -> dict:
     PROM = promedio aritmetico de incluidos (calculado por JS).
     """
     filas = model.fetch_conv_semanal()
+    filas = _aplicar_aves_enc_semana17(filas)
 
     meta = {}
     for f in filas:
@@ -634,6 +702,7 @@ def get_conv_acumulada_detalle() -> dict:
     PROM = promedio aritmetico de incluidos (calculado por JS).
     """
     filas = model.fetch_conversion_acumulada()
+    filas = _aplicar_aves_enc_semana17(filas)
 
     meta = {}
     for f in filas:
@@ -665,10 +734,66 @@ def get_conv_acumulada_detalle() -> dict:
 def get_masa_semanal_detalle() -> dict:
     """Arma la matriz Semana x Lote de masa de huevo semanal.
 
-    Celda = masa_huevo_real_sem. TABLA = guia de estirpe (guias.py).
-    PROM = promedio aritmetico de incluidos (calculado por JS).
+    Calculado segun Excel H16:
+    - Semana 18: masa = produccion * huevo_acum (misma semana)
+    - Semana n > 18: si produccion=0 -> None; si no: masa = produccion * (huevo_acum_n - huevo_acum_{n-1})
+    TABLA = guia de estirpe (guias.py). PROM = promedio aritmetico (calculado por JS).
     """
     filas = model.fetch_masa_semanal()
+    filas = _aplicar_aves_enc_semana17(filas)
+
+    # Organizar por lote y semana para calcular diferencias de huevo_acum
+    lotes_data = {}
+    for f in filas:
+        lote = f['lote']
+        sem = f['sem_prod']
+        if lote is None or sem is None:
+            continue
+        lotes_data.setdefault(lote, {})[sem] = {
+            'produccion': _a_num(f['prod_huevo_real']),
+            'huevo_acum': _a_num(f['huevo_acum']),
+        }
+
+    # Calcular masa semanal por lote y semana
+    masa_por_lote_semana = {}
+    for lote, semanas_data in lotes_data.items():
+        semanas_ordenadas = sorted(semanas_data.keys())
+        masa_por_lote_semana[lote] = {}
+        for i, sem in enumerate(semanas_ordenadas):
+            datos = semanas_data[sem]
+            prod = datos['produccion']
+            haa = datos['huevo_acum']
+            if prod is None or haa is None:
+                masa_por_lote_semana[lote][sem] = None
+                continue
+            if sem == 18:
+                # Semana 18: masa = produccion * huevo_acum (misma semana)
+                masa_por_lote_semana[lote][sem] = prod * haa
+            else:
+                # Semana n > 18: si produccion=0 -> None
+                if prod == 0:
+                    masa_por_lote_semana[lote][sem] = None
+                else:
+                    # Buscar huevo_acum de la semana anterior
+                    semana_anterior = None
+                    for s_prev in semanas_ordenadas[:i]:
+                        if isinstance(s_prev, int) and s_prev == sem - 1:
+                            semana_anterior = s_prev
+                            break
+                    # Si no hay semana anterior numerica exacta, buscar la anterior disponible
+                    if semana_anterior is None:
+                        # Buscar cualquier semana anterior disponible
+                        semanas_numericas = [s for s in semanas_ordenadas[:i] if isinstance(s, int)]
+                        if semanas_numericas:
+                            semana_anterior = semanas_numericas[-1]
+                    if semana_anterior is not None:
+                        haa_anterior = semanas_data[semana_anterior]['huevo_acum']
+                        if haa_anterior is not None:
+                            masa_por_lote_semana[lote][sem] = prod * (haa - haa_anterior)
+                        else:
+                            masa_por_lote_semana[lote][sem] = None
+                    else:
+                        masa_por_lote_semana[lote][sem] = None
 
     meta = {}
     for f in filas:
@@ -683,11 +808,9 @@ def get_masa_semanal_detalle() -> dict:
     lotes = sorted(meta.keys())
     semanas = sorted({f['sem_prod'] for f in filas if f['sem_prod'] is not None})
     matriz = {s: {} for s in semanas}
-    tabla = {}
-    for f in filas:
-        if f['sem_prod'] is None or not f['lote']:
-            continue
-        matriz[f['sem_prod']][f['lote']] = _a_num(f['masa_huevo_real_sem'])
+    for sem in semanas:
+        for lote in lotes:
+            matriz[sem][lote] = masa_por_lote_semana.get(lote, {}).get(sem)
 
     return {
         'lotes': [meta[l] for l in lotes],
@@ -704,6 +827,7 @@ def get_masa_acumulada_detalle() -> dict:
     PROM = promedio aritmetico de incluidos (calculado por JS).
     """
     filas = model.fetch_masa_acumulada()
+    filas = _aplicar_aves_enc_semana17(filas)
 
     meta = {}
     for f in filas:
@@ -739,6 +863,7 @@ def get_primera_semana_levante_detalle() -> dict:
     y mortalidad diaria. PROM aritmetico por JS en las 4.
     """
     filas = model.fetch_primera_semana_levante()
+    filas = _aplicar_aves_enc_semana17(filas)
 
     meta = {}
     for f in filas:
@@ -795,6 +920,7 @@ def get_datos_levante(lotes_param=None) -> dict:
     matriz de consumo Semana x Lote.
     """
     todos = model.fetch_levante_lotes()
+    todos = _aplicar_aves_enc_semana17(todos)
     nombres = [t['lote'] for t in todos]
     # Sin parametro (primera visita): ningun lote seleccionado.
     if not lotes_param:
@@ -860,6 +986,7 @@ def get_peso_huevo_detalle() -> dict:
     aritmetico de incluidos (calculado por JS).
     """
     filas = model.fetch_peso_huevo()
+    filas = _aplicar_aves_enc_semana17(filas)
 
     meta = {}
     for f in filas:
@@ -893,6 +1020,7 @@ def get_rotura_huevo_detalle() -> dict:
     Incluye solo lotes con al menos un dato no nulo.
     """
     filas = model.fetch_rotura_huevo()
+    filas = _aplicar_aves_enc_semana17(filas)
 
     meta = {}
     for f in filas:
@@ -931,6 +1059,7 @@ def get_acumulados_clasificadora_detalle(categoria: str = 'SEGUNDAS') -> dict:
     if categoria not in CATEGORIAS_CLASIFICACION:
         categoria = 'SEGUNDAS'
     filas = model.fetch_acumulados_clasificadora(categoria)
+    filas = _aplicar_aves_enc_semana17(filas)
 
     meta = {}
     for f in filas:

@@ -34,6 +34,14 @@
   .tabla-compacta .col-lote { min-width: 95px; }
   .tabla-compacta th.lote-lohmann { background-color: #ED7D31 !important; color: #fff; }
   .tabla-compacta th.lote-hyline { background-color: #4472C4 !important; color: #fff; }
+  .celda-cerca-1pct { background-color: #FFF200 !important; color: #000; font-weight: 700; }
+  .celda-cerca-5pct { background-color: #FFB7CE !important; color: #000; font-weight: 700; }
+  .celda-cerca-20pct { background-color: #9DC3E6 !important; color: #000; font-weight: 700; }
+  .celda-cerca-50pct { background-color: #4472C4 !important; color: #fff; font-weight: 700; }
+  .celda-cerca-90pct { background-color: #C6EFCE !important; color: #000; font-weight: 700; }
+  .hover-fila { background-color: rgba(180, 180, 180, 0.5) !important; }
+  .hover-columna { background-color: rgba(180, 180, 180, 0.5) !important; }
+  .valor-mouse { font-size: 0.8rem; color: #666; margin-left: 0.75rem; font-weight: 500; }
   .badge-primer {
     background-color: #97271C;
     color: #fff;
@@ -78,15 +86,15 @@
     </table>
   </div>
 
-  <h6 class="fw-bold text-secondary text-uppercase">Matriz Semana / Día x Lote (días {{ matriz.rango.min }}–{{ matriz.rango.max }})</h6>
+  <h6 class="fw-bold text-secondary text-uppercase d-flex align-items-center">Matriz Semana / Día x Lote (días {{ matriz.rango.min }}–{{ matriz.rango.max }})<span id="valorCampoMouse" class="valor-mouse"></span></h6>
   <div class="contenedor-matriz shadow-sm border rounded">
-    <table class="table table-sm table-bordered mb-0 tabla-compacta">
+    <table id="tablaMatrizPrimerHuevo" class="table table-sm table-bordered mb-0 tabla-compacta">
       <thead>
         <tr>
           <th class="col-semana">Semana</th>
           <th class="col-dia">Día</th>
           {% for lote in matriz.lotes %}
-          <th class="col-lote {{ matriz.clases.get(lote, '') }}">{{ lote }}</th>
+          <th class="col-lote {{ matriz.clases.get(lote, '') }}" data-lote-col="{{ lote }}">{{ lote }}</th>
           {% endfor %}
         </tr>
       </thead>
@@ -99,7 +107,7 @@
           <td class="col-dia">{{ fila.dia }}</td>
           {% for lote in matriz.lotes %}
           {% set celda = fila.celdas.get(lote) %}
-          <td class="num">
+          <td class="num {{ celda.color_clase if celda and celda.color_clase else '' }}" data-dia="{{ fila.dia }}" data-lote="{{ lote }}">
             {% if celda and celda.es_primer %}
             <span class="badge-primer">1er huevo</span>
             {% elif celda and celda.valor is not none %}
@@ -113,4 +121,82 @@
     </table>
   </div>
 </div>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const tabla = document.getElementById('tablaMatrizPrimerHuevo');
+    if (!tabla) return;
+
+    const valorSpan = document.getElementById('valorCampoMouse');
+
+    const CLASES_COLOR = ['celda-cerca-1pct','celda-cerca-5pct','celda-cerca-20pct','celda-cerca-50pct','celda-cerca-90pct'];
+    function tieneColorClase(celda) {
+      return CLASES_COLOR.some(function (cls) { return celda.classList.contains(cls); });
+    }
+
+    const resaltar = function (dia, lote, activar) {
+      const accion = activar ? 'add' : 'remove';
+      const valorTexto = activar ? this.textContent.trim() : '';
+
+      if (valorSpan) {
+        valorSpan.textContent = activar ? ' Día: ' + this.dataset.dia + (valorTexto ? ' | ' + valorTexto : '') : '';
+      }
+
+      // Fila desde la columna Dia hasta el cursor (sin tocar celdas que ya tienen color)
+      const filaActual = this.closest('tr');
+      const celdaDia = filaActual.querySelector('td.col-dia');
+      const celdasFila = Array.from(filaActual.querySelectorAll('td[data-lote]'));
+      const indiceActual = celdasFila.indexOf(this);
+      if (celdaDia && !tieneColorClase(celdaDia)) {
+        celdaDia.classList[accion]('hover-fila');
+      }
+      celdasFila.forEach(function (c, idx) {
+        if (idx <= indiceActual && !tieneColorClase(c)) {
+          c.classList[accion]('hover-fila');
+        }
+      });
+
+      if (activar) {
+        // Columna solo desde el encabezado hasta la celda donde está el mouse (sin tocar celdas con color)
+        const trActual = this.closest('tr');
+        const filas = Array.from(tabla.querySelectorAll('tbody tr'));
+        const indiceFilaActual = filas.indexOf(trActual);
+
+        tabla.querySelectorAll('thead th[data-lote-col="' + lote + '"]').forEach(function (th) {
+          if (!tieneColorClase(th)) th.classList[accion]('hover-columna');
+        });
+
+        for (let i = 0; i <= indiceFilaActual; i++) {
+          const celda = filas[i].querySelector('td[data-lote="' + lote + '"]');
+          if (celda && !tieneColorClase(celda)) celda.classList[accion]('hover-columna');
+        }
+      } else {
+        // Al salir: quitar de toda la columna y toda la fila
+        tabla.querySelectorAll('thead th[data-lote-col="' + lote + '"]').forEach(function (th) {
+          th.classList[accion]('hover-columna');
+        });
+        tabla.querySelectorAll('tbody td[data-lote="' + lote + '"]').forEach(function (c) {
+          c.classList[accion]('hover-columna');
+        });
+        // También limpiar hover-fila de la fila donde estaba el mouse
+        const filaSalida = this.closest('tr');
+        if (filaSalida) {
+          const celdaDiaSalida = filaSalida.querySelector('td.col-dia');
+          if (celdaDiaSalida) celdaDiaSalida.classList[accion]('hover-fila');
+          filaSalida.querySelectorAll('td[data-lote]').forEach(function (c) {
+            c.classList[accion]('hover-fila');
+          });
+        }
+      }
+    };
+
+    tabla.querySelectorAll('tbody td[data-lote]').forEach(function (celda) {
+      celda.addEventListener('mouseenter', function () {
+        resaltar.call(this, this.dataset.dia, this.dataset.lote, true);
+      });
+      celda.addEventListener('mouseleave', function () {
+        resaltar.call(this, this.dataset.dia, this.dataset.lote, false);
+      });
+    });
+  });
+</script>
 {% endblock %}

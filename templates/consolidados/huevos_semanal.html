@@ -66,14 +66,16 @@
       <thead>
         <tr>
           <th class="col-semana">FECHA ENC</th>
-          <th class="col-total"></th>
+          <th class="col-total">&nbsp;</th>
+          <th class="col-nro">&nbsp;</th>
           {% for l in datos.lotes %}
           <th class="col-lote">{{ l.fecha_enc if l.fecha_enc else '' }}</th>
           {% endfor %}
         </tr>
         <tr>
           <th class="col-semana">AVES ENC</th>
-          <th class="col-total"></th>
+          <th class="col-total">&nbsp;</th>
+          <th class="col-nro">&nbsp;</th>
           {% for l in datos.lotes %}
           <th class="col-lote">{{ '{:,.0f}'.format(l.aves_enc).replace(',', '.') if l.aves_enc is not none else '' }}</th>
           {% endfor %}

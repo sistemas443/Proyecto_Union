@@ -416,20 +416,25 @@ def fetch_conversion_acumulada() -> list:
 
 
 def fetch_masa_semanal() -> list:
-    """Devuelve sem_prod, lote, masa_huevo_real_sem y metadata."""
+    """Devuelve sem_prod, lote, prod_huevo_real, huevo_acum y metadata.
+    
+    Para calcular Masa Huevo Semanal segun Excel H16:
+    - Semana 18: masa = produccion * huevo_acum (de esa misma semana)
+    - Semana n > 18: si produccion=0 -> "" ; si no: masa = produccion * (huevo_acum_n - huevo_acum_{n-1})
+    """
     conn = get_db_connection()
     cur = conn.cursor()
     try:
         cur.execute("""
-            SELECT b.sem_prod, b.lote, b.masa_huevo_real_sem,
+            SELECT b.sem_prod, b.lote, b.prod_huevo_real, b.huevo_acum,
                    c.fecha_recepcion, c.no_pollitas_recibidas
             FROM bd_vargas b
             LEFT JOIN cabecera_lotes c ON c.id = b.id_lote
             ORDER BY b.sem_prod, b.lote
         """)
         return [
-            {'sem_prod': r[0], 'lote': r[1], 'masa_huevo_real_sem': r[2],
-             'fecha_recepcion': r[3], 'aves_enc': r[4]}
+            {'sem_prod': r[0], 'lote': r[1], 'prod_huevo_real': r[2],
+             'huevo_acum': r[3], 'fecha_recepcion': r[4], 'aves_enc': r[5]}
             for r in cur.fetchall()
         ]
     finally:
@@ -506,6 +511,33 @@ def fetch_levante_lotes() -> list:
             {'lote': r[0], 'fecha_recepcion': r[1], 'aves_enc': r[2]}
             for r in cur.fetchall() if r[0]
         ]
+    finally:
+        cur.close()
+        conn.close()
+
+
+def fetch_aves_enc_semana17(lotes: list) -> dict:
+    """Devuelve {lote: saldo_aves} de data_diario donde sem = '17' (semana 17).
+    
+    Se usa para el encabezado AVES ENC en todas las vistas de consolidados.
+    Toma el último registro de la semana 17 para cada lote.
+    """
+    if not lotes:
+        return {}
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            SELECT d.lote, d.saldo_aves
+            FROM data_diario d
+            WHERE d.lote = ANY(%s) AND d.sem = '17'
+            ORDER BY d.lote, d.dias DESC
+        """, (lotes,))
+        resultado = {}
+        for r in cur.fetchall():
+            if r[0] not in resultado:
+                resultado[r[0]] = r[1]
+        return resultado
     finally:
         cur.close()
         conn.close()

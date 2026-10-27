@@ -66,16 +66,16 @@
       <thead>
         <tr>
           <th class="col-semana">FECHA ENC</th>
-          <th class="col-prom"></th>
-          <th class="col-tabla"></th>
+          <th class="col-prom">&nbsp;</th>
+          <th class="col-tabla">&nbsp;</th>
           {% for l in datos.lotes %}
           <th class="col-lote">{{ l.fecha_enc if l.fecha_enc else '' }}</th>
           {% endfor %}
         </tr>
         <tr>
           <th class="col-semana">AVES ENC</th>
-          <th class="col-prom"></th>
-          <th class="col-tabla"></th>
+          <th class="col-prom">&nbsp;</th>
+          <th class="col-tabla">&nbsp;</th>
           {% for l in datos.lotes %}
           <th class="col-lote">{{ '{:,.0f}'.format(l.aves_enc).replace(',', '.') if l.aves_enc is not none else '' }}</th>
           {% endfor %}
@@ -97,10 +97,10 @@
         <tr data-semana="{{ s }}">
           <td class="col-semana fw-bold">{{ s }}</td>
           <td class="col-prom num" data-prom></td>
-          <td class="col-tabla num">{{ '{:,.3f}'.format(datos.tabla.get(s)) if datos.tabla.get(s) is not none else '' }}</td>
+          <td class="col-tabla num">{{ '{:,.1f}'.format(datos.tabla.get(s)) if datos.tabla.get(s) is not none else '' }}</td>
           {% for l in datos.lotes %}
           {% set v = datos.matriz.get(s, {}).get(l.nombre) %}
-          <td class="num" data-lote="{{ l.nombre }}" data-valor="{{ v if v is not none else '' }}">{{ '{:,.3f}'.format(v) if v is not none else '' }}</td>
+          <td class="num" data-lote="{{ l.nombre }}" data-valor="{{ v if v is not none else '' }}">{{ '{:,.1f}'.format(v) if v is not none else '' }}</td>
           {% endfor %}
         </tr>
         {% endfor %}

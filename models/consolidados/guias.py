@@ -132,6 +132,9 @@ GUIA_HAA_TAB = {
 # Hoja H18 (PRIMERA SEMANA LEVANTE, peso dia), dias 0-7. Unidad: gramos.
 GUIA_PESO_DIA = {0: 38, 1: 41, 2: 46, 3: 52, 4: 59, 5: 65, 6: 72, 7: 80}
 
+# Hoja H18 (CONSUMO g/ave/dia), dias 0-7.
+GUIA_CONSUMO_DIA = {0: 0, 1: 12, 2: 13, 3: 14, 4: 15, 5: 16, 6: 17, 7: 18}
+
 # Hoja H9 (PORCENTAJE PRODUCCION), semanas 18-91. Fracciones 0-1.
 GUIA_PORC_PROD = {
     18: 0.14, 19: 0.38, 20: 0.72, 21: 0.86, 22: 0.92, 23: 0.94,
