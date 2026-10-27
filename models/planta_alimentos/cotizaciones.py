@@ -151,6 +151,77 @@ class CotizacionesModel:
             conn.close()
     
     @staticmethod
+    def _construir_consolidado(detalles):
+        """
+        Agrupa los precios por producto y proveedor y calcula:
+        - mejor proveedor por promedio
+        - precios semanales del mejor proveedor
+        - ahorro frente al promedio de todos los proveedores
+        """
+        agrupado = {}
+        for d in detalles:
+            producto = d['producto_nombre']
+            proveedor = d['proveedor_nombre']
+            precio = float(d['precio'] or 0)
+            grupo_prov = agrupado.setdefault(producto, {}).setdefault(
+                proveedor, {'precios': {}, 'suma': 0.0, 'count': 0}
+            )
+            grupo_prov['precios'][int(d['semana'])] = precio
+            grupo_prov['suma'] += precio
+            grupo_prov['count'] += 1
+
+        filas = []
+        for producto, proveedores in agrupado.items():
+            mejor_proveedor = None
+            mejor_promedio = None
+            for proveedor, grupo in proveedores.items():
+                promedio = grupo['suma'] / grupo['count'] if grupo['count'] else 0
+                if mejor_promedio is None or promedio < mejor_promedio:
+                    mejor_promedio = promedio
+                    mejor_proveedor = proveedor
+
+            suma_todos = sum(g['suma'] for g in proveedores.values())
+            count_todos = sum(g['count'] for g in proveedores.values())
+            promedio_todos = suma_todos / count_todos if count_todos else 0
+
+            promedio_mejor = mejor_promedio or 0
+            ahorro = (promedio_todos - promedio_mejor) if promedio_mejor and promedio_todos else 0
+
+            precios_mejor = proveedores[mejor_proveedor]['precios']
+            con_precio = {sem: val for sem, val in precios_mejor.items() if val and val > 0}
+            if con_precio:
+                # Semana con el precio más bajo del producto (desempate: la semana menor)
+                mejor_semana = min(con_precio, key=lambda sem: (con_precio[sem], sem))
+                precio_mejor_semana = con_precio[mejor_semana]
+            else:
+                mejor_semana = None
+                precio_mejor_semana = None
+
+            filas.append({
+                'producto': producto,
+                'mejor_proveedor': mejor_proveedor,
+                'precios': precios_mejor,
+                'mejor_semana': int(mejor_semana) if mejor_semana else None,
+                'precio_mejor_semana': precio_mejor_semana,
+                'promedio': promedio_mejor,
+                'ahorro': ahorro,
+            })
+
+        total_suma = sum(
+            g['suma'] for proveedores in agrupado.values() for g in proveedores.values()
+        )
+        total_count = sum(
+            g['count'] for proveedores in agrupado.values() for g in proveedores.values()
+        )
+        totales = {
+            'promedio_general': (total_suma / total_count) if total_count else 0,
+            # Se conserva la regla actual: solo ahorros positivos, proyectados a 4 semanas
+            'ahorro_total': sum(f['ahorro'] * 4 for f in filas if f['ahorro'] > 0),
+        }
+
+        return filas, totales
+
+    @staticmethod
     def get_detalle_cotizacion(cotizacion_id):
         """Obtiene detalle completo de una cotización para editar (grid)"""
         conn = get_db_connection()
@@ -184,12 +255,16 @@ class CotizacionesModel:
                     ORDER BY mp.nombre, cd.semana
                 """, (cotizacion_id,))
                 detalles = [dict(zip([d[0] for d in cur.description], row)) for row in cur.fetchall()]
-                
+
+                consolidado, consolidado_totales = CotizacionesModel._construir_consolidado(detalles)
+
                 return {
                     'cotizacion': dict(zip(['id', 'mes', 'anio', 'fecha_registro', 'estado'], cot)),
                     'proveedores': proveedores,
                     'productos': productos,
-                    'detalles': detalles
+                    'detalles': detalles,
+                    'consolidado': consolidado,
+                    'consolidado_totales': consolidado_totales,
                 }
         finally:
             conn.close()
@@ -204,7 +279,27 @@ class CotizacionesModel:
         conn = get_db_connection()
         try:
             with conn.cursor() as cur:
+                # Catálogos válidos: evita que un id inexistente reviente con el error de FK
+                cur.execute("SELECT id FROM materias_primas")
+                mp_validos = {fila[0] for fila in cur.fetchall()}
+                cur.execute("SELECT id FROM proveedores")
+                prov_validos = {fila[0] for fila in cur.fetchall()}
+
                 for item in items:
+                    try:
+                        mp_id = int(item.get('materia_prima_id'))
+                        prov_id = int(item.get('proveedor_id'))
+                        semana = int(item.get('semana'))
+                    except (TypeError, ValueError):
+                        raise ValueError('Datos incompletos en una de las filas enviadas')
+
+                    if semana not in (1, 2, 3, 4):
+                        raise ValueError('La semana debe estar entre 1 y 4')
+                    if mp_id not in mp_validos:
+                        raise ValueError('La materia prima indicada no existe')
+                    if prov_id not in prov_validos:
+                        raise ValueError('El proveedor indicado no existe')
+
                     try:
                         precio = float(item.get('precio') or 0)
                     except (TypeError, ValueError):
@@ -216,14 +311,13 @@ class CotizacionesModel:
                             DELETE FROM cotizacion_detalle
                             WHERE cotizacion_id = %s AND materia_prima_id = %s
                               AND proveedor_id = %s AND semana = %s
-                        """, (cotizacion_id, item['materia_prima_id'],
-                              item['proveedor_id'], item['semana']))
+                        """, (cotizacion_id, mp_id, prov_id, semana))
                         continue
 
                     cur.execute("""
                         SELECT id FROM cotizacion_detalle
                         WHERE cotizacion_id = %s AND materia_prima_id = %s AND proveedor_id = %s AND semana = %s
-                    """, (cotizacion_id, item['materia_prima_id'], item['proveedor_id'], item['semana']))
+                    """, (cotizacion_id, mp_id, prov_id, semana))
 
                     row = cur.fetchone()
 
@@ -237,7 +331,7 @@ class CotizacionesModel:
                         cur.execute("""
                             INSERT INTO cotizacion_detalle (cotizacion_id, materia_prima_id, proveedor_id, semana, precio, observaciones)
                             VALUES (%s, %s, %s, %s, %s, %s)
-                        """, (cotizacion_id, item['materia_prima_id'], item['proveedor_id'], item['semana'], precio, item.get('observaciones', '')))
+                        """, (cotizacion_id, mp_id, prov_id, semana, precio, item.get('observaciones', '')))
 
                 conn.commit()
                 return True

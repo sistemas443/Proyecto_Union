@@ -2,6 +2,17 @@
 import psycopg2.extras
 from models.base import get_db_connection
 
+
+def parse_empresa_id(valor):
+    """Convierte el valor del selector de empresa en un id válido o None."""
+    if valor in (None, '', 'None', 'null'):
+        return None
+    try:
+        return int(str(valor).strip())
+    except (TypeError, ValueError):
+        return None
+
+
 def fetch_lotes_distintos():
     """
     Obtiene una lista limpia y única con los nombres de todos los lotes registrados.
@@ -57,14 +68,16 @@ def insert_lote(datos, lote_nombre, parse_empty):
     conn = get_db_connection()
     cur = conn.cursor()
     try:
+        empresa_id = parse_empresa_id(datos.get('empresa_id'))
         # Usamos RETURNING id para obtener inmediatamente el número de registro creado
         cur.execute("""
             INSERT INTO cabecera_lotes (
-                lote, cliente, ciudad, clima, responsable_tecnico, nutricionista, granja_lev, fecha_recepcion, no_pollitas_recibidas, variedad, peso, 
+                lote, empresa_id, cliente, ciudad, clima, responsable_tecnico, nutricionista, granja_lev, fecha_recepcion, no_pollitas_recibidas, variedad, peso, 
                 unidad_peso, uniformidad, coeficiente_variacion, granja_prod, fecha_encasetamiento, no_aves_encasetadas, tipo_galpon, marca_galpon, unidad_medida, validacion
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, True) RETURNING id
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, True) RETURNING id
         """, (
-            lote_nombre, parse_empty(datos.get('cliente')), parse_empty(datos.get('ciudad')), parse_empty(datos.get('clima')), parse_empty(datos.get('responsable_tecnico')), parse_empty(datos.get('nutricionista')),
+            lote_nombre, empresa_id,
+            parse_empty(datos.get('cliente')), parse_empty(datos.get('ciudad')), parse_empty(datos.get('clima')), parse_empty(datos.get('responsable_tecnico')), parse_empty(datos.get('nutricionista')),
             parse_empty(datos.get('granja_lev')), parse_empty(datos.get('fecha_recepcion')), parse_empty(datos.get('no_pollitas_recibidas')), parse_empty(datos.get('variedad')), parse_empty(datos.get('peso')), parse_empty(datos.get('unidad_peso')),
             parse_empty(datos.get('uniformidad')), parse_empty(datos.get('coeficiente_variacion')), parse_empty(datos.get('granja_prod')), parse_empty(datos.get('fecha_encasetamiento')), parse_empty(datos.get('no_aves_encasetadas')), parse_empty(datos.get('tipo_galpon')),
             parse_empty(datos.get('marca_galpon')), parse_empty(datos.get('unidad_medida'))
@@ -90,13 +103,13 @@ def update_lote(id_lote, datos, parse_empty):
     try:
         cur.execute("""
             UPDATE cabecera_lotes SET 
-                lote = %s, cliente = %s, ciudad = %s, clima = %s, responsable_tecnico = %s, nutricionista = %s, granja_lev = %s, 
+                lote = %s, empresa_id = %s, cliente = %s, ciudad = %s, clima = %s, responsable_tecnico = %s, nutricionista = %s, granja_lev = %s, 
                 fecha_recepcion = %s, no_pollitas_recibidas = %s, variedad = %s, peso = %s, unidad_peso = %s, uniformidad = %s, 
                 coeficiente_variacion = %s, granja_prod = %s, fecha_encasetamiento = %s, no_aves_encasetadas = %s, tipo_galpon = %s, marca_galpon = %s, 
                 unidad_medida = %s, validacion = True
             WHERE id = %s
         """, (
-            parse_empty(datos.get('lote')), parse_empty(datos.get('cliente')), parse_empty(datos.get('ciudad')), parse_empty(datos.get('clima')), parse_empty(datos.get('responsable_tecnico')), parse_empty(datos.get('nutricionista')),
+            parse_empty(datos.get('lote')), parse_empresa_id(datos.get('empresa_id')), parse_empty(datos.get('cliente')), parse_empty(datos.get('ciudad')), parse_empty(datos.get('clima')), parse_empty(datos.get('responsable_tecnico')), parse_empty(datos.get('nutricionista')),
             parse_empty(datos.get('granja_lev')), parse_empty(datos.get('fecha_recepcion')), parse_empty(datos.get('no_pollitas_recibidas')), parse_empty(datos.get('variedad')), parse_empty(datos.get('peso')), parse_empty(datos.get('unidad_peso')),
             parse_empty(datos.get('uniformidad')), parse_empty(datos.get('coeficiente_variacion')), parse_empty(datos.get('granja_prod')), parse_empty(datos.get('fecha_encasetamiento')), parse_empty(datos.get('no_aves_encasetadas')), parse_empty(datos.get('tipo_galpon')),
             parse_empty(datos.get('marca_galpon')), parse_empty(datos.get('unidad_medida')), id_lote

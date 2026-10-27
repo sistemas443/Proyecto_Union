@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session
 from routes.routes import login_requerido, editor_requerido
 from models.base import get_db_connection
 from models.lotes.services import (
@@ -21,9 +21,12 @@ def vista_lotes():
 
         cur.execute("SELECT nombre FROM catalogo_responsables ORDER BY nombre ASC")
         lista_responsables = [row[0] for row in cur.fetchall()]
+
+        cur.execute("SELECT id, nombre FROM empresas ORDER BY nombre ASC")
+        lista_empresas = [{'id': row[0], 'nombre': row[1]} for row in cur.fetchall()]
     except Exception as e:
         print(f"[ERROR CATALOGOS]: {e}")
-        lista_nutricionistas, lista_responsables = [], []
+        lista_nutricionistas, lista_responsables, lista_empresas = [], [], []
     finally:
         cur.close()
         conn.close()
@@ -33,7 +36,9 @@ def vista_lotes():
         lotes=get_todos_los_lotes(),
         opciones=get_opciones_dinamicas(),
         cat_nutricionistas=lista_nutricionistas,
-        cat_responsables=lista_responsables
+        cat_responsables=lista_responsables,
+        empresas=lista_empresas,
+        empresas_map={emp['id']: emp['nombre'] for emp in lista_empresas}
     )
 
 
@@ -89,7 +94,9 @@ def guardar_lote():
 @login_requerido
 @editor_requerido
 def api_borrar_lote(id):
-    return jsonify({'status': 'ok'}) if borrar_lote(id) else jsonify({'status': 'error', 'msg': 'Dato protegido o inexistente'}), 500
+    if borrar_lote(id):
+        return jsonify({'status': 'ok'}), 200
+    return jsonify({'status': 'error', 'msg': 'Dato protegido o inexistente'}), 500
 
 
 @lotes_bp.route('/api/cabecera/actualizar', methods=['POST'])
@@ -102,4 +109,6 @@ def actualizar_cabecera():
     if not lote or not columna:
         return jsonify({'status': 'error', 'msg': 'Faltan datos'}), 400
     success, msg = update_cabecera_unificada(lote, columna, valor)
-    return jsonify({'status': 'ok'}) if success else jsonify({'status': 'error', 'msg': msg}), 500
+    if success:
+        return jsonify({'status': 'ok'}), 200
+    return jsonify({'status': 'error', 'msg': msg}), 500

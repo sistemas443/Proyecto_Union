@@ -46,6 +46,26 @@
         box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
     }
 
+    /* Etiqueta de empresa asignada al lote */
+    .badge-estado-lote {
+        display: inline-block;
+        padding: 0.2rem 0.5rem;
+        border-radius: 0.25rem;
+        font-size: 0.7rem;
+        font-weight: 600;
+        letter-spacing: 0.2px;
+        text-transform: uppercase;
+        background-color: #e8f5ee;
+        color: #198754;
+        border: 1px solid #bfe3cf;
+        white-space: nowrap;
+    }
+    .badge-estado-lote.badge-sin-empresa {
+        background-color: #fff8e1;
+        color: #8a6d00;
+        border-color: #ffe9a8;
+    }
+
     /* 5. Los modales y el fondo borroso cubren el 100% de la pantalla */
 </style>
 
@@ -73,6 +93,7 @@
                 <thead class="table-dark">
                     <tr>
                         <th class="ps-3">Lote</th>
+                        <th>Empresa</th>
                         <th>Cliente</th>
                         <th>Granja Levante</th>
                         <th>Granja Prod.</th>
@@ -85,6 +106,13 @@
                     {% for lote in lotes %}
                     <tr>
                         <td class="fw-bold ps-3">{{ lote.lote }}</td>
+                        <td>
+                            {% if lote.empresa_id and empresas_map.get(lote.empresa_id) %}
+                                <span class="badge-estado-lote">{{ empresas_map.get(lote.empresa_id) }}</span>
+                            {% else %}
+                                <span class="badge-estado-lote badge-sin-empresa">Sin asignar</span>
+                            {% endif %}
+                        </td>
                         <td>{{ lote.cliente or '-' }}</td>
                         <td>{{ lote.granja_lev or '-' }}</td>
                         <td>{{ lote.granja_prod or '-' }}</td>
@@ -138,6 +166,18 @@
                                 required>
                         </div>
                         <div class="col-md-3 mb-2">
+                            <label class="form-label fw-semibold">Empresa</label>
+                            <select name="empresa_id" id="f_empresa" class="form-select">
+                                <option value="">Sin empresa asignada</option>
+                                {% for emp in empresas %}
+                                <option value="{{ emp.id }}">{{ emp.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text" style="font-size: 0.7rem;">
+                                Define en qué tabla del consolidado de costos aparece el lote.
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-2">
                             <label class="form-label fw-semibold">Cliente</label>
                             <select name="cliente" id="f_cliente" class="form-select creatable-select"
                                 placeholder="Seleccione o escriba...">
@@ -159,7 +199,9 @@
                                 {% endfor %}
                             </select>
                         </div>
-                        <div class="col-md-3 mb-2">
+                    </div>
+                    <div class="row mb-4">
+                        <div class="col-md-4 mb-2">
                             <label class="form-label fw-semibold">Clima</label>
                             <select name="clima" id="f_clima" class="form-select creatable-select"
                                 placeholder="Seleccione o escriba...">
@@ -170,10 +212,8 @@
                                 {% endfor %}
                             </select>
                         </div>
-                    </div>
-                    <div class="row mb-4">
                         <!-- Responsable Técnico -->
-                        <div class="col-md-6 mb-2">
+                        <div class="col-md-4 mb-2">
                             <label class="form-label fw-semibold">Responsable Técnico</label>
                             <div class="input-group shadow-sm">
                                 <select name="responsable_tecnico" id="f_responsable"
@@ -190,7 +230,7 @@
                         </div>
 
                         <!-- Nutricionista de Levante -->
-                        <div class="col-md-6 mb-2">
+                        <div class="col-md-4 mb-2">
                             <label class="form-label fw-semibold">Nutricionista (Levante)</label>
                             <div class="input-group shadow-sm">
                                 <select name="nutricionista" id="f_nutricionista" class="form-select creatable-select">
@@ -529,6 +569,7 @@
             document.getElementById('lote_id').value = loteData.id || '';
 
             setFormValue('f_lote_nuevo', loteData.lote);
+            setFormValue('f_empresa', (loteData.empresa_id !== null && loteData.empresa_id !== undefined) ? String(loteData.empresa_id) : '');
             setFormValue('f_cliente', loteData.cliente);
             setFormValue('f_ciudad', loteData.ciudad);
             setFormValue('f_clima', loteData.clima);

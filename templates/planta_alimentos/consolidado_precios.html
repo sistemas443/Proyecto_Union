@@ -355,6 +355,51 @@
 
         <!-- TABLA DERECHA: 3 TABLAS FIJAS POR EMPRESA -->
         <div class="col-md-8">
+
+            {# =============================================
+                 TABLA 0: DIETAS VIGENTES SIN EMPRESA (antes se perdían por el JOIN)
+                 ============================================= #}
+            {% if dietas_sin_asignar %}
+            <div class="card card-cons mb-4" style="border-left: 4px solid var(--warning);">
+                <div class="card-header text-center fw-bold" style="background-color: var(--warning) !important; color: var(--warning-text) !important;">
+                    <i class="fas fa-triangle-exclamation me-2"></i>DIETAS SIN EMPRESA ASIGNADA
+                    <span class="badge ms-1" style="background-color: rgba(0,0,0,0.55);">{{ dietas_sin_asignar|length }}</span>
+                </div>
+                <div class="card-body p-0">
+                    <div class="px-3 py-2" style="font-size: 0.72rem; color: var(--text-secondary); background-color: var(--surface-alt); border-bottom: 1px solid var(--border);">
+                        Estas dietas están vigentes pero no salen en las tablas por empresa. Asigna el lote a una empresa en cabecera de lotes para que aparezcan. Los valores no incluyen maquila.
+                    </div>
+                    <table class="table table-bordered table-hover mb-0 table-cons" style="font-size: 0.8rem;">
+                        <thead>
+                            <tr>
+                                <th style="width: 10%;">LOTE</th>
+                                <th style="width: 24%;">ETAPA</th>
+                                <th style="width: 26%;">MOTIVO</th>
+                                <th class="col-precio-emp" style="width: 13%;">PRECIO + FLETE</th>
+                                <th class="col-precio-emp" style="width: 13%;">PRECIO + IVA</th>
+                                <th class="col-total-emp" style="width: 14%;">FLETE + IVA</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for dieta in dietas_sin_asignar %}
+                            <tr>
+                                <td class="col-lote" style="font-size: 0.85em;">{{ dieta['lote'] }}</td>
+                                <td class="col-etapa" style="font-size: 0.85em;">{{ dieta['etapa'] }}</td>
+                                <td style="font-size: 0.78rem; text-align: center;">
+                                    <span class="badge" style="background-color: #fff3cd; color: #856404; border: 1px solid #ffe69c; font-weight: 600;">
+                                        {{ dieta['motivo_sin_empresa'] or 'Sin empresa' }}
+                                    </span>
+                                </td>
+                                <td class="col-precio-emp">$ {{ "{:,.0f}".format(dieta['precio_flete_maquila'] | default(0) | float) }}</td>
+                                <td class="col-precio-emp">$ {{ "{:,.0f}".format(dieta['precio_iva_maquila'] | default(0) | float) }}</td>
+                                <td class="col-total-emp">$ {{ "{:,.0f}".format(dieta['precio_flete_iva_maquila'] | default(0) | float) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
             
             {# =============================================
                  TABLA 1: COSTO DIETAS SAN MARTIN
