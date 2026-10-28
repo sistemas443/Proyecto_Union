@@ -329,21 +329,17 @@ def resumen_inventario():
                            meses_nombres=meses_nombres, 
                            anios_disponibles=anios_disponibles)
 
-# Capacidad de silos por dieta (ton). Aun no existe en la base de datos:
-# se deja como punto de configuracion hasta definir su origen.
-CAPACIDAD_SILOS_POR_ITEM = {}
-
-
 @planta_bp.route('/inventario/dietas', methods=['GET'])
 @login_requerido
 def inventario_dietas():
     """Inventario de dietas: una fila por dieta (item) y lote.
 
     Las filas salen de las recetas registradas en el modulo Editar Receta
-    (formula_detalle). La produccion es el total fabricado por dieta y lote,
-    expresado en kilogramos (la BD lo guarda en toneladas). El inventario
-    inicial tambien se registra en kilogramos; el consumo, la venta y el
-    inventario real se manejan en toneladas y corresponden al mes elegido.
+    (formula_detalle). La produccion y la venta son las toneladas del mes
+    elegido (formula_produccion_diaria.fecha), expresadas en kilogramos
+    (la BD las guarda en toneladas). El inventario inicial tambien se registra
+    en kilogramos; el consumo sale del registro diario y el inventario real
+    corresponde al mes elegido.
     """
     import calendar
 
@@ -412,15 +408,20 @@ def inventario_dietas():
                 FROM formula_detalle
             ),
             inicial AS (
-                SELECT item_id, lote_id, SUM(cantidad_inicial_ton) AS ton
+                SELECT item_id, lote_id,
+                       SUM(cantidad_inicial_ton) AS ton,
+                       MAX(consumo_actual_kg_dia) AS consumo_manual
                 FROM inventario_dieta_inicial
                 WHERE mes = %s AND anio = %s
                 GROUP BY item_id, lote_id
             ),
             produccion AS (
-                -- Total de toneladas fabricadas de la dieta en el lote
+                -- Toneladas fabricadas de la dieta en el lote durante el mes filtrado.
+                -- Las ventas externas se excluyen: van solo en la columna VENTA.
                 SELECT item_id, lote_id, SUM(toneladas) AS ton
                 FROM formula_produccion_diaria
+                WHERE fecha >= %s::date AND fecha < %s::date
+                  AND COALESCE(es_venta, FALSE) = FALSE
                 GROUP BY item_id, lote_id
             ),
             consumo_diario AS (
@@ -434,11 +435,12 @@ def inventario_dietas():
                 GROUP BY lote
             ),
             ventas AS (
-                -- Toneladas vendidas de la dieta en el lote (venta externa registrada
-                -- en Editar Receta: formula_produccion_diaria.es_venta = TRUE)
+                -- Toneladas vendidas de la dieta en el lote durante el mes filtrado
+                -- (venta externa registrada en Editar Receta: es_venta = TRUE)
                 SELECT item_id, lote_id, SUM(toneladas) AS ton
                 FROM formula_produccion_diaria
                 WHERE es_venta IS TRUE
+                  AND fecha >= %s::date AND fecha < %s::date
                 GROUP BY item_id, lote_id
             )
             SELECT
@@ -447,6 +449,7 @@ def inventario_dietas():
                 p.lote_id AS lote,
                 i.ton IS NOT NULL AS inicial_registrada,
                 COALESCE(i.ton, 0) AS inventario_inicial,
+                COALESCE(i.consumo_manual, 0) AS consumo_manual,
                 COALESCE(pr.ton, 0) AS produccion,
                 COALESCE(cd.kg, 0) AS consumo_kg,
                 COALESCE(v.ton, 0) AS venta
@@ -457,7 +460,7 @@ def inventario_dietas():
             LEFT JOIN consumo_diario cd ON cd.lote = p.lote_id
             LEFT JOIN ventas v ON v.item_id = p.item_id AND v.lote_id = p.lote_id
             ORDER BY ca.item_id ASC, p.lote_id ASC;
-        """, (mes, anio, fecha_ini, fecha_fin))
+        """, (mes, anio, fecha_ini, fecha_fin, fecha_ini, fecha_fin, fecha_ini, fecha_fin))
 
         filas = cursor.fetchall()
 
@@ -478,6 +481,14 @@ def inventario_dietas():
         """)
         activo_historico = {f['lote_id']: f['item_id'] for f in cursor.fetchall()}
 
+        # Capacidad de silos configurada por el usuario (toneladas por dieta)
+        cursor.execute("SELECT item_id, capacidad_ton FROM dieta_capacidad_silos")
+        capacidades_silos = {
+            fila['item_id']: float(fila['capacidad_ton'])
+            for fila in cursor.fetchall()
+            if fila['capacidad_ton'] is not None
+        }
+
         for fila in filas:
             item_id = fila['item_id']
             inicial = float(fila['inventario_inicial'] or 0)          # kilogramos
@@ -494,8 +505,9 @@ def inventario_dietas():
                 'inventario_inicial': inicial,
                 'produccion': produccion,
                 'consumo_lote': float(fila['consumo_kg'] or 0),        # kilogramos del lote
+                'consumo_manual': float(fila['consumo_manual'] or 0),  # kg/dia ingresado a mano
                 'venta': venta,
-                'capacidad_silos': CAPACIDAD_SILOS_POR_ITEM.get(item_id),
+                'capacidad_silos': capacidades_silos.get(item_id),
             })
 
         # El diario registra el consumo por lote, no por dieta: si un lote tiene
@@ -516,7 +528,13 @@ def inventario_dietas():
 
             # Ritmo semanal de salida en toneladas (columna rotulada en TON)
             toneladas_semanal = consumo_ton / semanas_del_mes if semanas_del_mes else 0.0
-            consumo_dia = (consumo / dias_del_mes) if dias_del_mes else 0.0
+
+            # ALIMENTO DIAS: si el usuario registro un consumo actual (kg/dia) para
+            # el lote, se usa ese valor; si no, se usa el promedio diario del mes.
+            consumo_manual = dieta['consumo_manual']
+            consumo_dia = consumo_manual if consumo_manual > 0 else (
+                (consumo / dias_del_mes) if dias_del_mes else 0.0
+            )
             alimento_dias = (inventario_real / consumo_dia) if consumo_dia > 0 else None
 
             dieta.update({
@@ -524,6 +542,8 @@ def inventario_dietas():
                 'consumo': consumo,
                 'inventario_real': inventario_real,
                 'alimento_dias': alimento_dias,
+                'consumo_dia': consumo_dia,
+                'usa_consumo_manual': consumo_manual > 0,
                 'toneladas_semanal': toneladas_semanal,
             })
 
@@ -546,8 +566,14 @@ def inventario_dietas():
         )
         item_anterior = dieta['item_id']
 
-    # Fila TOTAL: los dias de cobertura no se suman (se calculan por dieta y lote)
-    capacidades = [d['capacidad_silos'] for d in dietas if d['capacidad_silos'] is not None]
+    # Fila TOTAL: los dias de cobertura no se suman (se calculan por dieta y lote).
+    # La capacidad de silos es por dieta, asi que se cuenta una sola vez aunque la
+    # dieta aparezca en varios lotes.
+    capacidades_por_item = {
+        d['item_id']: d['capacidad_silos']
+        for d in dietas
+        if d['capacidad_silos'] is not None
+    }
     totales = {
         'inventario_inicial': round(sum(d['inventario_inicial'] for d in dietas), 2),
         'produccion': round(sum(d['produccion'] for d in dietas), 2),
@@ -556,19 +582,126 @@ def inventario_dietas():
         'venta': round(sum(d['venta'] for d in dietas), 2),
         'inventario_real': round(sum(d['inventario_real'] for d in dietas), 2),
         'alimento_dias': None,
-        'capacidad_silos': round(sum(capacidades), 2) if capacidades else None,
+        'capacidad_silos': round(sum(capacidades_por_item.values()), 2) if capacidades_por_item else None,
         'toneladas_semanal': round(sum(d['toneladas_semanal'] for d in dietas), 2),
+    }
+
+    # ==========================================================
+    # Resumen por LOTE (no por dieta): la produccion y la venta suman
+    # todas las dietas del lote; el consumo ya viene por lote.
+    # ==========================================================
+    resumen_lotes = []
+    for lote in sorted({d['lote'] for d in dietas}):
+        filas_lote = [d for d in dietas if d['lote'] == lote]
+        inicial = sum(d['inventario_inicial'] for d in filas_lote)
+        produccion = sum(d['produccion'] for d in filas_lote)
+        consumo = sum(d['consumo'] for d in filas_lote)
+        venta = sum(d['venta'] for d in filas_lote)
+        total = inicial + produccion
+        inventario_real = total - consumo - venta
+
+        manuales = [d['consumo_manual'] for d in filas_lote if d['consumo_manual'] > 0]
+        consumo_manual = max(manuales) if manuales else 0.0
+        consumo_dia = consumo_manual if consumo_manual > 0 else (
+            (consumo / dias_del_mes) if dias_del_mes else 0.0
+        )
+        alimento_dias = (inventario_real / consumo_dia) if consumo_dia > 0 else None
+
+        capacidades_lote = [d['capacidad_silos'] for d in filas_lote if d['capacidad_silos'] is not None]
+
+        resumen_lotes.append({
+            'lote': lote,
+            'dietas': sorted({d['alimento'] for d in filas_lote}),
+            'inventario_inicial': inicial,
+            'produccion': produccion,
+            'total': total,
+            'consumo': consumo,
+            'venta': venta,
+            'inventario_real': inventario_real,
+            'alimento_dias': alimento_dias,
+            'consumo_dia': consumo_dia,
+            'usa_consumo_manual': consumo_manual > 0,
+            'capacidad_silos': round(sum(capacidades_lote), 2) if capacidades_lote else None,
+            'toneladas_semanal': (consumo / 1000.0 / semanas_del_mes) if semanas_del_mes else 0.0,
+        })
+
+    totales_lotes = {
+        'inventario_inicial': round(sum(l['inventario_inicial'] for l in resumen_lotes), 2),
+        'produccion': round(sum(l['produccion'] for l in resumen_lotes), 2),
+        'total': round(sum(l['total'] for l in resumen_lotes), 2),
+        'consumo': round(sum(l['consumo'] for l in resumen_lotes), 2),
+        'venta': round(sum(l['venta'] for l in resumen_lotes), 2),
+        'inventario_real': round(sum(l['inventario_real'] for l in resumen_lotes), 2),
+        'capacidad_silos': (
+            round(sum(l['capacidad_silos'] for l in resumen_lotes if l['capacidad_silos'] is not None), 2)
+            if any(l['capacidad_silos'] is not None for l in resumen_lotes) else None
+        ),
+        'toneladas_semanal': round(sum(l['toneladas_semanal'] for l in resumen_lotes), 2),
     }
 
     return render_template(
         'planta_alimentos/inventario_dietas.html',
         dietas=dietas,
         totales=totales,
+        resumen_lotes=resumen_lotes,
+        totales_lotes=totales_lotes,
         mes=mes,
         anio=anio,
         meses_nombres=meses_nombres,
         anios_disponibles=anios_disponibles
     )
+
+
+@planta_bp.route('/inventario/dietas/capacidad-silos', methods=['POST'])
+@login_requerido
+def guardar_capacidad_silos():
+    """Guarda la capacidad de silos (toneladas) de una dieta."""
+    item_id = request.form.get('item_id', type=int)
+    mes = request.form.get('mes', type=int)
+    anio = request.form.get('anio', type=int)
+
+    def volver():
+        return redirect(url_for('planta_alimentos.inventario_dietas', mes=mes, anio=anio))
+
+    if not item_id:
+        flash('No se recibió una dieta válida.', 'danger')
+        return volver()
+
+    texto = (request.form.get('capacidad') or '').strip().replace(',', '.')
+    capacidad = None
+    if texto != '':
+        try:
+            capacidad = float(texto)
+        except ValueError:
+            flash('La capacidad de silos debe ser un número.', 'danger')
+            return volver()
+        if capacidad < 0:
+            flash('La capacidad de silos no puede ser negativa.', 'danger')
+            return volver()
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            INSERT INTO dieta_capacidad_silos (item_id, capacidad_ton, actualizado_en)
+            VALUES (%s, %s, CURRENT_TIMESTAMP)
+            ON CONFLICT (item_id)
+            DO UPDATE SET capacidad_ton = EXCLUDED.capacidad_ton,
+                          actualizado_en = CURRENT_TIMESTAMP
+        """, (item_id, capacidad))
+        conn.commit()
+        if capacidad is None:
+            flash('Capacidad de silos eliminada.', 'success')
+        else:
+            flash('Capacidad de silos guardada.', 'success')
+    except Exception as e:
+        conn.rollback()
+        flash(f'Error al guardar la capacidad de silos: {str(e)}', 'danger')
+    finally:
+        cursor.close()
+        conn.close()
+
+    return volver()
 
 
 @planta_bp.route('/inventario/dietas/inventario-inicial', methods=['POST'])
@@ -586,44 +719,65 @@ def registrar_inventario_inicial_dieta():
     item_ids = request.form.getlist('item_id')
     lote_ids = request.form.getlist('lote_id')
     cantidades = request.form.getlist('cantidad')
+    consumos = request.form.getlist('consumo')
 
-    if not (len(item_ids) == len(lote_ids) == len(cantidades)):
+    if not (len(item_ids) == len(lote_ids) == len(cantidades) == len(consumos)):
         flash('Los datos enviados no son válidos. Vuelve a intentarlo.', 'danger')
         return redirect(url_for('planta_alimentos.inventario_dietas', mes=mes, anio=anio))
 
     errores = []
     registros = []
 
-    for item_raw, lote, cantidad_raw in zip(item_ids, lote_ids, cantidades):
+    for item_raw, lote, cantidad_raw, consumo_raw in zip(item_ids, lote_ids, cantidades, consumos):
         try:
             item_id = int(item_raw)
         except (TypeError, ValueError):
             errores.append('Hay una dieta con un ítem inválido.')
             continue
 
+        # Inventario inicial (puede venir vacio para actualizar solo el consumo)
+        cantidad = None
         texto = (cantidad_raw or '').strip().replace(',', '.')
-        if texto == '':
-            # Las filas vacias se dejan como estan (sirve para no registrar aun)
+        if texto != '':
+            try:
+                cantidad = float(texto)
+            except ValueError:
+                errores.append(f'El inventario inicial de la dieta {item_id} / lote {lote} no es un número válido.')
+                continue
+            if cantidad < 0:
+                errores.append(f'El inventario inicial de la dieta {item_id} / lote {lote} no puede ser negativo.')
+                continue
+
+        # Consumo actual en kg/dia (opcional)
+        consumo = None
+        texto_consumo = (consumo_raw or '').strip().replace(',', '.')
+        if texto_consumo != '':
+            try:
+                consumo = float(texto_consumo)
+            except ValueError:
+                errores.append(f'El consumo actual de la dieta {item_id} / lote {lote} no es un número válido.')
+                continue
+            if consumo < 0:
+                errores.append(f'El consumo actual de la dieta {item_id} / lote {lote} no puede ser negativo.')
+                continue
+
+        if cantidad is None and consumo is None:
+            # Fila completamente vacia: no se registra nada
             continue
 
-        try:
-            cantidad = float(texto)
-        except ValueError:
-            errores.append(f'La cantidad de la dieta {item_id} / lote {lote} no es un número válido.')
-            continue
-
-        if cantidad < 0:
-            errores.append(f'La cantidad de la dieta {item_id} / lote {lote} no puede ser negativa.')
-            continue
-
-        registros.append((item_id, lote, round(cantidad, 3)))
+        registros.append((
+            item_id,
+            lote,
+            round(cantidad, 3) if cantidad is not None else None,
+            round(consumo, 3) if consumo is not None else None,
+        ))
 
     if errores:
         flash(' '.join(errores[:3]), 'danger')
         return redirect(url_for('planta_alimentos.inventario_dietas', mes=mes, anio=anio))
 
     if not registros:
-        flash('No se registró inventario inicial: todas las filas estaban vacías.', 'warning')
+        flash('No se registró nada: todas las filas estaban vacías.', 'warning')
         return redirect(url_for('planta_alimentos.inventario_dietas', mes=mes, anio=anio))
 
     conn = get_db_connection()
@@ -640,23 +794,26 @@ def registrar_inventario_inicial_dieta():
         pares_validos = {(fila['item_id'], fila['lote_id']) for fila in cursor.fetchall()}
 
         guardados = 0
-        for item_id, lote, cantidad in registros:
+        for item_id, lote, cantidad, consumo in registros:
             if (item_id, lote) not in pares_validos:
                 continue
 
             cursor.execute("""
                 INSERT INTO inventario_dieta_inicial
-                    (item_id, lote_id, cantidad_inicial_ton, fecha_registro, mes, anio)
-                VALUES (%s, %s, %s, CURRENT_DATE, %s, %s)
+                    (item_id, lote_id, cantidad_inicial_ton, consumo_actual_kg_dia, fecha_registro, mes, anio)
+                VALUES (%s, %s, COALESCE(%s, 0), %s, CURRENT_DATE, %s, %s)
                 ON CONFLICT (item_id, lote_id, mes, anio)
                 DO UPDATE SET
-                    cantidad_inicial_ton = EXCLUDED.cantidad_inicial_ton,
-                    fecha_registro = CASE
-                        WHEN inventario_dieta_inicial.cantidad_inicial_ton IS DISTINCT FROM EXCLUDED.cantidad_inicial_ton
-                        THEN EXCLUDED.fecha_registro
-                        ELSE inventario_dieta_inicial.fecha_registro
-                    END;
-            """, (item_id, lote, cantidad, mes, anio))
+                    cantidad_inicial_ton = CASE
+                        WHEN %s IS NULL THEN inventario_dieta_inicial.cantidad_inicial_ton
+                        ELSE EXCLUDED.cantidad_inicial_ton
+                    END,
+                    consumo_actual_kg_dia = CASE
+                        WHEN %s IS NULL THEN inventario_dieta_inicial.consumo_actual_kg_dia
+                        ELSE EXCLUDED.consumo_actual_kg_dia
+                    END,
+                    fecha_registro = CURRENT_DATE;
+            """, (item_id, lote, cantidad, consumo, mes, anio, cantidad, consumo))
             guardados += 1
 
         conn.commit()

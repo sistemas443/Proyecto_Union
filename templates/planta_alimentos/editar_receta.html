@@ -549,7 +549,12 @@
                             <tbody>
                                 {% for reg in prod_interna %}
                             <tr>
-                                <td class="fw-bold">{{ reg['fecha'].strftime('%d/%m/%Y') }}</td>
+                                <td>
+                                    <input type="date" form="form-prod-edit-{{ reg['id'] }}" name="fecha"
+                                        value="{{ reg['fecha'].strftime('%Y-%m-%d') }}"
+                                        class="form-control form-control-sm" style="min-width: 132px;"
+                                        title="Fecha de producción" required>
+                                </td>
 
                                 <!-- Edición de Toneladas -->
                                 <td>
@@ -654,7 +659,12 @@
                             <tbody>
                                 {% for reg in ventas_externas %}
                                 <tr>
-                                    <td class="fw-bold">{{ reg['fecha'].strftime('%d/%m/%Y') }}</td>
+                                    <td>
+                                        <input type="date" form="form-prod-edit-{{ reg['id'] }}" name="fecha"
+                                            value="{{ reg['fecha'].strftime('%Y-%m-%d') }}"
+                                            class="form-control form-control-sm" style="min-width: 132px;"
+                                            title="Fecha de la venta" required>
+                                    </td>
                                     <td>{{ reg['empresa_cliente'] or '' }}</td>
                                     <td>{{ reg['remision'] or '' }}</td>
                                     <td>

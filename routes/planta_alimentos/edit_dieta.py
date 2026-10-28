@@ -1,3 +1,4 @@
+from datetime import datetime
 from flask import render_template, request, redirect, url_for, flash
 from routes.planta_alimentos.catalogo_a import planta_bp
 from routes.routes import login_requerido
@@ -209,11 +210,22 @@ def actualizar_produccion_diaria(id_registro):
     novedad = request.form.get('novedad', '')
     cal_kg = parse_float(request.form.get('cal_kg'))
     calcio_kg = parse_float(request.form.get('calcio_kg'))
+    fecha_raw = (request.form.get('fecha') or '').strip()
+
+    fecha = None
+    if fecha_raw:
+        try:
+            fecha = datetime.strptime(fecha_raw, '%Y-%m-%d').date()
+        except ValueError:
+            flash('La fecha enviada no es válida.', 'danger')
+            if item_id and lote_id:
+                return redirect(url_for('planta_alimentos.editar_receta', item_id=item_id, lote_id=lote_id))
+            return redirect(url_for('planta_alimentos.catalogo_alimentos'))
 
     try:
         if toneladas > 0:
             exito = FormulaProduccion.actualizar_produccion(
-                id_registro, toneladas, novedad, cal_kg, calcio_kg
+                id_registro, toneladas, novedad, cal_kg, calcio_kg, nueva_fecha=fecha
             )
             if exito:
                 flash('Producción actualizada correctamente.', 'success')

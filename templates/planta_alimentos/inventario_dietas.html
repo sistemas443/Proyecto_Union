@@ -42,7 +42,14 @@
   /* Separador visual al cambiar de dieta (una dieta puede tener varios lotes) */
   .table-dietas tbody tr.group-start > * { border-top: 2px solid #cfd6de; }
 
-  /* Primera columna fija al hacer scroll horizontal */
+  /* Columnas fijas al hacer scroll horizontal: alimento, item y lote.
+     Los anchos se recalculan con JS (--col1-w / --col2-w) para que las
+     columnas fijas queden siempre alineadas aunque cambie el texto. */
+  .table-dietas {
+    --col1-w: 250px;
+    --col2-w: 70px;
+  }
+
   .table-dietas tbody th:first-child,
   .table-dietas tbody td:first-child,
   .table-dietas thead th:first-child {
@@ -54,6 +61,49 @@
   .table-dietas thead th:first-child {
     background-color: var(--table-header-bg);
     z-index: 3;
+  }
+
+  /* ITEM (columna 2) */
+  .table-dietas thead th:nth-child(2),
+  .table-dietas tbody td:nth-child(2),
+  .table-dietas tfoot td:nth-child(2) {
+    position: sticky;
+    left: var(--col1-w);
+    z-index: 2;
+  }
+  .table-dietas thead th:nth-child(2) { z-index: 3; }
+
+  /* LOTE (columna 3) */
+  .table-dietas thead th:nth-child(3),
+  .table-dietas tbody td:nth-child(3),
+  .table-dietas tfoot td:nth-child(3) {
+    position: sticky;
+    left: calc(var(--col1-w) + var(--col2-w));
+    z-index: 2;
+    box-shadow: 1px 0 0 #e9ecef;
+  }
+  .table-dietas thead th:nth-child(3) { z-index: 3; }
+
+  .table-dietas .col-lote .lote-chip { white-space: nowrap; }
+
+  /* Tabla resumen por lote: solo la columna LOTE queda fija */
+  .table-lotes { min-width: 1100px; }
+  .table-lotes thead th:nth-child(2),
+  .table-lotes tbody td:nth-child(2),
+  .table-lotes tfoot td:nth-child(2),
+  .table-lotes thead th:nth-child(3),
+  .table-lotes tbody td:nth-child(3),
+  .table-lotes tfoot td:nth-child(3) {
+    position: static;
+    left: auto;
+    z-index: auto;
+    box-shadow: none;
+  }
+  .table-lotes .col-dietas {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    white-space: normal;
+    min-width: 220px;
   }
 
   .table-dietas .col-alimento {
@@ -233,8 +283,107 @@
         </div>
     </div>
 
-    <!-- Tabla -->
+    <!-- ==========================================================
+         Resumen por LOTE: producción y venta suman todas las dietas
+         ========================================================== -->
     <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <span class="fw-semibold" style="font-size: 0.85rem; color: var(--text-primary);">
+                Resumen por lote
+            </span>
+            <span class="leyenda">
+                {{ resumen_lotes|length }} lotes · producción y venta suman todas las dietas del lote ·
+                {{ meses_nombres[mes - 1][1] }} {{ anio }}
+            </span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover align-middle table-dietas table-lotes">
+                <caption class="visually-hidden">
+                    Resumen por lote: producción y venta suman todas las dietas del lote; el consumo es el registrado en el diario.
+                </caption>
+                <thead>
+                    <tr>
+                        <th scope="col" style="min-width: 120px;">LOTE</th>
+                        <th scope="col" class="col-dietas">DIETAS DEL LOTE</th>
+                        <th scope="col" class="col-num" title="Suma del inventario inicial de las dietas del lote">INVENTARIO INICIAL (KG)</th>
+                        <th scope="col" class="col-num" title="Todas las toneladas producidas del lote en el mes, sin importar la dieta y sin incluir ventas">PRODUCCION (KG)</th>
+                        <th scope="col" class="col-num" title="Inventario inicial + producción">TOTAL (KG)</th>
+                        <th scope="col" class="col-num" title="Consumo del mes según el registro diario del lote">CONSUMO (KG)</th>
+                        <th scope="col" class="col-num" title="Todas las toneladas vendidas del lote en el mes, sin importar la dieta">VENTA (KG)</th>
+                        <th scope="col" class="col-num" title="TOTAL − CONSUMO − VENTA">INVENTARIO REAL (KG)</th>
+                        <th scope="col" class="col-num">ALIMENTO DIAS</th>
+                        <th scope="col" class="col-num" title="Suma de la capacidad de silos de las dietas del lote">CAPACIDAD DE SILOS (TON)</th>
+                        <th scope="col" class="col-num">TONELADAS SEMANAL</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for fila in resumen_lotes %}
+                    <tr>
+                        <td class="col-lote"><span class="lote-chip">{{ fila['lote'] }}</span></td>
+                        <td class="col-dietas">{{ fila['dietas']|join(' · ') }}</td>
+                        <td class="col-num">{{ "{:,.1f}".format(fila['inventario_inicial']) }}</td>
+                        <td class="col-num">{{ "{:,.1f}".format(fila['produccion']) }}</td>
+                        <td class="col-num">{{ "{:,.1f}".format(fila['total']) }}</td>
+                        <td class="col-num">{{ "{:,.1f}".format(fila['consumo']) }}</td>
+                        <td class="col-num">{{ "{:,.1f}".format(fila['venta']) }}</td>
+                        <td class="col-num col-real">{{ "{:,.1f}".format(fila['inventario_real']) }}</td>
+                        <td class="col-num">
+                            {% if fila['alimento_dias'] is not none %}
+                            <span class="pill-dias {% if fila['alimento_dias'] >= 7 %}ok{% elif fila['alimento_dias'] >= 3 %}warn{% else %}critical{% endif %}"
+                                title="Inventario real ÷ {% if fila['usa_consumo_manual'] %}consumo actual ({{ '{:,.1f}'.format(fila['consumo_dia']) }} kg/día){% else %}consumo diario promedio del mes ({{ '{:,.1f}'.format(fila['consumo_dia']) }} kg/día){% endif %}">
+                                {{ "{:,.1f}".format(fila['alimento_dias']) }}
+                            </span>
+                            {% else %}
+                            <span class="pill-dias no-data" title="Sin consumo registrado para calcular los días">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="col-num">
+                            {% if fila['capacidad_silos'] is not none %}
+                            {{ "{:,.0f}".format(fila['capacidad_silos']) }}
+                            {% else %}
+                            <span class="sin-dato">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="col-num">{{ "{:,.1f}".format(fila['toneladas_semanal']) }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="11" class="text-center py-4" style="color: var(--text-muted);">
+                            No hay lotes con receta registrada.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th scope="row">TOTAL</th>
+                        <td></td>
+                        <td class="col-num">{{ "{:,.1f}".format(totales_lotes['inventario_inicial']) }}</td>
+                        <td class="col-num">{{ "{:,.1f}".format(totales_lotes['produccion']) }}</td>
+                        <td class="col-num">{{ "{:,.1f}".format(totales_lotes['total']) }}</td>
+                        <td class="col-num">{{ "{:,.1f}".format(totales_lotes['consumo']) }}</td>
+                        <td class="col-num">{{ "{:,.1f}".format(totales_lotes['venta']) }}</td>
+                        <td class="col-num">{{ "{:,.1f}".format(totales_lotes['inventario_real']) }}</td>
+                        <td class="col-num">
+                            <span class="pill-dias no-data" title="Los días no se suman; se calculan por lote">—</span>
+                        </td>
+                        <td class="col-num">
+                            {% if totales_lotes['capacidad_silos'] is not none %}
+                            {{ "{:,.0f}".format(totales_lotes['capacidad_silos']) }}
+                            {% else %}
+                            <span class="sin-dato">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="col-num">{{ "{:,.1f}".format(totales_lotes['toneladas_semanal']) }}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+
+    <!-- Tabla -->
+    <div class="card border-0 shadow-sm mt-4">
         {% set pendientes = dietas|rejectattr('inicial_registrada')|list|length %}
         <div class="card-header bg-white d-flex justify-content-between align-items-center flex-wrap gap-2">
             <span class="fw-semibold" style="font-size: 0.85rem; color: var(--text-primary);">Consolidado de dietas</span>
@@ -262,13 +411,13 @@
                         <th scope="col" class="col-item" style="width: 70px;">ITEM</th>
                         <th scope="col" class="col-lote" style="width: 90px;">LOTE</th>
                         <th scope="col" class="col-num" title="Kilogramos registrados por el usuario">INVENTARIO INICIAL (KG)</th>
-                        <th scope="col" class="col-num" title="Toneladas fabricadas del lote convertidas a kilogramos">PRODUCCION (KG)</th>
+                        <th scope="col" class="col-num" title="Toneladas fabricadas del lote en el mes seleccionado (sin ventas), convertidas a kilogramos">PRODUCCION (KG)</th>
                         <th scope="col" class="col-num" title="Inventario inicial (kg) + producción (kg)">TOTAL (KG)</th>
                         <th scope="col" class="col-num" title="Consumo del mes según el registro diario del lote (solo se asigna a la dieta activa del lote)">CONSUMO (KG)</th>
-                        <th scope="col" class="col-num" title="Toneladas vendidas del lote convertidas a kilogramos (venta externa registrada en Editar Receta)">VENTA (KG)</th>
+                        <th scope="col" class="col-num" title="Toneladas vendidas del lote en el mes seleccionado, convertidas a kilogramos (venta externa registrada en Editar Receta)">VENTA (KG)</th>
                         <th scope="col" class="col-num" title="TOTAL − CONSUMO − VENTA, en kilogramos">INVENTARIO REAL (KG)</th>
                         <th scope="col" class="col-num">ALIMENTO DIAS</th>
-                        <th scope="col" class="col-num">CAPACIDAD DE SILOS (TON)</th>
+                        <th scope="col" class="col-num" title="Capacidad de silos de la dieta en toneladas (editable)">CAPACIDAD DE SILOS (TON)</th>
                         <th scope="col" class="col-num">TONELADAS SEMANAL</th>
                     </tr>
                 </thead>
@@ -302,19 +451,29 @@
                         <td class="col-num col-real">{{ "{:,.1f}".format(fila['inventario_real']) }}</td>
                         <td class="col-num">
                             {% if fila['alimento_dias'] is not none %}
-                            <span class="pill-dias {% if fila['alimento_dias'] >= 7 %}ok{% elif fila['alimento_dias'] >= 3 %}warn{% else %}critical{% endif %}">
+                            <span class="pill-dias {% if fila['alimento_dias'] >= 7 %}ok{% elif fila['alimento_dias'] >= 3 %}warn{% else %}critical{% endif %}"
+                                title="Inventario real ÷ {% if fila['usa_consumo_manual'] %}consumo actual ({{ '{:,.1f}'.format(fila['consumo_dia']) }} kg/día){% else %}consumo diario promedio del mes ({{ '{:,.1f}'.format(fila['consumo_dia']) }} kg/día){% endif %}">
                                 {{ "{:,.1f}".format(fila['alimento_dias']) }}
                             </span>
                             {% else %}
-                            <span class="pill-dias no-data" title="Sin consumo semanal registrado">—</span>
+                            <span class="pill-dias no-data" title="Sin consumo registrado para calcular los días">—</span>
                             {% endif %}
                         </td>
                         <td class="col-num">
-                            {% if fila['capacidad_silos'] is not none %}
-                            {{ "{:,.0f}".format(fila['capacidad_silos']) }}
-                            {% else %}
-                            <span class="sin-dato" title="Capacidad de silos sin configurar">—</span>
-                            {% endif %}
+                            <form method="POST"
+                                action="{{ url_for('planta_alimentos.guardar_capacidad_silos') }}"
+                                class="d-flex justify-content-end">
+                                <input type="hidden" name="item_id" value="{{ fila['item_id'] }}">
+                                <input type="hidden" name="mes" value="{{ mes }}">
+                                <input type="hidden" name="anio" value="{{ anio }}">
+                                <input type="text" inputmode="decimal" autocomplete="off" name="capacidad"
+                                    class="form-control form-control-sm text-end" style="max-width: 110px;"
+                                    value="{% if fila['capacidad_silos'] is not none %}{{ '%g' % fila['capacidad_silos'] }}{% endif %}"
+                                    placeholder="—"
+                                    title="Capacidad de silos en toneladas para {{ fila['alimento'] }}. Se guarda al salir del campo."
+                                    aria-label="Capacidad de silos en toneladas de {{ fila['alimento'] }}"
+                                    onchange="this.form.submit()">
+                            </form>
                         </td>
                         <td class="col-num">{{ "{:,.1f}".format(fila['toneladas_semanal']) }}</td>
                     </tr>
@@ -377,7 +536,7 @@
                         <div>
                             <h5 class="modal-title" id="modalInicialLabel">Inventario inicial de dietas</h5>
                             <div class="text-muted" style="font-size: 0.78rem;">
-                                {{ meses_nombres[mes - 1][1] }} {{ anio }} · kilogramos por dieta y lote
+                                {{ meses_nombres[mes - 1][1] }} {{ anio }} · kilogramos y consumo actual por dieta y lote
                             </div>
                         </div>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
@@ -385,15 +544,19 @@
 
                     <div class="modal-body">
                         <p class="text-muted mb-3" style="font-size: 0.78rem;">
-                            Registra los kilogramos disponibles al inicio del mes. Las filas que dejes vacías no se modifican.
+                            Registra los kilogramos disponibles al inicio del mes y, si lo conoces, el consumo actual
+                            del lote. Las filas que dejes vacías no se modifican.
                         </p>
                         <div class="table-responsive">
                             <table class="table table-sm align-middle mb-0">
                                 <thead>
                                     <tr>
                                         <th scope="col">Dieta</th>
-                                        <th scope="col">Lote</th>
-                                        <th scope="col" class="text-end" style="width: 160px;">Inicial (kg)</th>
+                                        <th scope="col" style="width: 95px;">Lote</th>
+                                        <th scope="col" class="text-end" style="width: 150px;">Inicial (kg)</th>
+                                        <th scope="col" class="text-end" style="width: 170px;">
+                                            Consumo actual (kg/día)
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -404,20 +567,35 @@
                                             <input type="hidden" name="item_id" value="{{ fila['item_id'] }}">
                                             <input type="hidden" name="lote_id" value="{{ fila['lote'] }}">
                                         </td>
-                                        <td><span class="lote-chip">{{ fila['lote'] }}</span></td>
+                                        <td><span class="lote-chip" style="white-space: nowrap;">{{ fila['lote'] }}</span></td>
                                         <td>
                                             <input type="text" inputmode="decimal" autocomplete="off"
                                                 class="form-control form-control-sm text-end" name="cantidad"
-                                                value="{% if fila['inicial_registrada'] %}{{ fila['inventario_inicial'] }}{% endif %}"
+                                                value="{% if fila['inicial_registrada'] %}{{ '%g' % fila['inventario_inicial'] }}{% endif %}"
                                                 placeholder="0"
                                                 data-item="{{ fila['item_id'] }}" data-lote="{{ fila['lote'] }}"
                                                 aria-label="Inventario inicial en kilogramos de {{ fila['alimento'] }} lote {{ fila['lote'] }}">
+                                        </td>
+                                        <td>
+                                            <input type="text" inputmode="decimal" autocomplete="off"
+                                                class="form-control form-control-sm text-end" name="consumo"
+                                                value="{% if fila['consumo_manual'] %}{{ '%g' % fila['consumo_manual'] }}{% endif %}"
+                                                placeholder="Opcional"
+                                                data-item="{{ fila['item_id'] }}" data-lote="{{ fila['lote'] }}"
+                                                title="Consumo actual del lote en kg por día. Con este valor se calcula ALIMENTO DÍAS = inventario real ÷ consumo actual."
+                                                aria-label="Consumo actual en kilogramos por día de {{ fila['alimento'] }} lote {{ fila['lote'] }}">
                                         </td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
                             </table>
                         </div>
+                        <p class="text-muted mt-2 mb-0" style="font-size: 0.72rem;">
+                            <i class="fas fa-circle-info me-1"></i>
+                            El <strong>consumo actual</strong> es opcional y va en kg por día. Si lo registras,
+                            <strong>ALIMENTO DÍAS</strong> se calcula como inventario real ÷ consumo actual; si lo dejas
+                            vacío se usa el consumo diario promedio del mes.
+                        </p>
                     </div>
 
                     <div class="modal-footer">
@@ -436,6 +614,27 @@
 
 {% block scripts %}
 <script>
+    // Mantiene alineadas las columnas fijas (alimento, item y lote) midiendo
+    // el ancho real de las dos primeras columnas.
+    (function () {
+        function ajustarColumnasFijas() {
+            // Se recorren todas las tablas (resumen por lote y consolidado),
+            // porque cada una tiene columnas de ancho distinto.
+            document.querySelectorAll('.table-dietas').forEach(function (tabla) {
+                const ths = tabla.querySelectorAll('thead th');
+                if (ths.length < 3) return;
+                const ancho1 = Math.round(ths[0].getBoundingClientRect().width);
+                const ancho2 = Math.round(ths[1].getBoundingClientRect().width);
+                if (ancho1 > 0) tabla.style.setProperty('--col1-w', ancho1 + 'px');
+                if (ancho2 > 0) tabla.style.setProperty('--col2-w', ancho2 + 'px');
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', ajustarColumnasFijas);
+        window.addEventListener('load', ajustarColumnasFijas);
+        window.addEventListener('resize', ajustarColumnasFijas);
+    })();
+
     document.addEventListener('DOMContentLoaded', function () {
         const modal = document.getElementById('modalInicial');
         if (!modal) return;
