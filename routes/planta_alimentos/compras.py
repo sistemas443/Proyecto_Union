@@ -401,6 +401,10 @@ def inventario_dietas():
             anios_disponibles.append(anio)
             anios_disponibles.sort(reverse=True)
 
+        # Rango del mes seleccionado (para el consumo del registro diario)
+        fecha_ini = datetime(anio, mes, 1).date()
+        fecha_fin = datetime(anio + 1, 1, 1).date() if mes == 12 else datetime(anio, mes + 1, 1).date()
+
         # 2. Una fila por dieta (item) + lote con receta registrada
         cursor.execute("""
             WITH pares AS (
@@ -419,11 +423,15 @@ def inventario_dietas():
                 FROM formula_produccion_diaria
                 GROUP BY item_id, lote_id
             ),
-            despachos AS (
-                SELECT item_id, lote_id, SUM(toneladas) AS ton
-                FROM despachos_dieta
-                WHERE EXTRACT(MONTH FROM fecha) = %s AND EXTRACT(YEAR FROM fecha) = %s
-                GROUP BY item_id, lote_id
+            consumo_diario AS (
+                -- Consumo real del mes segun el registro diario del lote.
+                -- data_diario.consumo_kg ya viene en kilogramos totales del lote por dia.
+                SELECT lote, SUM(consumo_kg) AS kg
+                FROM data_diario
+                WHERE fecha_dia ~ '^\\d{4}-\\d{2}-\\d{2}$'
+                  AND fecha_dia::date >= %s::date
+                  AND fecha_dia::date <  %s::date
+                GROUP BY lote
             ),
             ventas AS (
                 -- Toneladas vendidas de la dieta en el lote (venta externa registrada
@@ -440,35 +448,43 @@ def inventario_dietas():
                 i.ton IS NOT NULL AS inicial_registrada,
                 COALESCE(i.ton, 0) AS inventario_inicial,
                 COALESCE(pr.ton, 0) AS produccion,
-                COALESCE(d.ton, 0) AS consumo,
+                COALESCE(cd.kg, 0) AS consumo_kg,
                 COALESCE(v.ton, 0) AS venta
             FROM pares p
             JOIN catalogo_alimentos ca ON ca.item_id = p.item_id
             LEFT JOIN inicial i ON i.item_id = p.item_id AND i.lote_id = p.lote_id
             LEFT JOIN produccion pr ON pr.item_id = p.item_id AND pr.lote_id = p.lote_id
-            LEFT JOIN despachos d ON d.item_id = p.item_id AND d.lote_id = p.lote_id
+            LEFT JOIN consumo_diario cd ON cd.lote = p.lote_id
             LEFT JOIN ventas v ON v.item_id = p.item_id AND v.lote_id = p.lote_id
             ORDER BY ca.item_id ASC, p.lote_id ASC;
-        """, (mes, anio) * 2)
+        """, (mes, anio, fecha_ini, fecha_fin))
 
-        for fila in cursor.fetchall():
+        filas = cursor.fetchall()
+
+        # Dieta activa por lote: la que se produjo dentro del mes; si no hubo
+        # produccion, la ultima dieta producida historicamente para ese lote.
+        cursor.execute("""
+            SELECT DISTINCT ON (lote_id) lote_id, item_id
+            FROM formula_produccion_diaria
+            WHERE fecha >= %s AND fecha < %s
+            ORDER BY lote_id, fecha DESC, toneladas DESC
+        """, (fecha_ini, fecha_fin))
+        activo_mes = {f['lote_id']: f['item_id'] for f in cursor.fetchall()}
+
+        cursor.execute("""
+            SELECT DISTINCT ON (lote_id) lote_id, item_id
+            FROM formula_produccion_diaria
+            ORDER BY lote_id, fecha DESC, toneladas DESC
+        """)
+        activo_historico = {f['lote_id']: f['item_id'] for f in cursor.fetchall()}
+
+        for fila in filas:
             item_id = fila['item_id']
             inicial = float(fila['inventario_inicial'] or 0)          # kilogramos
             produccion_ton = float(fila['produccion'] or 0)           # toneladas en BD
             produccion = produccion_ton * 1000.0                      # kilogramos
-            consumo_ton = float(fila['consumo'] or 0)                 # toneladas en BD
-            consumo = consumo_ton * 1000.0                            # kilogramos
             venta_ton = float(fila['venta'] or 0)                     # toneladas en BD
             venta = venta_ton * 1000.0                                # kilogramos
-
-            # Todo el balance se maneja en kilogramos
-            total = inicial + produccion
-            inventario_real = total - consumo - venta
-
-            # Ritmo semanal de salida en toneladas (columna rotulada en TON)
-            toneladas_semanal = consumo_ton / semanas_del_mes if semanas_del_mes else 0.0
-            consumo_diario = (consumo / dias_del_mes) if dias_del_mes else 0.0
-            alimento_dias = (inventario_real / consumo_diario) if consumo_diario > 0 else None
 
             dietas.append({
                 'item_id': item_id,
@@ -477,12 +493,37 @@ def inventario_dietas():
                 'inicial_registrada': bool(fila['inicial_registrada']),
                 'inventario_inicial': inicial,
                 'produccion': produccion,
+                'consumo_lote': float(fila['consumo_kg'] or 0),        # kilogramos del lote
+                'venta': venta,
+                'capacidad_silos': CAPACIDAD_SILOS_POR_ITEM.get(item_id),
+            })
+
+        # El diario registra el consumo por lote, no por dieta: si un lote tiene
+        # varias dietas, el consumo se asigna solo a la dieta activa para no duplicarlo.
+        dietas_por_lote = Counter(d['lote'] for d in dietas)
+        for dieta in dietas:
+            lote = dieta['lote']
+            consumo_lote = dieta['consumo_lote']
+            if dietas_por_lote[lote] == 1:
+                consumo = consumo_lote
+            else:
+                activo = activo_mes.get(lote) or activo_historico.get(lote)
+                consumo = consumo_lote if dieta['item_id'] == activo else 0.0
+
+            consumo_ton = consumo / 1000.0
+            total = dieta['inventario_inicial'] + dieta['produccion']
+            inventario_real = total - consumo - dieta['venta']
+
+            # Ritmo semanal de salida en toneladas (columna rotulada en TON)
+            toneladas_semanal = consumo_ton / semanas_del_mes if semanas_del_mes else 0.0
+            consumo_dia = (consumo / dias_del_mes) if dias_del_mes else 0.0
+            alimento_dias = (inventario_real / consumo_dia) if consumo_dia > 0 else None
+
+            dieta.update({
                 'total': total,
                 'consumo': consumo,
-                'venta': venta,
                 'inventario_real': inventario_real,
                 'alimento_dias': alimento_dias,
-                'capacidad_silos': CAPACIDAD_SILOS_POR_ITEM.get(item_id),
                 'toneladas_semanal': toneladas_semanal,
             })
 
