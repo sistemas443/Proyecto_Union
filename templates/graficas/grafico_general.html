@@ -2,6 +2,10 @@
 
 {% block title %}Gráfico General – Avícola San Martín{% endblock %}
 
+{% block head %}
+{% include 'planta_alimentos/_design_system.html' %}
+{% endblock %}
+
 {% block content %}
 <style>
   /* Escala normal (100%) */
@@ -56,66 +60,183 @@
     .franja-lote { gap: 1rem !important; }
     .card-filtro h5 { font-size: 0.9rem; }
   }
+  /* ============================================================
+     AJUSTES DE DISEÑO (design system) - solo esta pantalla
+     ============================================================ */
+  .page-header { flex-shrink: 0; }
+
+  .ps-filtro-lote .form-label-design {
+    margin-bottom: 0;
+    white-space: nowrap;
+  }
+
+  .ps-filtro-lote .form-select { font-size: 0.8rem; }
+
+  @media (max-width: 767.98px) {
+    .ps-filtro-lote {
+      flex-direction: column;
+      align-items: stretch !important;
+      width: 100%;
+    }
+    .ps-filtro-lote select { width: 100% !important; max-width: none; }
+    .ps-filtro-lote .btn { width: 100%; }
+  }
+
+  /* Ficha del lote (nutricionista, variedad, marca) */
+  .ps-franja-lote {
+    flex-shrink: 0;
+    margin-bottom: 0.75rem;
+    overflow: hidden;
+  }
+
+  .ps-franja-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.5rem 1rem;
+    padding: 0.6rem 0.9rem;
+  }
+
+  @media (max-width: 767.98px) {
+    .ps-franja-grid { grid-template-columns: 1fr; }
+  }
+
+  .ps-lote-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    min-width: 0;
+  }
+
+  .ps-foto-lote {
+    width: 38px;
+    height: 38px;
+    flex: 0 0 auto;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background-color: var(--surface-alt);
+  }
+
+  .ps-lote-texto { min-width: 0; }
+
+  .ps-lote-etiqueta {
+    display: block;
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--text-muted);
+  }
+
+  .ps-lote-nombre {
+    display: block;
+    font-size: 0.84rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  /* Título interno de la tarjeta del gráfico */
+  .ps-grafico-titulo {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0.9rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--text-secondary);
+    background-color: var(--surface-alt);
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* Estado vacío / informativo */
+  .ps-vacio {
+    padding: 2.5rem 1rem;
+    text-align: center;
+    color: var(--text-muted);
+  }
+
+  .ps-vacio i {
+    font-size: 1.8rem;
+    color: var(--border);
+    margin-bottom: 0.5rem;
+  }
 </style>
 
 <div class="container-fluid px-4 py-3 h-100 d-flex flex-column">
-    <!-- BARRA SUPERIOR OSCURA: TÍTULO Y FILTRO (IDÉNTICO A DIARIO) -->
-    <div class="d-flex flex-wrap align-items-center justify-content-between mb-1 px-3 py-1 rounded shadow-sm card-filtro" style="background-color: #212529;">
-      
-      <!-- Título a la izquierda -->
-      <h5 class="mb-0 fw-bold text-uppercase text-white" style="letter-spacing: 0.5px;">
-        <i class='bx bx-line-chart-down me-2'></i>GRÁFICO GENERAL DE PRODUCCIÓN
-      </h5>
+    <!-- ENCABEZADO: TÍTULO + FILTRO DE LOTE -->
+    <div class="page-header">
+      <div class="d-flex align-items-center gap-3">
+        <div class="page-icon">
+          <i class="fas fa-chart-line"></i>
+        </div>
+        <div>
+          <h2 class="page-title mb-0">Gráfico general de producción</h2>
+          <p class="page-subtitle mb-0">Producción de huevo a lo largo de la vida del lote</p>
+        </div>
+      </div>
 
-      <!-- Filtro centrado -->
-      <div class="mx-auto">
-        <form method="POST" action="{{ url_for('semanal.grafico_general') }}" class="d-flex flex-wrap align-items-center gap-2 m-0">
-          <label for="lote" class="mb-0 fw-bold text-light text-nowrap" style="font-size: 0.9rem;">SELECCIONE UN LOTE:</label>
-          <select name="lote" id="lote" class="form-select form-select-sm border-0 fw-bold shadow-none" style="width: 220px;" onchange="this.form.submit()">
+      <div class="d-flex flex-wrap align-items-center gap-2">
+        {% if lote_seleccionado %}
+        <span class="badge-estado badge-neutro">Lote {{ lote_seleccionado }}</span>
+        {% endif %}
+        <form method="POST" action="{{ url_for('semanal.grafico_general') }}" class="ps-filtro-lote d-flex flex-wrap align-items-center gap-2 m-0">
+          <label for="lote" class="form-label-design">Seleccione un lote</label>
+          <select name="lote" id="lote" class="form-select form-select-sm" style="width: 200px;" onchange="this.form.submit()">
             <option value="">-- Seleccione --</option>
             {% for l in lotes %}
             <option value="{{ l }}" {% if lote_seleccionado==l %}selected{% endif %}>LOTE {{ l }}</option>
             {% endfor %}
           </select>
-          <button type="submit" class="btn btn-naranja btn-sm fw-bold px-3 border-0">Cargar Datos</button>
+          <button type="submit" class="btn btn-primary btn-sm">Cargar Datos</button>
         </form>
       </div>
-      
-      <!-- Espaciador invisible para forzar el centro perfecto del filtro -->
-      <div style="width: 320px;" class="d-none d-lg-block"></div>
-      
     </div>
 
-    <!-- CONTENEDOR DEL GRÁFICO -->
     {% if lote_seleccionado %}
     {% if info_lote %}
-    <div class="franja-lote d-flex justify-content-center gap-3 py-1 mb-1 rounded shadow-sm bg-white">
-      {% for clave in ['nutricionista', 'variedad', 'marca'] %}
-      {% set item = info_lote[clave] %}
-      <div class="tarjeta-lote d-flex align-items-center gap-2">
-        <img src="{{ item.foto }}" alt="{{ item.etiqueta }}" class="foto-lote">
-        <div class="texto-lote">
-          <div class="etiqueta-lote">{{ item.etiqueta }}</div>
-          <div class="nombre-lote">{{ item.nombre }}</div>
+    <div class="card card-clean ps-franja-lote">
+      <div class="ps-franja-grid">
+        {% for clave in ['nutricionista', 'variedad', 'marca'] %}
+        {% set item = info_lote[clave] %}
+        <div class="ps-lote-item">
+          <img src="{{ item.foto }}" alt="{{ item.etiqueta }}" class="ps-foto-lote">
+          <div class="ps-lote-texto">
+            <span class="ps-lote-etiqueta">{{ item.etiqueta }}</span>
+            <span class="ps-lote-nombre" title="{{ item.nombre }}">{{ item.nombre }}</span>
+          </div>
         </div>
+        {% endfor %}
       </div>
-      {% endfor %}
     </div>
     {% endif %}
-        <div class="card shadow border-0 card-grafico">
-            <div class="card-body d-flex flex-column p-2">
-                {% if datos_grafico and datos_grafico.semanas|length > 0 %}
-                    <div id="graficoPlotly" style="width: 100%;"></div>
-                {% else %}
-                    <div class="alert alert-warning text-center fw-bold mb-0 my-auto py-4">
-                        <i class='bx bx-info-circle me-1 fs-4 align-middle'></i> No hay datos registrados en etapa de producción para el LOTE {{ lote_seleccionado }}.
-                    </div>
-                {% endif %}
+    <div class="card card-clean card-grafico">
+      <div class="ps-grafico-titulo">
+        <i class="fas fa-chart-simple"></i> Curva general de producción
+      </div>
+      <div class="card-body d-flex flex-column">
+        {% if datos_grafico and datos_grafico.semanas|length > 0 %}
+            <div id="graficoPlotly" style="width: 100%;"></div>
+        {% else %}
+            <div class="ps-vacio my-auto">
+                <i class="fas fa-chart-line d-block"></i>
+                <p class="mb-1 fw-semibold" style="color: var(--text-secondary);">Sin datos para graficar</p>
+                <p class="mb-0" style="font-size: 0.8rem;">No hay datos registrados en etapa de producción para el LOTE {{ lote_seleccionado }}.</p>
             </div>
-        </div>
+        {% endif %}
+      </div>
+    </div>
     {% else %}
-        <div class="alert alert-info text-center shadow-sm">
-            <i class='bx bx-up-arrow-alt fs-4 align-middle'></i> Seleccione un lote en la barra superior para generar el gráfico general.
+        <div class="card card-clean">
+            <div class="ps-vacio">
+                <i class="fas fa-hand-pointer d-block"></i>
+                <p class="mb-1 fw-semibold" style="color: var(--text-secondary);">Seleccione un lote</p>
+                <p class="mb-0" style="font-size: 0.8rem;">Elija un lote en la barra superior para generar el gráfico general.</p>
+            </div>
         </div>
     {% endif %}
 </div>
