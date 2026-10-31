@@ -99,9 +99,12 @@ def guardar_lote():
     from flask import request
     datos = request.form.to_dict()
     id_lote = request.form.get('id')
-    success, msg = actualizar_lote(id_lote, datos, 
-                                   usuario_id=session.get('user_id'),
-                                   usuario_nombre=session.get('user_nombre', 'Desconocido')) if id_lote else guardar_nuevo_lote(datos)
+    usuario_id = session.get('user_id')
+    usuario_nombre = session.get('user_nombre', 'Desconocido')
+    success, msg = actualizar_lote(id_lote, datos,
+                                   usuario_id=usuario_id,
+                                   usuario_nombre=usuario_nombre) if id_lote else guardar_nuevo_lote(
+                                       datos, usuario_id=usuario_id, usuario_nombre=usuario_nombre)
     if not success:
         flash(msg, "error")
         return redirect(url_for('lotes.vista_lotes'))
@@ -115,6 +118,15 @@ def guardar_lote():
 def api_borrar_lote(id):
     if borrar_lote(id):
         return jsonify({'status': 'ok'}), 200
+
+    from models.auditoria.services import registrar_error
+    registrar_error(
+        tabla='cabecera_lotes',
+        contexto='Borrar lote',
+        mensaje=f'Operación rechazada al intentar borrar el registro {id}',
+        usuario_id=session.get('user_id'),
+        usuario_nombre=session.get('user_nombre', 'Desconocido'),
+    )
     return jsonify({'status': 'error', 'msg': 'Dato protegido o inexistente'}), 500
 
 
@@ -130,4 +142,13 @@ def actualizar_cabecera():
     success, msg = update_cabecera_unificada(lote, columna, valor)
     if success:
         return jsonify({'status': 'ok'}), 200
+
+    from models.auditoria.services import registrar_error
+    registrar_error(
+        tabla='cabecera_lotes',
+        contexto='Guardar dato de cabecera',
+        mensaje=f"{lote} - {columna}: {msg}",
+        usuario_id=session.get('user_id'),
+        usuario_nombre=session.get('user_nombre', 'Desconocido'),
+    )
     return jsonify({'status': 'error', 'msg': msg}), 500

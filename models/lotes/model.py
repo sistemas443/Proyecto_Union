@@ -74,7 +74,7 @@ def insert_lote(datos, lote_nombre, parse_empty):
             INSERT INTO cabecera_lotes (
                 lote, empresa_id, cliente, ciudad, clima, responsable_tecnico, nutricionista, granja_lev, fecha_recepcion, no_pollitas_recibidas, variedad, peso, 
                 unidad_peso, uniformidad, coeficiente_variacion, granja_prod, fecha_encasetamiento, no_aves_encasetadas, tipo_galpon, marca_galpon, unidad_medida, nutricionista_prod, validacion
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, True) RETURNING id
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, True) RETURNING id
         """, (
             lote_nombre, empresa_id,
             parse_empty(datos.get('cliente')), parse_empty(datos.get('ciudad')), parse_empty(datos.get('clima')), parse_empty(datos.get('responsable_tecnico')), parse_empty(datos.get('nutricionista')),

@@ -32,6 +32,65 @@ def registrar_cambio(usuario_id, usuario_nombre, tabla, id_registro,
             print(f"[AUDITORÍA ERROR CRÍTICO] {e2}")
 
 
+# Tablas que tienen una columna con el id de cabecera_lotes y permiten resolver el lote
+# de una fila que falló durante una edición en línea.
+TABLAS_CON_ID_LOTE = {
+    'data_diario': 'id_lote',
+    'bd_vargas': 'id_lote',
+    'semanal_levante': 'id_lote',
+    'clasificacion_produccion': 'id_lote',
+    'primera_semana': 'id_lote',
+}
+
+
+def registrar_error(tabla, contexto, mensaje, id_lote=None, id_fila=None,
+                    usuario_id=None, usuario_nombre=None):
+    """
+    Registra un fallo en la auditoría para que aparezca en la pestaña de ver historial
+    con la acción ERROR.
+
+    Usa una conexión propia y un commit propio, de modo que el registro sobrevive aunque
+    la operación que falló haya hecho rollback. Nunca lanza excepciones: si no puede
+    guardar el error, solo lo imprime y deja continuar con el error original.
+
+    Args:
+        tabla: tabla afectada (queda en la columna 'tabla').
+        contexto: descripción corta del intento, por ejemplo 'Carga Excel de diario'.
+        mensaje: detalle del fallo, queda en 'valor_nuevo'.
+        id_lote: id de cabecera_lotes si ya se conoce.
+        id_fila: id de la fila que falló; si se pasa y no hay id_lote, se resuelve el lote.
+    """
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        try:
+            # Si solo se conoce la fila, se busca el id del lote con una tabla del catálogo
+            columna_lote = TABLAS_CON_ID_LOTE.get(tabla)
+            if id_lote is None and id_fila and columna_lote:
+                cur.execute(f'SELECT {columna_lote} FROM "{tabla}" WHERE id = %s', (id_fila,))
+                fila = cur.fetchone()
+                id_lote = fila[0] if fila else None
+
+            cur.execute("""
+                INSERT INTO auditoria_cambios 
+                    (usuario_id, usuario_nombre, tabla, id_registro, campo, valor_anterior, valor_nuevo, accion)
+                VALUES (%s, %s, %s, %s, %s, NULL, %s, 'ERROR')
+            """, (
+                int(usuario_id) if usuario_id else 0,
+                str(usuario_nombre or 'Sistema')[:100],
+                str(tabla or 'desconocida')[:100],
+                id_lote,
+                str(contexto or 'Error de operación')[:100],
+                str(mensaje)[:4000] if mensaje is not None else 'Error desconocido',
+            ))
+            conn.commit()
+        finally:
+            cur.close()
+            conn.close()
+    except Exception as e:
+        print(f"[AUDITORÍA ERROR] No se pudo registrar el fallo: {e}")
+
+
 def contar_historial():
     """Cuenta el total de registros en auditoría."""
     conn = get_db_connection()
@@ -62,10 +121,12 @@ def obtener_historial(limite=100, offset=0):
             SELECT 
                 a.id, a.usuario_id, a.usuario_nombre, a.fecha, a.tabla, 
                 a.id_registro, a.campo, a.valor_anterior, a.valor_nuevo, a.accion,
-                p.lote, p.semana
+                COALESCE(p.lote, c.lote) AS lote, p.semana
             FROM auditoria_cambios a
             LEFT JOIN primera_semana p 
-                ON a.tabla = 'primera_semana' AND a.id_registro = p.id
+                ON a.tabla = 'primera_semana' AND a.accion NOT IN ('IMPORT', 'ERROR') AND a.id_registro = p.id
+            LEFT JOIN cabecera_lotes c 
+                ON a.accion IN ('IMPORT', 'ERROR') AND a.id_registro = c.id
             ORDER BY a.fecha DESC
             LIMIT %s OFFSET %s
         """, (limite, offset))
@@ -119,7 +180,7 @@ def obtener_historial_filtrado(filtros=None, limite=100, offset=0):
     
     # Filtro por lote (igualdad exacta)
     if filtros.get('lote'):
-        condiciones.append("p.lote = %s")
+        condiciones.append("COALESCE(p.lote, c.lote) = %s")
         parametros.append(filtros['lote'])
     
     where_clause = " AND ".join(condiciones) if condiciones else "1=1"
@@ -131,10 +192,12 @@ def obtener_historial_filtrado(filtros=None, limite=100, offset=0):
             SELECT 
                 a.id, a.usuario_id, a.usuario_nombre, a.fecha, a.tabla, 
                 a.id_registro, a.campo, a.valor_anterior, a.valor_nuevo, a.accion,
-                p.lote, p.semana
+                COALESCE(p.lote, c.lote) AS lote, p.semana
             FROM auditoria_cambios a
             LEFT JOIN primera_semana p 
-                ON a.tabla = 'primera_semana' AND a.id_registro = p.id
+                ON a.tabla = 'primera_semana' AND a.accion NOT IN ('IMPORT', 'ERROR') AND a.id_registro = p.id
+            LEFT JOIN cabecera_lotes c 
+                ON a.accion IN ('IMPORT', 'ERROR') AND a.id_registro = c.id
             WHERE {where_clause}
             ORDER BY a.fecha DESC
             LIMIT %s OFFSET %s
@@ -172,7 +235,7 @@ def contar_historial_filtrado(filtros=None):
         condiciones.append("a.fecha <= %s")
         parametros.append(filtros['fecha_hasta'] + " 23:59:59")
     if filtros.get('lote'):
-        condiciones.append("p.lote = %s")
+        condiciones.append("COALESCE(p.lote, c.lote) = %s")
         parametros.append(filtros['lote'])
     
     where_clause = " AND ".join(condiciones) if condiciones else "1=1"
@@ -184,7 +247,9 @@ def contar_historial_filtrado(filtros=None):
             SELECT COUNT(*) 
             FROM auditoria_cambios a
             LEFT JOIN primera_semana p 
-                ON a.tabla = 'primera_semana' AND a.id_registro = p.id
+                ON a.tabla = 'primera_semana' AND a.accion NOT IN ('IMPORT', 'ERROR') AND a.id_registro = p.id
+            LEFT JOIN cabecera_lotes c 
+                ON a.accion IN ('IMPORT', 'ERROR') AND a.id_registro = c.id
             WHERE {where_clause}
         """, tuple(parametros))
         return cur.fetchone()[0]
@@ -220,12 +285,21 @@ def obtener_opciones_filtros():
         cur.execute("SELECT DISTINCT campo FROM auditoria_cambios WHERE campo IS NOT NULL ORDER BY campo")
         campos = [row[0] for row in cur.fetchall()]
         
-        # Lotes únicos (del JOIN con primera_semana)
+        # Lotes únicos (cargas por IMPORT y ediciones de primera_semana)
         cur.execute("""
-            SELECT DISTINCT p.lote 
-            FROM auditoria_cambios a
-            JOIN primera_semana p ON a.tabla = 'primera_semana' AND a.id_registro = p.id
-            ORDER BY p.lote
+            SELECT DISTINCT lote FROM (
+                SELECT p.lote AS lote
+                FROM auditoria_cambios a
+                JOIN primera_semana p 
+                    ON a.tabla = 'primera_semana' AND a.accion NOT IN ('IMPORT', 'ERROR') AND a.id_registro = p.id
+                UNION
+                SELECT c.lote AS lote
+                FROM auditoria_cambios a
+                JOIN cabecera_lotes c 
+                    ON a.accion IN ('IMPORT', 'ERROR') AND a.id_registro = c.id
+            ) t
+            WHERE lote IS NOT NULL
+            ORDER BY lote
         """)
         lotes = [row[0] for row in cur.fetchall()]
         

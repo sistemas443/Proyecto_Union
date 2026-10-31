@@ -380,7 +380,7 @@ def recalcular_lote_completo_clasificacion(id_lote):
         cur.close()
         conn.close()
         
-def procesar_excel_clasificacion(archivo_excel, lote_nombre):
+def procesar_excel_clasificacion(archivo_excel, lote_nombre, usuario_id=None, usuario_nombre=None):
     """
     Procesa el Excel de Clasificación de Producción.
     Extrae únicamente las columnas crudas digitadas por el usuario (las que NO tienen fórmula),
@@ -625,6 +625,21 @@ def procesar_excel_clasificacion(archivo_excel, lote_nombre):
                 query = f"UPDATE clasificacion_produccion SET {', '.join(campos_a_actualizar)} WHERE id_lote = %s AND sv = %s"
                 cur.execute(query, valores)
                 filas_actualizadas += 1
+
+        # Registro en auditoría (1 solo registro por carga)
+        if filas_actualizadas > 0:
+            from models.auditoria.services import registrar_cambio
+            registrar_cambio(
+                usuario_id=usuario_id,
+                usuario_nombre=usuario_nombre or 'Desconocido',
+                tabla='clasificacion_produccion',
+                id_registro=id_lote,
+                campo='Carga Excel',
+                valor_anterior=None,
+                valor_nuevo=f'{filas_actualizadas} semanas cargadas',
+                accion='IMPORT',
+                cursor=cur
+            )
 
         conn.commit()
         cur.close()

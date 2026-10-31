@@ -19,6 +19,20 @@ def actualizar_semanal():
 
     if not id_reg or not columna:
         return jsonify({'status': 'error', 'msg': 'Parámetros incompletos'}), 400
+
+    tabla_auditoria = 'semanal_levante' if pantalla == 'levante' else 'bd_vargas'
+
+    def registrar_fallo(mensaje):
+        from models.auditoria.services import registrar_error
+        registrar_error(
+            tabla=tabla_auditoria,
+            contexto='Guardar dato en línea',
+            mensaje=f'{columna}: {mensaje}',
+            id_fila=id_reg,
+            usuario_id=user_id,
+            usuario_nombre=user_nombre,
+        )
+
     try:
         if pantalla == 'levante':
             ok, campos_actualizados, msg = update_levante_field(
@@ -36,7 +50,9 @@ def actualizar_semanal():
         if ok:
             return jsonify({'status': 'ok', 'updated_data': campos_actualizados})
         else:
+            registrar_fallo(msg)
             return jsonify({'status': 'error', 'msg': f"Rechazado por Base de Datos: {msg}"}), 400
     except Exception as e:
         print(f"[ERROR CRÍTICO EN API SEMANAL]: {e}")
+        registrar_fallo(f"{type(e).__name__}: {e}")
         return jsonify({'status': 'error', 'msg': 'Error interno en conexión.'}), 500

@@ -24,7 +24,25 @@ def actualizar_primera_semana():
         if success:
             return jsonify({'status': 'ok', 'updated_data': campos_actualizados})
         else:
+            from models.auditoria.services import registrar_error
+            registrar_error(
+                tabla='primera_semana',
+                contexto='Guardar dato en línea',
+                mensaje=f'{columna}: {msg}',
+                id_fila=id_reg,
+                usuario_id=session.get('user_id'),
+                usuario_nombre=session.get('user_nombre', 'Desconocido'),
+            )
             return jsonify({'status': 'error', 'msg': msg}), 400
     except Exception as e:
         print(f"[ERROR CRÍTICO EN API PRIMERA SEMANA]: {e}")
+        from models.auditoria.services import registrar_error
+        registrar_error(
+            tabla='primera_semana',
+            contexto='Guardar dato en línea',
+            mensaje=f'{columna}: {type(e).__name__}: {e}',
+            id_fila=id_reg,
+            usuario_id=session.get('user_id'),
+            usuario_nombre=session.get('user_nombre', 'Desconocido'),
+        )
         return jsonify({'status': 'error', 'msg': 'Error interno al procesar los datos. Contacte a soporte.'}), 500

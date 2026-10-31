@@ -309,7 +309,7 @@ import psycopg2.extras
 import numpy as np
 from models.base import get_db_connection
 
-def procesar_excel_diario(archivo, lote_nombre):
+def procesar_excel_diario(archivo, lote_nombre, usuario_id=None, usuario_nombre=None):
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
@@ -392,6 +392,21 @@ def procesar_excel_diario(archivo, lote_nombre):
         """
         
         psycopg2.extras.execute_values(cur, query_insert, valores_a_insertar)
+
+        # Registro en auditoría (1 solo registro por carga)
+        from models.auditoria.services import registrar_cambio
+        registrar_cambio(
+            usuario_id=usuario_id,
+            usuario_nombre=usuario_nombre or 'Desconocido',
+            tabla='data_diario',
+            id_registro=id_lote,
+            campo='Carga Excel',
+            valor_anterior=None,
+            valor_nuevo=f'{len(valores_a_insertar)} días cargados',
+            accion='IMPORT',
+            cursor=cur
+        )
+
         conn.commit()
         return True, f"Se actualizaron {len(valores_a_insertar)} registros diarios correctamente."
 

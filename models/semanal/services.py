@@ -1172,7 +1172,7 @@ def clean_num(val):
         # Si es un texto tipo "Producción no iniciada", "-", "N/A", etc.
         return None
 
-def procesar_excel_semanal_produccion(archivo, lote_nombre):
+def procesar_excel_semanal_produccion(archivo, lote_nombre, usuario_id=None, usuario_nombre=None):
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
@@ -1188,7 +1188,12 @@ def procesar_excel_semanal_produccion(archivo, lote_nombre):
         id_lote = lote_row['id']
 
         # 2. Leer Excel (Hoja 'Sem-Prod', saltando 10 filas)
-        df = pd.read_excel(archivo, sheet_name='Sem-Prod', skiprows=10, header=None, usecols=range(72))
+        df = pd.read_excel(archivo, sheet_name='Sem-Prod', skiprows=10, header=None)
+
+        # El archivo puede venir con menos columnas que la plantilla oficial. En ese caso
+        # las columnas que falten quedan vacías y se insertan como NULL.
+        columnas_faltantes = max(0, 72 - df.shape[1])
+        df = df.reindex(columns=range(72))
         
         # Filtro: Sólo filas donde la Semana (Columna C / índice 2) tenga datos
         df = df[df[2].notnull()] 
@@ -1286,8 +1291,29 @@ def procesar_excel_semanal_produccion(archivo, lote_nombre):
         """
         
         psycopg2.extras.execute_values(cur, query_insert, valores_a_insertar)
+
+        # Registro en auditoría (1 solo registro por carga)
+        from models.auditoria.services import registrar_cambio
+        registrar_cambio(
+            usuario_id=usuario_id,
+            usuario_nombre=usuario_nombre or 'Desconocido',
+            tabla='bd_vargas',
+            id_registro=id_lote,
+            campo='Carga Excel',
+            valor_anterior=None,
+            valor_nuevo=f'{len(valores_a_insertar)} semanas cargadas',
+            accion='IMPORT',
+            cursor=cur
+        )
+
         conn.commit()
-        return True, f"Se actualizaron {len(valores_a_insertar)} registros semanales correctamente."
+
+        nota_archivo = ''
+        if columnas_faltantes > 0:
+            nota_archivo = (f' El archivo no traía las últimas {columnas_faltantes} columnas '
+                            f'(BO a BT) y esos campos quedaron vacíos.')
+
+        return True, f"Se actualizaron {len(valores_a_insertar)} registros semanales correctamente.{nota_archivo}"
 
     except Exception as e:
         conn.rollback()

@@ -101,8 +101,17 @@
                 </button>
                 <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-filtro">
                     <li><a class="dropdown-item" href="#" data-filtro="tabla" data-valor="">Todas</a></li>
+                    {% set nombres_tabla = {
+                        'bd_vargas': 'Producción semanal',
+                        'data_diario': 'Diario',
+                        'semanal_levante': 'Semanal levante',
+                        'primera_semana': 'Primera semana',
+                        'clasificacion_produccion': 'Clasificación',
+                        'cabecera_lotes': 'Lotes',
+                        'sistema': 'Errores del sistema'
+                    } %}
                     {% for t in opciones.tablas %}
-                    <li><a class="dropdown-item" href="#" data-filtro="tabla" data-valor="{{ t }}">{{ t }}</a></li>
+                    <li><a class="dropdown-item" href="#" data-filtro="tabla" data-valor="{{ t }}">{{ nombres_tabla.get(t, t) }}</a></li>
                     {% endfor %}
                 </ul>
             </div>
@@ -349,6 +358,9 @@
                     const usuario = (opcionesFiltros.usuarios || []).find(u => u.id == valor);
                     if (usuario) textoMostrar = usuario.nombre.split(' ').slice(0, 2).join(' ');
                 }
+                if (chip.filtro === 'tabla') {
+                    textoMostrar = NOMBRES_TABLA[valor] || valor;
+                }
                 
                 textoEl.textContent = textoMostrar;
                 
@@ -431,8 +443,8 @@
             <tr>
                 <td>${c[3] ? new Date(c[3]).toLocaleString('es-CO') : ''}</td>
                 <td>${c[2]}</td>
-                <td><span class="badge bg-secondary">${c[4]}</span></td>
-                <td>${c[10] ? `Lote ${c[10]}, Día ${c[11]}` : (c[4] === 'primera_semana' ? `Registro eliminado (ID: ${c[5]})` : `${c[4]} ID: ${c[5]}`)}</td>
+                <td><span class="badge bg-secondary">${NOMBRES_TABLA[c[4]] || c[4]}</span></td>
+                <td>${formatearRegistro(c)}</td>
                 <td><code>${c[6] || '-'}</code></td>
                 <td class="text-danger">${c[7] || '-'}</td>
                 <td class="text-success">${c[8] || '-'}</td>
@@ -441,12 +453,43 @@
         `).join('');
     }
     
+    function formatearRegistro(c) {
+        const lote = c[10];
+        const dia = c[11];
+        if (lote) {
+            return dia ? `Lote ${lote}, Día ${dia}` : `Lote ${lote}`;
+        }
+        // Registros antiguos de carga guardaban el lote dentro del campo
+        if (c[9] === 'IMPORT' && c[6]) {
+            return c[6];
+        }
+        if (c[9] === 'DELETE') {
+            return `Registro eliminado (ID: ${c[5]})`;
+        }
+        // Los errores sin lote conocido no tienen a qué registro apuntar
+        if (c[9] === 'ERROR') {
+            return c[5] ? `${c[4]} ID: ${c[5]}` : '-';
+        }
+        return `${c[4]} ID: ${c[5] ?? '-'}`;
+    }
+
+    const NOMBRES_TABLA = {
+        'bd_vargas': 'Producción semanal',
+        'data_diario': 'Diario',
+        'semanal_levante': 'Semanal levante',
+        'primera_semana': 'Primera semana',
+        'clasificacion_produccion': 'Clasificación',
+        'cabecera_lotes': 'Lotes',
+        'sistema': 'Errores del sistema'
+    };
+
     function getBadge(accion) {
         const badges = {
             'UPDATE': '<span class="badge bg-warning text-dark">UPDATE</span>',
             'INSERT': '<span class="badge bg-success">INSERT</span>',
             'DELETE': '<span class="badge bg-danger">DELETE</span>',
-            'IMPORT': '<span class="badge bg-info">IMPORT</span>'
+            'IMPORT': '<span class="badge bg-info">IMPORT</span>',
+            'ERROR': '<span class="badge bg-dark border border-danger text-white">ERROR</span>'
         };
         return badges[accion] || accion;
     }

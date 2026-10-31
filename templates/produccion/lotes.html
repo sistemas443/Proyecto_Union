@@ -309,12 +309,12 @@
                             </select>
                         </div>
                         <div class="col-md-3 mb-2">
-                            <label class="form-label fw-semibold">Fecha Recepción</label>
-                            <input type="date" name="fecha_recepcion" id="f_fecha_rec" class="form-control">
+                            <label class="form-label fw-semibold">Fecha Recepción <span class="text-danger">*</span></label>
+                            <input type="date" name="fecha_recepcion" id="f_fecha_rec" class="form-control" required>
                         </div>
                         <div class="col-md-3 mb-2">
-                            <label class="form-label fw-semibold">No. Pollitas Recibidas</label>
-                            <input type="number" name="no_pollitas_recibidas" id="f_pollitas" class="form-control">
+                            <label class="form-label fw-semibold">No. Pollitas Recibidas <span class="text-danger">*</span></label>
+                            <input type="number" name="no_pollitas_recibidas" id="f_pollitas" class="form-control" required>
                         </div>
                         <div class="col-md-3 mb-2">
                             <label class="form-label fw-semibold">Variedad</label>
@@ -397,8 +397,8 @@
 
                     <div class="row mb-2">
                         <div class="col-md-3 mb-2">
-                            <label class="form-label fw-semibold">No. Aves Encasetadas</label>
-                            <input type="number" name="no_aves_encasetadas" id="f_aves_enc" class="form-control">
+                            <label class="form-label fw-semibold">No. Aves Encasetadas <span class="text-danger">*</span></label>
+                            <input type="number" name="no_aves_encasetadas" id="f_aves_enc" class="form-control" required>
                         </div>
                         <div class="col-md-3 mb-2">
                             <label class="form-label fw-semibold">Tipo Galpón</label>
@@ -560,6 +560,18 @@
     });
 
     // 2. Función para limpiar el modal al crear y resetear bloqueos
+    // Campos que solo son obligatorios cuando se crea un lote nuevo
+    const CAMPOS_REQUERIDOS_NUEVO = ['f_fecha_rec', 'f_pollitas', 'f_aves_enc'];
+
+    function marcarCamposObligatorios(obligatorios) {
+        CAMPOS_REQUERIDOS_NUEVO.forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            if (obligatorios) el.setAttribute('required', 'required');
+            else el.removeAttribute('required');
+        });
+    }
+
     function configurarModal(accion) {
         const form = document.getElementById('formLote');
         const titulo = document.getElementById('modalLoteLabel');
@@ -570,6 +582,9 @@
         // Desbloquear todos los campos por si venimos del botón "Ver detalles"
         document.querySelectorAll('#formLote input, #formLote select').forEach(el => el.disabled = false);
         btnGuardar.style.display = 'block'; // Mostrar botón guardar
+
+        // Al crear se exigen los tres campos clave; al editar no para no trabar lotes viejos
+        marcarCamposObligatorios(accion === 'crear');
 
         if (accion === 'crear') {
             titulo.textContent = 'Crear Nuevo Lote';
@@ -680,6 +695,9 @@
 
                 // Desbloqueamos todos los campos por si antes se abrió "Ver Detalles"
                 document.querySelectorAll('#formLote input, #formLote select').forEach(el => el.disabled = false);
+
+                // Al editar no se exigen los campos obligatorios del alta
+                marcarCamposObligatorios(false);
 
                 cargarDatosModal(loteData);
 

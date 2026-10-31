@@ -71,14 +71,40 @@ def get_todos_los_lotes():
         
     return lotes
 
-def guardar_nuevo_lote(datos):
+def guardar_nuevo_lote(datos, usuario_id=None, usuario_nombre=None):
     """
     Orquesta la creación de un lote completamente nuevo en el sistema.
     1. Valida que el nombre no esté duplicado.
     2. Guarda la información en la tabla principal (Cabecera).
     3. Dispara todos los "gatillos" para generar las plantillas vacías en las tablas de diario, semanal, etc.
     """
+    from models.auditoria.services import registrar_error
+
     lote_nombre = parse_empty(datos.get('lote'))
+
+    # Campos obligatorios para poder crear el lote
+    campos_requeridos = {
+        'fecha_recepcion': 'Fecha de recepción',
+        'no_pollitas_recibidas': 'Número de pollitas recibidas',
+        'no_aves_encasetadas': 'Número de aves encasetadas',
+    }
+    faltantes = [etiqueta for campo, etiqueta in campos_requeridos.items()
+                 if parse_empty(datos.get(campo)) is None]
+
+    if not lote_nombre:
+        return False, "El nombre del lote no puede estar vacío."
+
+    if faltantes:
+        mensaje = f"Los siguientes campos son obligatorios: {', '.join(faltantes)}."
+        registrar_error(
+            tabla='cabecera_lotes',
+            contexto='Crear lote',
+            mensaje=f"'{lote_nombre}': {mensaje}",
+            usuario_id=usuario_id,
+            usuario_nombre=usuario_nombre,
+        )
+        return False, mensaje
+
     # Verificación de seguridad para evitar duplicados
     if model.check_lote_exists(lote_nombre):
         return False, f"Ya existe un lote registrado como '{lote_nombre}'."
@@ -117,6 +143,13 @@ def guardar_nuevo_lote(datos):
 
         return True, "Lote creado exitosamente"
     except Exception as e:
+        registrar_error(
+            tabla='cabecera_lotes',
+            contexto='Crear lote',
+            mensaje=f"'{lote_nombre}': {type(e).__name__}: {e}",
+            usuario_id=usuario_id,
+            usuario_nombre=usuario_nombre,
+        )
         return False, str(e)
 
 
@@ -185,6 +218,15 @@ def actualizar_lote(id_lote, datos, usuario_id=None, usuario_nombre=None):
         return True, "Lote actualizado exitosamente"
         
     except Exception as e:
+        from models.auditoria.services import registrar_error
+        registrar_error(
+            tabla='cabecera_lotes',
+            contexto='Editar lote',
+            mensaje=f"{type(e).__name__}: {e}",
+            id_lote=id_lote,
+            usuario_id=usuario_id,
+            usuario_nombre=usuario_nombre,
+        )
         return False, f"Ocurrió un error al actualizar: {str(e)}"
 
 def borrar_lote(id_lote):
