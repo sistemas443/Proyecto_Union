@@ -549,7 +549,7 @@ class FormulaProduccion:
         finally:
             conn.close()
     @staticmethod
-    def actualizar_produccion(id_registro, toneladas, novedad='', cal_kg=0, calcio_kg=0):
+    def actualizar_produccion(id_registro, toneladas, novedad='', cal_kg=0, calcio_kg=0, nueva_fecha=None):
         conn = get_db_connection()
         try:
             with conn.cursor() as cur:
@@ -560,10 +560,7 @@ class FormulaProduccion:
                     WHERE id = %s
                 """, (id_registro,))
                 row = cur.fetchone()
-                
-                # Debug: imprimir lo que devuelve la consulta
-                print(f"[DEBUG actualizar_produccion] id_registro={id_registro}, row={row}, len={len(row) if row else 'None'}")
-                
+
                 if not row:
                     print(f"[ERROR] No se encontró registro con id={id_registro}")
                     return False
@@ -579,13 +576,14 @@ class FormulaProduccion:
                 cal_kg_nuevo = float(cal_kg or 0)
                 calcio_kg_nuevo = float(calcio_kg or 0)
                 
-                # Actualizar registro
+                # Actualizar registro. La fecha solo cambia si viene informada; de lo
+                # contrario se conserva la actual (guardada en la variable 'fecha').
                 consulta = """
                     UPDATE formula_produccion_diaria 
-                    SET toneladas = %s, novedad = %s, cal_kg = %s, calcio_kg = %s 
+                    SET fecha = %s, toneladas = %s, novedad = %s, cal_kg = %s, calcio_kg = %s 
                     WHERE id = %s;
                 """
-                cur.execute(consulta, (toneladas, novedad, cal_kg_nuevo, calcio_kg_nuevo, id_registro))
+                cur.execute(consulta, (nueva_fecha or fecha, toneladas, novedad, cal_kg_nuevo, calcio_kg_nuevo, id_registro))
                 
                 # Ajustar inventario si es venta y hay cambios en cal/calcio
                 if es_venta:
