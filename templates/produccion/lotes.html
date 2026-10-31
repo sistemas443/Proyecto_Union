@@ -1,6 +1,7 @@
 {% extends 'generales/layout.html' %}
 
-{% block content %}
+{% block head %}
+{% include 'planta_alimentos/_design_system.html' %}
 <style>
     /* Escala normal (100%) */
     body {
@@ -67,69 +68,168 @@
     }
 
     /* 5. Los modales y el fondo borroso cubren el 100% de la pantalla */
+
+    /* ============================================================
+       AJUSTES SOBRE EL DESIGN SYSTEM
+       ============================================================ */
+    /* La tabla ocupa el alto disponible y el encabezado queda fijo */
+    #tablaLotes thead th {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background-color: var(--table-header-bg) !important;
+        background-image: none !important;
+        color: var(--table-header-text) !important;
+    }
+
+    /* Botones de accion de cada fila */
+    .btn-icono-accion {
+        border: 1px solid transparent;
+        background-color: transparent;
+        color: var(--text-muted);
+        padding: 0.22rem 0.45rem;
+        line-height: 1;
+        border-radius: 6px;
+        transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+    }
+    .btn-icono-accion i { font-size: 1.02rem; vertical-align: middle; }
+    .btn-icono-accion:hover,
+    .btn-icono-accion:focus-visible {
+        color: var(--action-primary);
+        background-color: #eef1f4;
+        border-color: var(--border);
+    }
+    .btn-icono-accion.btn-icono-eliminar:hover,
+    .btn-icono-accion.btn-icono-eliminar:focus-visible {
+        color: var(--danger);
+        background-color: #fdecee;
+        border-color: #f5c2c7;
+    }
+
+    /* Boton "+" para crear valores de catalogo (responsable, nutricionista, etc.) */
+    .btn-catalogo-add {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        padding: 0;
+        border: 1px solid var(--border);
+        background-color: var(--surface-alt);
+        color: var(--action-primary);
+        font-size: 1.15rem;
+        line-height: 1;
+        transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+
+    .btn-catalogo-add:hover,
+    .btn-catalogo-add:focus-visible {
+        background-color: var(--action-primary);
+        border-color: var(--action-primary);
+        color: #ffffff;
+    }
+
+    .btn-catalogo-add:focus-visible {
+        outline: 2px solid rgba(44, 62, 80, 0.35);
+        outline-offset: 1px;
+    }
+
+    /* Filas de la lista "Valores existentes" del modal de catalogo */
+    .fila-catalogo {
+        transition: background-color 0.15s ease, border-color 0.15s ease;
+    }
+
+    .fila-catalogo:hover {
+        background-color: var(--surface-alt) !important;
+        border-color: var(--border) !important;
+    }
+
+    /* Secciones dentro del modal de lote */
+    .modal-section-title {
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--text-secondary);
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 0.4rem;
+        margin: 1.1rem 0 0.75rem;
+    }
+
+    .modal-section-title:first-child { margin-top: 0; }
 </style>
+{% endblock %}
 
+{% block content %}
 <div class="container-fluid mt-2 h-100 d-flex flex-column">
-<!-- Encabezado principal de la vista -->
-    <div class="alert py-2 mb-3 fw-bold text-center text-uppercase fs-5 shadow-sm header-lotes bg-dark text-white"
-        style="border: none;">
-        GESTIÓN MAESTRA DE LOTES
-    </div>
-
-    <!-- Botón para crear un nuevo lote -->
-    <div class="d-flex justify-content-end mb-3">
-        {% if session.get('user_rol') != 'Lector' %}
-        <button type="button" class="btn btn-naranja shadow-sm fw-bold px-4" data-bs-toggle="modal"
-            data-bs-target="#modalLote" onclick="configurarModal('crear')">
-            <i class='bx bx-plus'></i> Nuevo Lote
-        </button>
-        {% endif %}
+    <div class="page-header">
+        <div class="d-flex align-items-center gap-3">
+            <div class="page-icon">
+                <i class="fas fa-layer-group"></i>
+            </div>
+            <div>
+                <h2 class="page-title mb-0">Gestión de lotes</h2>
+                <p class="page-subtitle mb-0">Empresa, cliente, granjas y datos de encasetamiento</p>
+            </div>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge-estado badge-neutro">{{ lotes|length }} lotes</span>
+            {% if session.get('user_rol') != 'Lector' %}
+            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal"
+                data-bs-target="#modalLote" onclick="configurarModal('crear')">
+                <i class="fas fa-plus me-1"></i> Nuevo lote
+            </button>
+            {% endif %}
+        </div>
     </div>
 
     <!-- Tabla que muestra la lista de lotes existentes -->
-    <div class="card shadow border-0 card-tabla-lotes" id="contenedorTablaLotes">
+    <div class="card card-clean card-tabla-lotes" id="contenedorTablaLotes">
         <div class="card-body table-responsive p-0" id="scrollTablaLotes">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="table-dark">
+            <table class="table table-design table-hover align-middle mb-0" id="tablaLotes">
+                <thead>
                     <tr>
-                        <th class="ps-3">Lote</th>
-                        <th>Empresa</th>
-                        <th>Cliente</th>
-                        <th>Granja Levante</th>
-                        <th>Granja Prod.</th>
-                        <th>No. Aves Encas.</th>
-                        <th class="text-center pe-3">Acciones</th>
+                        <th class="ps-3">LOTE</th>
+                        <th>EMPRESA</th>
+                        <th>CLIENTE</th>
+                        <th>GRANJA LEVANTE</th>
+                        <th>GRANJA PROD.</th>
+                        <th class="text-center">NO. AVES ENCAS.</th>
+                        <th class="text-center pe-3">ACCIONES</th>
                     </tr>
                 </thead>
                 <tbody>
                     <!-- Bucle que recorre todos los lotes de la base de datos -->
                     {% for lote in lotes %}
                     <tr>
-                        <td class="fw-bold ps-3">{{ lote.lote }}</td>
+                        <td class="fw-semibold ps-3">{{ lote.lote }}</td>
                         <td>
                             {% if lote.empresa_id and empresas_map.get(lote.empresa_id) %}
-                                <span class="badge-estado-lote">{{ empresas_map.get(lote.empresa_id) }}</span>
+                                <span class="badge-estado badge-ok">{{ empresas_map.get(lote.empresa_id) }}</span>
                             {% else %}
-                                <span class="badge-estado-lote badge-sin-empresa">Sin asignar</span>
+                                <span class="badge-estado badge-pendiente">Sin asignar</span>
                             {% endif %}
                         </td>
                         <td>{{ lote.cliente or '-' }}</td>
                         <td>{{ lote.granja_lev or '-' }}</td>
                         <td>{{ lote.granja_prod or '-' }}</td>
-                        <td>{{ lote.no_aves_encasetadas or '-' }}</td>
+                        <td class="text-center">{{ lote.no_aves_encasetadas or '-' }}</td>
                         <td class="text-center pe-3">
                             <!-- El ojito siempre se ve -->
-                            <button class="btn btn-sm btn-dark btn-ver text-white"
-                                data-lote="{{ lote | tojson | forceescape }}" title="Ver detalles"><i
-                                    class='bx bx-show'></i></button>
-                            
+                            <button type="button" class="btn-icono-accion btn-ver"
+                                data-lote="{{ lote | tojson | forceescape }}" title="Ver detalles">
+                                <i class='bx bx-show'></i>
+                            </button>
+
                             <!-- Editar y Borrar solo para Editores y Superadmins -->
                             {% if session.get('user_rol') != 'Lector' %}
-                            <button class="btn btn-sm btn-naranja btn-editar text-white"
-                                data-lote="{{ lote | tojson | forceescape }}" title="Editar lote"><i
-                                    class='bx bx-edit'></i></button>
-                            <button class="btn btn-sm btn-danger btn-borrar" data-id="{{ lote.id }}" data-nombre="{{ lote.lote }}"
-                                title="Borrar lote"><i class='bx bx-trash'></i></button>
+                            <button type="button" class="btn-icono-accion btn-editar"
+                                data-lote="{{ lote | tojson | forceescape }}" title="Editar lote">
+                                <i class='bx bx-edit'></i>
+                            </button>
+                            <button type="button" class="btn-icono-accion btn-icono-eliminar btn-borrar"
+                                data-id="{{ lote.id }}" data-nombre="{{ lote.lote }}" title="Borrar lote">
+                                <i class='bx bx-trash'></i>
+                            </button>
                             {% endif %}
                         </td>
                     </tr>
@@ -145,40 +245,45 @@
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <!-- Cabecera del modal -->
-            <div class="modal-header bg-dark text-white">
-                <h5 class="modal-title fw-bold" id="modalLoteLabel">Formulario de Lote</h5>
+            <div class="modal-header" style="background-color: var(--table-header-bg); color: #ffffff; border-bottom: none;">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="page-icon" style="width: 30px; height: 30px; font-size: 0.9rem; box-shadow: none;">
+                        <i class="fas fa-layer-group"></i>
+                    </span>
+                    <h5 class="modal-title fw-bold" id="modalLoteLabel" style="font-size: 0.95rem;">Formulario de lote</h5>
+                </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
                     aria-label="Close"></button>
             </div>
 
             <!-- Formulario que enviará los datos al servidor backend -->
             <form id="formLote" action="/guardar-lote" method="POST">
-                <div class="modal-body bg-light">
+                <div class="modal-body">
                     <!-- Campo oculto para saber si estamos actualizando o creando -->
                     <input type="hidden" name="id" id="lote_id">
 
                     <!-- SECCIÓN: Información General -->
-                    <h6 class="text-naranja fw-bold border-bottom border-warning pb-2 mb-3">Información General</h6>
+                    <h6 class="modal-section-title"><i class="fas fa-circle-info me-1"></i> Información general</h6>
                     <div class="row mb-3">
                         <div class="col-md-3 mb-2">
-                            <label class="form-label fw-semibold">Lote *</label>
+                            <label class="form-label-design">Lote *</label>
                             <input type="text" name="lote" id="f_lote_nuevo" class="form-control" autocomplete="off"
                                 required>
                         </div>
                         <div class="col-md-3 mb-2">
-                            <label class="form-label fw-semibold">Empresa</label>
+                            <label class="form-label-design">Empresa</label>
                             <select name="empresa_id" id="f_empresa" class="form-select">
                                 <option value="">Sin empresa asignada</option>
                                 {% for emp in empresas %}
                                 <option value="{{ emp.id }}">{{ emp.nombre }}</option>
                                 {% endfor %}
                             </select>
-                            <div class="form-text" style="font-size: 0.7rem;">
-                                Define en qué tabla del consolidado de costos aparece el lote.
+                            <div class="form-text-muted" title="Define en qué tabla del consolidado de costos aparece el lote.">
+                                <i class="fas fa-circle-info me-1"></i>Define su tabla en el consolidado
                             </div>
                         </div>
                         <div class="col-md-3 mb-2">
-                            <label class="form-label fw-semibold">Cliente</label>
+                            <label class="form-label-design">Cliente</label>
                             <select name="cliente" id="f_cliente" class="form-select creatable-select"
                                 placeholder="Seleccione o escriba...">
                                 <option value="">Seleccione o escriba...</option>
@@ -189,7 +294,7 @@
                             </select>
                         </div>
                         <div class="col-md-3 mb-2">
-                            <label class="form-label fw-semibold">Ciudad</label>
+                            <label class="form-label-design">Ciudad</label>
                             <select name="ciudad" id="f_ciudad" class="form-select creatable-select"
                                 placeholder="Seleccione o escriba...">
                                 <option value="">Seleccione o escriba...</option>
@@ -202,7 +307,7 @@
                     </div>
                     <div class="row mb-4">
                         <div class="col-md-4 mb-2">
-                            <label class="form-label fw-semibold">Clima</label>
+                            <label class="form-label-design">Clima</label>
                             <select name="clima" id="f_clima" class="form-select creatable-select"
                                 placeholder="Seleccione o escriba...">
                                 <option value="">Seleccione o escriba...</option>
@@ -214,7 +319,7 @@
                         </div>
                         <!-- Responsable Técnico -->
                         <div class="col-md-4 mb-2">
-                            <label class="form-label fw-semibold">Responsable Técnico</label>
+                            <label class="form-label-design">Responsable Técnico</label>
                             <div class="input-group shadow-sm">
                                 <select name="responsable_tecnico" id="f_responsable"
                                     class="form-select creatable-select">
@@ -223,15 +328,14 @@
                                     <option value="{{ item }}">{{ item }}</option>
                                     {% endfor %}
                                 </select>
-                                <button type="button" class="btn fw-bold text-white shadow-sm"
-                                    style="background-color: #97271C;" onclick="abrirModalCatalogo('responsable')"
+                                <button type="button" class="btn-catalogo-add" onclick="abrirModalCatalogo('responsable')"
                                     title="Nuevo Responsable"><i class='bx bx-plus'></i></button>
                             </div>
                         </div>
 
                         <!-- Nutricionista de Levante -->
                         <div class="col-md-4 mb-2">
-                            <label class="form-label fw-semibold">Nutricionista (Levante)</label>
+                            <label class="form-label-design">Nutricionista (Levante)</label>
                             <div class="input-group shadow-sm">
                                 <select name="nutricionista" id="f_nutricionista" class="form-select creatable-select select-con-foto">
                                     <option value="">Seleccione...</option>
@@ -240,8 +344,7 @@
                                     {% endfor %}
                                 </select>
                                 {% if user_rol == 'Superadmin' %}
-                                <button type="button" class="btn fw-bold text-white shadow-sm"
-                                    style="background-color: #97271C;" onclick="abrirModalCatalogo('nutricionista_lev')"
+                                <button type="button" class="btn-catalogo-add" onclick="abrirModalCatalogo('nutricionista_lev')"
                                     title="Nuevo Nutricionista"><i class='bx bx-plus'></i></button>
                                 {% endif %}
                             </div>
@@ -249,56 +352,56 @@
                     </div>
 
                     <!-- SECCIÓN: Datos de Recepción (Día 0) -->
-                    <h6 class="fw-bold mb-3 text-uppercase" style="color: #5e2129;"> Datos de Recepción (Día 0)</h6>
+                    <h6 class="modal-section-title"><i class="fas fa-egg me-1"></i> Datos de recepción (día 0)</h6>
                     <div class="row g-2">
                         <div class="col-md-3">
-                            <label class="form-label small fw-bold">Kilos Semanal (Kg)</label>
+                            <label class="form-label-design">Kilos Semanal (Kg)</label>
                             <input type="number" step="0.1" name="dia0_consumo_kg" class="form-control form-control-sm">
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label small fw-bold">K. Acumulado (Kg)</label>
+                            <label class="form-label-design">K. Acumulado (Kg)</label>
                             <input type="number" step="0.1" name="dia0_cons_k_acum"
                                 class="form-control form-control-sm">
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label small fw-bold">Mortalidad (Día 0)</label>
+                            <label class="form-label-design">Mortalidad (Día 0)</label>
                             <input type="number" name="dia0_mortalidad" class="form-control form-control-sm">
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label small fw-bold">Selección - Día 0</label>
+                            <label class="form-label-design">Selección - Día 0</label>
                             <input type="number" name="dia0_sel" class="form-control form-control-sm">
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label small fw-bold">Peso Real (g)</label>
+                            <label class="form-label-design">Peso Real (g)</label>
                             <input type="number" step="0.01" name="dia0_peso_real" class="form-control form-control-sm">
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label small fw-bold">10% Menos</label>
+                            <label class="form-label-design">10% Menos</label>
                             <input type="number" step="0.1" name="dia0_unif_10_menos"
                                 class="form-control form-control-sm">
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label small fw-bold">% Uniformidad Inicial</label>
+                            <label class="form-label-design">% Uniformidad Inicial</label>
                             <input type="number" step="0.01" name="dia0_porc_uniformidad"
                                 class="form-control form-control-sm">
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label small fw-bold">10% Más</label>
+                            <label class="form-label-design">10% Más</label>
                             <input type="number" step="0.1" name="dia0_unif_10_mas"
                                 class="form-control form-control-sm">
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label small fw-bold">Coef. Variación (C.V.)</label>
+                            <label class="form-label-design">Coef. Variación (C.V.)</label>
                             <input type="number" step="0.01" name="dia0_coef_variacion"
                                 class="form-control form-control-sm">
                         </div>
                     </div>
 
                     <!-- SECCIÓN: Datos de Recepción / Levante -->
-                    <h6 class="text-success fw-bold border-bottom pb-2 mb-3 mt-4">Datos de Recepción / Levante</h6>
+                    <h6 class="modal-section-title"><i class="fas fa-seedling me-1"></i> Datos de recepción / levante</h6>
                     <div class="row mb-3">
                         <div class="col-md-3 mb-2">
-                            <label class="form-label fw-semibold">Granja Levante</label>
+                            <label class="form-label-design">Granja Levante</label>
                             <select name="granja_lev" id="f_granja_lev" class="form-select creatable-select"
                                 placeholder="Seleccione o escriba...">
                                 <option value="">Seleccione o escriba...</option>
@@ -309,15 +412,15 @@
                             </select>
                         </div>
                         <div class="col-md-3 mb-2">
-                            <label class="form-label fw-semibold">Fecha Recepción <span class="text-danger">*</span></label>
+                            <label class="form-label-design">Fecha Recepción <span class="text-danger">*</span></label>
                             <input type="date" name="fecha_recepcion" id="f_fecha_rec" class="form-control" required>
                         </div>
                         <div class="col-md-3 mb-2">
-                            <label class="form-label fw-semibold">No. Pollitas Recibidas <span class="text-danger">*</span></label>
+                            <label class="form-label-design">No. Pollitas Recibidas <span class="text-danger">*</span></label>
                             <input type="number" name="no_pollitas_recibidas" id="f_pollitas" class="form-control" required>
                         </div>
                         <div class="col-md-3 mb-2">
-                            <label class="form-label fw-semibold">Variedad</label>
+                            <label class="form-label-design">Variedad</label>
                             <div class="input-group shadow-sm">
                                 <select name="variedad" id="f_variedad" class="form-select creatable-select select-con-foto"
                                     placeholder="Seleccione o escriba...">
@@ -327,8 +430,7 @@
                                     {% endfor %}
                                 </select>
                                 {% if user_rol == 'Superadmin' %}
-                                <button type="button" class="btn fw-bold text-white shadow-sm"
-                                    style="background-color: #97271C;" onclick="abrirModalCatalogo('variedad')"
+                                <button type="button" class="btn-catalogo-add" onclick="abrirModalCatalogo('variedad')"
                                     title="Nueva Variedad"><i class='bx bx-plus'></i></button>
                                 {% endif %}
                             </div>
@@ -336,31 +438,30 @@
                     </div>
                     <div class="row mb-4">
                         <div class="col-md-3 mb-2">
-                            <label class="form-label fw-semibold">Peso</label>
+                            <label class="form-label-design">Peso</label>
                             <input type="number" step="0.01" name="peso" id="f_peso" class="form-control">
                         </div>
                         <div class="col-md-3 mb-2">
-                            <label class="form-label fw-semibold">Unidad Peso (Decimal)</label>
+                            <label class="form-label-design">Unidad Peso (Decimal)</label>
                             <input type="number" step="0.01" name="unidad_peso" id="f_unidad_peso" class="form-control">
                         </div>
                         <div class="col-md-3 mb-2">
-                            <label class="form-label fw-semibold">Uniformidad (%)</label>
+                            <label class="form-label-design">Uniformidad (%)</label>
                             <input type="number" step="0.01" name="uniformidad" id="f_uniformidad" class="form-control">
                         </div>
                         <div class="col-md-3 mb-2">
-                            <label class="form-label fw-semibold">Coef. Variación</label>
+                            <label class="form-label-design">Coef. Variación</label>
                             <input type="number" step="0.01" name="coeficiente_variacion" id="f_coef"
                                 class="form-control">
                         </div>
                     </div>
 
                     <!-- SECCIÓN: Datos de Encasetamiento / Producción -->
-                    <h6 class="text-secondary fw-bold border-bottom pb-2 mb-3 mt-4">Datos de Encasetamiento / Producción
-                    </h6>
+                    <h6 class="modal-section-title"><i class="fas fa-industry me-1"></i> Datos de encasetamiento / producción</h6>
 
                     <div class="row mb-3">
                         <div class="col-md-4 mb-2">
-                            <label class="form-label fw-semibold">Nutricionista (Producción)</label>
+                            <label class="form-label-design">Nutricionista (Producción)</label>
                             <div class="input-group shadow-sm">
                                 <select name="nutricionista_prod" id="f_nutricionista_prod"
                                     class="form-select creatable-select select-con-foto">
@@ -370,15 +471,14 @@
                                     {% endfor %}
                                 </select>
                                 {% if user_rol == 'Superadmin' %}
-                                <button type="button" class="btn fw-bold text-white shadow-sm"
-                                    style="background-color: #97271C;" onclick="abrirModalCatalogo('nutricionista_prod')"
+                                <button type="button" class="btn-catalogo-add" onclick="abrirModalCatalogo('nutricionista_prod')"
                                     title="Nuevo Nutricionista"><i class='bx bx-plus'></i></button>
                                 {% endif %}
                             </div>
                         </div>
 
                         <div class="col-md-4 mb-2">
-                            <label class="form-label fw-semibold">Granja Producción</label>
+                            <label class="form-label-design">Granja Producción</label>
                             <select name="granja_prod" id="f_granja_prod" class="form-select creatable-select"
                                 placeholder="Seleccione o escriba...">
                                 <option value="">Seleccione o escriba...</option>
@@ -389,7 +489,7 @@
                             </select>
                         </div>
                         <div class="col-md-4 mb-2">
-                            <label class="form-label fw-semibold">Fecha Encasetamiento</label>
+                            <label class="form-label-design">Fecha Encasetamiento</label>
                             <!-- Este campo se llenará automáticamente vía JavaScript al cambiar Fecha Recepción -->
                             <input type="date" name="fecha_encasetamiento" id="f_fecha_enc" class="form-control">
                         </div>
@@ -397,11 +497,11 @@
 
                     <div class="row mb-2">
                         <div class="col-md-3 mb-2">
-                            <label class="form-label fw-semibold">No. Aves Encasetadas <span class="text-danger">*</span></label>
+                            <label class="form-label-design">No. Aves Encasetadas <span class="text-danger">*</span></label>
                             <input type="number" name="no_aves_encasetadas" id="f_aves_enc" class="form-control" required>
                         </div>
                         <div class="col-md-3 mb-2">
-                            <label class="form-label fw-semibold">Tipo Galpón</label>
+                            <label class="form-label-design">Tipo Galpón</label>
                             <select name="tipo_galpon" id="f_tipo_galpon" class="form-select creatable-select"
                                 placeholder="Seleccione o escriba...">
                                 <option value="">Seleccione o escriba...</option>
@@ -413,7 +513,7 @@
                             </select>
                         </div>
                         <div class="col-md-3 mb-2">
-                            <label class="form-label fw-semibold">Marca Galpón</label>
+                            <label class="form-label-design">Marca Galpón</label>
                             <div class="input-group shadow-sm">
                                 <select name="marca_galpon" id="f_marca_galpon" class="form-select creatable-select select-con-foto"
                                     placeholder="Seleccione o escriba...">
@@ -423,14 +523,13 @@
                                     {% endfor %}
                                 </select>
                                 {% if user_rol == 'Superadmin' %}
-                                <button type="button" class="btn fw-bold text-white shadow-sm"
-                                    style="background-color: #97271C;" onclick="abrirModalCatalogo('marca_galpon')"
+                                <button type="button" class="btn-catalogo-add" onclick="abrirModalCatalogo('marca_galpon')"
                                     title="Nueva Marca Galpón"><i class='bx bx-plus'></i></button>
                                 {% endif %}
                             </div>
                         </div>
                         <div class="col-md-3 mb-2">
-                            <label class="form-label fw-semibold">Unidad Kilo (Kg)</label>
+                            <label class="form-label-design">Unidad Kilo (Kg)</label>
                             <input type="text" name="unidad_medida" id="f_unidad_med" class="form-control">
                         </div>
                     </div>
@@ -456,7 +555,7 @@
 <div class="modal fade" id="modalCatalogo" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
     <div class="modal-dialog modal-dialog-centered modal-sm modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header text-white border-0" style="background-color: #343a40;">
+            <div class="modal-header text-white border-0" style="background-color: var(--table-header-bg);">
                 <h5 class="modal-title fw-bold" id="tituloModalCatalogo"><i class='bx bx-user-plus me-2'></i>Nuevo</h5>
                 <button type="button" class="btn-close btn-close-white flex-shrink-0 ms-7" data-bs-dismiss="modal"></button>
             </div>
@@ -465,13 +564,13 @@
                 <input type="hidden" id="catalogo_id">
 
                 <div class="mb-3" id="bloque_nombre">
-                    <label class="form-label fw-bold text-secondary" id="label_nombre_catalogo">Nombre Completo</label>
+                    <label class="form-label-design" id="label_nombre_catalogo">Nombre Completo</label>
                     <input type="text" class="form-control shadow-sm text-uppercase" id="nuevo_nombre_catalogo">
                 </div>
 
                 <!-- FOTO (solo catálogos con foto; se oculta para Responsable) -->
                 <div class="mb-3" id="bloque_foto" style="display: none;">
-                    <label class="form-label fw-bold text-secondary mb-1">Foto <span class="text-danger">*</span></label>
+                    <label class="form-label-design mb-1">Foto <span class="text-danger">*</span></label>
                     <input type="file" class="form-control form-control-sm"
                         id="foto_catalogo" accept="image/png,image/jpeg,image/webp">
                     <div class="text-center mt-2">
@@ -481,13 +580,13 @@
                     </div>
                 </div>
 
-                <button type="button" class="btn w-100 fw-bold text-white shadow-sm" style="background-color: #97271C;"
-                    id="btnGuardarCatalogo" onclick="guardarCatalogo()">Guardar y Seleccionar</button>
+                <button type="button" class="btn btn-primary w-100" id="btnGuardarCatalogo"
+                    onclick="guardarCatalogo()"><i class="fas fa-check me-1"></i>Guardar y Seleccionar</button>
 
                 <!-- CONFIRMACIÓN DE ELIMINACIÓN (formal, dentro del modal) -->
                 <div id="bloque_confirmar" style="display: none;">
                     <div class="text-center mb-2">
-                        <i class='bx bx-trash' style="font-size: 2.5rem; color: #97271C;"></i>
+                        <i class='bx bx-trash' style="font-size: 2.5rem; color: var(--danger);"></i>
                     </div>
                     <h6 class="fw-bold text-center mb-2">¿Eliminar este valor?</h6>
                     <div class="d-flex align-items-center justify-content-center gap-2 mb-2">
@@ -500,14 +599,14 @@
                         Los lotes ya guardados conservarán este nombre.
                     </p>
                     <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-secondary flex-fill" onclick="cancelarBorrado()">Cancelar</button>
-                        <button type="button" class="btn flex-fill fw-bold text-white" style="background-color: #97271C;" onclick="confirmarBorrado()">Sí, eliminar</button>
+                        <button type="button" class="btn btn-outline-secondary flex-fill" onclick="cancelarBorrado()">Cancelar</button>
+                        <button type="button" class="btn btn-danger flex-fill" onclick="confirmarBorrado()"><i class="fas fa-trash-can me-1"></i>Sí, eliminar</button>
                     </div>
                 </div>
 
                 <!-- LISTA DE VALORES EXISTENTES (editar/eliminar) -->
                 <div class="mt-3" id="bloque_lista" style="display: none;">
-                    <label class="form-label fw-bold text-secondary small mb-1">Valores existentes</label>
+                    <label class="form-label-design mb-1">Valores existentes</label>
                     <div id="lista_catalogo" class="small" style="max-height: 220px; overflow-y: auto;"></div>
                 </div>
             </div>
@@ -742,6 +841,8 @@
     // Base de la API: /api/catalogos/
     const API_CAT = "{{ url_for('catalogos.listar_catalogo', tipo='TIPO') }}".replace('TIPO', '');
 
+    const ICONO_GUARDAR = '<i class="fas fa-check me-1"></i>';
+
     function botonGuardarOcupado(ocupado, texto) {
         const btn = document.getElementById('btnGuardarCatalogo');
         if (ocupado) {
@@ -750,7 +851,7 @@
             btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>' + texto;
         } else {
             btn.disabled = false;
-            btn.textContent = btn.dataset.texto || 'Guardar y Seleccionar';
+            btn.innerHTML = ICONO_GUARDAR + (btn.dataset.texto || 'Guardar y Seleccionar');
         }
     }
 
@@ -780,7 +881,7 @@
         document.getElementById('nuevo_nombre_catalogo').value = '';
         document.getElementById('foto_catalogo').value = '';
         document.getElementById('preview_foto').src = window.FOTO_PLACEHOLDER;
-        document.getElementById('btnGuardarCatalogo').textContent = 'Guardar y Seleccionar';
+        document.getElementById('btnGuardarCatalogo').innerHTML = ICONO_GUARDAR + 'Guardar y Seleccionar';
         document.getElementById('bloque_foto').style.display = conFoto ? 'block' : 'none';
         document.getElementById('bloque_lista').style.display = conFoto ? 'block' : 'none';
         document.getElementById('bloque_confirmar').style.display = 'none';
@@ -918,7 +1019,7 @@
                 }
                 data.items.forEach(it => {
                     const fila = document.createElement('div');
-                    fila.className = 'd-flex align-items-center gap-2 border rounded p-1 mb-1 bg-white';
+                    fila.className = 'd-flex align-items-center gap-2 border rounded p-1 mb-1 bg-white fila-catalogo';
 
                     const img = document.createElement('img');
                     img.src = it.foto_url;
@@ -930,13 +1031,15 @@
 
                     const btnEdit = document.createElement('button');
                     btnEdit.type = 'button';
-                    btnEdit.className = 'btn btn-sm btn-outline-primary';
+                    btnEdit.className = 'btn-icono-accion';
+                    btnEdit.title = 'Editar';
                     btnEdit.innerHTML = "<i class='bx bx-edit'></i>";
                     btnEdit.onclick = () => editarCatalogo(tipo, it.id, it.nombre, it.foto_url);
 
                     const btnDel = document.createElement('button');
                     btnDel.type = 'button';
-                    btnDel.className = 'btn btn-sm btn-outline-danger';
+                    btnDel.className = 'btn-icono-accion btn-icono-eliminar';
+                    btnDel.title = 'Eliminar';
                     btnDel.innerHTML = "<i class='bx bx-trash'></i>";
                     btnDel.onclick = () => borrarCatalogo(tipo, it.id, it.nombre, it.foto_url);
 
@@ -977,7 +1080,7 @@
         document.getElementById('nuevo_nombre_catalogo').value = nombre;
         document.getElementById('preview_foto').src = fotoUrl;
         document.getElementById('foto_catalogo').value = '';
-        document.getElementById('btnGuardarCatalogo').textContent = 'Guardar Cambios';
+        document.getElementById('btnGuardarCatalogo').innerHTML = ICONO_GUARDAR + 'Guardar Cambios';
         document.getElementById('bloque_foto').style.display = 'block';
         document.getElementById('tituloModalCatalogo').innerHTML =
             "<i class='bx bx-edit me-2'></i>Editar " + (etiquetasCortas[tipo] || 'valor');

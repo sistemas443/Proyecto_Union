@@ -285,14 +285,71 @@
     box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
     border: 1px solid var(--border);
   }
+
+  /* ============================================================
+     FILTRO POR RANGO DE FECHAS
+     ============================================================ */
+  .filtro-fechas {
+    box-shadow: none;
+    background-color: var(--surface);
+  }
+
+  .filtro-fechas .form-label-design {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--text-muted);
+  }
+
+  .filtro-fechas .form-control {
+    font-size: 0.78rem;
+  }
+
+  /* Marca de precio historico (receta congelada) */
+  .precio-historico {
+    font-size: 0.6rem;
+    color: var(--text-muted);
+    margin-left: 0.2rem;
+  }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container-fluid mt-4">
-    <h2 class="fw-bold mb-4" style="color: var(--text-primary);">
+    <h2 class="fw-bold mb-3" style="color: var(--text-primary);">
         <i class="fas fa-layer-group me-2" style="color: var(--action-primary);"></i> Consolidado de Costos y Precios
     </h2>
+
+    <!-- Filtro por rango de fechas -->
+    <form method="GET" action="{{ url_for('planta_alimentos.consolidado_precios') }}"
+        class="card card-cons mb-4 filtro-fechas">
+        <div class="card-body py-2 d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <label class="form-label-design mb-0" for="desde">Desde</label>
+                <input type="date" id="desde" name="desde" class="form-control form-control-sm"
+                    style="width: 155px;" value="{{ desde.isoformat() }}" required>
+                <label class="form-label-design mb-0" for="hasta">Hasta</label>
+                <input type="date" id="hasta" name="hasta" class="form-control form-control-sm"
+                    style="width: 155px;" value="{{ hasta.isoformat() }}" required>
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <i class="fas fa-filter me-1"></i> Aplicar
+                </button>
+                <a href="{{ url_for('planta_alimentos.consolidado_precios') }}"
+                    class="btn btn-outline-secondary btn-sm" title="Volver al día de hoy">
+                    <i class="fas fa-calendar-day me-1"></i> Hoy
+                </a>
+            </div>
+            <div class="text-muted" style="font-size: 0.75rem;">
+                {% if es_hoy %}
+                <i class="fas fa-circle-info me-1"></i> Mostrando dietas y precios de hoy
+                {% else %}
+                <i class="fas fa-clock-rotate-left me-1"></i>
+                Dietas vigentes y precios congelados entre {{ desde.strftime('%d/%m/%Y') }} y {{ hasta.strftime('%d/%m/%Y') }}
+                {% endif %}
+            </div>
+        </div>
+    </form>
 
     <div class="row">
         <!-- TABLA IZQUIERDA: PRECIOS MATERIAS PRIMAS -->
@@ -304,7 +361,7 @@
                         <i class="fas fa-chevron-down me-1"></i> Ver otras (<span id="countOtras">{{ materias_otras|length }}</span>)
                     </button>
                 </div>
-                <div class="card-body p-0">
+                <div class="card-body p-0 table-responsive">
                     <table class="table table-bordered table-hover mb-0 table-cons" style="font-size: 0.8rem;">
                         <thead>
                             <tr>
@@ -320,7 +377,7 @@
                             {% for mp in materias_destacadas %}
                             <tr class="table-light" data-mp-id="{{ mp['id'] }}">
                                 <td class="col-mp">{{ mp['nombre'] }}</td>
-                                <td class="col-precio">$ {{ "{:,.0f}".format(mp['precio_actual_kg'] | default(0) | float) }}</td>
+                                <td class="col-precio">$ {{ "{:,.0f}".format(mp['precio_actual_kg'] | default(0) | float) }}{% if mp['precio_historico'] %}<i class="fas fa-clock-rotate-left precio-historico" title="Precio congelado en la receta vigente del rango consultado"></i>{% endif %}</td>
                                 <td class="col-precio">$ {{ "{:,.0f}".format(mp['flete'] | default(0) | float) }}</td>
                                 <td class="col-precio fw-bold" style="font-size: 11px;">$ {{ "{:,.0f}".format((mp['precio_actual_kg'] | default(0) | float) + (mp['flete'] | default(0) | float)) }}</td>
                                 <td class="col-estrella">
@@ -337,7 +394,7 @@
                             {% for mp in materias_otras %}
                             <tr data-mp-id="{{ mp['id'] }}">
                                 <td>{{ mp['nombre'] }}</td>
-                                <td class="col-precio">$ {{ "{:,.0f}".format(mp['precio_actual_kg'] | default(0) | float) }}</td>
+                                <td class="col-precio">$ {{ "{:,.0f}".format(mp['precio_actual_kg'] | default(0) | float) }}{% if mp['precio_historico'] %}<i class="fas fa-clock-rotate-left precio-historico" title="Precio congelado en la receta vigente del rango consultado"></i>{% endif %}</td>
                                 <td class="col-precio">$ {{ "{:,.0f}".format(mp['flete'] | default(0) | float) }}</td>
                                 <td class="col-precio fw-bold" style="font-size: 11px;">$ {{ "{:,.0f}".format((mp['precio_actual_kg'] | default(0) | float) + (mp['flete'] | default(0) | float)) }}</td>
                                 <td class="col-estrella">

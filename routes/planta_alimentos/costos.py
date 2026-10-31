@@ -1,3 +1,4 @@
+from datetime import datetime
 from flask import render_template, request, redirect, url_for, flash, jsonify, session
 from models.base import get_db_connection
 from routes.planta_alimentos.catalogo_a import planta_bp  # O la ruta donde tengas definido el Blueprint
@@ -57,13 +58,47 @@ def revision_costos(item_id, lote_id):
 @planta_bp.route('/consolidado-precios')
 @login_requerido
 def consolidado_precios():
-    # 1. Precios materias primas - separar destacadas vs otras
-    precios_mp_todas = MateriaPrima.get_all()
+    # 0. Rango de fechas consultado (por defecto hoy)
+    def _fecha(valor):
+        try:
+            return datetime.strptime(valor, '%Y-%m-%d').date()
+        except (TypeError, ValueError):
+            return hoy
+
+    hoy = datetime.now().date()
+    desde = _fecha(request.args.get('desde'))
+    hasta = _fecha(request.args.get('hasta'))
+    if desde > hasta:
+        desde, hasta = hasta, desde
+
+    # 1. Precios materias primas - separar destacadas vs otras.
+    #    Si la fecha consultada no es hoy, se usan los precios congelados en las
+    #    versiones de receta vigentes en ese rango.
+    precios_historicos = FormulaDetalle.obtener_precios_historicos(desde, hasta)
+    precios_mp_todas = []
+    for mp in MateriaPrima.get_all():
+        fila = dict(mp)
+        historico = precios_historicos.get(fila['id'])
+        fila['precio_historico'] = False
+        if historico:
+            precio = historico['precio']
+            iva = historico['iva']
+            flete = historico['flete']
+            fila['precio_actual_kg'] = precio
+            fila['iva'] = iva
+            fila['flete'] = flete
+            fila['p_iva'] = precio * iva
+            fila['p_iva_flete'] = (precio * iva) + flete
+            fila['precio_neto'] = precio
+            fila['p_flete'] = precio + flete
+            fila['precio_historico'] = True
+        precios_mp_todas.append(fila)
+
     materias_destacadas = [mp for mp in precios_mp_todas if mp.get('destacada_en_consolidado')]
     materias_otras = [mp for mp in precios_mp_todas if not mp.get('destacada_en_consolidado')]
-    
-    # 2. Costos consolidados ya calculados (modelo)
-    costos_dietas = FormulaDetalle.obtener_consolidado_costos()
+
+    # 2. Costos consolidados para el rango consultado
+    costos_dietas = FormulaDetalle.obtener_consolidado_costos(desde, hasta)
     
     # 3. Filtrar en 3 grupos fijos por empresa
     EMPRESAS_ASIGNADAS = ('SAN MARTIN', 'COUNTRY', 'DOS CRESTAS SANTUARIO')
@@ -84,7 +119,10 @@ def consolidado_precios():
         dietas_san_martin=dietas_san_martin,
         dietas_country=dietas_country,
         dietas_dos_crestas=dietas_dos_crestas,
-        dietas_sin_asignar=dietas_sin_asignar
+        dietas_sin_asignar=dietas_sin_asignar,
+        desde=desde,
+        hasta=hasta,
+        es_hoy=(desde == hoy and hasta == hoy)
     )
 
 

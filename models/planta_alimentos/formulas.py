@@ -6,32 +6,45 @@ from models.base import get_db_connection
 class FormulaDetalle:
     
     @staticmethod
-    def obtener_consolidado_costos():
+    def obtener_consolidado_costos(desde=None, hasta=None):
+        """
+        Costos consolidados por dieta y lote para un rango de fechas.
+
+        Una version cuenta como vigente si su periodo (fecha_creacion - fecha_vencimiento)
+        se cruza con el rango consultado. Los precios salen del costo congelado en la
+        version (precio_guardado / iva_guardado / flete_guardado); si no existe, se usa
+        el precio actual de la materia prima.
+        """
+        from datetime import date
+
+        if not desde:
+            desde = date.today()
+        if not hasta:
+            hasta = desde
+
         conn = get_db_connection()
         try:
             with conn.cursor() as cur:
                 consulta = """
-                    WITH UltimasVersiones AS (
-                        -- 1. Buscamos la última versión real de cada receta, sin excepciones
-                        SELECT item_id, lote_id, MAX(version) as max_version
+                    WITH VersionesVigentes AS (
+                        -- Version de cada receta que cubre el rango consultado
+                        SELECT item_id, lote_id, MAX(version) AS version
                         FROM formula_detalle
+                        WHERE fecha_creacion <= %s::date AND fecha_vencimiento >= %s::date
                         GROUP BY item_id, lote_id
                     ),
                     CostosBase AS (
                         SELECT 
                             fd.item_id,
                             fd.lote_id,
-                            SUM(fd.cantidad_kg * mp.precio_actual_kg) AS total_precio_base,
-                            SUM(fd.cantidad_kg * mp.flete) AS total_flete,
-                            SUM(fd.cantidad_kg * (mp.precio_actual_kg * COALESCE(mp.iva, 1))) AS total_con_iva
+                            SUM(fd.cantidad_kg * COALESCE(NULLIF(fd.precio_guardado, 0), mp.precio_actual_kg)) AS total_precio_base,
+                            SUM(fd.cantidad_kg * COALESCE(fd.flete_guardado, mp.flete, 0)) AS total_flete,
+                            SUM(fd.cantidad_kg * (COALESCE(NULLIF(fd.precio_guardado, 0), mp.precio_actual_kg)
+                                                  * COALESCE(fd.iva_guardado, mp.iva, 1))) AS total_con_iva
                         FROM formula_detalle fd
-                        JOIN UltimasVersiones uv 
-                            ON fd.item_id = uv.item_id AND fd.lote_id = uv.lote_id AND fd.version = uv.max_version
+                        JOIN VersionesVigentes vv 
+                            ON fd.item_id = vv.item_id AND fd.lote_id = vv.lote_id AND fd.version = vv.version
                         JOIN materias_primas mp ON fd.materia_prima_id = mp.id
-                        
-                        -- 2. EL CAMBIO VA AQUÍ: Validamos que ESA ÚLTIMA VERSIÓN no esté vencida
-                        WHERE fd.fecha_vencimiento >= CURRENT_DATE
-                        
                         GROUP BY fd.item_id, fd.lote_id
                     )
                     SELECT 
@@ -60,12 +73,55 @@ class FormulaDetalle:
                     LEFT JOIN empresas e ON cl.empresa_id = e.id
                     ORDER BY e.nombre NULLS FIRST, cb.lote_id;
                 """
-                cur.execute(consulta)
+                cur.execute(consulta, (hasta, desde))
                 columnas = [desc[0] for desc in cur.description]
                 return [dict(zip(columnas, fila)) for fila in cur.fetchall()]
         except Exception as e:
             print(f"Error al generar consolidado de costos: {e}")
             return []
+        finally:
+            conn.close()
+
+    @staticmethod
+    def obtener_precios_historicos(desde=None, hasta=None):
+        """
+        Precios de materias primas congelados en las versiones de receta que cubren
+        el rango consultado. Devuelve {materia_prima_id: {precio, iva, flete}}.
+        """
+        from datetime import date
+
+        if not desde:
+            desde = date.today()
+        if not hasta:
+            hasta = desde
+
+        conn = get_db_connection()
+        try:
+            with conn.cursor(cursor_factory=DictCursor) as cur:
+                cur.execute("""
+                    SELECT DISTINCT ON (fd.materia_prima_id)
+                           fd.materia_prima_id,
+                           fd.precio_guardado,
+                           fd.iva_guardado,
+                           fd.flete_guardado
+                    FROM formula_detalle fd
+                    WHERE fd.fecha_creacion <= %s::date
+                      AND fd.fecha_vencimiento >= %s::date
+                      AND COALESCE(fd.precio_guardado, 0) > 0
+                    ORDER BY fd.materia_prima_id, fd.fecha_creacion DESC, fd.version DESC
+                """, (hasta, desde))
+
+                return {
+                    fila['materia_prima_id']: {
+                        'precio': float(fila['precio_guardado'] or 0),
+                        'iva': float(fila['iva_guardado'] or 1),
+                        'flete': float(fila['flete_guardado'] or 0),
+                    }
+                    for fila in cur.fetchall()
+                }
+        except Exception as e:
+            print(f"Error al obtener precios historicos: {e}")
+            return {}
         finally:
             conn.close()
     

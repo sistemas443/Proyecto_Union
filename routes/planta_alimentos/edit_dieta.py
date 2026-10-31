@@ -9,6 +9,27 @@ from models.base import get_db_connection
 from flask import render_template, request, redirect, url_for, flash, jsonify
 
 
+def _validar_fecha_produccion(texto):
+    """Valida la fecha de produccion/venta.
+
+    Devuelve (fecha, error). Rechaza formatos invalidos y anios fuera de rango
+    para evitar errores de digitacion (por ejemplo 0206 en lugar de 2026).
+    """
+    if not texto:
+        return None, 'La fecha es obligatoria.'
+
+    try:
+        fecha = datetime.strptime(str(texto).strip(), '%Y-%m-%d').date()
+    except (TypeError, ValueError):
+        return None, 'La fecha no tiene un formato válido.'
+
+    anio_actual = datetime.now().year
+    if fecha.year < 2020 or fecha.year > anio_actual + 1:
+        return None, f'La fecha {fecha.strftime("%d/%m/%Y")} está fuera del rango permitido.'
+
+    return fecha, None
+
+
 @planta_bp.route('/receta/nueva-version/<int:item_id>/<string:lote_id>', methods=['POST'])
 @login_requerido
 def crear_version_receta(item_id, lote_id):
@@ -93,7 +114,7 @@ def editar_receta(item_id, lote_id):
 
         # --- CASO A: GUARDAR PRODUCCIÓN DIARIA ---
         if 'guardar_produccion' in request.form or request.form.get('fecha'):
-            fecha = request.form.get('fecha')
+            fecha, error_fecha = _validar_fecha_produccion(request.form.get('fecha'))
             toneladas = parse_float(request.form.get('toneladas'))
             novedad = request.form.get('novedad', '')
 
@@ -103,7 +124,9 @@ def editar_receta(item_id, lote_id):
             cal_kg = parse_float(request.form.get('cal_kg')) if es_venta else 0
             calcio_kg = parse_float(request.form.get('calcio_kg')) if es_venta else 0
 
-            if fecha and toneladas > 0:
+            if error_fecha:
+                flash(error_fecha, 'danger')
+            elif toneladas > 0:
                 try:
                     # Guardar Producción por Día (incluye descuento de receta base + CAL/CALCIO en modelo)
                     exito = FormulaProduccion.registrar_produccion(
@@ -210,17 +233,12 @@ def actualizar_produccion_diaria(id_registro):
     novedad = request.form.get('novedad', '')
     cal_kg = parse_float(request.form.get('cal_kg'))
     calcio_kg = parse_float(request.form.get('calcio_kg'))
-    fecha_raw = (request.form.get('fecha') or '').strip()
-
-    fecha = None
-    if fecha_raw:
-        try:
-            fecha = datetime.strptime(fecha_raw, '%Y-%m-%d').date()
-        except ValueError:
-            flash('La fecha enviada no es válida.', 'danger')
-            if item_id and lote_id:
-                return redirect(url_for('planta_alimentos.editar_receta', item_id=item_id, lote_id=lote_id))
-            return redirect(url_for('planta_alimentos.catalogo_alimentos'))
+    fecha, error_fecha = _validar_fecha_produccion(request.form.get('fecha'))
+    if error_fecha:
+        flash(error_fecha, 'danger')
+        if item_id and lote_id:
+            return redirect(url_for('planta_alimentos.editar_receta', item_id=item_id, lote_id=lote_id))
+        return redirect(url_for('planta_alimentos.catalogo_alimentos'))
 
     try:
         if toneladas > 0:

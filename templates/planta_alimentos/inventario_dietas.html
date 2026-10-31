@@ -223,6 +223,139 @@
   }
   .leyenda .pill-dias { margin-right: 0.15rem; }
 
+  /* ============================================================
+     ENCABEZADO DE SECCION (tarjetas de tablas)
+     ============================================================ */
+  .section-head {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+    padding: 0.85rem 1rem 0.85rem 1.2rem;
+    background: linear-gradient(90deg, #f5f7fa 0%, #ffffff 62%);
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* Resaltado vertical que separa el titulo de la tabla */
+  .section-head::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: linear-gradient(180deg, #2c3e50 0%, #5b7691 100%);
+  }
+
+  .section-head-main {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    min-width: 0;
+  }
+
+  .section-icon {
+    width: 34px;
+    height: 34px;
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9px;
+    background-color: #eef2f6;
+    color: var(--action-primary);
+    border: 1px solid #dbe4ee;
+    font-size: 0.85rem;
+  }
+
+  .section-title {
+    font-size: 0.95rem;
+    font-weight: 800;
+    letter-spacing: -0.015em;
+    color: var(--text-primary);
+    margin: 0;
+    line-height: 1.25;
+  }
+
+  .section-sub {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    margin: 0;
+    line-height: 1.3;
+  }
+
+  .section-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+  }
+
+  .section-chip {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    color: var(--action-primary);
+    background-color: #eef2f6;
+    border: 1px solid #dbe4ee;
+    border-radius: 999px;
+    padding: 0.15rem 0.55rem;
+    white-space: nowrap;
+  }
+
+  .section-period {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+
+  /* ============================================================
+     TABLA DEL MODAL INVENTARIO INICIAL
+     ============================================================ */
+  .tabla-modal-inv {
+    font-size: 0.8rem;
+  }
+
+  .tabla-modal-inv thead th {
+    background-color: var(--table-header-bg);
+    color: #ffffff;
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-color: #2a3340;
+    padding: 0.5rem 0.55rem;
+    vertical-align: middle;
+    white-space: nowrap;
+  }
+
+  .tabla-modal-inv tbody td {
+    border-color: #e9ecef;
+    padding: 0.4rem 0.55rem;
+    vertical-align: middle;
+  }
+
+  .tabla-modal-inv tbody tr:nth-child(odd) > * { background-color: #fbfcfd; }
+  .tabla-modal-inv tbody tr:nth-child(even) > * { background-color: #ffffff; }
+  .tabla-modal-inv tbody tr:hover > * { background-color: #f1f4f7; }
+
+  .tabla-modal-inv .inv-dieta {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.78rem;
+    line-height: 1.25;
+  }
+
+  .tabla-modal-inv .lote-chip { white-space: nowrap; }
+
+  .tabla-modal-inv .form-control {
+    font-size: 0.78rem;
+    padding: 0.25rem 0.45rem;
+  }
+
   @media print {
     .d-print-none { display: none !important; }
     .table-dietas { min-width: 0; font-size: 0.7rem; }
@@ -279,6 +412,14 @@
                         <i class="fas fa-sync-alt me-1"></i> Actualizar
                     </button>
                 </div>
+                {% if dietas %}
+                <div class="col-auto ms-auto">
+                    <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal"
+                        data-bs-target="#modalInicial">
+                        <i class="fas fa-clipboard-list me-1"></i> Registrar inventario inicial
+                    </button>
+                </div>
+                {% endif %}
             </form>
         </div>
     </div>
@@ -287,14 +428,17 @@
          Resumen por LOTE: producción y venta suman todas las dietas
          ========================================================== -->
     <div class="card border-0 shadow-sm">
-        <div class="card-header bg-white d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <span class="fw-semibold" style="font-size: 0.85rem; color: var(--text-primary);">
-                Resumen por lote
-            </span>
-            <span class="leyenda">
-                {{ resumen_lotes|length }} lotes · producción y venta suman todas las dietas del lote ·
-                {{ meses_nombres[mes - 1][1] }} {{ anio }}
-            </span>
+        <div class="section-head">
+            <div class="section-head-main">
+                <div>
+                    <h3 class="section-title">Resumen por lote</h3>
+                    <p class="section-sub">Producción y venta suman todas las dietas del lote</p>
+                </div>
+            </div>
+            <div class="section-meta">
+                <span class="section-chip">{{ resumen_lotes|length }} lotes</span>
+                <span class="section-period">{{ meses_nombres[mes - 1][1] }} {{ anio }}</span>
+            </div>
         </div>
         <div class="table-responsive">
             <table class="table table-bordered table-hover align-middle table-dietas table-lotes">
@@ -310,10 +454,11 @@
                         <th scope="col" class="col-num" title="Inventario inicial + producción">TOTAL (KG)</th>
                         <th scope="col" class="col-num" title="Consumo del mes según el registro diario del lote">CONSUMO (KG)</th>
                         <th scope="col" class="col-num" title="Todas las toneladas vendidas del lote en el mes, sin importar la dieta">VENTA (KG)</th>
-                        <th scope="col" class="col-num" title="TOTAL − CONSUMO − VENTA">INVENTARIO REAL (KG)</th>
+                        <th scope="col" class="col-num" title="Ajuste manual de inventario del lote (se resta del inventario real)">AJUSTE INVENTARIO REAL (KG)</th>
+                        <th scope="col" class="col-num" title="TOTAL − CONSUMO − VENTA − AJUSTE">INVENTARIO REAL (KG)</th>
                         <th scope="col" class="col-num">ALIMENTO DIAS</th>
                         <th scope="col" class="col-num" title="Suma de la capacidad de silos de las dietas del lote">CAPACIDAD DE SILOS (TON)</th>
-                        <th scope="col" class="col-num">TONELADAS SEMANAL</th>
+                        <th scope="col" class="col-num" title="Consumo actual (kg/día) × 7 días, expresado en toneladas">TONELADAS SEMANAL</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -321,12 +466,28 @@
                     <tr>
                         <td class="col-lote"><span class="lote-chip">{{ fila['lote'] }}</span></td>
                         <td class="col-dietas">{{ fila['dietas']|join(' · ') }}</td>
-                        <td class="col-num">{{ "{:,.1f}".format(fila['inventario_inicial']) }}</td>
-                        <td class="col-num">{{ "{:,.1f}".format(fila['produccion']) }}</td>
-                        <td class="col-num">{{ "{:,.1f}".format(fila['total']) }}</td>
-                        <td class="col-num">{{ "{:,.1f}".format(fila['consumo']) }}</td>
-                        <td class="col-num">{{ "{:,.1f}".format(fila['venta']) }}</td>
-                        <td class="col-num col-real">{{ "{:,.1f}".format(fila['inventario_real']) }}</td>
+                        <td class="col-num">{{ "{:,.0f}".format(fila['inventario_inicial']) }}</td>
+                        <td class="col-num">{{ "{:,.0f}".format(fila['produccion']) }}</td>
+                        <td class="col-num">{{ "{:,.0f}".format(fila['total']) }}</td>
+                        <td class="col-num">{{ "{:,.0f}".format(fila['consumo']) }}</td>
+                        <td class="col-num">{{ "{:,.0f}".format(fila['venta']) }}</td>
+                        <td class="col-num">
+                            <form method="POST"
+                                action="{{ url_for('planta_alimentos.guardar_ajuste_inventario_lote') }}"
+                                class="d-flex justify-content-end">
+                                <input type="hidden" name="lote_id" value="{{ fila['lote'] }}">
+                                <input type="hidden" name="mes" value="{{ mes }}">
+                                <input type="hidden" name="anio" value="{{ anio }}">
+                                <input type="text" inputmode="decimal" autocomplete="off" name="ajuste"
+                                    class="form-control form-control-sm text-end" style="max-width: 110px;"
+                                    value="{% if fila['ajuste'] %}{{ '%g' % fila['ajuste'] }}{% endif %}"
+                                    placeholder="0"
+                                    title="Ajuste manual de inventario del lote. Se guarda al salir del campo y se resta del inventario real."
+                                    aria-label="Ajuste de inventario real del lote {{ fila['lote'] }}"
+                                    onchange="this.form.submit()">
+                            </form>
+                        </td>
+                        <td class="col-num col-real">{{ "{:,.0f}".format(fila['inventario_real']) }}</td>
                         <td class="col-num">
                             {% if fila['alimento_dias'] is not none %}
                             <span class="pill-dias {% if fila['alimento_dias'] >= 7 %}ok{% elif fila['alimento_dias'] >= 3 %}warn{% else %}critical{% endif %}"
@@ -338,17 +499,26 @@
                             {% endif %}
                         </td>
                         <td class="col-num">
-                            {% if fila['capacidad_silos'] is not none %}
-                            {{ "{:,.0f}".format(fila['capacidad_silos']) }}
-                            {% else %}
-                            <span class="sin-dato">—</span>
-                            {% endif %}
+                            <form method="POST"
+                                action="{{ url_for('planta_alimentos.guardar_capacidad_silos_lote') }}"
+                                class="d-flex justify-content-end">
+                                <input type="hidden" name="lote_id" value="{{ fila['lote'] }}">
+                                <input type="hidden" name="mes" value="{{ mes }}">
+                                <input type="hidden" name="anio" value="{{ anio }}">
+                                <input type="text" inputmode="decimal" autocomplete="off" name="capacidad"
+                                    class="form-control form-control-sm text-end" style="max-width: 110px;"
+                                    value="{% if fila['capacidad_silos'] is not none %}{{ '%g' % fila['capacidad_silos'] }}{% endif %}"
+                                    placeholder="—"
+                                    title="Capacidad de silos del lote en toneladas. Se guarda al salir del campo."
+                                    aria-label="Capacidad de silos en toneladas del lote {{ fila['lote'] }}"
+                                    onchange="this.form.submit()">
+                            </form>
                         </td>
-                        <td class="col-num">{{ "{:,.1f}".format(fila['toneladas_semanal']) }}</td>
+                        <td class="col-num">{{ "{:,.3f}".format(fila['toneladas_semanal']) }}</td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="11" class="text-center py-4" style="color: var(--text-muted);">
+                        <td colspan="12" class="text-center py-4" style="color: var(--text-muted);">
                             No hay lotes con receta registrada.
                         </td>
                     </tr>
@@ -358,12 +528,13 @@
                     <tr>
                         <th scope="row">TOTAL</th>
                         <td></td>
-                        <td class="col-num">{{ "{:,.1f}".format(totales_lotes['inventario_inicial']) }}</td>
-                        <td class="col-num">{{ "{:,.1f}".format(totales_lotes['produccion']) }}</td>
-                        <td class="col-num">{{ "{:,.1f}".format(totales_lotes['total']) }}</td>
-                        <td class="col-num">{{ "{:,.1f}".format(totales_lotes['consumo']) }}</td>
-                        <td class="col-num">{{ "{:,.1f}".format(totales_lotes['venta']) }}</td>
-                        <td class="col-num">{{ "{:,.1f}".format(totales_lotes['inventario_real']) }}</td>
+                        <td class="col-num">{{ "{:,.0f}".format(totales_lotes['inventario_inicial']) }}</td>
+                        <td class="col-num">{{ "{:,.0f}".format(totales_lotes['produccion']) }}</td>
+                        <td class="col-num">{{ "{:,.0f}".format(totales_lotes['total']) }}</td>
+                        <td class="col-num">{{ "{:,.0f}".format(totales_lotes['consumo']) }}</td>
+                        <td class="col-num">{{ "{:,.0f}".format(totales_lotes['venta']) }}</td>
+                        <td class="col-num">{{ "{:,.1f}".format(totales_lotes['ajuste']) }}</td>
+                        <td class="col-num">{{ "{:,.0f}".format(totales_lotes['inventario_real']) }}</td>
                         <td class="col-num">
                             <span class="pill-dias no-data" title="Los días no se suman; se calculan por lote">—</span>
                         </td>
@@ -374,7 +545,7 @@
                             <span class="sin-dato">—</span>
                             {% endif %}
                         </td>
-                        <td class="col-num">{{ "{:,.1f}".format(totales_lotes['toneladas_semanal']) }}</td>
+                        <td class="col-num">{{ "{:,.3f}".format(totales_lotes['toneladas_semanal']) }}</td>
                     </tr>
                 </tfoot>
             </table>
@@ -385,18 +556,18 @@
     <!-- Tabla -->
     <div class="card border-0 shadow-sm mt-4">
         {% set pendientes = dietas|rejectattr('inicial_registrada')|list|length %}
-        <div class="card-header bg-white d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <span class="fw-semibold" style="font-size: 0.85rem; color: var(--text-primary);">Consolidado de dietas</span>
-            <div class="d-flex align-items-center gap-3 flex-wrap">
-                <span class="leyenda">{{ dietas|length }} registros · {{ dietas|map(attribute='item_id')|unique|list|length }} dietas · {{ meses_nombres[mes - 1][1] }} {{ anio }}</span>
+        <div class="section-head">
+            <div class="section-head-main">
+                <div>
+                    <h3 class="section-title">Consolidado de dietas</h3>
+                    <p class="section-sub">Una fila por dieta y lote · stock, consumo y cobertura</p>
+                </div>
+            </div>
+            <div class="section-meta">
+                <span class="section-chip">{{ dietas|length }} registros · {{ dietas|map(attribute='item_id')|unique|list|length }} dietas</span>
+                <span class="section-period">{{ meses_nombres[mes - 1][1] }} {{ anio }}</span>
                 {% if pendientes %}
                 <span class="badge-pendiente d-print-none" title="Dietas o lotes sin inventario inicial registrado">{{ pendientes }} sin registrar</span>
-                {% endif %}
-                {% if dietas %}
-                <button type="button" class="btn btn-outline-primary btn-sm d-print-none" data-bs-toggle="modal"
-                    data-bs-target="#modalInicial">
-                    <i class="fas fa-clipboard-list me-1"></i> Registrar inventario inicial
-                </button>
                 {% endif %}
             </div>
         </div>
@@ -415,10 +586,11 @@
                         <th scope="col" class="col-num" title="Inventario inicial (kg) + producción (kg)">TOTAL (KG)</th>
                         <th scope="col" class="col-num" title="Consumo del mes según el registro diario del lote (solo se asigna a la dieta activa del lote)">CONSUMO (KG)</th>
                         <th scope="col" class="col-num" title="Toneladas vendidas del lote en el mes seleccionado, convertidas a kilogramos (venta externa registrada en Editar Receta)">VENTA (KG)</th>
-                        <th scope="col" class="col-num" title="TOTAL − CONSUMO − VENTA, en kilogramos">INVENTARIO REAL (KG)</th>
+                        <th scope="col" class="col-num" title="Ajuste manual de inventario por dieta y lote (se resta del inventario real)">AJUSTE INVENTARIO REAL (KG)</th>
+                        <th scope="col" class="col-num" title="TOTAL − CONSUMO − VENTA − AJUSTE, en kilogramos">INVENTARIO REAL (KG)</th>
                         <th scope="col" class="col-num">ALIMENTO DIAS</th>
                         <th scope="col" class="col-num" title="Capacidad de silos de la dieta en toneladas (editable)">CAPACIDAD DE SILOS (TON)</th>
-                        <th scope="col" class="col-num">TONELADAS SEMANAL</th>
+                        <th scope="col" class="col-num" title="Consumo actual (kg/día) × 7 días, expresado en toneladas">TONELADAS SEMANAL</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -433,7 +605,7 @@
                                 data-item="{{ fila['item_id'] }}" data-lote="{{ fila['lote'] }}"
                                 title="Editar inventario inicial"
                                 aria-label="Editar inventario inicial de {{ fila['alimento'] }} lote {{ fila['lote'] }}">
-                                {{ "{:,.1f}".format(fila['inventario_inicial']) }}
+                                {{ "{:,.0f}".format(fila['inventario_inicial']) }}
                             </button>
                             {% else %}
                             <button type="button" class="sin-registrar" data-bs-toggle="modal" data-bs-target="#modalInicial"
@@ -444,11 +616,28 @@
                             </button>
                             {% endif %}
                         </td>
-                        <td class="col-num">{{ "{:,.1f}".format(fila['produccion']) }}</td>
-                        <td class="col-num">{{ "{:,.1f}".format(fila['total']) }}</td>
-                        <td class="col-num">{{ "{:,.1f}".format(fila['consumo']) }}</td>
-                        <td class="col-num">{{ "{:,.1f}".format(fila['venta']) }}</td>
-                        <td class="col-num col-real">{{ "{:,.1f}".format(fila['inventario_real']) }}</td>
+                        <td class="col-num">{{ "{:,.0f}".format(fila['produccion']) }}</td>
+                        <td class="col-num">{{ "{:,.0f}".format(fila['total']) }}</td>
+                        <td class="col-num">{{ "{:,.0f}".format(fila['consumo']) }}</td>
+                        <td class="col-num">{{ "{:,.0f}".format(fila['venta']) }}</td>
+                        <td class="col-num">
+                            <form method="POST"
+                                action="{{ url_for('planta_alimentos.guardar_ajuste_inventario_dieta') }}"
+                                class="d-flex justify-content-end">
+                                <input type="hidden" name="item_id" value="{{ fila['item_id'] }}">
+                                <input type="hidden" name="lote_id" value="{{ fila['lote'] }}">
+                                <input type="hidden" name="mes" value="{{ mes }}">
+                                <input type="hidden" name="anio" value="{{ anio }}">
+                                <input type="text" inputmode="decimal" autocomplete="off" name="ajuste"
+                                    class="form-control form-control-sm text-end" style="max-width: 110px;"
+                                    value="{% if fila['ajuste'] %}{{ '%g' % fila['ajuste'] }}{% endif %}"
+                                    placeholder="0"
+                                    title="Ajuste manual de inventario de esta dieta. Se guarda al salir del campo y se resta del inventario real."
+                                    aria-label="Ajuste de inventario real de {{ fila['alimento'] }} lote {{ fila['lote'] }}"
+                                    onchange="this.form.submit()">
+                            </form>
+                        </td>
+                        <td class="col-num col-real">{{ "{:,.0f}".format(fila['inventario_real']) }}</td>
                         <td class="col-num">
                             {% if fila['alimento_dias'] is not none %}
                             <span class="pill-dias {% if fila['alimento_dias'] >= 7 %}ok{% elif fila['alimento_dias'] >= 3 %}warn{% else %}critical{% endif %}"
@@ -475,11 +664,11 @@
                                     onchange="this.form.submit()">
                             </form>
                         </td>
-                        <td class="col-num">{{ "{:,.1f}".format(fila['toneladas_semanal']) }}</td>
+                        <td class="col-num">{{ "{:,.3f}".format(fila['toneladas_semanal']) }}</td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="12" class="text-center py-4" style="color: var(--text-muted);">
+                        <td colspan="13" class="text-center py-4" style="color: var(--text-muted);">
                             No hay dietas con receta registrada.
                         </td>
                     </tr>
@@ -492,13 +681,14 @@
                         <td></td>
                         <td class="col-num"
                             {% if pendientes %}title="Suma solo las dietas con inventario inicial registrado ({{ pendientes }} sin registrar)"{% endif %}>
-                            {{ "{:,.1f}".format(totales['inventario_inicial']) }}
+                            {{ "{:,.0f}".format(totales['inventario_inicial']) }}
                         </td>
-                        <td class="col-num">{{ "{:,.1f}".format(totales['produccion']) }}</td>
-                        <td class="col-num">{{ "{:,.1f}".format(totales['total']) }}</td>
-                        <td class="col-num">{{ "{:,.1f}".format(totales['consumo']) }}</td>
-                        <td class="col-num">{{ "{:,.1f}".format(totales['venta']) }}</td>
-                        <td class="col-num">{{ "{:,.1f}".format(totales['inventario_real']) }}</td>
+                        <td class="col-num">{{ "{:,.0f}".format(totales['produccion']) }}</td>
+                        <td class="col-num">{{ "{:,.0f}".format(totales['total']) }}</td>
+                        <td class="col-num">{{ "{:,.0f}".format(totales['consumo']) }}</td>
+                        <td class="col-num">{{ "{:,.0f}".format(totales['venta']) }}</td>
+                        <td class="col-num">{{ "{:,.1f}".format(totales['ajuste']) }}</td>
+                        <td class="col-num">{{ "{:,.0f}".format(totales['inventario_real']) }}</td>
                         <td class="col-num">
                             <span class="pill-dias no-data" title="Los días no se suman; se calculan por dieta y lote">—</span>
                         </td>
@@ -509,7 +699,7 @@
                             <span class="sin-dato">—</span>
                             {% endif %}
                         </td>
-                        <td class="col-num">{{ "{:,.1f}".format(totales['toneladas_semanal']) }}</td>
+                        <td class="col-num">{{ "{:,.3f}".format(totales['toneladas_semanal']) }}</td>
                     </tr>
                 </tfoot>
             </table>
@@ -532,14 +722,20 @@
                     <input type="hidden" name="mes" value="{{ mes }}">
                     <input type="hidden" name="anio" value="{{ anio }}">
 
-                    <div class="modal-header">
-                        <div>
-                            <h5 class="modal-title" id="modalInicialLabel">Inventario inicial de dietas</h5>
-                            <div class="text-muted" style="font-size: 0.78rem;">
-                                {{ meses_nombres[mes - 1][1] }} {{ anio }} · kilogramos y consumo actual por dieta y lote
+                    <div class="modal-header"
+                        style="background-color: var(--table-header-bg); color: #ffffff; border-bottom: none;">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="section-icon" style="background-color: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.2); color: #ffffff;">
+                                <i class="fas fa-clipboard-list"></i>
+                            </span>
+                            <div>
+                                <h5 class="modal-title" id="modalInicialLabel" style="font-size: 0.95rem;">Inventario inicial de dietas</h5>
+                                <div style="font-size: 0.75rem; color: rgba(255,255,255,0.75);">
+                                    {{ meses_nombres[mes - 1][1] }} {{ anio }} · kilogramos y consumo actual por dieta y lote
+                                </div>
                             </div>
                         </div>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                     </div>
 
                     <div class="modal-body">
@@ -548,7 +744,7 @@
                             del lote. Las filas que dejes vacías no se modifican.
                         </p>
                         <div class="table-responsive">
-                            <table class="table table-sm align-middle mb-0">
+                            <table class="table table-sm align-middle mb-0 tabla-modal-inv">
                                 <thead>
                                     <tr>
                                         <th scope="col">Dieta</th>
@@ -562,7 +758,7 @@
                                 <tbody>
                                     {% for fila in dietas %}
                                     <tr>
-                                        <td>
+                                        <td class="inv-dieta">
                                             {{ fila['alimento'] }}
                                             <input type="hidden" name="item_id" value="{{ fila['item_id'] }}">
                                             <input type="hidden" name="lote_id" value="{{ fila['lote'] }}">
