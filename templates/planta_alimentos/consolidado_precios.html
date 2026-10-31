@@ -342,10 +342,13 @@
             </div>
             <div class="text-muted" style="font-size: 0.75rem;">
                 {% if es_hoy %}
-                <i class="fas fa-circle-info me-1"></i> Mostrando dietas y precios de hoy
+                <i class="fas fa-circle-info me-1"></i> Mostrando dietas y precios no vencidos hoy
+                {% elif solo_vigentes %}
+                <i class="fas fa-clock-rotate-left me-1"></i>
+                Dietas y precios no vencidos al {{ desde.strftime('%d/%m/%Y') }}
                 {% else %}
                 <i class="fas fa-clock-rotate-left me-1"></i>
-                Dietas vigentes y precios congelados entre {{ desde.strftime('%d/%m/%Y') }} y {{ hasta.strftime('%d/%m/%Y') }}
+                Dietas con vencimiento entre {{ desde.strftime('%d/%m/%Y') }} y {{ hasta.strftime('%d/%m/%Y') }}
                 {% endif %}
             </div>
         </div>
@@ -413,6 +416,21 @@
         <!-- TABLA DERECHA: 3 TABLAS FIJAS POR EMPRESA -->
         <div class="col-md-8">
 
+            {% if not dietas_sin_asignar and not dietas_san_martin and not dietas_country and not dietas_dos_crestas %}
+            <div class="card card-cons mb-4">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-calendar-xmark mb-2" style="font-size: 1.8rem; color: var(--text-muted);"></i>
+                    <p class="mb-1 fw-semibold" style="color: var(--text-secondary);">
+                        No hay dietas con vencimiento en este rango
+                    </p>
+                    <p class="mb-0" style="font-size: 0.78rem; color: var(--text-muted);">
+                        El filtro busca las dietas cuya fecha de vencimiento cae entre
+                        {{ desde.strftime('%d/%m/%Y') }} y {{ hasta.strftime('%d/%m/%Y') }}.
+                    </p>
+                </div>
+            </div>
+            {% endif %}
+
             {# =============================================
                  TABLA 0: DIETAS VIGENTES SIN EMPRESA (antes se perdían por el JOIN)
                  ============================================= #}
@@ -466,7 +484,7 @@
                 <div class="card-header text-white text-center fw-bold">
                     COSTO DIETAS SAN MARTIN
                 </div>
-                <div class="card-body p-0">
+                <div class="card-body p-0 table-responsive">
                     <table class="table table-bordered table-hover mb-0 table-cons" style="font-size: 0.8rem;">
                         <thead>
                             <tr>
@@ -501,7 +519,7 @@
                 <div class="card-header text-white text-center fw-bold">
                     COSTO DIETAS COUNTRY
                 </div>
-                <div class="card-body p-0">
+                <div class="card-body p-0 table-responsive">
                     <table class="table table-bordered table-hover mb-0 table-cons" style="font-size: 0.8rem;">
                         <thead>
                             <tr>
@@ -534,7 +552,7 @@
                 <div class="card-header text-white text-center fw-bold">
                     COSTO DIETAS DOS CRESTAS
                 </div>
-                <div class="card-body p-0">
+                <div class="card-body p-0 table-responsive">
                     <table class="table table-bordered table-hover mb-0 table-cons" style="font-size: 0.8rem;">
                         <thead>
                             <tr>

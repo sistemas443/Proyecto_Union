@@ -6,14 +6,19 @@ from models.base import get_db_connection
 class FormulaDetalle:
     
     @staticmethod
-    def obtener_consolidado_costos(desde=None, hasta=None):
+    def obtener_consolidado_costos(desde=None, hasta=None, solo_vigentes=False):
         """
         Costos consolidados por dieta y lote para un rango de fechas.
 
-        Una version cuenta como vigente si su periodo (fecha_creacion - fecha_vencimiento)
-        se cruza con el rango consultado. Los precios salen del costo congelado en la
-        version (precio_guardado / iva_guardado / flete_guardado); si no existe, se usa
-        el precio actual de la materia prima.
+        La vigencia se decide SOLO con fecha_vencimiento:
+          - Rango de varios dias: la dieta entra si su fecha_vencimiento cae
+            dentro del rango consultado.
+          - Un solo dia (solo_vigentes): la dieta entra si no estaba vencida
+            en esa fecha (fecha_vencimiento >= dia).
+
+        Los precios salen del costo congelado en la version (precio_guardado /
+        iva_guardado / flete_guardado); si no existe, se usa el precio actual
+        de la materia prima.
         """
         from datetime import date
 
@@ -22,15 +27,22 @@ class FormulaDetalle:
         if not hasta:
             hasta = desde
 
+        if solo_vigentes:
+            condicion = "fecha_vencimiento >= %s::date"
+            parametros = (hasta,)
+        else:
+            condicion = "fecha_vencimiento BETWEEN %s::date AND %s::date"
+            parametros = (desde, hasta)
+
         conn = get_db_connection()
         try:
             with conn.cursor() as cur:
-                consulta = """
+                consulta = f"""
                     WITH VersionesVigentes AS (
-                        -- Version de cada receta que cubre el rango consultado
+                        -- Version de cada receta cuya fecha de vencimiento cae en el rango
                         SELECT item_id, lote_id, MAX(version) AS version
                         FROM formula_detalle
-                        WHERE fecha_creacion <= %s::date AND fecha_vencimiento >= %s::date
+                        WHERE {condicion}
                         GROUP BY item_id, lote_id
                     ),
                     CostosBase AS (
@@ -73,7 +85,7 @@ class FormulaDetalle:
                     LEFT JOIN empresas e ON cl.empresa_id = e.id
                     ORDER BY e.nombre NULLS FIRST, cb.lote_id;
                 """
-                cur.execute(consulta, (hasta, desde))
+                cur.execute(consulta, parametros)
                 columnas = [desc[0] for desc in cur.description]
                 return [dict(zip(columnas, fila)) for fila in cur.fetchall()]
         except Exception as e:
@@ -83,10 +95,11 @@ class FormulaDetalle:
             conn.close()
 
     @staticmethod
-    def obtener_precios_historicos(desde=None, hasta=None):
+    def obtener_precios_historicos(desde=None, hasta=None, solo_vigentes=False):
         """
-        Precios de materias primas congelados en las versiones de receta que cubren
-        el rango consultado. Devuelve {materia_prima_id: {precio, iva, flete}}.
+        Precios de materias primas congelados en las versiones de receta cuya
+        fecha_vencimiento cae en el rango consultado (o que no estaban vencidas
+        en el dia, cuando solo_vigentes). Devuelve {materia_prima_id: {...}}.
         """
         from datetime import date
 
@@ -95,21 +108,27 @@ class FormulaDetalle:
         if not hasta:
             hasta = desde
 
+        if solo_vigentes:
+            condicion = "fd.fecha_vencimiento >= %s::date"
+            parametros = (hasta,)
+        else:
+            condicion = "fd.fecha_vencimiento BETWEEN %s::date AND %s::date"
+            parametros = (desde, hasta)
+
         conn = get_db_connection()
         try:
             with conn.cursor(cursor_factory=DictCursor) as cur:
-                cur.execute("""
+                cur.execute(f"""
                     SELECT DISTINCT ON (fd.materia_prima_id)
                            fd.materia_prima_id,
                            fd.precio_guardado,
                            fd.iva_guardado,
                            fd.flete_guardado
                     FROM formula_detalle fd
-                    WHERE fd.fecha_creacion <= %s::date
-                      AND fd.fecha_vencimiento >= %s::date
+                    WHERE {condicion}
                       AND COALESCE(fd.precio_guardado, 0) > 0
-                    ORDER BY fd.materia_prima_id, fd.fecha_creacion DESC, fd.version DESC
-                """, (hasta, desde))
+                    ORDER BY fd.materia_prima_id, fd.fecha_vencimiento DESC, fd.version DESC
+                """, parametros)
 
                 return {
                     fila['materia_prima_id']: {

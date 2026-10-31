@@ -73,8 +73,10 @@ def consolidado_precios():
 
     # 1. Precios materias primas - separar destacadas vs otras.
     #    Si la fecha consultada no es hoy, se usan los precios congelados en las
-    #    versiones de receta vigentes en ese rango.
-    precios_historicos = FormulaDetalle.obtener_precios_historicos(desde, hasta)
+    #    versiones de receta cuya fecha_vencimiento cae en el rango.
+    #    Un solo dia (por ejemplo la vista "Hoy") = dietas y precios no vencidos ese dia.
+    solo_vigentes = (desde == hasta)
+    precios_historicos = FormulaDetalle.obtener_precios_historicos(desde, hasta, solo_vigentes)
     precios_mp_todas = []
     for mp in MateriaPrima.get_all():
         fila = dict(mp)
@@ -98,7 +100,7 @@ def consolidado_precios():
     materias_otras = [mp for mp in precios_mp_todas if not mp.get('destacada_en_consolidado')]
 
     # 2. Costos consolidados para el rango consultado
-    costos_dietas = FormulaDetalle.obtener_consolidado_costos(desde, hasta)
+    costos_dietas = FormulaDetalle.obtener_consolidado_costos(desde, hasta, solo_vigentes)
     
     # 3. Filtrar en 3 grupos fijos por empresa
     EMPRESAS_ASIGNADAS = ('SAN MARTIN', 'COUNTRY', 'DOS CRESTAS SANTUARIO')
@@ -122,7 +124,8 @@ def consolidado_precios():
         dietas_sin_asignar=dietas_sin_asignar,
         desde=desde,
         hasta=hasta,
-        es_hoy=(desde == hoy and hasta == hoy)
+        es_hoy=(desde == hoy and hasta == hoy),
+        solo_vigentes=solo_vigentes
     )
 
 

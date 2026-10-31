@@ -1,6 +1,10 @@
 {% extends 'generales/layout.html' %}
 {% block title %}Producción Semanal – Avícola San Martín{% endblock %}
 
+{% block head %}
+{% include 'planta_alimentos/_design_system.html' %}
+{% endblock %}
+
 {% block content %}
 <!-- Estilos CSS centralizados para garantizar anchos estrictos y evitar solapamientos -->
 <style>
@@ -54,7 +58,7 @@
   .tabla-scroll thead tr th.sticky-col-3 {
     z-index: 150 !important;
     /* Prioridad máxima sobre cualquier otro encabezado */
-    background-color: #212529 !important;
+    background-color: var(--table-header-bg) !important;
     /* Fondo negro sólido para ocultar el texto que pasa por debajo */
   }
 
@@ -113,7 +117,7 @@
   thead .sticky-col-2,
   thead .sticky-col-3 {
     z-index: 120 !important;
-    background-color: #212529 !important;
+    background-color: var(--table-header-bg) !important;
   }
 
   /* Delimitadores verticales sutiles para separar visualmente las columnas oscuras */
@@ -146,70 +150,236 @@
     border-right: 1px solid #dee2e6 !important;
     box-shadow: 4px 0 5px -2px rgba(0, 0, 0, 0.1) !important;
   }
+  /* ============================================================
+     AJUSTES DE DISEÑO (design system) - solo esta pantalla
+     ============================================================ */
+
+  /* Barra de filtro dentro del encabezado */
+  .ps-filtro-lote .form-label-design {
+    margin-bottom: 0;
+    white-space: nowrap;
+  }
+
+  .ps-filtro-lote .form-select {
+    font-size: 0.8rem;
+  }
+
+  /* Ficha del lote */
+  .ps-info-lote {
+    margin-bottom: var(--space-4);
+    overflow: hidden;
+  }
+
+  .ps-info-lote .ps-info-titulo {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.55rem 0.9rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--text-secondary);
+    background-color: var(--surface-alt);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .ps-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.45rem 1rem;
+    padding: 0.7rem 0.9rem;
+  }
+
+  @media (max-width: 575.98px) {
+    .ps-info-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+
+  .ps-info-item .ps-info-label {
+    display: block;
+    font-size: 0.63rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--text-muted);
+  }
+
+  .ps-info-item .ps-info-valor {
+    font-size: 0.84rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    word-break: break-word;
+  }
+
+  /* Cabeceras de la tabla */
+  .tabla-scroll thead th.th-black,
+  .tabla-scroll thead th.th-orange {
+    background-color: var(--table-header-bg) !important;
+    color: var(--table-header-text) !important;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    border-color: #2a3242 !important;
+  }
+
+  .tabla-scroll thead th.th-black,
+  .tabla-scroll thead th.th-orange {
+    box-shadow: inset 0 -1px 0 #1a202c, 0 1px 0 #1a202c !important;
+  }
+
+
+  /* Altura fija de la primera fila para que la segunda quede pegada sin huecos */
+  .tabla-scroll thead tr:nth-child(1) th {
+    height: 36px;
+    vertical-align: middle;
+    line-height: 1.15;
+  }
+
+  .tabla-scroll thead tr:nth-child(2) th {
+    top: 36px;
+    line-height: 1.15;
+  }
+
+  /* Subcabeceras (segunda fila) */
+  .tabla-scroll thead tr:nth-child(2) th.th-sub {
+    background-color: #e9edf1 !important;
+    color: var(--text-secondary) !important;
+    font-size: 0.64rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.2px;
+    border-bottom: 1px solid var(--border) !important;
+  }
+
+  /* Celdas de referencia (columnas de tabla) */
+  .tabla-scroll td.celda-tabla {
+    background-color: #eef0f2;
+  }
+
+  .tabla-scroll .celda-tabla input {
+    background-color: #eef0f2;
+    color: var(--text-primary);
+    font-weight: 600;
+  }
+
+  /* Separadores de las columnas fijas */
+  .th-fija-1 { box-shadow: 1px 0 0 var(--border) !important; }
+  .th-fija-2 { box-shadow: 2px 0 0 var(--border) !important; }
+  .th-fija-3 { box-shadow: 3px 0 0 var(--border) !important; }
+
+  /* Icono para ampliar la observacion */
+  .icono-obs {
+    right: 8px;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 1.25rem;
+    z-index: 10;
+    transition: color 0.15s ease;
+  }
+
+  .icono-obs:hover,
+  .icono-obs:focus-visible {
+    color: var(--action-primary);
+  }
+
+  /* Estado vacio */
+  .ps-vacio {
+    padding: 3rem 1rem;
+    text-align: center;
+    color: var(--text-muted);
+  }
+
+  .ps-vacio i {
+    font-size: 1.9rem;
+    color: var(--border);
+    margin-bottom: 0.5rem;
+  }
 </style>
 
-<!-- BARRA SUPERIOR UNIFICADA: TÍTULO + FILTRO + LOTE (COLAPSABLE) -->
-<div class="card mb-3 shadow-sm border-0" style="background-color: #212529;">
-  <div class="d-flex flex-wrap align-items-center justify-content-between px-3 py-2 gap-2">
-    <div class="d-flex flex-wrap align-items-center gap-3">
-      <h5 class="mb-0 fw-bold text-uppercase text-white" style="letter-spacing: 0.5px;">
-        INFORME SEMANAL DE PRODUCCIÓN
-      </h5>
-      <form method="POST" class="d-flex flex-wrap align-items-center gap-2 m-0">
-        <label for="lote" class="mb-0 fw-bold text-light text-nowrap" style="font-size: 0.9rem;">SELECCIONE UN LOTE:</label>
-        <select name="lote" id="lote" class="form-select form-select-sm border-0 fw-bold shadow-none"
-          style="width: 220px;">
-          <option value="">-- Seleccione --</option>
-          {% for l in lotes %}
-          <option value="{{ l }}" {% if lote_seleccionado==l %}selected{% endif %}>LOTE {{ l }}</option>
-          {% endfor %}
-        </select>
-        <button type="submit" class="btn btn-naranja btn-sm fw-bold px-3 border-0">Cargar Datos</button>
-      </form>
+<!-- ENCABEZADO: TÍTULO + FILTRO DE LOTE -->
+<div class="page-header">
+  <div class="d-flex align-items-center gap-3">
+    <div class="page-icon">
+      <i class="fas fa-egg"></i>
     </div>
-    {% if lote_seleccionado %}
-    <div class="d-flex align-items-center gap-2">
-      <span class="badge bg-naranja fs-6">LOTE: {{ lote_seleccionado }}</span>
-      <button class="btn btn-sm btn-outline-light" type="button" data-bs-toggle="collapse" data-bs-target="#collapseInfoGeneral" aria-expanded="true" aria-controls="collapseInfoGeneral" title="Mostrar/ocultar información del lote">
-        <i class='bx bx-chevron-down fs-5 icono-colapso'></i>
-      </button>
-    </div>
-    {% endif %}
-  </div>
-  {% if lote_seleccionado %}
-  <div class="collapse show" id="collapseInfoGeneral">
-    <div class="card-body p-0">
-      <table class="table table-bordered table-sm mb-0">
-        <tbody class="align-middle">
-          <tr>
-            <th class="bg-light text-end pe-3" style="width:20%;">Cliente:</th>
-            <td class="fw-bold text-dark" style="width:30%;">{{ cabecera.cliente or '---' }}</td>
-            <th class="bg-light text-end pe-3" style="width:20%;">Resp. Técnico:</th>
-            <td class="fw-semibold text-dark" style="width:30%;">{{ cabecera.responsable_tecnico or '---' }}</td>
-          </tr>
-          <tr>
-            <th class="bg-light text-end pe-3">Granja Levante:</th>
-            <td class="text-dark">{{ cabecera.granja_lev or '---' }}</td>
-            <th class="bg-light text-end pe-3">Ciudad:</th>
-            <td class="text-dark">{{ cabecera.ciudad or '---' }}</td>
-          </tr>
-          <tr>
-            <th class="bg-light text-end pe-3">Fecha Recepción:</th>
-            <td class="text-dark">{{ cabecera.fecha_recepcion or '---' }}</td>
-            <th class="bg-light text-end pe-3">Tipo Galpón:</th>
-            <td class="text-dark">{{ cabecera.tipo_galpon or '---' }}</td>
-          </tr>
-          <tr>
-            <th class="bg-light text-end pe-3">Aves Encasetadas:</th>
-            <td class="fw-bold text-dark">{{ cabecera.no_aves_encasetadas or '---' }}</td>
-            <th class="bg-light text-end pe-3">Clima:</th>
-            <td class="text-dark">{{ cabecera.clima or '---' }}</td>
-          </tr>
-        </tbody>
-      </table>
+    <div>
+      <h2 class="page-title mb-0">Informe semanal de producción</h2>
+      <p class="page-subtitle mb-0">Producción de huevo, consumo y conversión por semana</p>
     </div>
   </div>
 
+  <div class="d-flex flex-wrap align-items-center gap-2">
+    {% if lote_seleccionado %}
+    <span class="badge-estado badge-neutro">Lote {{ lote_seleccionado }}</span>
+    {% endif %}
+
+    <form method="POST" class="ps-filtro-lote d-flex flex-wrap align-items-center gap-2 m-0">
+      <label for="lote" class="form-label-design">Seleccione un lote</label>
+      <select name="lote" id="lote" class="form-select form-select-sm" style="width: 200px;">
+        <option value="">-- Seleccione --</option>
+        {% for l in lotes %}
+        <option value="{{ l }}" {% if lote_seleccionado==l %}selected{% endif %}>LOTE {{ l }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="btn btn-primary btn-sm">Cargar Datos</button>
+    </form>
+
+    {% if lote_seleccionado %}
+    <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse"
+      data-bs-target="#collapseInfoGeneral" aria-expanded="true" aria-controls="collapseInfoGeneral"
+      title="Mostrar/ocultar información del lote">
+      <i class='bx bx-chevron-down fs-5 icono-colapso'></i>
+    </button>
+    {% endif %}
+  </div>
+</div>
+
+{% if lote_seleccionado %}
+<div class="card card-clean ps-info-lote">
+  <div class="ps-info-titulo">
+    <i class="fas fa-circle-info"></i> Información del lote
+  </div>
+  <div class="collapse show" id="collapseInfoGeneral">
+    <div class="ps-info-grid">
+      <div class="ps-info-item">
+        <span class="ps-info-label">Cliente</span>
+        <span class="ps-info-valor">{{ cabecera.cliente or '---' }}</span>
+      </div>
+      <div class="ps-info-item">
+        <span class="ps-info-label">Resp. técnico</span>
+        <span class="ps-info-valor">{{ cabecera.responsable_tecnico or '---' }}</span>
+      </div>
+      <div class="ps-info-item">
+        <span class="ps-info-label">Granja levante</span>
+        <span class="ps-info-valor">{{ cabecera.granja_lev or '---' }}</span>
+      </div>
+      <div class="ps-info-item">
+        <span class="ps-info-label">Ciudad</span>
+        <span class="ps-info-valor">{{ cabecera.ciudad or '---' }}</span>
+      </div>
+      <div class="ps-info-item">
+        <span class="ps-info-label">Fecha recepción</span>
+        <span class="ps-info-valor">{{ cabecera.fecha_recepcion or '---' }}</span>
+      </div>
+      <div class="ps-info-item">
+        <span class="ps-info-label">Tipo galpón</span>
+        <span class="ps-info-valor">{{ cabecera.tipo_galpon or '---' }}</span>
+      </div>
+      <div class="ps-info-item">
+        <span class="ps-info-label">No. aves encasetadas</span>
+        <span class="ps-info-valor">{{ cabecera.no_aves_encasetadas or '---' }}</span>
+      </div>
+      <div class="ps-info-item">
+        <span class="ps-info-label">Unidad de medida</span>
+        <span class="ps-info-valor">{{ cabecera.unidad_medida or '---' }}</span>
+      </div>
+      <div class="ps-info-item">
+        <span class="ps-info-label">Clima</span>
+        <span class="ps-info-valor">{{ cabecera.clima or '---' }}</span>
+      </div>
+    </div>
+  </div>
 </div>
 {% endif %}
 
@@ -220,8 +390,8 @@
 
   {% if session.get('user_rol') != 'Lector' %}
   <!-- BOTÓN TEMPORAL DE DESARROLLO -->
-  <button id="btnRecalcularTemp" class="btn btn-sm text-white fw-bold shadow-sm px-3"
-    style="background-color: #97271C;">
+  <button id="btnRecalcularTemp" class="btn btn-outline-secondary btn-sm"
+    title="Recalcula las columnas calculadas de la tabla">
     <i class='bx bx-refresh fs-5 align-middle me-1'></i> Recalcular Tabla
   </button>
   {% endif %}
@@ -393,51 +563,51 @@
         <th rowspan="2" class="th-black text-center">Suma Saldo Aves</th>
       </tr>
       <tr>
-        <th class="th-black">SEMANA</th>
-        <th class="th-black">% TB</th>
-        <th class="th-black">REAL</th>
+        <th class="th-sub">SEMANA</th>
+        <th class="th-sub">% TB</th>
+        <th class="th-sub">REAL</th>
 
-        <th class="th-black">TB</th>
-        <th class="th-black">REAL</th>
+        <th class="th-sub">TB</th>
+        <th class="th-sub">REAL</th>
 
-        <th class="th-black">{{ 'KILOS' if cabecera.unidad_medida|string == '1 Kg' else 'BULTOS' }}</th>
-        <th class="th-black">TB</th>
-        <th class="th-black">REAL</th>
-        <th class="th-black">K.A.A</th>
+        <th class="th-sub">{{ 'KILOS' if cabecera.unidad_medida|string == '1 Kg' else 'BULTOS' }}</th>
+        <th class="th-sub">TB</th>
+        <th class="th-sub">REAL</th>
+        <th class="th-sub">K.A.A</th>
 
-        <th class="th-black">SEM</th>
-        <th class="th-black">ACUM</th>
+        <th class="th-sub">SEM</th>
+        <th class="th-sub">ACUM</th>
 
-        <th class="th-black">Sem</th>
-        <th class="th-black">Acum</th>
+        <th class="th-sub">Sem</th>
+        <th class="th-sub">Acum</th>
 
-        <th class="th-black">MO</th>
-        <th class="th-black">SEL</th>
-        <th class="th-black">VEN</th>
-        <th class="th-black">%M Sm</th>
-        <th class="th-black">%M Ac</th>
-        <th class="th-black">% SeL Sm</th>
-        <th class="th-black">%M+S Ac</th>
-        <th class="th-black">M.TAB</th>
+        <th class="th-sub">MO</th>
+        <th class="th-sub">SEL</th>
+        <th class="th-sub">VEN</th>
+        <th class="th-sub">%M Sm</th>
+        <th class="th-sub">%M Ac</th>
+        <th class="th-sub">% SeL Sm</th>
+        <th class="th-sub">%M+S Ac</th>
+        <th class="th-sub">M.TAB</th>
 
-        <th class="th-black">REAL</th>
-        <th class="th-black">TAB</th>
-        <th class="th-black">UNIF</th>
-        <th class="th-black">CV</th>
+        <th class="th-sub">REAL</th>
+        <th class="th-sub">TAB</th>
+        <th class="th-sub">UNIF</th>
+        <th class="th-sub">CV</th>
 
-        <th class="th-black">REAL</th>
-        <th class="th-black">TAB</th>
+        <th class="th-sub">REAL</th>
+        <th class="th-sub">TAB</th>
 
-        <th class="th-black">Real sem</th>
-        <th class="th-black">Tab sem</th>
-        <th class="th-black">Real Acum</th>
-        <th class="th-black">Tab Acum</th>
+        <th class="th-sub">Real sem</th>
+        <th class="th-sub">Tab sem</th>
+        <th class="th-sub">Real Acum</th>
+        <th class="th-sub">Tab Acum</th>
 
-        <th class="th-black">REAL</th>
-        <th class="th-black">TABLA</th>
+        <th class="th-sub">REAL</th>
+        <th class="th-sub">TABLA</th>
 
-        <th class="th-black">SEM</th>
-        <th class="th-black">ACUM</th>
+        <th class="th-sub">SEM</th>
+        <th class="th-sub">ACUM</th>
       </tr>
     </thead>
 
@@ -465,7 +635,7 @@
             class="form-control form-control-sm border-0 bg-transparent text-center"></td>
 
         <!-- Formateo a 1 decimal y sombreado gris para PRODUCCION TB -->
-        <td style="background-color: #cccccc;">
+        <td class="celda-tabla">
           <input type="number" step="0.1" data-col="prod_huevo_tab"
             value="{{ '%.1f'|format(f['prod_huevo_tab']|float) if f['prod_huevo_tab'] is not none and f['prod_huevo_tab']|string != '' else '' }}"
             class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark">
@@ -480,7 +650,7 @@
         </td>
 
         <!-- Formateo a 1 decimal y sombreado gris para H.AV.ALOJ TB -->
-        <td style="background-color: #cccccc;">
+        <td class="celda-tabla">
           <input type="number" step="0.1" data-col="h_av_aloj_tab"
             value="{{ '%.1f'|format(f['h_av_aloj_tab']|float) if f['h_av_aloj_tab'] is not none and f['h_av_aloj_tab']|string != '' else '' }}"
             class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark">
@@ -499,7 +669,7 @@
             class="form-control form-control-sm border-0 bg-transparent text-center text-dark"></td>
 
         <!-- Formateo a 1 decimal y sombreado gris para CONSUMO DE ALIMENTO TB -->
-        <td style="background-color: #cccccc;">
+        <td class="celda-tabla">
           <input type="number" step="0.1" data-col="consumo_alim_tab"
             value="{{ '%.1f'|format(f['consumo_alim_tab']|float) if f['consumo_alim_tab'] is not none and f['consumo_alim_tab']|string != '' else '' }}"
             class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark">
@@ -517,14 +687,14 @@
             class="form-control form-control-sm border-0 bg-transparent text-center"></td>
 
         <!-- CONVERSIÓN T. SEM (Fórmula =J*100/E*12) -->
-        <td style="background-color: #cccccc;">
+        <td class="celda-tabla">
           <input type="text" data-col="conv_sem_tab"
             value="{{ '{:,.1f}'.format(f['conv_sem_tab']|float) if f['conv_sem_tab'] is not none and f['conv_sem_tab']|string != '' else '' }}"
             class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly>
         </td>
 
         <!-- CONVERSIÓN T. ACUM (Fórmula =SUMA(J)*100/SUMA(E)*12) -->
-        <td style="background-color: #cccccc;">
+        <td class="celda-tabla">
           <input type="text" data-col="conv_acum_tab"
             value="{{ '{:,.1f}'.format(f['conv_acum_tab']|float) if f['conv_acum_tab'] is not none and f['conv_acum_tab']|string != '' else '' }}"
             class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly>
@@ -553,7 +723,7 @@
             class="form-control form-control-sm border-0 bg-transparent text-center"></td>
 
         <!-- Formateo a 2 decimales y sombreado gris para M.TAB (Mortalidad Acumulada Tabla) -->
-        <td style="background-color: #cccccc;">
+        <td class="celda-tabla">
           <input type="number" step="0.01" data-col="mort_tab"
             value="{{ '%.2f'|format(f['mort_tab']|float) if f['mort_tab'] is not none and f['mort_tab']|string != '' else '' }}"
             class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark">
@@ -563,7 +733,7 @@
             class="form-control form-control-sm border-0 bg-transparent text-center fw-bold"></td>
 
         <!-- Formateo a numero entero y sombreado gris para PESO AVES TB -->
-        <td style="background-color: #cccccc;">
+        <td class="celda-tabla">
           <input type="number" data-col="peso_ave_tab"
             value="{{ f['peso_ave_tab'] | int if f['peso_ave_tab'] is not none and f['peso_ave_tab']|string != '' else '' }}"
             class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark">
@@ -578,7 +748,7 @@
             class="form-control form-control-sm border-0 bg-transparent text-center fw-bold"></td>
 
         <!-- Formateo a 2 decimales y sombreado gris para PESO HUEVO TAB -->
-        <td style="background-color: #cccccc;">
+        <td class="celda-tabla">
           <input type="number" step="0.01" data-col="peso_huevo_tab"
             value="{{ '%.2f'|format(f['peso_huevo_tab']|float) if f['peso_huevo_tab'] is not none and f['peso_huevo_tab']|string != '' else '' }}"
             class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark">
@@ -594,8 +764,8 @@
               title="{{ f['observaciones'] or 'Escribir observación...' }}" placeholder="..."
               class="form-control form-control-sm border-0 bg-transparent text-start px-2 w-100 pe-4 text-dark">
 
-            <i class='bx bxs-chevron-down position-absolute'
-              style="right: 8px; cursor: pointer; color: #97271C; font-size: 1.4rem; z-index: 10;"
+            <i class='bx bxs-chevron-down position-absolute icono-obs'
+              
               onclick="abrirModalObs(this)" title="Ampliar observación"></i>
           </div>
         </td>
@@ -608,7 +778,7 @@
         </td>
 
         <!-- Formateo a numero entero y sombreado gris para MASA HUEVO TAB SEM -->
-        <td style="background-color: #cccccc;">
+        <td class="celda-tabla">
           <input type="number" data-col="masa_huevo_tab_sem"
             value="{{ f['masa_huevo_tab_sem'] | int if f['masa_huevo_tab_sem'] is not none and f['masa_huevo_tab_sem']|string != '' else '' }}"
             class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark">
@@ -622,7 +792,7 @@
         </td>
 
         <!-- Formateo a 1 decimal y sombreado gris para MASA HUEVO TAB ACUM -->
-        <td style="background-color: #cccccc;">
+        <td class="celda-tabla">
           <input type="number" step="0.1" data-col="masa_huevo_tab_acum"
             value="{{ '%.1f'|format(f['masa_huevo_tab_acum']|float) if f['masa_huevo_tab_acum'] is not none and f['masa_huevo_tab_acum']|string != '' else '' }}"
             class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark">
@@ -635,7 +805,7 @@
         </td>
 
         <!-- Formateo a numero entero y sombreado gris para CONSUMO AGUA TAB -->
-        <td style="background-color: #cccccc;">
+        <td class="celda-tabla">
           <input type="number" data-col="cons_agua_tab"
             value="{{ f['cons_agua_tab'] | int if f['cons_agua_tab'] is not none and f['cons_agua_tab']|string != '' else '' }}"
             class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark">
@@ -773,7 +943,7 @@
             class="form-control form-control-sm border-0 bg-transparent text-center text-dark" readonly>
         </td>
 
-        <td style="background-color: #cccccc;">
+        <td class="celda-tabla">
           <input type="text" data-col="consumo_acum_tab" value="{{ f['consumo_acum_tab'] }}"
             class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly>
         </td>
@@ -808,7 +978,7 @@
             class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly>
         </td>
         <!-- Suma Saldo Aves (Formateado a número entero y bloqueado) -->
-        <td style="background-color: #cccccc;">
+        <td class="celda-tabla">
           <input type="text" data-col="suma_saldo_aves"
             value="{{ f['suma_saldo_aves'] | int if f['suma_saldo_aves'] is not none and f['suma_saldo_aves']|string != '' else '' }}"
             class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly>
@@ -817,9 +987,10 @@
       </tr>
       {% else %}
       <tr>
-        <td colspan="70" class="text-center text-muted py-5">
-          <h5>No hay registros para este lote</h5>
-          <p>La estructura se generará automáticamente en el futuro.</p>
+        <td colspan="70" class="ps-vacio">
+          <i class="fas fa-inbox d-block"></i>
+          <p class="mb-1 fw-semibold" style="color: var(--text-secondary);">No hay registros para este lote</p>
+          <p class="mb-0" style="font-size: 0.8rem;">La estructura se generará automáticamente en el futuro.</p>
         </td>
       </tr>
       {% endfor %}
@@ -831,18 +1002,22 @@
 <div class="modal fade" id="modalObs" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-lg">
     <div class="modal-content">
-      <div class="modal-header bg-dark text-white">
-        <h5 class="modal-title"><i class='bx bx-edit me-2'></i>Detalle de Observación</h5>
+      <div class="modal-header" style="background-color: var(--table-header-bg); color: #ffffff; border-bottom: none;">
+        <h5 class="modal-title" style="font-size: 0.95rem;">
+          <i class="fas fa-comment-dots me-2"></i>Detalle de observación
+        </h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
+        <label class="form-label-design" for="textoObsModal">Observación</label>
         <textarea id="textoObsModal" class="form-control" rows="6"
           placeholder="Escriba toda la observación detallada aquí..."></textarea>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-        <button type="button" class="btn text-white" style="background-color: #97271C;"
-          onclick="guardarObsModal()">Guardar Texto</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary btn-sm" onclick="guardarObsModal()">
+          <i class="fas fa-check me-1"></i>Guardar texto
+        </button>
       </div>
     </div>
   </div>

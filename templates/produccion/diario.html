@@ -1,6 +1,10 @@
 {% extends 'generales/layout.html' %}
 {% block title %}Producción Diaria – Avícola San Martín{% endblock %}
 
+{% block head %}
+{% include 'planta_alimentos/_design_system.html' %}
+{% endblock %}
+
 {% block content %}
 <style>
   /* Escala normal (100%) */
@@ -44,75 +48,245 @@
       background-color: rgba(151, 39, 28, 0.12) !important; /* Vinotinto pastel */
       font-weight: 700 !important;
   }
+  /* ============================================================
+     AJUSTES DE DISEÑO (design system) - solo esta pantalla
+     ============================================================ */
+
+  /* Barra de filtro dentro del encabezado */
+  .ps-filtro-lote .form-label-design {
+    margin-bottom: 0;
+    white-space: nowrap;
+  }
+
+  .ps-filtro-lote .form-select {
+    font-size: 0.8rem;
+  }
+
+  /* Ficha del lote */
+  .ps-info-lote {
+    margin-bottom: var(--space-4);
+    overflow: hidden;
+  }
+
+  .ps-info-lote .ps-info-titulo {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.55rem 0.9rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--text-secondary);
+    background-color: var(--surface-alt);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .ps-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.45rem 1rem;
+    padding: 0.7rem 0.9rem;
+  }
+
+  @media (max-width: 575.98px) {
+    .ps-info-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+
+  .ps-info-item .ps-info-label {
+    display: block;
+    font-size: 0.63rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--text-muted);
+  }
+
+  .ps-info-item .ps-info-valor {
+    font-size: 0.84rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    word-break: break-word;
+  }
+
+  /* Cabeceras de la tabla */
+  .tabla-scroll thead th.th-black,
+  .tabla-scroll thead th.th-orange {
+    background-color: var(--table-header-bg) !important;
+    color: var(--table-header-text) !important;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    border-color: #2a3242 !important;
+  }
+
+  .tabla-scroll thead th.th-black,
+  .tabla-scroll thead th.th-orange {
+    box-shadow: inset 0 -1px 0 #1a202c, 0 1px 0 #1a202c !important;
+  }
+
+
+  /* Altura fija de la primera fila para que la segunda quede pegada sin huecos */
+  .tabla-scroll thead tr:nth-child(1) th {
+    height: 36px;
+    vertical-align: middle;
+    line-height: 1.15;
+  }
+
+  .tabla-scroll thead tr:nth-child(2) th {
+    top: 36px;
+    line-height: 1.15;
+  }
+
+  /* Subcabeceras (segunda fila) */
+  .tabla-scroll thead tr:nth-child(2) th.th-sub {
+    background-color: #e9edf1 !important;
+    color: var(--text-secondary) !important;
+    font-size: 0.64rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.2px;
+    border-bottom: 1px solid var(--border) !important;
+  }
+
+  /* Celdas de referencia (columnas de tabla) */
+  .tabla-scroll td.celda-tabla {
+    background-color: #eef0f2;
+  }
+
+  .tabla-scroll .celda-tabla input {
+    background-color: #eef0f2;
+    color: var(--text-primary);
+    font-weight: 600;
+  }
+
+  /* Separadores de las columnas fijas */
+  .th-fija-1 { box-shadow: 1px 0 0 var(--border) !important; }
+  .th-fija-2 { box-shadow: 2px 0 0 var(--border) !important; }
+  .th-fija-3 { box-shadow: 3px 0 0 var(--border) !important; }
+
+  /* Icono para ampliar la observacion */
+  .icono-obs {
+    right: 8px;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 1.25rem;
+    z-index: 10;
+    transition: color 0.15s ease;
+  }
+
+  .icono-obs:hover,
+  .icono-obs:focus-visible {
+    color: var(--action-primary);
+  }
+
+  /* Estado vacio */
+  .ps-vacio {
+    padding: 3rem 1rem;
+    text-align: center;
+    color: var(--text-muted);
+  }
+
+  .ps-vacio i {
+    font-size: 1.9rem;
+    color: var(--border);
+    margin-bottom: 0.5rem;
+  }
 </style>
 
-<!-- BARRA SUPERIOR UNIFICADA: TÍTULO + FILTRO + LOTE (COLAPSABLE) -->
-<div class="card mb-3 shadow-sm border-0" style="background-color: #212529;">
-  <div class="d-flex flex-wrap align-items-center justify-content-between px-3 py-2 gap-2">
-    <div class="d-flex flex-wrap align-items-center gap-3">
-      <h5 class="mb-0 fw-bold text-uppercase text-white" style="letter-spacing: 0.5px;">
-        INFORME DIARIO
-      </h5>
-      <form method="POST" class="d-flex flex-wrap align-items-center gap-2 m-0">
-        <label for="lote" class="mb-0 fw-bold text-light text-nowrap" style="font-size: 0.9rem;">SELECCIONE UN LOTE:</label>
-        <select name="lote" id="lote" class="form-select form-select-sm border-0 fw-bold shadow-none" style="width: 220px;">
-          <option value="">-- Seleccione --</option>
-          {% for l in lotes %}
-          <option value="{{ l }}" {% if lote_seleccionado==l %}selected{% endif %}>LOTE {{ l }}</option>
-          {% endfor %}
-        </select>
-        <button type="submit" class="btn btn-naranja btn-sm fw-bold px-3 border-0">Cargar Datos</button>
-      </form>
+<!-- ENCABEZADO: TÍTULO + FILTRO DE LOTE -->
+<div class="page-header">
+  <div class="d-flex align-items-center gap-3">
+    <div class="page-icon">
+      <i class="fas fa-egg"></i>
     </div>
+    <div>
+      <h2 class="page-title mb-0">Informe diario</h2>
+      <p class="page-subtitle mb-0">Registro diario de producción, consumo y mortalidad</p>
+    </div>
+  </div>
+
+  <div class="d-flex flex-wrap align-items-center gap-2">
     {% if lote_seleccionado %}
-    <div class="d-flex align-items-center gap-2">
-      <span class="badge bg-naranja fs-6">LOTE: {{ lote_seleccionado }}</span>
-      <button class="btn btn-sm btn-outline-light" type="button" data-bs-toggle="collapse" data-bs-target="#collapseInfoGeneral" aria-expanded="true" aria-controls="collapseInfoGeneral" title="Mostrar/ocultar información del lote">
-        <i class='bx bx-chevron-down fs-5 icono-colapso'></i>
-      </button>
-    </div>
+    <span class="badge-estado badge-neutro">Lote {{ lote_seleccionado }}</span>
+    {% endif %}
+
+    <form method="POST" class="ps-filtro-lote d-flex flex-wrap align-items-center gap-2 m-0">
+      <label for="lote" class="form-label-design">Seleccione un lote</label>
+      <select name="lote" id="lote" class="form-select form-select-sm" style="width: 200px;">
+        <option value="">-- Seleccione --</option>
+        {% for l in lotes %}
+        <option value="{{ l }}" {% if lote_seleccionado==l %}selected{% endif %}>LOTE {{ l }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="btn btn-primary btn-sm">Cargar Datos</button>
+    </form>
+
+    {% if lote_seleccionado %}
+    <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse"
+      data-bs-target="#collapseInfoGeneral" aria-expanded="true" aria-controls="collapseInfoGeneral"
+      title="Mostrar/ocultar información del lote">
+      <i class='bx bx-chevron-down fs-5 icono-colapso'></i>
+    </button>
     {% endif %}
   </div>
-  {% if lote_seleccionado %}
-  <div class="collapse show" id="collapseInfoGeneral">
-      <div class="card-body p-0">
-        <table class="table table-bordered table-sm mb-0">
-          <tbody class="align-middle">
-            <tr>
-              <th class="bg-light text-end pe-3" style="width:20%;">Cliente:</th>
-              <td class="fw-bold text-dark" style="width:30%;">{{ cabecera.cliente or '---' }}</td>
-              <th class="bg-light text-end pe-3" style="width:20%;">Resp. Técnico:</th>
-              <td class="fw-semibold text-dark" style="width:30%;">{{ cabecera.responsable_tecnico or '---' }}</td>
-            </tr>
-            <tr>
-              <th class="bg-light text-end pe-3">Granja Levante:</th>
-              <td class="text-dark">{{ cabecera.granja_lev or '---' }}</td>
-              <th class="bg-light text-end pe-3">Ciudad:</th>
-              <td class="text-dark">{{ cabecera.ciudad or '---' }}</td>
-            </tr>
-            <tr>
-              <th class="bg-light text-end pe-3">Fecha Recepción:</th>
-              <td class="text-dark">{{ cabecera.fecha_recepcion or '---' }}</td>
-              <th class="bg-light text-end pe-3">Tipo Galpón:</th>
-              <td class="text-dark">{{ cabecera.tipo_galpon or '---' }}</td>
-            </tr>
-            <tr>
-              <th class="bg-light text-end pe-3">Nº Pollitas Recibidas:</th>
-              <td class="fw-bold text-dark">{{ cabecera.no_pollitas_recibidas or '---' }}</td>
-              <th class="bg-light text-end pe-3">Clima:</th>
-              <td class="text-dark">{{ cabecera.clima or '---' }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-  </div>
-  {% endif %}
 </div>
+
+{% if lote_seleccionado %}
+<div class="card card-clean ps-info-lote">
+  <div class="ps-info-titulo">
+    <i class="fas fa-circle-info"></i> Información del lote
+  </div>
+  <div class="collapse show" id="collapseInfoGeneral">
+    <div class="ps-info-grid">
+      <div class="ps-info-item">
+        <span class="ps-info-label">Cliente</span>
+        <span class="ps-info-valor">{{ cabecera.cliente or '---' }}</span>
+      </div>
+      <div class="ps-info-item">
+        <span class="ps-info-label">Resp. técnico</span>
+        <span class="ps-info-valor">{{ cabecera.responsable_tecnico or '---' }}</span>
+      </div>
+      <div class="ps-info-item">
+        <span class="ps-info-label">Granja levante</span>
+        <span class="ps-info-valor">{{ cabecera.granja_lev or '---' }}</span>
+      </div>
+      <div class="ps-info-item">
+        <span class="ps-info-label">Ciudad</span>
+        <span class="ps-info-valor">{{ cabecera.ciudad or '---' }}</span>
+      </div>
+      <div class="ps-info-item">
+        <span class="ps-info-label">Fecha recepción</span>
+        <span class="ps-info-valor">{{ cabecera.fecha_recepcion or '---' }}</span>
+      </div>
+      <div class="ps-info-item">
+        <span class="ps-info-label">Tipo galpón</span>
+        <span class="ps-info-valor">{{ cabecera.tipo_galpon or '---' }}</span>
+      </div>
+      <div class="ps-info-item">
+        <span class="ps-info-label">Nº pollitas recibidas</span>
+        <span class="ps-info-valor">{{ cabecera.no_pollitas_recibidas or '---' }}</span>
+      </div>
+      <div class="ps-info-item">
+        <span class="ps-info-label">Clima</span>
+        <span class="ps-info-valor">{{ cabecera.clima or '---' }}</span>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
 {% if lote_seleccionado %}
 {% else %}
 <!-- Mensaje de espera inicial -->
-<div class="alert alert-info text-center shadow-sm">
-  <i class='bx bx-up-arrow-alt fs-4 align-middle'></i> Seleccione un lote en la barra superior para ver su información y registros diarios.
+<div class="card card-clean">
+  <div class="card-body text-center py-5">
+    <i class="fas fa-hand-pointer d-block mb-2" style="font-size: 1.7rem; color: var(--border);"></i>
+    <p class="mb-1 fw-semibold" style="color: var(--text-secondary);">Seleccione un lote</p>
+    <p class="mb-0" style="font-size: 0.8rem; color: var(--text-muted);">
+      Elija un lote en la barra superior para ver su información y registros diarios.
+    </p>
+  </div>
 </div>
 {% endif %}
 
@@ -158,9 +332,9 @@
         <th rowspan="2" class="th-orange" style="position: sticky; top: 0; z-index: 10;">Agua</th>
       </tr>
       <tr>
-        <th class="th-black" style="position: sticky; top: 36px; z-index: 10;">Días</th>
-        <th class="th-black" style="position: sticky; top: 36px; z-index: 10;">Semana</th>
-        <th class="th-black" style="position: sticky; top: 36px; z-index: 10;">Kilos</th>
+        <th class="th-sub" style="position: sticky; top: 36px; z-index: 10;">Días</th>
+        <th class="th-sub" style="position: sticky; top: 36px; z-index: 10;">Semana</th>
+        <th class="th-sub" style="position: sticky; top: 36px; z-index: 10;">Kilos</th>
       </tr>
     </thead>
 
@@ -195,8 +369,8 @@
                    title="{{ f['observaciones'] or 'Escribir observación...' }}" placeholder="..." 
                    class="form-control form-control-sm border-0 bg-transparent text-start px-2 w-100 pe-4">
             
-            <i class='bx bxs-chevron-down position-absolute' 
-               style="right: 8px; cursor: pointer; color: #97271C; font-size: 1.4rem; z-index: 5;" 
+            <i class='bx bxs-chevron-down position-absolute icono-obs' 
+                
                onclick="abrirModalObs(this)" title="Ampliar observación"></i>
           </div>
         </td>
@@ -208,7 +382,7 @@
         <td><input type="text" data-col="consumo_gr_a_d" value="{{ f['consumo_gr_a_d'] if f['consumo_gr_a_d'] and f['consumo_gr_a_d']|float != 0 else '' }}"
             class="form-control form-control-sm border-0 bg-transparent text-center celda-consumo_gr_a_d" readonly></td>
             
-        <td style="background-color: #cccccc;"><input type="number" step="0.1" data-col="consumo_gr_a_tab" value="{{ f['consumo_gr_a_tab'] if f['consumo_gr_a_tab'] and f['consumo_gr_a_tab']|float != 0 else '' }}"
+        <td class="celda-tabla"><input type="number" step="0.1" data-col="consumo_gr_a_tab" value="{{ f['consumo_gr_a_tab'] if f['consumo_gr_a_tab'] and f['consumo_gr_a_tab']|float != 0 else '' }}"
             class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark celda-consumo_gr_a_tab">
         </td>
         
@@ -225,8 +399,9 @@
       </tr>
       {% else %}
       <tr>
-        <td colspan="15" class="text-center text-muted py-5">
-          <h5>No hay registros diarios para este lote</h5>
+        <td colspan="15" class="ps-vacio">
+          <i class="fas fa-inbox d-block"></i>
+          <p class="mb-1 fw-semibold" style="color: var(--text-secondary);">No hay registros diarios para este lote</p>
         </td>
       </tr>
       {% endfor %}
@@ -238,16 +413,21 @@
 <div class="modal fade" id="modalObs" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-lg">
     <div class="modal-content">
-      <div class="modal-header bg-dark text-white">
-        <h5 class="modal-title"><i class='bx bx-edit me-2'></i>Detalle de Observación</h5>
+      <div class="modal-header" style="background-color: var(--table-header-bg); color: #ffffff; border-bottom: none;">
+        <h5 class="modal-title" style="font-size: 0.95rem;">
+          <i class="fas fa-comment-dots me-2"></i>Detalle de observación
+        </h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
+        <label class="form-label-design" for="textoObsModal">Observación</label>
         <textarea id="textoObsModal" class="form-control" rows="6" placeholder="Escriba toda la observación detallada aquí..."></textarea>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-        <button type="button" class="btn text-white" style="background-color: #97271C;" onclick="guardarObsModal()">Guardar Texto</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary btn-sm" onclick="guardarObsModal()">
+          <i class="fas fa-check me-1"></i>Guardar texto
+        </button>
       </div>
     </div>
   </div>
