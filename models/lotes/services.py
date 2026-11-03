@@ -22,7 +22,8 @@ def get_lotes_distintos():
     """
     return model.fetch_lotes_distintos()
 
-def get_todos_los_lotes():
+
+def get_todos_los_lotes(cur=None):
     """
     Obtiene la lista completa de lotes y realiza una "inyección" inteligente de datos.
     Busca específicamente la fila del "Día 0" en la tabla 'primera_semana' para cada lote
@@ -30,44 +31,65 @@ def get_todos_los_lotes():
     Uso común: Es fundamental para que, al presionar el botón de "Editar", 
     los campos del Día 0 en el formulario web aparezcan ya llenos.
     """
-    lotes = model.fetch_todos_los_lotes()
-    
+    lotes = model.fetch_todos_los_lotes(cur)
+
     from models.base import get_db_connection
     import psycopg2.extras
-    
-    conn = get_db_connection()
-    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    propio = cur is None
+    conn = get_db_connection() if propio else None
+    cur_bd = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) if propio else cur
+
+    # Si el cursor del llamador no devuelve diccionarios, se normaliza aqui
+    if lotes and not isinstance(lotes[0], dict):
+        columnas = [d[0] for d in cur_bd.description]
+        lotes = [dict(zip(columnas, fila)) for fila in lotes]
+
     try:
+        # Una sola consulta trae el Día 0 de todos los lotes (antes era una por lote)
+        cur_bd.execute("""
+            SELECT 
+                lote,
+                mortalidad AS dia0_mortalidad, 
+                sel AS dia0_sel,
+                consumo_kg AS dia0_consumo_kg, 
+                cons_k_acum AS dia0_cons_k_acum,
+                peso_tabla AS dia0_peso_tabla, 
+                peso_real AS dia0_peso_real,
+                unif_10_menos AS dia0_unif_10_menos, 
+                porc_uniformidad AS dia0_porc_uniformidad,
+                unif_10_mas AS dia0_unif_10_mas, 
+                coef_variacion AS dia0_coef_variacion
+            FROM primera_semana 
+            WHERE semana = '0'
+        """)
+        columnas_dia0 = [
+            'dia0_mortalidad', 'dia0_sel', 'dia0_consumo_kg', 'dia0_cons_k_acum',
+            'dia0_peso_tabla', 'dia0_peso_real', 'dia0_unif_10_menos',
+            'dia0_porc_uniformidad', 'dia0_unif_10_mas', 'dia0_coef_variacion',
+        ]
+        dia0_por_lote = {}
+        for fila in cur_bd.fetchall():
+            if isinstance(fila, dict):
+                datos = dict(fila)
+                nombre_lote = datos.pop('lote')
+            else:
+                nombre_lote = fila[0]
+                datos = dict(zip(columnas_dia0, fila[1:]))
+            dia0_por_lote[nombre_lote] = datos
+
         for lote in lotes:
             lote_nombre = lote.get('lote')
-            if lote_nombre:
-                # Buscamos exclusivamente la fila de la semana '0' para este lote
-                cur.execute("""
-                    SELECT 
-                        mortalidad AS dia0_mortalidad, 
-                        sel AS dia0_sel,
-                        consumo_kg AS dia0_consumo_kg, 
-                        cons_k_acum AS dia0_cons_k_acum,
-                        peso_tabla AS dia0_peso_tabla, 
-                        peso_real AS dia0_peso_real,
-                        unif_10_menos AS dia0_unif_10_menos, 
-                        porc_uniformidad AS dia0_porc_uniformidad,
-                        unif_10_mas AS dia0_unif_10_mas, 
-                        coef_variacion AS dia0_coef_variacion
-                    FROM primera_semana 
-                    WHERE lote = %s AND semana = '0' LIMIT 1
-                """, (lote_nombre,))
-                
-                dia0_data = cur.fetchone()
-                
-                if dia0_data:
-                    # Fusionamos los datos del Día 0 dentro del diccionario del lote actual
-                    lote.update(dict(dia0_data))
+            if lote_nombre and lote_nombre in dia0_por_lote:
+                lote.update(dict(dia0_por_lote[lote_nombre]))
     except Exception as e:
         print(f"[ERROR FETCH DÍA 0 PARA EDICIÓN]: {e}")
     finally:
-        cur.close()
-        conn.close()
+        if propio:
+            cur_bd.close()
+            conn.close()
+
+    return lotes
         
     return lotes
 
@@ -236,9 +258,9 @@ def borrar_lote(id_lote):
     """
     return model.delete_lote(id_lote)
 
-def get_opciones_dinamicas():
+def get_opciones_dinamicas(cur=None):
     """
     Llama al modelo para obtener el diccionario de autocompletados (ciudades, marcas, etc.).
     Sirve para enviar estos datos al HTML y facilitar la digitación del usuario.
     """
-    return model.fetch_opciones_dinamicas()
+    return model.fetch_opciones_dinamicas(cur)

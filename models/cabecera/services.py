@@ -1,14 +1,18 @@
 # models/cabecera/services.py
-from models.cabecera.model import insert_lote_if_not_exists, fetch_cabecera_by_lote, update_cabecera_column
+from models.cabecera.model import (
+    insert_lote_if_not_exists,
+    insert_y_obtener_cabecera,
+    fetch_cabecera_by_lote,
+    update_cabecera_column,
+)
 
 def get_cabecera_info(lote: str):
     """ Lógica para obtener la información de la cabecera """
     if not lote or lote == 'VACIO': 
         return {}
     
-    # Llamamos a la capa de datos (model.py)
-    insert_lote_if_not_exists(lote)
-    return fetch_cabecera_by_lote(lote)
+    # Crea el lote si falta y devuelve la cabecera en una sola consulta
+    return insert_y_obtener_cabecera(lote)
 
 def update_cabecera_unificada(lote: str, columna: str, valor: str) -> tuple[bool, str]:
     """ Lógica y validación antes de actualizar la tabla """

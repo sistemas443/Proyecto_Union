@@ -11,10 +11,11 @@ def generar_estructura_clasificacion(lote_nombre, id_lote):
     valores = [(lote_nombre, id_lote, sv) for sv in range(18, 110)]
     model.insert_estructura(valores)
 
-def get_clasificacion_all(lote_nombre: str = ''):
+def get_clasificacion_all(lote_nombre: str = '', cabecera=None):
     if not lote_nombre or lote_nombre == 'VACIO': return []
-    
-    cabecera = fetch_cabecera_by_lote(lote_nombre)
+
+    if cabecera is None:
+        cabecera = fetch_cabecera_by_lote(lote_nombre)
     if not cabecera: return []
     
     id_lote = cabecera['id']

@@ -11,10 +11,11 @@ semanal_bp = Blueprint('semanal', __name__)
 @login_requerido
 def semanal():
     lote_seleccionado = request.form.get('lote', '') if request.method == 'POST' else ''
+    cabecera = get_cabecera_info(lote_seleccionado)
     return render_template(
         'produccion/semanal.html',
-        filas=get_semanal_all(lote_seleccionado),
+        filas=get_semanal_all(lote_seleccionado, cabecera),
         lotes=get_lotes_distintos(),
         lote_seleccionado=lote_seleccionado,
-        cabecera=get_cabecera_info(lote_seleccionado)
+        cabecera=cabecera
     )

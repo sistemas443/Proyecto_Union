@@ -22,18 +22,24 @@ def vista_lotes():
 
         cur.execute("SELECT id, nombre FROM empresas ORDER BY nombre ASC")
         lista_empresas = [{'id': row[0], 'nombre': row[1]} for row in cur.fetchall()]
+
+        # Los 4 catálogos con foto (solo activos) reutilizan la misma conexión
+        cat_nutr_lev = catalogos_services.listar_catalogo('nutricionista_lev', cur)
+        cat_nutr_prod = catalogos_services.listar_catalogo('nutricionista_prod', cur)
+        cat_variedades = catalogos_services.listar_catalogo('variedad', cur)
+        cat_marcas = catalogos_services.listar_catalogo('marca_galpon', cur)
+
+        # Lotes y opciones de autocompletado, también en la misma conexión
+        lotes = get_todos_los_lotes(cur)
+        opciones = get_opciones_dinamicas(cur)
     except Exception as e:
         print(f"[ERROR CATALOGOS]: {e}")
         lista_responsables, lista_empresas = [], []
+        cat_nutr_lev, cat_nutr_prod, cat_variedades, cat_marcas = [], [], [], []
+        lotes, opciones = [], {}
     finally:
         cur.close()
         conn.close()
-
-    # Los 4 catálogos con foto (solo activos)
-    cat_nutr_lev = catalogos_services.listar_catalogo('nutricionista_lev')
-    cat_nutr_prod = catalogos_services.listar_catalogo('nutricionista_prod')
-    cat_variedades = catalogos_services.listar_catalogo('variedad')
-    cat_marcas = catalogos_services.listar_catalogo('marca_galpon')
 
     def _fotos(tipo, items):
         return {i['nombre']: catalogos_services.url_foto_por_id(tipo, i['id']) for i in items}
@@ -47,8 +53,8 @@ def vista_lotes():
 
     return render_template(
         'produccion/lotes.html',
-        lotes=get_todos_los_lotes(),
-        opciones=get_opciones_dinamicas(),
+        lotes=lotes,
+        opciones=opciones,
         cat_responsables=lista_responsables,
         empresas=lista_empresas,
         empresas_map={emp['id']: emp['nombre'] for emp in lista_empresas},

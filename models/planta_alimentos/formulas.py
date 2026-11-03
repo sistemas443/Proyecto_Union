@@ -49,6 +49,9 @@ class FormulaDetalle:
                         SELECT 
                             fd.item_id,
                             fd.lote_id,
+                            -- Las cantidades de la receta estan en gramos por tonelada y los
+                            -- precios en $/kg: el total representa el costo de 1.000 toneladas,
+                            -- la misma escala que la pantalla "Costos por dieta".
                             SUM(fd.cantidad_kg * COALESCE(NULLIF(fd.precio_guardado, 0), mp.precio_actual_kg)) AS total_precio_base,
                             SUM(fd.cantidad_kg * COALESCE(fd.flete_guardado, mp.flete, 0)) AS total_flete,
                             SUM(fd.cantidad_kg * (COALESCE(NULLIF(fd.precio_guardado, 0), mp.precio_actual_kg)
@@ -67,9 +70,9 @@ class FormulaDetalle:
                         cl.empresa_id,
                         COALESCE(e.costo_maquila, 0) AS costo_maquila,
                         
-                        (cb.total_precio_base + cb.total_flete + COALESCE(e.costo_maquila, 0)) AS precio_flete_maquila,
-                        (cb.total_con_iva + COALESCE(e.costo_maquila, 0)) AS precio_iva_maquila,
-                        (cb.total_con_iva + cb.total_flete + COALESCE(e.costo_maquila, 0)) AS precio_flete_iva_maquila,
+                        (cb.total_precio_base + cb.total_flete + COALESCE(e.costo_maquila, 0) * 1000) AS precio_flete_maquila,
+                        (cb.total_con_iva + COALESCE(e.costo_maquila, 0) * 1000) AS precio_iva_maquila,
+                        (cb.total_con_iva + cb.total_flete + COALESCE(e.costo_maquila, 0) * 1000) AS precio_flete_iva_maquila,
 
                         -- Motivo por el cual la dieta no se puede ubicar en la empresa
                         CASE
@@ -87,7 +90,26 @@ class FormulaDetalle:
                 """
                 cur.execute(consulta, parametros)
                 columnas = [desc[0] for desc in cur.description]
-                return [dict(zip(columnas, fila)) for fila in cur.fetchall()]
+                filas = [dict(zip(columnas, fila)) for fila in cur.fetchall()]
+
+                # Cada dieta se devuelve en dos filas: con maquila y sin maquila
+                resultado = []
+                for fila in filas:
+                    maquila = float(fila.get('costo_maquila') or 0) * 1000  # por 1.000 t
+
+                    con_maquila = dict(fila)
+                    con_maquila['tipo_maquila'] = 'Con maquila'
+
+                    sin_maquila = dict(fila)
+                    sin_maquila['tipo_maquila'] = 'Sin maquila'
+                    sin_maquila['precio_flete_maquila'] = float(fila['precio_flete_maquila']) - maquila
+                    sin_maquila['precio_iva_maquila'] = float(fila['precio_iva_maquila']) - maquila
+                    sin_maquila['precio_flete_iva_maquila'] = float(fila['precio_flete_iva_maquila']) - maquila
+
+                    resultado.append(con_maquila)
+                    resultado.append(sin_maquila)
+
+                return resultado
         except Exception as e:
             print(f"Error al generar consolidado de costos: {e}")
             return []
@@ -144,6 +166,131 @@ class FormulaDetalle:
         finally:
             conn.close()
     
+
+    @staticmethod
+    def lotes_con_formulas():
+        """Lista los lotes que tienen al menos una formula registrada."""
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT DISTINCT lote_id
+                    FROM formula_detalle
+                    WHERE lote_id IS NOT NULL AND TRIM(lote_id) <> ''
+                    ORDER BY lote_id
+                """)
+                return [r[0] for r in cur.fetchall()]
+        except Exception as e:
+            print(f"Error al listar lotes con formulas: {e}")
+            return []
+        finally:
+            conn.close()
+
+    @staticmethod
+    def costos_por_lote(lote):
+        """
+        Devuelve las dietas registradas de un lote con el detalle de costos de cada
+        version: cantidad en gramos y costo a escala de 1.000 toneladas
+        (cantidad_kg tal como esta guardada x precio por kg).
+
+        Cada dieta incluye sus insumos y los totales con y sin maquila.
+        """
+        if not lote:
+            return []
+
+        MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+                 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+
+        conn = get_db_connection()
+        try:
+            with conn.cursor(cursor_factory=DictCursor) as cur:
+                cur.execute("""
+                    SELECT
+                        fd.item_id,
+                        fd.version,
+                        COALESCE(ca.nombre, 'Dieta ' || fd.item_id) AS nombre_dieta,
+                        MIN(fd.fecha_creacion) OVER (PARTITION BY fd.item_id, fd.version)    AS fecha_creacion,
+                        MIN(fd.fecha_vencimiento) OVER (PARTITION BY fd.item_id, fd.version) AS fecha_vencimiento,
+                        mp.nombre                 AS materia,
+                        fd.cantidad_kg,
+                        COALESCE(NULLIF(fd.precio_guardado, 0), mp.precio_actual_kg) AS precio,
+                        COALESCE(fd.iva_guardado, mp.iva, 1)   AS iva,
+                        COALESCE(fd.flete_guardado, mp.flete, 0) AS flete,
+                        COALESCE(mp.es_maquila, FALSE) AS es_maquila
+                    FROM formula_detalle fd
+                    JOIN materias_primas mp ON mp.id = fd.materia_prima_id
+                    LEFT JOIN catalogo_alimentos ca ON ca.item_id = fd.item_id
+                    WHERE fd.lote_id = %s
+                    ORDER BY MIN(fd.fecha_vencimiento) OVER (PARTITION BY fd.item_id, fd.version) DESC NULLS LAST,
+                             fd.item_id, fd.version DESC, mp.nombre
+                """, (lote,))
+                filas = cur.fetchall()
+        except Exception as e:
+            print(f"Error al obtener costos por lote: {e}")
+            return []
+        finally:
+            conn.close()
+
+        dietas = {}
+        for f in filas:
+            clave = (f['item_id'], f['version'])
+            if clave not in dietas:
+                vencimiento = f['fecha_vencimiento']
+                if vencimiento:
+                    mes = f"{MESES[vencimiento.month - 1]} {vencimiento.year}"
+                else:
+                    mes = 'Sin fecha'
+                dietas[clave] = {
+                    'item_id': f['item_id'],
+                    'version': f['version'],
+                    'nombre_dieta': f['nombre_dieta'],
+                    'lote': lote,
+                    'fecha_creacion': f['fecha_creacion'],
+                    'fecha_vencimiento': vencimiento,
+                    'mes': mes,
+                    'insumos': [],
+                    'total_cantidad': 0.0,
+                    'total_iva': 0.0,
+                    'total_flete': 0.0,
+                    'total_iva_flete': 0.0,
+                    'sin_maquila_iva': 0.0,
+                    'sin_maquila_flete': 0.0,
+                    'sin_maquila_iva_flete': 0.0,
+                }
+
+            cantidad = float(f['cantidad_kg'] or 0)
+            precio = float(f['precio'] or 0)
+            iva = float(f['iva'] or 1)
+            flete = float(f['flete'] or 0)
+
+            costo_iva = cantidad * precio * iva
+            costo_flete = cantidad * (precio + flete)
+            costo_iva_flete = cantidad * ((precio * iva) + flete)
+
+            dietas[clave]['insumos'].append({
+                'materia': f['materia'],
+                'cantidad': cantidad,
+                'precio': precio,
+                'iva': iva,
+                'flete': flete,
+                'es_maquila': bool(f['es_maquila']),
+                'costo_iva': costo_iva,
+                'costo_flete': costo_flete,
+                'costo_iva_flete': costo_iva_flete,
+            })
+
+            dieta = dietas[clave]
+            dieta['total_cantidad'] += cantidad
+            dieta['total_iva'] += costo_iva
+            dieta['total_flete'] += costo_flete
+            dieta['total_iva_flete'] += costo_iva_flete
+            if not f['es_maquila']:
+                dieta['sin_maquila_iva'] += costo_iva
+                dieta['sin_maquila_flete'] += costo_flete
+                dieta['sin_maquila_iva_flete'] += costo_iva_flete
+
+        return list(dietas.values())
+
     @staticmethod
     def crear_nueva_version(item_id, lote_id):
         conn = get_db_connection()

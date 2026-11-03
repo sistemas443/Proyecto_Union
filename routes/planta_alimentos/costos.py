@@ -6,6 +6,27 @@ from routes.routes import login_requerido
 from models.planta_alimentos.maestros import MateriaPrima
 from models.planta_alimentos.formulas import FormulaDetalle
 
+
+@planta_bp.route('/costos/por-dieta', methods=['GET'])
+@login_requerido
+def costos_por_dieta():
+    """Lista las dietas de un lote con el detalle de costos de cada version."""
+    lote = (request.args.get('lote') or '').strip()
+    lotes = FormulaDetalle.lotes_con_formulas()
+
+    if lote and lote not in lotes:
+        lote = ''
+
+    dietas = FormulaDetalle.costos_por_lote(lote) if lote else []
+
+    return render_template(
+        'planta_alimentos/costos_por_dieta.html',
+        lotes=lotes,
+        lote=lote,
+        dietas=dietas
+    )
+
+
 @planta_bp.route('/revision-costos/<int:item_id>/<string:lote_id>', methods=['GET'])
 @login_requerido
 def revision_costos(item_id, lote_id):
@@ -22,7 +43,8 @@ def revision_costos(item_id, lote_id):
         iva_mult = float(fila['iva']) # Asumiendo que 1.00 es sin IVA extra
         flete = float(fila['flete'])
 
-        # Cálculos por insumo
+        # Las cantidades estan en gramos por tonelada y el precio en $/kg:
+        # el total representa el costo de 1.000 toneladas (misma escala que Costos por dieta).
         costo_iva = cant * (precio * iva_mult)
         costo_flete = cant * (precio + flete)
         costo_iva_flete = cant * ((precio * iva_mult) + flete)

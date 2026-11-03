@@ -1,5 +1,6 @@
-from flask import Flask
+from flask import Flask, request
 from config import Config
+import gzip
 import werkzeug.serving
 
 # Importación de Blueprints
@@ -56,6 +57,58 @@ def registrar_errores_globales(app):
 
         app.logger.exception('Excepción no controlada')
         return 'Error interno del servidor. El fallo quedó registrado en el historial.', 500
+
+
+def configurar_compresion(app):
+    """
+    Comprime con gzip las respuestas de texto (HTML, CSS, JS, JSON, SVG).
+
+    No toca imagenes, Excel ni archivos descargables: solo cambia como viaja
+    el contenido por la red, el navegador lo descomprime y recibe exactamente
+    lo mismo que antes.
+    """
+    TIPOS_COMPRIMIBLES = (
+        'text/',
+        'application/json',
+        'application/javascript',
+        'application/xml',
+        'image/svg+xml',
+    )
+    TAMANO_MINIMO = 500  # bytes
+
+    @app.after_request
+    def comprimir(respuesta):
+        # Respuestas que no se deben tocar
+        if respuesta.direct_passthrough:
+            return respuesta
+        if respuesta.status_code < 200 or respuesta.status_code >= 300:
+            return respuesta
+        if respuesta.status_code == 204:
+            return respuesta
+        if respuesta.headers.get('Content-Encoding'):
+            return respuesta
+
+        codificaciones = (request.headers.get('Accept-Encoding') or '').lower()
+        if 'gzip' not in codificaciones:
+            return respuesta
+
+        tipo = respuesta.mimetype or ''
+        if not tipo.startswith(TIPOS_COMPRIMIBLES):
+            return respuesta
+
+        datos = respuesta.get_data()
+        if len(datos) < TAMANO_MINIMO:
+            return respuesta
+
+        comprimido = gzip.compress(datos, 6)
+        if len(comprimido) >= len(datos):
+            return respuesta
+
+        respuesta.set_data(comprimido)
+        respuesta.headers['Content-Encoding'] = 'gzip'
+        respuesta.headers['Content-Length'] = str(len(comprimido))
+        respuesta.vary.add('Accept-Encoding')
+        return respuesta
 
 
 def create_app():
@@ -126,6 +179,10 @@ def create_app():
     # --- REGISTRO DE ERRORES NO ESPERADOS EN EL HISTORIAL DE AUDITORÍA ---
     registrar_errores_globales(app)
     # ------------------------------------
+
+    # --- COMPRESION GZIP DE LAS RESPUESTAS DE TEXTO ---
+    configurar_compresion(app)
+    # --------------------------------------------------
 
     return app
 

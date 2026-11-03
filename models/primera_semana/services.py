@@ -128,7 +128,7 @@ def generar_estructura_primera_semana(lote_nombre, fecha_recepcion, datos_dia_0=
         conn.close()
 
 
-def get_primera_semana_by_lote(lote_nombre):
+def get_primera_semana_by_lote(lote_nombre, cabecera=None):
     """
     Consulta los registros de la primera semana, sincroniza los datos relevantes desde 
     la tabla de registro diario (data_diario), aplica cálculos en cascada y formatea 
@@ -137,7 +137,8 @@ def get_primera_semana_by_lote(lote_nombre):
     if not lote_nombre or lote_nombre == 'VACIO':
         return []
 
-    cabecera = fetch_cabecera_by_lote(lote_nombre)
+    if cabecera is None:
+        cabecera = fetch_cabecera_by_lote(lote_nombre)
     if not cabecera:
         return []
 

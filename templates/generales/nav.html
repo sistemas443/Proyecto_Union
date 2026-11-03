@@ -68,8 +68,15 @@
               <li><h6 class="dropdown-header">Operación</h6></li>
               <li><a class="dropdown-item{{ ' active' if ep == 'planta_alimentos.resumen_lote_formulas' }}" href="{{ url_for('planta_alimentos.resumen_lote_formulas') }}"><i class="fas fa-layer-group"></i> Fórmulas por Lote</a></li>
               <li><a class="dropdown-item{{ ' active' if ep.startswith('planta_alimentos.cotizaciones') }}" href="{{ url_for('planta_alimentos.cotizaciones.cotizaciones_list') }}"><i class="fas fa-file-invoice-dollar"></i> Cotizaciones</a></li>
-              <li><a class="dropdown-item{{ ' active' if ep.startswith('planta_alimentos.proyecciones') }}" href="{{ url_for('planta_alimentos.proyecciones.proyeccion_costos') }}"><i class="fas fa-chart-line"></i> Proyección y Costos</a></li>
+              <li><a class="dropdown-item{{ ' active' if ep.startswith('planta_alimentos.proyecciones') }}" href="{{ url_for('planta_alimentos.proyecciones.proyeccion_costos') }}"><i class="fas fa-chart-line"></i> Proyección</a></li>
               <li><a class="dropdown-item{{ ' active' if ep == 'planta_alimentos.matriz_mensual_compras' }}" href="{{ url_for('planta_alimentos.matriz_mensual_compras') }}"><i class="fas fa-table"></i> Compras de Materias Primas</a></li>
+              <li class="dropdown-submenu">
+                <a class="dropdown-item{{ ' active' if ep in ['planta_alimentos.costos_por_dieta', 'planta_alimentos.consolidado_precios'] }}" href="#" role="button"><i class="fas fa-dollar-sign"></i> Costos</a>
+                <ul class="dropdown-menu dropdown-menu-dark planta-submenu">
+                  <li><a class="dropdown-item{{ ' active' if ep == 'planta_alimentos.costos_por_dieta' }}" href="{{ url_for('planta_alimentos.costos_por_dieta') }}"><i class="fas fa-list-ul"></i> Costos por dieta</a></li>
+                  <li><a class="dropdown-item{{ ' active' if ep == 'planta_alimentos.consolidado_precios' }}" href="{{ url_for('planta_alimentos.consolidado_precios') }}"><i class="fas fa-table"></i> Consolidado de precios</a></li>
+                </ul>
+              </li>
               <li class="dropdown-submenu">
                 <a class="dropdown-item{{ ' active' if ep == 'planta_alimentos.resumen_inventario' or ep == 'planta_alimentos.inventario_dietas' }}" href="#" role="button"><i class="fas fa-boxes"></i> Inventarios</a>
                 <ul class="dropdown-menu dropdown-menu-dark planta-submenu">
@@ -140,8 +147,15 @@
               <li><h6 class="dropdown-header">Operación</h6></li>
               <li><a class="dropdown-item{{ ' active' if ep == 'planta_alimentos.resumen_lote_formulas' }}" href="{{ url_for('planta_alimentos.resumen_lote_formulas') }}"><i class="fas fa-layer-group"></i> Fórmulas por Lote</a></li>
               <li><a class="dropdown-item{{ ' active' if ep.startswith('planta_alimentos.cotizaciones') }}" href="{{ url_for('planta_alimentos.cotizaciones.cotizaciones_list') }}"><i class="fas fa-file-invoice-dollar"></i> Cotizaciones</a></li>
-              <li><a class="dropdown-item{{ ' active' if ep.startswith('planta_alimentos.proyecciones') }}" href="{{ url_for('planta_alimentos.proyecciones.proyeccion_costos') }}"><i class="fas fa-chart-line"></i> Proyección y Costos</a></li>
+              <li><a class="dropdown-item{{ ' active' if ep.startswith('planta_alimentos.proyecciones') }}" href="{{ url_for('planta_alimentos.proyecciones.proyeccion_costos') }}"><i class="fas fa-chart-line"></i> Proyección</a></li>
               <li><a class="dropdown-item{{ ' active' if ep == 'planta_alimentos.matriz_mensual_compras' }}" href="{{ url_for('planta_alimentos.matriz_mensual_compras') }}"><i class="fas fa-table"></i> Compras de Materias Primas</a></li>
+              <li class="dropdown-submenu">
+                <a class="dropdown-item{{ ' active' if ep in ['planta_alimentos.costos_por_dieta', 'planta_alimentos.consolidado_precios'] }}" href="#" role="button"><i class="fas fa-dollar-sign"></i> Costos</a>
+                <ul class="dropdown-menu dropdown-menu-dark planta-submenu">
+                  <li><a class="dropdown-item{{ ' active' if ep == 'planta_alimentos.costos_por_dieta' }}" href="{{ url_for('planta_alimentos.costos_por_dieta') }}"><i class="fas fa-list-ul"></i> Costos por dieta</a></li>
+                  <li><a class="dropdown-item{{ ' active' if ep == 'planta_alimentos.consolidado_precios' }}" href="{{ url_for('planta_alimentos.consolidado_precios') }}"><i class="fas fa-table"></i> Consolidado de precios</a></li>
+                </ul>
+              </li>
               <li class="dropdown-submenu">
                 <a class="dropdown-item{{ ' active' if ep == 'planta_alimentos.resumen_inventario' or ep == 'planta_alimentos.inventario_dietas' }}" href="#" role="button"><i class="fas fa-boxes"></i> Inventarios</a>
                 <ul class="dropdown-menu dropdown-menu-dark planta-submenu">

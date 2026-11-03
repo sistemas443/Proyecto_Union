@@ -1,4 +1,5 @@
 {% extends 'generales/layout.html' %}
+{% block title %}{% if nombre_dieta %}{{ nombre_dieta }} · {% endif %}Ítem {{ item_id }} · Formulación – Avícola San Martín{% endblock %}
 
 {% block head %}
 {% include 'planta_alimentos/_design_system.html' %}
@@ -111,13 +112,11 @@
                 <i class="fas fa-flask"></i>
             </div>
             <div>
-                <h2 class="page-title mb-0">Formulación de dieta · Ítem {{ item_id }}</h2>
+                <h2 class="page-title mb-0">
+                    {% if nombre_dieta %}{{ nombre_dieta }}{% else %}Formulación de dieta{% endif %}
+                </h2>
                 <p class="page-subtitle mb-0">
-                    {% if lote_id == '0' %}
-                    Selecciona un lote para cargar la formulación
-                    {% else %}
-                    Lote {{ lote_id }} · Versión {{ version_actual }}
-                    {% endif %}
+                    Ítem {{ item_id }}{% if lote_id == '0' %} · Selecciona un lote para cargar la formulación{% else %} · Lote {{ lote_id }} · Versión {{ version_actual }}{% endif %}
                 </p>
             </div>
         </div>

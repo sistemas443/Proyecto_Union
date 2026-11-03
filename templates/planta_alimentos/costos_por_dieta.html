@@ -1,0 +1,238 @@
+{% extends 'generales/layout.html' %}
+
+{% block title %}Costos por dieta – Avícola San Martín{% endblock %}
+
+{% block head %}
+{% include 'planta_alimentos/_design_system.html' %}
+<style>
+  /* Barra de cada dieta (botón que expande el detalle) */
+  .ps-dieta-toggle {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.75rem;
+    width: 100%;
+    padding: 0.65rem 0.9rem;
+    border: 0;
+    background-color: transparent;
+    text-align: left;
+    color: var(--text-primary);
+  }
+
+  .ps-dieta-toggle:hover,
+  .ps-dieta-toggle:focus-visible {
+    background-color: var(--surface-alt);
+  }
+
+  .ps-dieta-toggle .ps-dieta-nombre {
+    font-size: 0.92rem;
+    font-weight: 700;
+  }
+
+  .ps-dieta-toggle .ps-dieta-dato {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+  }
+
+  .ps-chevron {
+    margin-left: auto;
+    font-size: 1.15rem;
+    color: var(--text-muted);
+    transition: transform 0.2s ease;
+  }
+
+  .ps-dieta-toggle.collapsed .ps-chevron {
+    transform: rotate(-90deg);
+  }
+
+  /* Cabecera del detalle (nombre de la dieta + lote) */
+  .ps-detalle-cabecera {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.5rem 0.9rem;
+    background-color: var(--table-header-bg);
+    color: #ffffff;
+  }
+
+  .ps-detalle-cabecera .ps-detalle-titulo {
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+
+  .ps-detalle-cabecera .ps-detalle-lote {
+    font-size: 0.8rem;
+    font-weight: 700;
+  }
+
+  /* Tabla de costos */
+  .tabla-costos-dieta th,
+  .tabla-costos-dieta td {
+    font-size: 0.72rem;
+    padding: 0.3rem 0.45rem;
+  }
+
+  .tabla-costos-dieta .num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .tabla-costos-dieta tfoot .fila-total td {
+    font-weight: 700;
+    background-color: var(--surface-alt);
+    border-top: 2px solid var(--border);
+  }
+
+  .tabla-costos-dieta tfoot .fila-sin-maquila td {
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    background-color: var(--surface-alt);
+  }
+
+  .tabla-costos-dieta .col-materia {
+    font-weight: 600;
+  }
+
+  .ps-hint {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+  <div class="page-header">
+    <div class="d-flex align-items-center gap-3">
+      <div class="page-icon">
+        <i class="fas fa-dollar-sign"></i>
+      </div>
+      <div>
+        <h2 class="page-title mb-0">Costos por dieta</h2>
+        <p class="page-subtitle mb-0">Selecciona un lote para ver sus dietas registradas y el costo detallado</p>
+      </div>
+    </div>
+
+    <form method="GET" action="{{ url_for('planta_alimentos.costos_por_dieta') }}"
+      class="d-flex align-items-end gap-2">
+      <div>
+        <label class="form-label-design" for="lote">Lote</label>
+        <select name="lote" id="lote" class="form-select form-select-sm" style="min-width: 190px;"
+          onchange="this.form.submit()">
+          <option value="">Seleccione un lote…</option>
+          {% for l in lotes %}
+          <option value="{{ l }}" {% if l == lote %}selected{% endif %}>{{ l }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary btn-sm">Cargar Datos</button>
+    </form>
+  </div>
+
+  {% if not lote %}
+  <div class="card card-clean">
+    <div class="card-body text-center py-5">
+      <i class="fas fa-hand-pointer d-block mb-2" style="font-size: 1.7rem; color: var(--border);"></i>
+      <p class="mb-1 fw-semibold" style="color: var(--text-secondary);">Seleccione un lote</p>
+      <p class="mb-0" style="font-size: 0.8rem; color: var(--text-muted);">
+        Elija un lote en la parte superior para ver sus dietas y sus costos.
+      </p>
+    </div>
+  </div>
+  {% elif not dietas %}
+  <div class="card card-clean">
+    <div class="card-body text-center py-5">
+      <i class="fas fa-inbox d-block mb-2" style="font-size: 1.7rem; color: var(--border);"></i>
+      <p class="mb-1 fw-semibold" style="color: var(--text-secondary);">El lote {{ lote }} no tiene dietas registradas</p>
+      <p class="mb-0" style="font-size: 0.8rem; color: var(--text-muted);">
+        Registre una fórmula para este lote y vuelva a consultar.
+      </p>
+    </div>
+  </div>
+  {% else %}
+
+  <p class="ps-hint mb-2">
+    <i class="fas fa-circle-info me-1"></i>
+    Haga clic en una dieta para ver el detalle de costos.
+  </p>
+
+  {% for d in dietas %}
+  <div class="card card-clean mb-3">
+    <button class="ps-dieta-toggle collapsed" type="button" data-bs-toggle="collapse"
+      data-bs-target="#dieta-{{ d.item_id }}-{{ d.version }}" aria-expanded="false"
+      aria-controls="dieta-{{ d.item_id }}-{{ d.version }}">
+      <span class="ps-dieta-nombre">{{ d.nombre_dieta }}</span>
+      <span class="badge-estado badge-neutro">Ítem {{ d.item_id }}</span>
+      <span class="badge-estado badge-neutro">Versión {{ d.version }}</span>
+      <span class="ps-dieta-dato">
+        <i class="far fa-calendar me-1"></i>Vigencia: {{ d.mes }}
+      </span>
+      <span class="ps-dieta-dato">
+        Vence: {{ d.fecha_vencimiento.strftime('%d/%m/%Y') if d.fecha_vencimiento else '---' }}
+      </span>
+      <span class="ps-dieta-dato">{{ d.insumos|length }} insumos</span>
+      <i class='bx bx-chevron-down ps-chevron'></i>
+    </button>
+
+    <div class="collapse" id="dieta-{{ d.item_id }}-{{ d.version }}">
+      <div class="ps-detalle-cabecera">
+        <span class="ps-detalle-titulo">{{ d.nombre_dieta }}</span>
+        <span class="ps-detalle-lote">LOTE {{ d.lote }}</span>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-design tabla-costos-dieta mb-0">
+          <thead>
+            <tr>
+              <th class="col-materia">MATERIA PRIMA</th>
+              <th class="num">CANTIDAD (g)</th>
+              <th class="num">COSTO P + IVA</th>
+              <th class="num">COSTO P + FLETE</th>
+              <th class="num">COSTO P + IVA + FLETE</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for i in d.insumos %}
+            <tr>
+              <td class="col-materia">
+                {{ i.materia }}
+                {% if i.es_maquila %}
+                <span class="badge-estado badge-neutro ms-1" style="font-size: 0.58rem;">maquila</span>
+                {% endif %}
+              </td>
+              <td class="num">{{ "{:,.0f}".format(i.cantidad) }}</td>
+              <td class="num">$ {{ "{:,.0f}".format(i.costo_iva) }}</td>
+              <td class="num">$ {{ "{:,.0f}".format(i.costo_flete) }}</td>
+              <td class="num">$ {{ "{:,.0f}".format(i.costo_iva_flete) }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot>
+            <tr class="fila-total">
+              <td class="col-materia text-uppercase">Total</td>
+              <td class="num">{{ "{:,.0f}".format(d.total_cantidad) }}</td>
+              <td class="num">$ {{ "{:,.0f}".format(d.total_iva) }}</td>
+              <td class="num">$ {{ "{:,.0f}".format(d.total_flete) }}</td>
+              <td class="num">$ {{ "{:,.0f}".format(d.total_iva_flete) }}</td>
+            </tr>
+            <tr class="fila-sin-maquila">
+              <td class="col-materia">Sin maquila</td>
+              <td class="num"></td>
+              <td class="num">$ {{ "{:,.0f}".format(d.sin_maquila_iva) }}</td>
+              <td class="num">$ {{ "{:,.0f}".format(d.sin_maquila_flete) }}</td>
+              <td class="num">$ {{ "{:,.0f}".format(d.sin_maquila_iva_flete) }}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+  {% endif %}
+</div>
+{% endblock %}

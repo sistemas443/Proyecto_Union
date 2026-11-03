@@ -169,7 +169,84 @@
     font-size: 0.75rem;
   }
 
+  /* Tabla de materias primas: 5 columnas, mas compacta para que quepan */
+  .table-cons-mp th,
+  .table-cons-mp td {
+    padding: 0.28rem 0.24rem;
+    font-size: 0.66rem;
+  }
+
+  .table-cons-mp .col-mp {
+    white-space: normal;
+    line-height: 1.15;
+  }
+
+  .table-cons-mp .col-precio {
+    font-size: 0.66rem;
+    white-space: nowrap;
+    letter-spacing: -0.3px;
+  }
+
+  .table-cons-mp .col-mp {
+    max-width: 120px;
+  }
+
+  /* Precio + IVA: es el valor con el que se costean las dietas */
+  .table-cons-mp .col-precio-iva {
+    font-weight: 700;
+    color: var(--action-primary);
+    background-color: #eef2f6;
+  }
+
+  /* Total (neto + IVA + flete): costo real por kg */
+  .table-cons-mp .col-precio-total {
+    background-color: #e8f5ee;
+    color: var(--success);
+  }
+
   /* Columna Estrella */
+  /* Celda unificada LOTE / DIETA (compartida por las dos filas de maquila) */
+  .col-lote-etapa {
+    vertical-align: middle !important;
+  }
+
+  .lote-etapa-lote {
+    display: block;
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+  }
+
+  .lote-etapa-nombre {
+    display: block;
+    font-size: 0.72rem;
+    line-height: 1.2;
+    color: var(--text-secondary);
+  }
+
+  /* Badge de maquila en el consolidado */
+  .badge-maquila {
+    display: inline-block;
+    padding: 0.12rem 0.45rem;
+    border-radius: 999px;
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+  }
+
+  .badge-maquila.con {
+    background-color: #dbe4ee;
+    color: var(--action-primary);
+  }
+
+  .badge-maquila.sin {
+    background-color: var(--surface-alt);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+  }
+
   .table-cons .col-estrella {
     text-align: center;
     white-space: nowrap;
@@ -356,7 +433,7 @@
 
     <div class="row">
         <!-- TABLA IZQUIERDA: PRECIOS MATERIAS PRIMAS -->
-        <div class="col-md-4">
+        <div class="col-12 col-xl-5">
             <div class="card card-cons mb-4">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <span class="fw-bold">PRECIOS MATERIAS PRIMAS + FLETE</span>
@@ -365,13 +442,15 @@
                     </button>
                 </div>
                 <div class="card-body p-0 table-responsive">
-                    <table class="table table-bordered table-hover mb-0 table-cons" style="font-size: 0.8rem;">
+                    <table class="table table-bordered table-hover mb-0 table-cons table-cons-mp" style="font-size: 0.8rem;">
                         <thead>
                             <tr>
                                 <th>MATERIA PRIMA</th>
-                                <th class="col-precio">PRECIO NETO</th>
-                                <th class="col-precio">FLETE</th>
-                                <th class="col-precio">TOTAL</th>
+                                <th class="col-precio" title="Precio de la materia prima sin IVA">NETO</th>
+                                <th class="col-precio" title="Precio neto + IVA: es el valor con el que se calcula el costo de las dietas">+ IVA</th>
+                                <th class="col-precio" title="Flete por kg de la materia prima">FLETE</th>
+                                <th class="col-precio" title="Precio neto + flete (sin IVA)">NETO + FLETE</th>
+                                <th class="col-precio" title="Precio total: neto + IVA + flete. Es el costo real por kg de la materia prima">TOTAL</th>
                                 <th style="width: 40px;">★</th>
                             </tr>
                         </thead>
@@ -381,8 +460,12 @@
                             <tr class="table-light" data-mp-id="{{ mp['id'] }}">
                                 <td class="col-mp">{{ mp['nombre'] }}</td>
                                 <td class="col-precio">$ {{ "{:,.0f}".format(mp['precio_actual_kg'] | default(0) | float) }}{% if mp['precio_historico'] %}<i class="fas fa-clock-rotate-left precio-historico" title="Precio congelado en la receta vigente del rango consultado"></i>{% endif %}</td>
+                                <td class="col-precio col-precio-iva" title="IVA {{ (((mp['iva'] | default(1) | float) - 1) * 100) | round(0) | int }}%">
+                                    $ {{ "{:,.0f}".format(mp['p_iva'] | default(0) | float) }}
+                                </td>
                                 <td class="col-precio">$ {{ "{:,.0f}".format(mp['flete'] | default(0) | float) }}</td>
                                 <td class="col-precio fw-bold" style="font-size: 11px;">$ {{ "{:,.0f}".format((mp['precio_actual_kg'] | default(0) | float) + (mp['flete'] | default(0) | float)) }}</td>
+                                <td class="col-precio col-precio-total fw-bold">$ {{ "{:,.0f}".format(mp['p_iva_flete'] | default(0) | float) }}</td>
                                 <td class="col-estrella">
                                     <button type="button" class="btn btn-sm btn-estrella-destacada btn-estrella toggle-destacada" data-mp-id="{{ mp['id'] }}" data-estado="1" title="Quitar de destacadas">
                                         <i class="fas fa-star"></i>
@@ -398,8 +481,12 @@
                             <tr data-mp-id="{{ mp['id'] }}">
                                 <td>{{ mp['nombre'] }}</td>
                                 <td class="col-precio">$ {{ "{:,.0f}".format(mp['precio_actual_kg'] | default(0) | float) }}{% if mp['precio_historico'] %}<i class="fas fa-clock-rotate-left precio-historico" title="Precio congelado en la receta vigente del rango consultado"></i>{% endif %}</td>
+                                <td class="col-precio col-precio-iva" title="IVA {{ (((mp['iva'] | default(1) | float) - 1) * 100) | round(0) | int }}%">
+                                    $ {{ "{:,.0f}".format(mp['p_iva'] | default(0) | float) }}
+                                </td>
                                 <td class="col-precio">$ {{ "{:,.0f}".format(mp['flete'] | default(0) | float) }}</td>
                                 <td class="col-precio fw-bold" style="font-size: 11px;">$ {{ "{:,.0f}".format((mp['precio_actual_kg'] | default(0) | float) + (mp['flete'] | default(0) | float)) }}</td>
+                                <td class="col-precio col-precio-total fw-bold">$ {{ "{:,.0f}".format(mp['p_iva_flete'] | default(0) | float) }}</td>
                                 <td class="col-estrella">
                                     <button type="button" class="btn btn-sm btn-estrella-otra toggle-destacada" data-mp-id="{{ mp['id'] }}" data-estado="0" title="Agregar a destacadas">
                                         <i class="far fa-star" style="font-size: 1.1em;"></i>
@@ -414,7 +501,7 @@
         </div>
 
         <!-- TABLA DERECHA: 3 TABLAS FIJAS POR EMPRESA -->
-        <div class="col-md-8">
+        <div class="col-12 col-xl-7">
 
             {% if not dietas_sin_asignar and not dietas_san_martin and not dietas_country and not dietas_dos_crestas %}
             <div class="card card-cons mb-4">
@@ -438,35 +525,44 @@
             <div class="card card-cons mb-4" style="border-left: 4px solid var(--warning);">
                 <div class="card-header text-center fw-bold" style="background-color: var(--warning) !important; color: var(--warning-text) !important;">
                     <i class="fas fa-triangle-exclamation me-2"></i>DIETAS SIN EMPRESA ASIGNADA
-                    <span class="badge ms-1" style="background-color: rgba(0,0,0,0.55);">{{ dietas_sin_asignar|length }}</span>
+                    <span class="badge ms-1" style="background-color: rgba(0,0,0,0.55);">{{ (dietas_sin_asignar|length) // 2 }}</span>
                 </div>
                 <div class="card-body p-0">
                     <div class="px-3 py-2" style="font-size: 0.72rem; color: var(--text-secondary); background-color: var(--surface-alt); border-bottom: 1px solid var(--border);">
-                        Estas dietas están vigentes pero no salen en las tablas por empresa. Asigna el lote a una empresa en cabecera de lotes para que aparezcan. Los valores no incluyen maquila.
+                        Estas dietas están vigentes pero no salen en las tablas por empresa. Asigna el lote a una empresa en cabecera de lotes para que aparezcan. Se muestran dos filas por dieta: con maquila y sin maquila.
                     </div>
                     <table class="table table-bordered table-hover mb-0 table-cons" style="font-size: 0.8rem;">
                         <thead>
                             <tr>
-                                <th style="width: 10%;">LOTE</th>
-                                <th style="width: 24%;">ETAPA</th>
-                                <th style="width: 26%;">MOTIVO</th>
+                                <th style="width: 26%;">LOTE / DIETA</th>
+                                <th style="width: 10%;">MAQUILA</th>
+                                <th style="width: 20%;">MOTIVO</th>
+                                <th class="col-precio-emp" style="width: 14%;">PRECIO + IVA</th>
                                 <th class="col-precio-emp" style="width: 13%;">PRECIO + FLETE</th>
-                                <th class="col-precio-emp" style="width: 13%;">PRECIO + IVA</th>
-                                <th class="col-total-emp" style="width: 14%;">FLETE + IVA</th>
+                                <th class="col-total-emp" style="width: 17%;">PRECIO + FLETE + IVA</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for dieta in dietas_sin_asignar %}
                             <tr>
-                                <td class="col-lote" style="font-size: 0.85em;">{{ dieta['lote'] }}</td>
-                                <td class="col-etapa" style="font-size: 0.85em;">{{ dieta['etapa'] }}</td>
-                                <td style="font-size: 0.78rem; text-align: center;">
+                                {% if loop.index0 % 2 == 0 %}
+                                <td class="col-lote-etapa" rowspan="2">
+                                    <span class="lote-etapa-lote">{{ dieta['lote'] }}</span>
+                                    <span class="lote-etapa-nombre">{{ dieta['etapa'] }}</span>
+                                </td>
+                                {% endif %}
+                                <td style="text-align: center;">
+                                    <span class="badge-maquila {{ 'con' if dieta['tipo_maquila'] == 'Con maquila' else 'sin' }}">{{ dieta['tipo_maquila'] }}</span>
+                                </td>
+                                {% if loop.index0 % 2 == 0 %}
+                                <td rowspan="2" style="font-size: 0.78rem; text-align: center; vertical-align: middle;">
                                     <span class="badge" style="background-color: #fff3cd; color: #856404; border: 1px solid #ffe69c; font-weight: 600;">
                                         {{ dieta['motivo_sin_empresa'] or 'Sin empresa' }}
                                     </span>
                                 </td>
-                                <td class="col-precio-emp">$ {{ "{:,.0f}".format(dieta['precio_flete_maquila'] | default(0) | float) }}</td>
+                                {% endif %}
                                 <td class="col-precio-emp">$ {{ "{:,.0f}".format(dieta['precio_iva_maquila'] | default(0) | float) }}</td>
+                                <td class="col-precio-emp">$ {{ "{:,.0f}".format(dieta['precio_flete_maquila'] | default(0) | float) }}</td>
                                 <td class="col-total-emp">$ {{ "{:,.0f}".format(dieta['precio_flete_iva_maquila'] | default(0) | float) }}</td>
                             </tr>
                             {% endfor %}
@@ -488,20 +584,27 @@
                     <table class="table table-bordered table-hover mb-0 table-cons" style="font-size: 0.8rem;">
                         <thead>
                             <tr>
-                                <th style="width: 15%;">LOTE</th>
-                                <th style="width: 35%;">ETAPA</th>
-                                <th class="col-precio-emp" style="width: 25%;">PRECIO + FLETE + MAQ.</th>
-                                <th class="col-precio-emp" style="width: 25%;">PRECIO + IVA + MAQ.</th>
-                                <th class="col-total-emp" style="width: 25%;">PRECIO + FLETE + IVA + MAQ.</th>
+                                <th style="width: 34%;">LOTE / DIETA</th>
+                                <th style="width: 10%;">MAQUILA</th>
+                                <th class="col-precio-emp" style="width: 17%;">PRECIO + IVA</th>
+                                <th class="col-precio-emp" style="width: 17%;">PRECIO + FLETE</th>
+                                <th class="col-total-emp" style="width: 22%;">PRECIO + FLETE + IVA</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for dieta in dietas_san_martin %}
                             <tr>
-                                <td class="col-lote" style="font-size: 0.85em;">{{ dieta['lote'] }}</td>
-                                <td class="col-etapa" style="font-size: 0.85em;">{{ dieta['etapa'] }}</td>
-                                <td class="col-precio-emp">$ {{ "{:,.0f}".format(dieta['precio_flete_maquila'] | default(0) | float) }}</td>
+                                {% if loop.index0 % 2 == 0 %}
+                                <td class="col-lote-etapa" rowspan="2">
+                                    <span class="lote-etapa-lote">{{ dieta['lote'] }}</span>
+                                    <span class="lote-etapa-nombre">{{ dieta['etapa'] }}</span>
+                                </td>
+                                {% endif %}
+                                <td style="text-align: center;">
+                                    <span class="badge-maquila {{ 'con' if dieta['tipo_maquila'] == 'Con maquila' else 'sin' }}">{{ dieta['tipo_maquila'] }}</span>
+                                </td>
                                 <td class="col-precio-emp">$ {{ "{:,.0f}".format(dieta['precio_iva_maquila'] | default(0) | float) }}</td>
+                                <td class="col-precio-emp">$ {{ "{:,.0f}".format(dieta['precio_flete_maquila'] | default(0) | float) }}</td>
                                 <td class="col-total-emp">$ {{ "{:,.0f}".format(dieta['precio_flete_iva_maquila'] | default(0) | float) }}</td>
                             </tr>
                             {% endfor %}
@@ -523,18 +626,27 @@
                     <table class="table table-bordered table-hover mb-0 table-cons" style="font-size: 0.8rem;">
                         <thead>
                             <tr>
-                                <th style="width: 35%;">ETAPA</th>
-                                <th class="col-precio-emp" style="width: 25%;">PRECIO + FLETE + MAQ.</th>
-                                <th class="col-precio-emp" style="width: 20%;">PRECIO + IVA + MAQ.</th>
-                                <th class="col-total-emp" style="width: 20%;">PRECIO + FLETE + IVA + MAQ.</th>
+                                <th style="width: 34%;">LOTE / DIETA</th>
+                                <th style="width: 10%;">MAQUILA</th>
+                                <th class="col-precio-emp" style="width: 17%;">PRECIO + IVA</th>
+                                <th class="col-precio-emp" style="width: 17%;">PRECIO + FLETE</th>
+                                <th class="col-total-emp" style="width: 22%;">PRECIO + FLETE + IVA</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for dieta in dietas_country %}
                             <tr>
-                                <td class="col-etapa" style="font-size: 0.85em;">{{ dieta['etapa'] }}</td>
-                                <td class="col-precio-emp">$ {{ "{:,.0f}".format(dieta['precio_flete_maquila'] | default(0) | float) }}</td>
+                                {% if loop.index0 % 2 == 0 %}
+                                <td class="col-lote-etapa" rowspan="2">
+                                    <span class="lote-etapa-lote">{{ dieta['lote'] }}</span>
+                                    <span class="lote-etapa-nombre">{{ dieta['etapa'] }}</span>
+                                </td>
+                                {% endif %}
+                                <td style="text-align: center;">
+                                    <span class="badge-maquila {{ 'con' if dieta['tipo_maquila'] == 'Con maquila' else 'sin' }}">{{ dieta['tipo_maquila'] }}</span>
+                                </td>
                                 <td class="col-precio-emp">$ {{ "{:,.0f}".format(dieta['precio_iva_maquila'] | default(0) | float) }}</td>
+                                <td class="col-precio-emp">$ {{ "{:,.0f}".format(dieta['precio_flete_maquila'] | default(0) | float) }}</td>
                                 <td class="col-total-emp">$ {{ "{:,.0f}".format(dieta['precio_flete_iva_maquila'] | default(0) | float) }}</td>
                             </tr>
                             {% endfor %}
@@ -556,18 +668,27 @@
                     <table class="table table-bordered table-hover mb-0 table-cons" style="font-size: 0.8rem;">
                         <thead>
                             <tr>
-                                <th style="width: 35%;">ETAPA</th>
-                                <th class="col-precio-emp" style="width: 25%;">PRECIO + FLETE + MAQ.</th>
-                                <th class="col-precio-emp" style="width: 20%;">PRECIO + IVA + MAQ.</th>
-                                <th class="col-total-emp" style="width: 20%;">PRECIO + FLETE + IVA + MAQ.</th>
+                                <th style="width: 34%;">LOTE / DIETA</th>
+                                <th style="width: 10%;">MAQUILA</th>
+                                <th class="col-precio-emp" style="width: 17%;">PRECIO + IVA</th>
+                                <th class="col-precio-emp" style="width: 17%;">PRECIO + FLETE</th>
+                                <th class="col-total-emp" style="width: 22%;">PRECIO + FLETE + IVA</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for dieta in dietas_dos_crestas %}
                             <tr>
-                                <td class="col-etapa" style="font-size: 0.85em;">{{ dieta['etapa'] }}</td>
-                                <td class="col-precio-emp">$ {{ "{:,.0f}".format(dieta['precio_flete_maquila'] | default(0) | float) }}</td>
+                                {% if loop.index0 % 2 == 0 %}
+                                <td class="col-lote-etapa" rowspan="2">
+                                    <span class="lote-etapa-lote">{{ dieta['lote'] }}</span>
+                                    <span class="lote-etapa-nombre">{{ dieta['etapa'] }}</span>
+                                </td>
+                                {% endif %}
+                                <td style="text-align: center;">
+                                    <span class="badge-maquila {{ 'con' if dieta['tipo_maquila'] == 'Con maquila' else 'sin' }}">{{ dieta['tipo_maquila'] }}</span>
+                                </td>
                                 <td class="col-precio-emp">$ {{ "{:,.0f}".format(dieta['precio_iva_maquila'] | default(0) | float) }}</td>
+                                <td class="col-precio-emp">$ {{ "{:,.0f}".format(dieta['precio_flete_maquila'] | default(0) | float) }}</td>
                                 <td class="col-total-emp">$ {{ "{:,.0f}".format(dieta['precio_flete_iva_maquila'] | default(0) | float) }}</td>
                             </tr>
                             {% endfor %}

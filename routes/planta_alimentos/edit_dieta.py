@@ -87,11 +87,18 @@ def editar_receta(item_id, lote_id):
     materias_primas = MateriaPrima.get_all()
 
     empresas = []
+    nombre_dieta = None
     try:
         conn = get_db_connection()
         with conn.cursor() as cur:
             cur.execute("SELECT id, nombre FROM empresas ORDER BY nombre ASC;")
             empresas = cur.fetchall()
+
+            # Nombre de la dieta para mostrarlo siempre junto al número de ítem
+            cur.execute("SELECT nombre FROM catalogo_alimentos WHERE item_id = %s LIMIT 1;", (item_id,))
+            fila_dieta = cur.fetchone()
+            if fila_dieta and fila_dieta[0]:
+                nombre_dieta = str(fila_dieta[0]).strip()
         conn.close()
     except Exception as e:
         print(f"Error al cargar empresas: {e}")
@@ -194,6 +201,7 @@ def editar_receta(item_id, lote_id):
     return render_template(
         'planta_alimentos/editar_receta.html',
         item_id=item_id,
+        nombre_dieta=nombre_dieta,
         lote_id=lote_id,
         version_actual=version_actual,
         lista_versiones=lista_versiones,
