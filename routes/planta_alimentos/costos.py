@@ -1,10 +1,260 @@
+import json
+import os
 from datetime import datetime
+
+import psycopg2.extras
 from flask import render_template, request, redirect, url_for, flash, jsonify, session
+
 from models.base import get_db_connection
 from routes.planta_alimentos.catalogo_a import planta_bp  # O la ruta donde tengas definido el Blueprint
 from routes.routes import login_requerido
 from models.planta_alimentos.maestros import MateriaPrima
 from models.planta_alimentos.formulas import FormulaDetalle
+from models.auditoria.services import registrar_cambio
+
+ROLES_PRECIOS = ('Superadmin', 'Director de Planta')
+CARPETA_RESPALDOS = 'respaldos'
+
+
+def _fecha_o_hoy(valor):
+    try:
+        return datetime.strptime(valor, '%Y-%m-%d').date()
+    except (TypeError, ValueError):
+        return datetime.now().date()
+
+
+def _resumen_impacto(filas):
+    versiones = {(f['item_id'], f['lote_id'], f['version']) for f in filas}
+    dietas = {(f['item_id'], f['lote_id']) for f in filas}
+    return {
+        'filas': len(filas),
+        'versiones': len(versiones),
+        'dietas': len(dietas),
+    }
+
+
+@planta_bp.route('/consolidado-precios/precio', methods=['POST'])
+@login_requerido
+def consolidado_precio_editar():
+    """
+    Corrige el precio (neto, IVA y flete) de una materia prima en las dietas
+    del rango consultado o en todas, opcionalmente tambien en el maestro.
+
+    Con 'solo_contar' devuelve unicamente el impacto, sin escribir nada.
+    """
+    if session.get('user_rol') not in ROLES_PRECIOS:
+        return jsonify({'status': 'error', 'msg': 'No tiene permisos para corregir precios.'}), 403
+
+    datos = request.get_json(silent=True) or {}
+
+    try:
+        materia_prima_id = int(datos.get('materia_prima_id'))
+        precio = float(datos.get('precio'))
+        iva = float(datos.get('iva') or 1)
+        flete = float(datos.get('flete') or 0)
+    except (TypeError, ValueError):
+        return jsonify({'status': 'error', 'msg': 'Datos inválidos.'}), 400
+
+    if precio < 0 or flete < 0 or iva < 1 or iva > 1.5:
+        return jsonify({
+            'status': 'error',
+            'msg': 'Revise los valores: precio y flete no pueden ser negativos y el IVA debe estar entre 1 y 1,5.'
+        }), 400
+
+    alcance = 'todas' if datos.get('alcance') == 'todas' else 'rango'
+    actualizar_maestro = bool(datos.get('maestro'))
+    solo_contar = bool(datos.get('solo_contar'))
+    motivo = (datos.get('motivo') or '').strip()[:200]
+    desde = _fecha_o_hoy(datos.get('desde'))
+    hasta = _fecha_o_hoy(datos.get('hasta'))
+    if desde > hasta:
+        desde, hasta = hasta, desde
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("""
+                SELECT id, nombre, precio_actual_kg, iva, flete
+                FROM materias_primas WHERE id = %s
+            """, (materia_prima_id,))
+            materia = cur.fetchone()
+            if not materia:
+                return jsonify({'status': 'error', 'msg': 'Materia prima no encontrada.'}), 404
+
+            if alcance == 'todas':
+                condicion = "fd.materia_prima_id = %s"
+                parametros = [materia_prima_id]
+            else:
+                condicion = ("fd.materia_prima_id = %s "
+                             "AND fd.fecha_vencimiento BETWEEN %s AND %s")
+                parametros = [materia_prima_id, desde, hasta]
+
+            cur.execute(f"""
+                SELECT fd.id, fd.item_id, fd.lote_id, fd.version,
+                       fd.precio_guardado, fd.iva_guardado, fd.flete_guardado
+                FROM formula_detalle fd
+                WHERE {condicion}
+            """, parametros)
+            filas = cur.fetchall()
+
+            impacto = _resumen_impacto(filas)
+            impacto['materia'] = materia['nombre']
+
+            if solo_contar:
+                impacto.update({
+                    'status': 'ok',
+                    'precio_actual': float(materia['precio_actual_kg'] or 0),
+                    'iva_actual': float(materia['iva'] or 1),
+                    'flete_actual': float(materia['flete'] or 0),
+                })
+                return jsonify(impacto)
+
+            if not filas and not actualizar_maestro:
+                return jsonify({
+                    'status': 'error',
+                    'msg': 'No hay dietas para actualizar con ese alcance.'
+                }), 400
+
+            os.makedirs(CARPETA_RESPALDOS, exist_ok=True)
+            marca = datetime.now().strftime('%Y%m%d_%H%M%S')
+            nombre_respaldo = f'ajuste_precio_{materia_prima_id}_{marca}.json'
+            ruta_respaldo = os.path.join(CARPETA_RESPALDOS, nombre_respaldo)
+            contenido = {
+                'usuario_id': session.get('user_id'),
+                'usuario_nombre': session.get('user_nombre'),
+                'fecha': datetime.now().isoformat(timespec='seconds'),
+                'materia_prima_id': materia_prima_id,
+                'materia': materia['nombre'],
+                'motivo': motivo,
+                'alcance': alcance,
+                'desde': str(desde),
+                'hasta': str(hasta),
+                'maestro': {
+                    'actualizado': actualizar_maestro,
+                    'precio': float(materia['precio_actual_kg'] or 0),
+                    'iva': float(materia['iva'] or 1),
+                    'flete': float(materia['flete'] or 0),
+                },
+                'filas': [{
+                    'id': f['id'],
+                    'item_id': f['item_id'],
+                    'lote_id': f['lote_id'],
+                    'version': f['version'],
+                    'precio': float(f['precio_guardado']) if f['precio_guardado'] is not None else None,
+                    'iva': float(f['iva_guardado']) if f['iva_guardado'] is not None else None,
+                    'flete': float(f['flete_guardado']) if f['flete_guardado'] is not None else None,
+                } for f in filas],
+            }
+            with open(ruta_respaldo, 'w', encoding='utf-8') as archivo:
+                json.dump(contenido, archivo, indent=2, ensure_ascii=False)
+
+            if filas:
+                cur.executemany("""
+                    UPDATE formula_detalle
+                    SET precio_guardado = %s, iva_guardado = %s, flete_guardado = %s
+                    WHERE id = %s
+                """, [(precio, iva, flete, f['id']) for f in filas])
+
+            if actualizar_maestro:
+                cur.execute("""
+                    UPDATE materias_primas
+                    SET precio_actual_kg = %s, iva = %s, flete = %s,
+                        fecha_actualizacion = CURRENT_TIMESTAMP
+                    WHERE id = %s
+                """, (precio, iva, flete, materia_prima_id))
+
+            registrar_cambio(
+                session.get('user_id'),
+                session.get('usuario_nombre') or session.get('user_nombre') or 'Sistema',
+                'formula_detalle',
+                materia_prima_id,
+                f'precio_guardado x{impacto["filas"]} filas',
+                f"{float(materia['precio_actual_kg'] or 0):.2f}",
+                f"{precio:.2f}" + (' (y maestro)' if actualizar_maestro else ''),
+                'UPDATE',
+                cur
+            )
+
+        conn.commit()
+        impacto.update({
+            'status': 'ok',
+            'respaldo': nombre_respaldo,
+            'maestro_actualizado': actualizar_maestro,
+        })
+        return jsonify(impacto)
+    except Exception as e:
+        conn.rollback()
+        print(f"[ERROR AJUSTE PRECIO]: {e}")
+        return jsonify({'status': 'error', 'msg': 'No se pudo guardar el ajuste.'}), 500
+    finally:
+        conn.close()
+
+
+@planta_bp.route('/consolidado-precios/precio/deshacer', methods=['POST'])
+@login_requerido
+def consolidado_precio_deshacer():
+    """Restaura los valores guardados en el respaldo de un ajuste de precio."""
+    if session.get('user_rol') not in ROLES_PRECIOS:
+        return jsonify({'status': 'error', 'msg': 'No tiene permisos para deshacer ajustes.'}), 403
+
+    datos = request.get_json(silent=True) or {}
+    nombre = os.path.basename(datos.get('respaldo') or '')
+    if not (nombre.startswith('ajuste_precio_') and nombre.endswith('.json')):
+        return jsonify({'status': 'error', 'msg': 'Respaldo no válido.'}), 400
+
+    ruta = os.path.join(CARPETA_RESPALDOS, nombre)
+    if not os.path.exists(ruta):
+        return jsonify({'status': 'error', 'msg': 'No se encontró el respaldo.'}), 404
+
+    with open(ruta, encoding='utf-8') as archivo:
+        contenido = json.load(archivo)
+
+    if (contenido.get('usuario_id') != session.get('user_id')
+            and session.get('user_rol') != 'Superadmin'):
+        return jsonify({'status': 'error', 'msg': 'Este ajuste lo hizo otro usuario.'}), 403
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            filas = contenido.get('filas') or []
+            if filas:
+                cur.executemany("""
+                    UPDATE formula_detalle
+                    SET precio_guardado = %s, iva_guardado = %s, flete_guardado = %s
+                    WHERE id = %s
+                """, [(f['precio'], f['iva'], f['flete'], f['id']) for f in filas])
+
+            maestro = contenido.get('maestro') or {}
+            if maestro.get('actualizado'):
+                cur.execute("""
+                    UPDATE materias_primas
+                    SET precio_actual_kg = %s, iva = %s, flete = %s,
+                        fecha_actualizacion = CURRENT_TIMESTAMP
+                    WHERE id = %s
+                """, (maestro['precio'], maestro['iva'], maestro['flete'],
+                      contenido.get('materia_prima_id')))
+
+            registrar_cambio(
+                session.get('user_id'),
+                session.get('user_nombre') or 'Sistema',
+                'formula_detalle',
+                contenido.get('materia_prima_id'),
+                'precio_guardado (deshacer)',
+                'ajuste',
+                'valor anterior restaurado',
+                'UPDATE',
+                cur
+            )
+
+        conn.commit()
+        return jsonify({'status': 'ok', 'filas': len(contenido.get('filas') or [])})
+    except Exception as e:
+        conn.rollback()
+        print(f"[ERROR DESHACER AJUSTE PRECIO]: {e}")
+        return jsonify({'status': 'error', 'msg': 'No se pudo deshacer el ajuste.'}), 500
+    finally:
+        conn.close()
+
 
 
 @planta_bp.route('/costos/por-dieta', methods=['GET'])

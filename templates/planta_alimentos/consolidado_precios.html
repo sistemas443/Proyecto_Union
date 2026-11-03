@@ -247,6 +247,25 @@
     border: 1px solid var(--border);
   }
 
+  .btn-precio-editar {
+    border: 1px solid transparent;
+    background-color: transparent;
+    color: var(--text-muted);
+    padding: 0.15rem 0.35rem;
+    line-height: 1;
+    border-radius: 6px;
+    transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+  }
+
+  .btn-precio-editar i { font-size: 0.78rem; }
+
+  .btn-precio-editar:hover,
+  .btn-precio-editar:focus-visible {
+    color: var(--action-primary);
+    background-color: #eef1f4;
+    border-color: var(--border);
+  }
+
   .table-cons .col-estrella {
     text-align: center;
     white-space: nowrap;
@@ -390,6 +409,237 @@
     margin-left: 0.2rem;
   }
 </style>
+
+<!-- MODAL: corregir precio de una materia prima -->
+<div class="modal fade" id="modalPrecio" tabindex="-1" aria-labelledby="modalPrecioTitulo" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header" style="background-color: var(--table-header-bg); color: #ffffff; border-bottom: none;">
+        <h5 class="modal-title" id="modalPrecioTitulo" style="font-size: 0.95rem;">
+          <i class="fas fa-pen me-2"></i>Corregir precio
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-3"><strong id="pm_nombre"></strong></p>
+
+        <div class="row g-2">
+          <div class="col-4">
+            <label class="form-label-design" for="pm_precio">Precio neto</label>
+            <input type="number" step="0.01" min="0" class="form-control form-control-sm" id="pm_precio">
+          </div>
+          <div class="col-4">
+            <label class="form-label-design" for="pm_iva">IVA</label>
+            <input type="number" step="0.01" min="1" max="1.5" class="form-control form-control-sm" id="pm_iva">
+          </div>
+          <div class="col-4">
+            <label class="form-label-design" for="pm_flete">Flete</label>
+            <input type="number" step="0.01" min="0" class="form-control form-control-sm" id="pm_flete">
+          </div>
+        </div>
+
+        <div class="mt-3">
+          <span class="form-label-design d-block">Aplicar a</span>
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="pm_alcance" id="pm_alcance_rango" value="rango" checked>
+            <label class="form-check-label" for="pm_alcance_rango" style="font-size: 0.8rem;">
+              Solo las dietas del rango consultado (<span id="pm_rango"></span>)
+            </label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="pm_alcance" id="pm_alcance_todas" value="todas">
+            <label class="form-check-label" for="pm_alcance_todas" style="font-size: 0.8rem;">
+              Todas las dietas que usan esta materia prima
+            </label>
+          </div>
+        </div>
+
+        <div class="form-check mt-2">
+          <input class="form-check-input" type="checkbox" id="pm_maestro">
+          <label class="form-check-label" for="pm_maestro" style="font-size: 0.8rem;">
+            Actualizar también el precio del maestro (Materias Primas)
+          </label>
+        </div>
+
+        <div class="mt-3">
+          <label class="form-label-design" for="pm_motivo">Motivo (opcional)</label>
+          <input type="text" class="form-control form-control-sm" id="pm_motivo" maxlength="200"
+            placeholder="Ej.: precio digitado por error">
+        </div>
+
+        <div class="form-text-muted mt-3" id="pm_aviso"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary btn-sm" id="pm_aplicar" onclick="aplicarPrecio()">
+          <i class="fas fa-check me-1"></i>Aplicar ajuste
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const URL_PRECIO = "{{ url_for('planta_alimentos.consolidado_precio_editar') }}";
+  const URL_DESHACER_PRECIO = "{{ url_for('planta_alimentos.consolidado_precio_deshacer') }}";
+  let modalPrecio = null;
+
+  document.addEventListener('DOMContentLoaded', function () {
+    const modalEl = document.getElementById('modalPrecio');
+    if (modalEl && typeof bootstrap !== 'undefined') {
+      modalPrecio = new bootstrap.Modal(modalEl);
+    }
+    document.querySelectorAll('.btn-precio-editar').forEach(function (btn) {
+      btn.addEventListener('click', function () { abrirModalPrecio(btn); });
+    });
+  });
+
+  function abrirModalPrecio(btn) {
+    const d = btn.dataset;
+    document.getElementById('pm_nombre').textContent = d.nombre;
+    document.getElementById('pm_precio').value = d.precio;
+    document.getElementById('pm_iva').value = d.iva;
+    document.getElementById('pm_flete').value = d.flete;
+    document.getElementById('pm_motivo').value = '';
+    document.getElementById('pm_maestro').checked = false;
+    document.getElementById('pm_alcance_rango').checked = true;
+    document.getElementById('pm_aviso').innerHTML = '';
+
+    const desde = document.getElementById('desde');
+    const hasta = document.getElementById('hasta');
+    document.getElementById('pm_rango').textContent = (desde ? desde.value : '') + ' a ' + (hasta ? hasta.value : '');
+
+    document.getElementById('pm_aplicar').dataset.mpId = d.mpId;
+    if (modalPrecio) modalPrecio.show();
+  }
+
+  function datosPrecio(soloContar) {
+    const desde = document.getElementById('desde');
+    const hasta = document.getElementById('hasta');
+    return {
+      materia_prima_id: document.getElementById('pm_aplicar').dataset.mpId,
+      precio: document.getElementById('pm_precio').value,
+      iva: document.getElementById('pm_iva').value,
+      flete: document.getElementById('pm_flete').value,
+      alcance: document.getElementById('pm_alcance_todas').checked ? 'todas' : 'rango',
+      maestro: document.getElementById('pm_maestro').checked,
+      motivo: document.getElementById('pm_motivo').value,
+      desde: desde ? desde.value : '',
+      hasta: hasta ? hasta.value : '',
+      solo_contar: soloContar
+    };
+  }
+
+  async function aplicarPrecio() {
+    const boton = document.getElementById('pm_aplicar');
+    const payload = datosPrecio(true);
+    const aviso = document.getElementById('pm_aviso');
+
+    boton.disabled = true;
+    aviso.textContent = 'Calculando impacto...';
+
+    let previo;
+    try {
+      const res = await fetch(URL_PRECIO, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      previo = await res.json();
+    } catch (e) {
+      boton.disabled = false;
+      aviso.textContent = 'Error de conexión.';
+      return;
+    }
+
+    if (previo.status !== 'ok') {
+      boton.disabled = false;
+      aviso.textContent = previo.msg || 'No se pudo calcular el impacto.';
+      return;
+    }
+
+    aviso.textContent = '';
+    boton.disabled = false;
+
+    if (previo.filas === 0 && !payload.maestro) {
+      aviso.textContent = 'No hay dietas para actualizar con ese alcance.';
+      return;
+    }
+
+    const alcanceTxt = payload.alcance === 'todas'
+      ? 'todas las dietas que usan la materia'
+      : 'las dietas del rango consultado';
+
+    const confirma = await Swal.fire({
+      title: 'Aplicar ajuste de precio',
+      html:
+        '<div style="font-size:.85rem;text-align:left">' +
+        '<p class="mb-1"><b>' + previo.materia + '</b></p>' +
+        '<p class="mb-1">Precio: <b>$ ' + Number(payload.precio).toLocaleString('es-CO') + '</b>' +
+        ' · IVA ' + payload.iva + ' · Flete $ ' + Number(payload.flete).toLocaleString('es-CO') + '</p>' +
+        '<p class="mb-2">Se actualizarán <b>' + previo.filas + ' filas</b> de <b>' + previo.dietas +
+        ' dietas</b> (' + previo.versiones + ' versiones) en ' + alcanceTxt + '.</p>' +
+        (payload.maestro ? '<p class="mb-0">También se actualizará el <b>precio del maestro</b>.</p>' : '') +
+        '</div>',
+      showCancelButton: true,
+      confirmButtonText: 'Aplicar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#2c3e50'
+    });
+
+    if (!confirma.isConfirmed) return;
+
+    let resultado;
+    try {
+      const res = await fetch(URL_PRECIO, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(datosPrecio(false))
+      });
+      resultado = await res.json();
+    } catch (e) {
+      aviso.textContent = 'Error de conexión al guardar.';
+      return;
+    }
+
+    if (resultado.status !== 'ok') {
+      aviso.textContent = resultado.msg || 'No se pudo guardar el ajuste.';
+      return;
+    }
+
+    if (modalPrecio) modalPrecio.hide();
+
+    const final = await Swal.fire({
+      icon: 'success',
+      title: 'Precio actualizado',
+      html: '<div style="font-size:.85rem">' + resultado.filas + ' filas actualizadas de ' +
+        resultado.dietas + ' dietas.<br><span style="font-size:.75rem;color:#6c757d">Respaldo: ' +
+        resultado.respaldo + '</span></div>',
+      showDenyButton: true,
+      confirmButtonText: 'Listo',
+      denyButtonText: 'Deshacer',
+      confirmButtonColor: '#2c3e50',
+      denyButtonColor: '#dc3545'
+    });
+
+    if (final.isDenied) {
+      const undo = await fetch(URL_DESHACER_PRECIO, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ respaldo: resultado.respaldo })
+      });
+      const dataUndo = await undo.json();
+      await Swal.fire({
+        icon: dataUndo.status === 'ok' ? 'success' : 'error',
+        title: dataUndo.status === 'ok' ? 'Ajuste deshecho' : 'No se pudo deshacer',
+        text: dataUndo.msg || (dataUndo.filas + ' filas restauradas'),
+        confirmButtonColor: '#2c3e50'
+      });
+    }
+
+    window.location.reload();
+  }
+</script>
 {% endblock %}
 
 {% block content %}
@@ -467,6 +717,15 @@
                                 <td class="col-precio fw-bold" style="font-size: 11px;">$ {{ "{:,.0f}".format((mp['precio_actual_kg'] | default(0) | float) + (mp['flete'] | default(0) | float)) }}</td>
                                 <td class="col-precio col-precio-total fw-bold">$ {{ "{:,.0f}".format(mp['p_iva_flete'] | default(0) | float) }}</td>
                                 <td class="col-estrella">
+                                    <button type="button" class="btn-precio-editar"
+                                        data-mp-id="{{ mp['id'] }}"
+                                        data-nombre="{{ mp['nombre'] }}"
+                                        data-precio="{{ mp['precio_actual_kg'] | default(0) | float }}"
+                                        data-iva="{{ mp['iva'] | default(1) | float }}"
+                                        data-flete="{{ mp['flete'] | default(0) | float }}"
+                                        title="Corregir precio de esta materia prima">
+                                        <i class="fas fa-pen"></i>
+                                    </button>
                                     <button type="button" class="btn btn-sm btn-estrella-destacada btn-estrella toggle-destacada" data-mp-id="{{ mp['id'] }}" data-estado="1" title="Quitar de destacadas">
                                         <i class="fas fa-star"></i>
                                     </button>
@@ -488,6 +747,15 @@
                                 <td class="col-precio fw-bold" style="font-size: 11px;">$ {{ "{:,.0f}".format((mp['precio_actual_kg'] | default(0) | float) + (mp['flete'] | default(0) | float)) }}</td>
                                 <td class="col-precio col-precio-total fw-bold">$ {{ "{:,.0f}".format(mp['p_iva_flete'] | default(0) | float) }}</td>
                                 <td class="col-estrella">
+                                    <button type="button" class="btn-precio-editar"
+                                        data-mp-id="{{ mp['id'] }}"
+                                        data-nombre="{{ mp['nombre'] }}"
+                                        data-precio="{{ mp['precio_actual_kg'] | default(0) | float }}"
+                                        data-iva="{{ mp['iva'] | default(1) | float }}"
+                                        data-flete="{{ mp['flete'] | default(0) | float }}"
+                                        title="Corregir precio de esta materia prima">
+                                        <i class="fas fa-pen"></i>
+                                    </button>
                                     <button type="button" class="btn btn-sm btn-estrella-otra toggle-destacada" data-mp-id="{{ mp['id'] }}" data-estado="0" title="Agregar a destacadas">
                                         <i class="far fa-star" style="font-size: 1.1em;"></i>
                                     </button>
