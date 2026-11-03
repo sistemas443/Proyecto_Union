@@ -247,6 +247,25 @@
     border: 1px solid var(--border);
   }
 
+  .btn-dieta-costos {
+    border: 1px solid transparent;
+    background-color: transparent;
+    color: var(--text-muted);
+    padding: 0.1rem 0.3rem;
+    line-height: 1;
+    border-radius: 6px;
+    transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+  }
+
+  .btn-dieta-costos i { font-size: 0.72rem; }
+
+  .btn-dieta-costos:hover,
+  .btn-dieta-costos:focus-visible {
+    color: var(--action-primary);
+    background-color: #eef1f4;
+    border-color: var(--border);
+  }
+
   .btn-precio-editar {
     border: 1px solid transparent;
     background-color: transparent;
@@ -640,6 +659,126 @@
     window.location.reload();
   }
 </script>
+
+<!-- MODAL: maquila y flete por dieta -->
+<div class="modal fade" id="modalDietaCostos" tabindex="-1" aria-labelledby="modalDietaTitulo" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header" style="background-color: var(--table-header-bg); color: #ffffff; border-bottom: none;">
+        <h5 class="modal-title" id="modalDietaTitulo" style="font-size: 0.95rem;">
+          <i class="fas fa-truck-fast me-2"></i>Maquila y flete de la dieta
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-3">
+          <strong id="dc_dieta"></strong>
+          <span class="text-muted" style="font-size: 0.8rem;"> · LOTE <span id="dc_lote"></span> · versión <span id="dc_version"></span></span>
+        </p>
+
+        <div class="row g-2">
+          <div class="col-6">
+            <label class="form-label-design" for="dc_maquila">Maquila ($/tonelada)</label>
+            <input type="number" step="0.01" min="0" class="form-control form-control-sm" id="dc_maquila">
+            <div class="form-text-muted mt-1">Vacío = usar la maquila de la empresa.</div>
+          </div>
+          <div class="col-6">
+            <label class="form-label-design" for="dc_flete">Flete ($/tonelada)</label>
+            <input type="number" step="0.01" min="0" class="form-control form-control-sm" id="dc_flete">
+            <div class="form-text-muted mt-1">Se suma solo en PRECIO + FLETE.</div>
+          </div>
+        </div>
+
+        <div class="mt-3">
+          <label class="form-label-design" for="dc_motivo">Motivo (opcional)</label>
+          <input type="text" class="form-control form-control-sm" id="dc_motivo" maxlength="200"
+            placeholder="Ej.: flete del despacho de agosto">
+        </div>
+
+        <div class="form-text-muted mt-3" id="dc_aviso"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary btn-sm" id="dc_guardar" onclick="guardarDietaCostos()">
+          <i class="fas fa-check me-1"></i>Guardar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const URL_DIETA_COSTOS = "{{ url_for('planta_alimentos.consolidado_dieta_costos') }}";
+  let modalDietaCostos = null;
+
+  document.addEventListener('DOMContentLoaded', function () {
+    const modalEl = document.getElementById('modalDietaCostos');
+    if (modalEl && typeof bootstrap !== 'undefined') {
+      modalDietaCostos = new bootstrap.Modal(modalEl);
+    }
+    document.querySelectorAll('.btn-dieta-costos').forEach(function (btn) {
+      btn.addEventListener('click', function () { abrirModalDieta(btn); });
+    });
+  });
+
+  function abrirModalDieta(btn) {
+    const d = btn.dataset;
+    document.getElementById('dc_dieta').textContent = btn.closest('td').querySelector('.lote-etapa-nombre').textContent.trim();
+    document.getElementById('dc_lote').textContent = d.lote;
+    document.getElementById('dc_version').textContent = d.version;
+    document.getElementById('dc_maquila').value = d.maquila;
+    document.getElementById('dc_flete').value = d.flete;
+    document.getElementById('dc_motivo').value = '';
+    document.getElementById('dc_aviso').textContent = '';
+
+    const guardar = document.getElementById('dc_guardar');
+    guardar.dataset.item = d.item;
+    guardar.dataset.lote = d.lote;
+    guardar.dataset.version = d.version;
+    if (modalDietaCostos) modalDietaCostos.show();
+  }
+
+  async function guardarDietaCostos() {
+    const guardar = document.getElementById('dc_guardar');
+    const aviso = document.getElementById('dc_aviso');
+    const maquila = document.getElementById('dc_maquila').value;
+    const flete = document.getElementById('dc_flete').value;
+
+    const payload = {
+      item_id: guardar.dataset.item,
+      lote_id: guardar.dataset.lote,
+      version: guardar.dataset.version,
+      maquila_ton: maquila === '' ? null : maquila,
+      flete_ton: flete === '' ? 0 : flete,
+      motivo: document.getElementById('dc_motivo').value
+    };
+
+    guardar.disabled = true;
+    aviso.textContent = 'Guardando...';
+
+    try {
+      const res = await fetch(URL_DIETA_COSTOS, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.status !== 'ok') {
+        aviso.textContent = data.msg || 'No se pudo guardar.';
+        guardar.disabled = false;
+        return;
+      }
+    } catch (e) {
+      aviso.textContent = 'Error de conexión.';
+      guardar.disabled = false;
+      return;
+    }
+
+    guardar.disabled = false;
+    if (modalDietaCostos) modalDietaCostos.hide();
+    window.location.reload();
+  }
+</script>
 {% endblock %}
 
 {% block content %}
@@ -815,8 +954,23 @@
                             <tr>
                                 {% if loop.index0 % 2 == 0 %}
                                 <td class="col-lote-etapa" rowspan="2">
-                                    <span class="lote-etapa-lote">{{ dieta['lote'] }}</span>
-                                    <span class="lote-etapa-nombre">{{ dieta['etapa'] }}</span>
+                                    <div class="d-flex align-items-start justify-content-between gap-2">
+                                        <div>
+                                            <span class="lote-etapa-lote">{{ dieta['lote'] }}</span>
+                                            <span class="lote-etapa-nombre">{{ dieta['etapa'] }}</span>
+                                        </div>
+                                        {% if session.get('user_rol') in ('Superadmin', 'Director de Planta') %}
+                                        <button type="button" class="btn-dieta-costos"
+                                            data-item="{{ dieta['item_id'] }}"
+                                            data-lote="{{ dieta['lote'] }}"
+                                            data-version="{{ dieta['version'] }}"
+                                            data-maquila="{{ dieta['maquila_ton'] | default(0) | float }}"
+                                            data-flete="{{ dieta['flete_ton'] | default(0) | float }}"
+                                            title="Editar maquila y flete de esta dieta">
+                                            <i class="fas fa-pen"></i>
+                                        </button>
+                                        {% endif %}
+                                    </div>
                                 </td>
                                 {% endif %}
                                 <td style="text-align: center;">
@@ -864,8 +1018,23 @@
                             <tr>
                                 {% if loop.index0 % 2 == 0 %}
                                 <td class="col-lote-etapa" rowspan="2">
-                                    <span class="lote-etapa-lote">{{ dieta['lote'] }}</span>
-                                    <span class="lote-etapa-nombre">{{ dieta['etapa'] }}</span>
+                                    <div class="d-flex align-items-start justify-content-between gap-2">
+                                        <div>
+                                            <span class="lote-etapa-lote">{{ dieta['lote'] }}</span>
+                                            <span class="lote-etapa-nombre">{{ dieta['etapa'] }}</span>
+                                        </div>
+                                        {% if session.get('user_rol') in ('Superadmin', 'Director de Planta') %}
+                                        <button type="button" class="btn-dieta-costos"
+                                            data-item="{{ dieta['item_id'] }}"
+                                            data-lote="{{ dieta['lote'] }}"
+                                            data-version="{{ dieta['version'] }}"
+                                            data-maquila="{{ dieta['maquila_ton'] | default(0) | float }}"
+                                            data-flete="{{ dieta['flete_ton'] | default(0) | float }}"
+                                            title="Editar maquila y flete de esta dieta">
+                                            <i class="fas fa-pen"></i>
+                                        </button>
+                                        {% endif %}
+                                    </div>
                                 </td>
                                 {% endif %}
                                 <td style="text-align: center;">
@@ -906,8 +1075,23 @@
                             <tr>
                                 {% if loop.index0 % 2 == 0 %}
                                 <td class="col-lote-etapa" rowspan="2">
-                                    <span class="lote-etapa-lote">{{ dieta['lote'] }}</span>
-                                    <span class="lote-etapa-nombre">{{ dieta['etapa'] }}</span>
+                                    <div class="d-flex align-items-start justify-content-between gap-2">
+                                        <div>
+                                            <span class="lote-etapa-lote">{{ dieta['lote'] }}</span>
+                                            <span class="lote-etapa-nombre">{{ dieta['etapa'] }}</span>
+                                        </div>
+                                        {% if session.get('user_rol') in ('Superadmin', 'Director de Planta') %}
+                                        <button type="button" class="btn-dieta-costos"
+                                            data-item="{{ dieta['item_id'] }}"
+                                            data-lote="{{ dieta['lote'] }}"
+                                            data-version="{{ dieta['version'] }}"
+                                            data-maquila="{{ dieta['maquila_ton'] | default(0) | float }}"
+                                            data-flete="{{ dieta['flete_ton'] | default(0) | float }}"
+                                            title="Editar maquila y flete de esta dieta">
+                                            <i class="fas fa-pen"></i>
+                                        </button>
+                                        {% endif %}
+                                    </div>
                                 </td>
                                 {% endif %}
                                 <td style="text-align: center;">
@@ -948,8 +1132,23 @@
                             <tr>
                                 {% if loop.index0 % 2 == 0 %}
                                 <td class="col-lote-etapa" rowspan="2">
-                                    <span class="lote-etapa-lote">{{ dieta['lote'] }}</span>
-                                    <span class="lote-etapa-nombre">{{ dieta['etapa'] }}</span>
+                                    <div class="d-flex align-items-start justify-content-between gap-2">
+                                        <div>
+                                            <span class="lote-etapa-lote">{{ dieta['lote'] }}</span>
+                                            <span class="lote-etapa-nombre">{{ dieta['etapa'] }}</span>
+                                        </div>
+                                        {% if session.get('user_rol') in ('Superadmin', 'Director de Planta') %}
+                                        <button type="button" class="btn-dieta-costos"
+                                            data-item="{{ dieta['item_id'] }}"
+                                            data-lote="{{ dieta['lote'] }}"
+                                            data-version="{{ dieta['version'] }}"
+                                            data-maquila="{{ dieta['maquila_ton'] | default(0) | float }}"
+                                            data-flete="{{ dieta['flete_ton'] | default(0) | float }}"
+                                            title="Editar maquila y flete de esta dieta">
+                                            <i class="fas fa-pen"></i>
+                                        </button>
+                                        {% endif %}
+                                    </div>
                                 </td>
                                 {% endif %}
                                 <td style="text-align: center;">

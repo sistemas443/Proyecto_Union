@@ -277,6 +277,99 @@ def costos_por_dieta():
     )
 
 
+@planta_bp.route('/consolidado-precios/dieta-costos', methods=['POST'])
+@login_requerido
+def consolidado_dieta_costos():
+    """
+    Guarda la maquila y el flete (por tonelada) de una dieta y lote concretos.
+
+    - maquila_ton vacio o null: se usa la maquila de la empresa.
+    - flete_ton: se suma solo en la columna PRECIO + FLETE.
+    """
+    if session.get('user_rol') not in ROLES_PRECIOS:
+        return jsonify({'status': 'error', 'msg': 'No tiene permisos para modificar estos valores.'}), 403
+
+    datos = request.get_json(silent=True) or {}
+
+    try:
+        item_id = int(datos.get('item_id'))
+        version = int(datos.get('version'))
+    except (TypeError, ValueError):
+        return jsonify({'status': 'error', 'msg': 'Datos inválidos.'}), 400
+
+    lote_id = (datos.get('lote_id') or '').strip()
+    if not lote_id:
+        return jsonify({'status': 'error', 'msg': 'Falta el lote.'}), 400
+
+    maquila_raw = datos.get('maquila_ton')
+    if maquila_raw in (None, ''):
+        maquila_ton = None
+    else:
+        try:
+            maquila_ton = float(maquila_raw)
+        except (TypeError, ValueError):
+            return jsonify({'status': 'error', 'msg': 'Maquila inválida.'}), 400
+        if maquila_ton < 0:
+            return jsonify({'status': 'error', 'msg': 'La maquila no puede ser negativa.'}), 400
+
+    try:
+        flete_ton = float(datos.get('flete_ton') or 0)
+    except (TypeError, ValueError):
+        return jsonify({'status': 'error', 'msg': 'Flete inválido.'}), 400
+
+    if flete_ton < 0:
+        return jsonify({'status': 'error', 'msg': 'El flete no puede ser negativo.'}), 400
+
+    motivo = (datos.get('motivo') or '').strip()[:200]
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT maquila_ton, flete_ton
+                FROM dieta_costos_extra
+                WHERE item_id = %s AND lote_id = %s AND version = %s
+            """, (item_id, lote_id, version))
+            anterior = cur.fetchone()
+
+            cur.execute("""
+                INSERT INTO dieta_costos_extra
+                    (item_id, lote_id, version, maquila_ton, flete_ton, usuario, actualizado_en)
+                VALUES (%s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+                ON CONFLICT (item_id, lote_id, version)
+                DO UPDATE SET maquila_ton = EXCLUDED.maquila_ton,
+                              flete_ton = EXCLUDED.flete_ton,
+                              usuario = EXCLUDED.usuario,
+                              actualizado_en = CURRENT_TIMESTAMP
+            """, (item_id, lote_id, version, maquila_ton, flete_ton,
+                  session.get('usuario_nombre') or session.get('user_nombre') or 'Sistema'))
+
+            registrar_cambio(
+                session.get('user_id'),
+                session.get('usuario_nombre') or session.get('user_nombre') or 'Sistema',
+                'dieta_costos_extra',
+                item_id,
+                f'maquila/flete {lote_id} v{version}',
+                f"maquila={anterior[0] if anterior else 'empresa'} flete={anterior[1] if anterior else 0}",
+                f"maquila={maquila_ton if maquila_ton is not None else 'empresa'} flete={flete_ton}",
+                'UPDATE',
+                cur
+            )
+
+        conn.commit()
+        return jsonify({
+            'status': 'ok',
+            'maquila_ton': maquila_ton,
+            'flete_ton': flete_ton,
+            'motivo': motivo,
+        })
+    except Exception as e:
+        conn.rollback()
+        print(f"[ERROR DIETA COSTOS EXTRA]: {e}")
+        return jsonify({'status': 'error', 'msg': 'No se pudo guardar el valor.'}), 500
+    finally:
+        conn.close()
+
 @planta_bp.route('/revision-costos/<int:item_id>/<string:lote_id>', methods=['GET'])
 @login_requerido
 def revision_costos(item_id, lote_id):

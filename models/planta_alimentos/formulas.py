@@ -49,6 +49,7 @@ class FormulaDetalle:
                         SELECT 
                             fd.item_id,
                             fd.lote_id,
+                            MAX(vv.version) AS version,
                             -- Las cantidades de la receta estan en gramos por tonelada y los
                             -- precios en $/kg: el total representa el costo de 1.000 toneladas,
                             -- la misma escala que la pantalla "Costos por dieta".
@@ -65,14 +66,15 @@ class FormulaDetalle:
                     SELECT 
                         cb.item_id,
                         cb.lote_id AS lote,
+                        cb.version,
                         COALESCE(ca.nombre, 'Sin etapa en catálogo') AS etapa, 
                         e.nombre AS nombre_empresa,
                         cl.empresa_id,
-                        COALESCE(e.costo_maquila, 0) AS costo_maquila,
-                        
-                        (cb.total_precio_base + cb.total_flete + COALESCE(e.costo_maquila, 0) * 1000) AS precio_flete_maquila,
-                        (cb.total_con_iva + COALESCE(e.costo_maquila, 0) * 1000) AS precio_iva_maquila,
-                        (cb.total_con_iva + cb.total_flete + COALESCE(e.costo_maquila, 0) * 1000) AS precio_flete_iva_maquila,
+                        COALESCE(dce.maquila_ton, e.costo_maquila, 0) AS maquila_ton,
+                        COALESCE(dce.flete_ton, 0) AS flete_ton,
+                        cb.total_precio_base,
+                        cb.total_flete,
+                        cb.total_con_iva,
 
                         -- Motivo por el cual la dieta no se puede ubicar en la empresa
                         CASE
@@ -86,25 +88,39 @@ class FormulaDetalle:
                     LEFT JOIN catalogo_alimentos ca ON cb.item_id = ca.item_id 
                     LEFT JOIN cabecera_lotes cl ON cb.lote_id = cl.lote 
                     LEFT JOIN empresas e ON cl.empresa_id = e.id
+                    LEFT JOIN dieta_costos_extra dce
+                           ON dce.item_id = cb.item_id
+                          AND dce.lote_id = cb.lote_id
+                          AND dce.version = cb.version
                     ORDER BY e.nombre NULLS FIRST, cb.lote_id;
                 """
                 cur.execute(consulta, parametros)
                 columnas = [desc[0] for desc in cur.description]
                 filas = [dict(zip(columnas, fila)) for fila in cur.fetchall()]
 
-                # Cada dieta se devuelve en dos filas: con maquila y sin maquila
+                # Cada dieta se devuelve en dos filas: con maquila y sin maquila.
+                # La maquila entra en las columnas de IVA; el flete nuevo solo en PRECIO + FLETE.
                 resultado = []
                 for fila in filas:
-                    maquila = float(fila.get('costo_maquila') or 0) * 1000  # por 1.000 t
+                    maquila = float(fila.get('maquila_ton') or 0) * 1000      # por 1.000 t
+                    flete_extra = float(fila.get('flete_ton') or 0) * 1000   # por 1.000 t
+
+                    base = float(fila['total_precio_base'] or 0)
+                    flete_insumos = float(fila['total_flete'] or 0)
+                    con_iva = float(fila['total_con_iva'] or 0)
 
                     con_maquila = dict(fila)
                     con_maquila['tipo_maquila'] = 'Con maquila'
+                    con_maquila['precio_iva_maquila'] = con_iva + maquila
+                    con_maquila['precio_flete_maquila'] = base + flete_insumos + flete_extra
+                    con_maquila['precio_flete_iva_maquila'] = con_iva + flete_insumos + maquila
 
                     sin_maquila = dict(fila)
                     sin_maquila['tipo_maquila'] = 'Sin maquila'
-                    sin_maquila['precio_flete_maquila'] = float(fila['precio_flete_maquila']) - maquila
-                    sin_maquila['precio_iva_maquila'] = float(fila['precio_iva_maquila']) - maquila
-                    sin_maquila['precio_flete_iva_maquila'] = float(fila['precio_flete_iva_maquila']) - maquila
+                    sin_maquila['precio_iva_maquila'] = con_iva
+                    # En la fila sin maquila el flete ingresado NO se suma
+                    sin_maquila['precio_flete_maquila'] = base + flete_insumos
+                    sin_maquila['precio_flete_iva_maquila'] = con_iva + flete_insumos
 
                     resultado.append(con_maquila)
                     resultado.append(sin_maquila)
