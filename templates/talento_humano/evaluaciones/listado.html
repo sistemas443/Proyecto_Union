@@ -1,0 +1,109 @@
+{% extends 'generales/layout.html' %}
+
+{% block title %}Evaluaciones de desempeño – Avícola San Martín{% endblock %}
+
+{% block head %}
+<style>
+  .area-grupo { border: 1px solid #e7e9ee; border-radius: 12px; background: #fff; margin-bottom: .7rem; box-shadow: 0 1px 2px rgba(16,24,40,.04); }
+  .area-grupo summary {
+    list-style: none; cursor: pointer; display: flex; align-items: center; gap: .7rem;
+    padding: .7rem 1rem; font-size: .95rem; font-weight: 600; color: #1f2430;
+  }
+  .area-grupo summary::-webkit-details-marker { display: none; }
+  .area-grupo summary .chev { color: #667085; transition: transform .15s ease; }
+  .area-grupo[open] summary .chev { transform: rotate(180deg); }
+  .area-grupo-body { border-top: 1px solid #f0f1f3; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-3">
+
+    <div class="d-flex justify-content-between align-items-end mb-3 flex-wrap gap-2 px-2">
+        <div class="d-flex align-items-center gap-2">
+            <span class="page-head-icon"><i class='bx bx-task'></i></span>
+            <div>
+                <h3 class="page-title mb-0">Evaluaciones de desempeño</h3>
+                <p class="page-sub mb-0 mt-1">Agrupadas por equipo de trabajo (área)</p>
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('talento_humano.evaluacion_catalogo') }}" class="btn btn-outline-secondary shadow-sm text-nowrap">
+                <i class='bx bx-slider-alt'></i> Catálogo
+            </a>
+            <a href="{{ url_for('talento_humano.evaluacion_nueva') }}" class="btn btn-nuevo shadow-sm text-nowrap">
+                <i class='bx bx-plus'></i> Nueva evaluación
+            </a>
+        </div>
+    </div>
+
+    <!-- RESUMEN -->
+    <div class="d-flex flex-wrap gap-2 mb-3 px-2">
+        <span class="count-chip">{{ total }} evaluación{% if total != 1 %}es{% endif %}</span>
+        <span class="count-chip">{{ grupos|length }} área{% if grupos|length != 1 %}s{% endif %}</span>
+    </div>
+
+    {% if grupos %}
+        {% for g in grupos %}
+        <details class="area-grupo" {{ 'open' if loop.first }}>
+            <summary>
+                <i class='bx bx-buildings'></i>
+                <span>{{ g.area }}</span>
+                <span class="badge bg-light text-dark border">{{ g.evaluaciones|length }}</span>
+                <i class='bx bx-chevron-down chev ms-auto'></i>
+            </summary>
+            <div class="area-grupo-body">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Colaborador</th>
+                                <th>Cargo</th>
+                                <th>Periodo</th>
+                                <th>Fecha</th>
+                                <th class="text-center">Resultado</th>
+                                <th class="text-end">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for e in g.evaluaciones %}
+                            <tr>
+                                <td class="fw-semibold">{{ e.nombre_completo }}</td>
+                                <td>{{ e.cargo or '—' }}</td>
+                                <td class="text-nowrap small">
+                                    {% if e.periodo_inicio or e.periodo_fin %}
+                                    {{ e.periodo_inicio or '?' }} → {{ e.periodo_fin or '?' }}
+                                    {% else %}—{% endif %}
+                                </td>
+                                <td class="text-nowrap small">{{ e.fecha_evaluacion or '—' }}</td>
+                                <td class="text-center">
+                                    {% if e.resultado_final is not none %}
+                                    <span class="badge fw-semibold {{ 'bg-success' if e.aprobada else 'bg-danger' }}">{{ e.resultado_final }}%</span>
+                                    {% else %}<span class="text-muted">—</span>{% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <a href="{{ url_for('talento_humano.evaluacion_detalle', id=e.id) }}" class="btn btn-sm btn-outline-primary py-0 px-2" title="Ver evaluación"><i class='bx bx-show'></i></a>
+                                    <form method="post" action="{{ url_for('talento_humano.evaluacion_eliminar', id=e.id) }}" class="d-inline" onsubmit="return confirm('¿Eliminar esta evaluación?');">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2" title="Eliminar"><i class='bx bx-trash'></i></button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </details>
+        {% endfor %}
+    {% else %}
+    <div class="card shadow-sm border-0 px-2">
+        <div class="card-body text-center text-muted py-5">
+            <i class='bx bx-clipboard' style="font-size:2rem;"></i>
+            <div class="mt-2">Aún no hay evaluaciones de desempeño.</div>
+            <a href="{{ url_for('talento_humano.evaluacion_nueva') }}" class="btn btn-sm btn-nuevo mt-2">Crear la primera</a>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

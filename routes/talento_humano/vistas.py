@@ -21,6 +21,7 @@ from models.talento_humano.estudios import Estudio
 from models.talento_humano.cursos import Curso
 from models.talento_humano.epp_sst import EppSST
 from models.talento_humano.reportes import ReportesTH
+from models.talento_humano.desempeno import Desempeno, MINIMO_APROBACION
 
 # Decorador específico para Talento Humano
 def talento_humano_requerido(f):
@@ -181,6 +182,160 @@ def reporte_tema(tema):
         tema=tema,
         reporte=reporte,
     )
+
+
+# ============================================================
+# EVALUACIÓN DE DESEMPEÑO
+# ============================================================
+@talento_humano_bp.route('/evaluaciones')
+@login_requerido
+@talento_humano_requerido
+def evaluaciones():
+    """Listado de evaluaciones de desempeño, agrupado por área."""
+    grupos = Desempeno.listar_agrupado()
+    total = sum(len(g['evaluaciones']) for g in grupos)
+    return render_template('talento_humano/evaluaciones/listado.html',
+                           grupos=grupos, total=total)
+
+
+@talento_humano_bp.route('/evaluaciones/nueva', methods=['GET', 'POST'])
+@login_requerido
+@talento_humano_requerido
+def evaluacion_nueva():
+    colaboradores = Desempeno.get_colaboradores_activos()
+
+    # Colaborador seleccionado: por query string en GET o por form en POST
+    colaborador_id = request.values.get('colaborador_id', type=int)
+    col_sel = Colaborador.get_by_id(colaborador_id) if colaborador_id else None
+    area = col_sel.get('area') if col_sel else None
+    criterios = Desempeno.get_criterios(area) if area else Desempeno.get_criterios(None)
+
+    # Jefe inmediato sugerido como evaluador
+    jefe_id = col_sel.get('jefe_inmediato_id') if col_sel else None
+    jefe_nombre = None
+    if jefe_id:
+        jefe = Colaborador.get_by_id(jefe_id)
+        jefe_nombre = jefe.get('nombre_completo') if jefe else None
+
+    if request.method == 'POST':
+        if not colaborador_id:
+            flash('Debe seleccionar el colaborador a evaluar.', 'error')
+            return redirect(url_for('talento_humano.evaluacion_nueva'))
+
+        data = {
+            'colaborador_id': colaborador_id,
+            'evaluador_id': request.form.get('evaluador_id', type=int),
+            'evaluador_nombre': request.form.get('evaluador_nombre', '').strip() or None,
+            'periodo_inicio': request.form.get('periodo_inicio') or None,
+            'periodo_fin': request.form.get('periodo_fin') or None,
+            'fecha_evaluacion': request.form.get('fecha_evaluacion') or None,
+            'estado': request.form.get('estado', 'Finalizada'),
+            'aspectos_positivos': request.form.get('aspectos_positivos', '').strip() or None,
+            'aspectos_fortalecer': request.form.get('aspectos_fortalecer', '').strip() or None,
+            'objetivos': request.form.get('objetivos', '').strip() or None,
+            'area': area,
+            'creado_por': session.get('user_id'),
+            'detalles': [],
+        }
+        if data['evaluador_id']:
+            ev_col = Colaborador.get_by_id(data['evaluador_id'])
+            data['evaluador_nombre'] = ev_col.get('nombre_completo') if ev_col else data['evaluador_nombre']
+        for c in criterios:
+            for ind in c['indicadores']:
+                ev = request.form.get(f'score_evaluador_{ind["id"]}', type=int)
+                au = request.form.get(f'score_autoevaluacion_{ind["id"]}', type=int)
+                data['detalles'].append({
+                    'criterio_id': c['id'],
+                    'indicador_id': ind['id'],
+                    'score_evaluador': ev if ev in (1, 2, 3, 4, 5) else None,
+                    'score_autoevaluacion': au if au in (1, 2, 3, 4, 5) else None,
+                })
+        nuevo_id = Desempeno.crear(data)
+        flash('Evaluación guardada correctamente.', 'success')
+        return redirect(url_for('talento_humano.evaluacion_detalle', id=nuevo_id))
+
+    return render_template('talento_humano/evaluaciones/formulario.html',
+                           criterios=criterios, colaboradores=colaboradores,
+                           colaborador_sel=col_sel, area=area,
+                           jefe_id=jefe_id, jefe_nombre=jefe_nombre)
+
+
+@talento_humano_bp.route('/evaluaciones/<int:id>')
+@login_requerido
+@talento_humano_requerido
+def evaluacion_detalle(id):
+    ev = Desempeno.get_by_id(id)
+    if not ev:
+        abort(404)
+    return render_template('talento_humano/evaluaciones/detalle.html',
+                           ev=ev, minimo=MINIMO_APROBACION)
+
+
+@talento_humano_bp.route('/evaluaciones/<int:id>/eliminar', methods=['POST'])
+@login_requerido
+@talento_humano_requerido
+def evaluacion_eliminar(id):
+    if Desempeno.eliminar(id):
+        flash('Evaluación eliminada.', 'success')
+    else:
+        flash('No se encontró la evaluación.', 'error')
+    return redirect(url_for('talento_humano.evaluaciones'))
+
+
+# ============================================================
+# CATÁLOGO DE CRITERIOS E INDICADORES (por área)
+# ============================================================
+@talento_humano_bp.route('/evaluaciones/catalogo')
+@login_requerido
+@talento_humano_requerido
+def evaluacion_catalogo():
+    return render_template('talento_humano/evaluaciones/catalogo.html',
+                           criterios=Desempeno.get_criterios_catalogo(),
+                           areas=Desempeno.get_areas())
+
+
+@talento_humano_bp.route('/evaluaciones/catalogo/criterio', methods=['POST'])
+@login_requerido
+@talento_humano_requerido
+def evaluacion_catalogo_criterio():
+    nombre = request.form.get('nombre', '').strip()
+    if nombre:
+        Desempeno.crear_criterio(nombre)
+        flash('Criterio agregado.', 'success')
+    return redirect(url_for('talento_humano.evaluacion_catalogo'))
+
+
+@talento_humano_bp.route('/evaluaciones/catalogo/indicador', methods=['POST'])
+@login_requerido
+@talento_humano_requerido
+def evaluacion_catalogo_indicador():
+    criterio_id = request.form.get('criterio_id', type=int)
+    descripcion = request.form.get('descripcion', '').strip()
+    area = request.form.get('area', '').strip() or None
+    if criterio_id and descripcion:
+        Desempeno.crear_indicador(criterio_id, descripcion, area)
+        flash('Indicador agregado.', 'success')
+    else:
+        flash('Debe indicar criterio y descripción.', 'error')
+    return redirect(url_for('talento_humano.evaluacion_catalogo'))
+
+
+@talento_humano_bp.route('/evaluaciones/catalogo/indicador/<int:id>/eliminar', methods=['POST'])
+@login_requerido
+@talento_humano_requerido
+def evaluacion_catalogo_indicador_eliminar(id):
+    Desempeno.eliminar_indicador(id)
+    flash('Indicador eliminado.', 'success')
+    return redirect(url_for('talento_humano.evaluacion_catalogo'))
+
+
+@talento_humano_bp.route('/evaluaciones/catalogo/criterio/<int:id>/eliminar', methods=['POST'])
+@login_requerido
+@talento_humano_requerido
+def evaluacion_catalogo_criterio_eliminar(id):
+    Desempeno.eliminar_criterio(id)
+    flash('Criterio eliminado.', 'success')
+    return redirect(url_for('talento_humano.evaluacion_catalogo'))
 
 
 # ============================================================
