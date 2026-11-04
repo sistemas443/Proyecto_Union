@@ -29,7 +29,7 @@
 
         <!-- ROLES: DIRECTOR DE PLANTA - Ven módulos: Producción, Clasificación, Planta de Alimentos -->
         {% elif session.get('user_rol') == 'Director de Planta' %}
-        {% set en_produccion = ep.startswith('lotes.') or ep.startswith('diario.') or ep.startswith('semanal.') or ep.startswith('semanal_levante.') or ep.startswith('primera_semana.') %}
+        {% set en_produccion = ep.startswith('lotes.') or ep.startswith('calificacion_lotes.') or ep.startswith('diario.') or ep.startswith('semanal.') or ep.startswith('semanal_levante.') or ep.startswith('primera_semana.') %}
         {% set en_planta = ep.startswith('planta_alimentos.') %}
         {% set en_clasificacion = ep.startswith('clasificacion.') %}
         <ul class="navbar-nav app-nav me-auto mb-2 mb-lg-0">
@@ -43,6 +43,11 @@
               <li>
                 <a class="dropdown-item fw-semibold" href="{{ url_for('lotes.vista_lotes') }}" onclick="toggleSidebarLotes(event)">
                   <i class='bx bx-sidebar'></i> Lotes
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item{{ ' active' if ep.startswith('calificacion_lotes.') }}" href="{{ url_for('calificacion_lotes.vista_calificacion') }}">
+                  <i class='bx bx-medal'></i> Calificación de lotes
                 </a>
               </li>
               <li>
@@ -108,7 +113,7 @@
 
         <!-- ROLES: SUPERADMIN, EDITOR, LECTOR - Ven módulos operativos + extras Superadmin -->
         {% else %}
-        {% set en_produccion = ep.startswith('lotes.') or ep.startswith('diario.') or ep.startswith('semanal.') or ep.startswith('semanal_levante.') or ep.startswith('primera_semana.') %}
+        {% set en_produccion = ep.startswith('lotes.') or ep.startswith('calificacion_lotes.') or ep.startswith('diario.') or ep.startswith('semanal.') or ep.startswith('semanal_levante.') or ep.startswith('primera_semana.') %}
         {% set en_planta = ep.startswith('planta_alimentos.') %}
         {% set en_clasificacion = ep.startswith('clasificacion.') %}
         <ul class="navbar-nav app-nav me-auto mb-2 mb-lg-0">
@@ -122,6 +127,11 @@
               <li>
                 <a class="dropdown-item fw-semibold" href="{{ url_for('lotes.vista_lotes') }}" onclick="toggleSidebarLotes(event)">
                   <i class='bx bx-sidebar'></i> Lotes
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item{{ ' active' if ep.startswith('calificacion_lotes.') }}" href="{{ url_for('calificacion_lotes.vista_calificacion') }}">
+                  <i class='bx bx-medal'></i> Calificación de lotes
                 </a>
               </li>
               <li>

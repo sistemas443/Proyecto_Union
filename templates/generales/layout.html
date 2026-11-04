@@ -682,6 +682,10 @@
           const btn = form.querySelector('button[type="submit"]');
           if (!btn) return;
 
+          // Los formularios con confirmacion propia manejan su propio spinner
+          // (asi no se queda "cargando" cuando el usuario cancela)
+          if (form.hasAttribute('data-confirm')) return;
+
           if (selectLote) {
             const tieneLote = selectLote.value && selectLote.value.trim() !== '' && selectLote.value !== 'VACIO';
             if (!tieneLote) {

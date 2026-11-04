@@ -147,6 +147,13 @@
                     {% endif %}
                 </select>
             </div>
+            {% if lote_id != '0' and session.get('user_rol') != 'Lector' %}
+            <button type="button" class="btn btn-outline-secondary btn-sm"
+                onclick="abrirModalReplicar({{ item_id }}, '{{ lote_id }}', {{ version_actual }}, '{{ (nombre_dieta or ('Dieta ' ~ item_id)) | e }}')"
+                title="Copiar esta dieta a otros lotes">
+                <i class="fas fa-clone me-1"></i>Replicar a otros lotes
+            </button>
+            {% endif %}
             <a href="{{ url_for('planta_alimentos.resumen_lote_formulas', lote_id=lote_id) }}"
                 class="btn btn-outline-secondary btn-sm">
                 <i class="fas fa-arrow-left me-1"></i> Volver
@@ -240,10 +247,34 @@
         <div class="card card-clean h-100">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <span class="fw-bold"><i class="fas fa-list-ol me-2"></i> Composición base (1.000 kg)</span>
-                <button class="btn btn-sm btn-primary" data-bs-toggle="modal"
-                    data-bs-target="#modalAgregarInsumo">
-                    <i class="fas fa-plus me-1"></i> Insumo
-                </button>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-primary" data-bs-toggle="modal"
+                        data-bs-target="#modalAgregarInsumo">
+                        <i class="fas fa-plus me-1"></i> Insumo
+                    </button>
+                    {% if lote_id != '0' and session.get('user_rol') != 'Lector' %}
+                    <button type="button" class="btn btn-sm btn-outline-secondary"
+                        onclick="abrirModalImportar({{ item_id }}, '{{ lote_id }}', {{ version_actual }})"
+                        title="Importar varios insumos desde Excel o una imagen">
+                        <i class="fas fa-file-import me-1"></i> Importar
+                    </button>
+                    {% if insumos_receta %}
+                    <form method="POST" action="{{ url_for('planta_alimentos.eliminar_insumos_receta') }}"
+                        class="d-inline"
+                        data-confirm="Vas a eliminar <strong>todos los insumos</strong> de la dieta <strong>{{ (nombre_dieta or ('Dieta ' ~ item_id)) | e }}</strong> en el lote <strong>{{ lote_id }}</strong>. Esta acción no se puede deshacer."
+                        data-confirm-title="¿Eliminar todos los insumos?"
+                        data-confirm-ok="Sí, eliminar todos">
+                        <input type="hidden" name="item_id" value="{{ item_id }}">
+                        <input type="hidden" name="lote_id" value="{{ lote_id }}">
+                        <input type="hidden" name="version" value="{{ version_actual }}">
+                        <button type="submit" class="btn btn-sm btn-outline-danger"
+                            title="Eliminar todos los insumos de esta receta">
+                            <i class="fas fa-trash-can"></i>
+                        </button>
+                    </form>
+                    {% endif %}
+                    {% endif %}
+                </div>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
@@ -1016,4 +1047,6 @@
             .catch(error => console.error('Error:', error));
     }
 </script>
+{% include 'planta_alimentos/_modal_importar.html' %}
+{% include 'planta_alimentos/_modal_replicar.html' %}
 {% endblock %}

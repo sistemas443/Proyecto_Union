@@ -291,12 +291,47 @@ document.addEventListener('submit', function (e) {
     const mensaje = form.getAttribute('data-confirm');
     if (!mensaje) return;
     e.preventDefault();
+
+    // Guardar el estado original del boton: el manejador global del layout le pone
+    // un spinner al enviar, y hay que devolverlo si el usuario cancela.
+    const boton = form.querySelector('button[type="submit"]');
+    const estadoBoton = boton ? {
+        html: boton.innerHTML,
+        disabled: boton.disabled,
+        minWidth: boton.style.minWidth,
+        minHeight: boton.style.minHeight,
+        opacity: boton.style.opacity,
+        cursor: boton.style.cursor
+    } : null;
+
+    function restaurarBoton() {
+        if (!boton || !estadoBoton) return;
+        boton.innerHTML = estadoBoton.html;
+        boton.disabled = estadoBoton.disabled;
+        boton.style.minWidth = estadoBoton.minWidth;
+        boton.style.minHeight = estadoBoton.minHeight;
+        boton.style.opacity = estadoBoton.opacity;
+        boton.style.cursor = estadoBoton.cursor;
+    }
+
     appConfirm({
         titulo: form.getAttribute('data-confirm-title') || '¿Confirmar acción?',
         html: mensaje,
         ok: form.getAttribute('data-confirm-ok') || 'Sí, continuar'
     }).then(function (result) {
-        if (result.isConfirmed) form.submit();
+        if (result.isConfirmed) {
+            if (boton) {
+                boton.disabled = true;
+                boton.style.minWidth = boton.offsetWidth + 'px';
+                boton.style.minHeight = boton.offsetHeight + 'px';
+                boton.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Cargando...';
+            }
+            form.submit();
+        } else {
+            restaurarBoton();
+        }
+    }).catch(function () {
+        restaurarBoton();
     });
 });
 

@@ -1,0 +1,825 @@
+{% extends 'generales/layout.html' %}
+{% block title %}Calificación de lotes - Avícola San Martín{% endblock %}
+
+{% block head %}
+{% include 'planta_alimentos/_design_system.html' %}
+<style>
+    .parametros-grid {
+        display: grid;
+        grid-template-columns: minmax(220px, 1.4fr) minmax(140px, 0.8fr) auto;
+        gap: var(--space-3);
+        align-items: end;
+    }
+    @media (max-width: 576px) {
+        .parametros-grid { grid-template-columns: 1fr; }
+    }
+
+    /* --- Bloque de puntaje --- */
+    .puntaje-bloque {
+        min-width: 160px;
+        padding: var(--space-3) var(--space-4);
+        border-radius: 0.5rem;
+        border: 1px solid var(--border);
+        background-color: var(--surface-alt);
+        text-align: center;
+    }
+    .puntaje-valor {
+        font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+        font-size: 2.4rem;
+        font-weight: 700;
+        line-height: 1;
+        color: var(--action-primary);
+        font-variant-numeric: tabular-nums;
+    }
+    .puntaje-valor.es-ok { color: var(--success); }
+    .puntaje-valor.es-pendiente { color: #8a6d00; }
+    .puntaje-valor.es-critica { color: var(--danger); }
+    .puntaje-unidad {
+        font-size: 0.68rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--text-muted);
+        margin-top: var(--space-1);
+    }
+
+    /* --- Chip de dato del lote --- */
+    .dato-lote {
+        font-size: 0.72rem;
+        color: var(--text-secondary);
+        background-color: var(--surface-alt);
+        border: 1px solid var(--border);
+        border-radius: 0.3rem;
+        padding: 0.2rem 0.5rem;
+        display: inline-flex;
+        gap: 0.35rem;
+        align-items: center;
+    }
+    .dato-lote strong {
+        color: var(--text-primary);
+        font-weight: 600;
+    }
+
+    /* --- Tarjeta de variable --- */
+    .var-nombre {
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--text-secondary);
+    }
+    .var-valor {
+        font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+        font-size: 1.35rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        font-variant-numeric: tabular-nums;
+        line-height: 1.2;
+    }
+    .var-valor small {
+        font-size: 0.65rem;
+        font-weight: 500;
+        color: var(--text-muted);
+    }
+    .var-tabla {
+        font-size: 0.72rem;
+        color: var(--text-muted);
+    }
+    .var-cumplimiento {
+        font-size: 0.78rem;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+    }
+    .var-cumplimiento.es-ok { color: var(--success); }
+    .var-cumplimiento.es-igual { color: var(--text-secondary); }
+    .var-cumplimiento.es-peor { color: var(--danger); }
+
+    .progress {
+        height: 6px;
+        background-color: var(--border);
+        border-radius: 999px;
+        margin: var(--space-2) 0;
+    }
+    .progress-bar.es-ok { background-color: var(--success); }
+    .progress-bar.es-igual { background-color: var(--action-secondary); }
+    .progress-bar.es-peor { background-color: var(--danger); }
+
+    .var-sin-dato {
+        font-size: 0.78rem;
+        color: var(--text-muted);
+        font-style: italic;
+    }
+
+    .avisos-calificacion {
+        list-style: none;
+        padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4);
+        margin: 0;
+        border-left: 3px solid var(--border);
+        background-color: var(--surface-alt);
+        border-radius: 0.35rem;
+        font-size: 0.78rem;
+        color: var(--text-secondary);
+    }
+    .avisos-calificacion li + li {
+        margin-top: var(--space-1);
+    }
+
+    #tablaComposicion tr.total td {
+        background-color: var(--surface-alt) !important;
+        border-top: 2px solid var(--border);
+    }
+
+    /* --- Gráfico general embebido --- */
+    .leyenda-grafico {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem 0.6rem;
+        margin-bottom: var(--space-2);
+    }
+    .leyenda-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.15rem 0.4rem;
+        border: 1px solid transparent;
+        border-radius: 0.3rem;
+        background: transparent;
+        font-size: 0.72rem;
+        color: var(--text-muted);
+        cursor: pointer;
+        line-height: 1.2;
+    }
+    .leyenda-item.activa {
+        background-color: var(--surface-alt);
+        border-color: var(--border);
+        color: var(--text-secondary);
+    }
+    .leyenda-item:hover { border-color: var(--border); }
+    .leyenda-item:focus-visible {
+        outline: 2px solid var(--action-primary);
+        outline-offset: 1px;
+    }
+    .leyenda-linea {
+        width: 18px;
+        height: 0;
+        border-top: 3px solid var(--text-muted);
+        display: inline-block;
+    }
+
+    .grafico-wrap {
+        position: relative;
+        overflow-x: auto;
+        overflow-y: hidden;
+    }
+    .grafico-lote svg {
+        display: block;
+        width: 100%;
+        min-width: 680px;
+        height: auto;
+    }
+    .grafico-lote .sv-empty {
+        padding: 2rem 1rem;
+        text-align: center;
+        color: var(--text-muted);
+        font-size: 0.82rem;
+    }
+
+    .tooltip-grafico {
+        position: absolute;
+        top: 0.25rem;
+        transform: translateX(-50%);
+        background-color: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 0.4rem;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+        padding: 0.45rem 0.6rem;
+        font-size: 0.7rem;
+        pointer-events: none;
+        z-index: 6;
+        min-width: 160px;
+    }
+    .tooltip-grafico .tt-titulo {
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 0.2rem;
+    }
+    .tooltip-grafico .tt-fila {
+        display: flex;
+        justify-content: space-between;
+        gap: 0.75rem;
+        color: var(--text-secondary);
+        white-space: nowrap;
+    }
+    .tooltip-grafico .tt-fila b {
+        color: var(--text-primary);
+        font-variant-numeric: tabular-nums;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="d-flex align-items-center gap-3">
+        <div class="page-icon">
+            <i class="fas fa-award"></i>
+        </div>
+        <div>
+            <h2 class="page-title mb-0">Calificación de lotes</h2>
+            <p class="page-subtitle mb-0">
+                Desempeño del lote frente a la tabla genética · HAA 60 % · Conversión 30 % · Mortalidad 10 %
+            </p>
+        </div>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        {% for nivel in escala %}
+        <span class="badge-estado badge-{{ nivel.tono }}" title="Rango del índice">
+            {{ nivel.texto }} · {{ nivel.rango }}
+        </span>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Parámetros de la evaluación -->
+<div class="card card-clean mb-3">
+    <div class="card-header">
+        <i class="fas fa-sliders-h me-2"></i> Parámetros de la evaluación
+    </div>
+    <div class="card-body">
+        <div class="parametros-grid">
+            <div>
+                <label class="form-label-design" for="selLote">Lote</label>
+                <select id="selLote" class="form-select form-select-sm">
+                    {% for lote in lotes %}
+                    <option value="{{ lote.id }}" data-lote="{{ lote.lote }}" data-semanas="{{ lote.semanas }}">
+                        {{ lote.lote }}{% if lote.variedad and lote.variedad != '—' %} · {{ lote.variedad }}{% endif %}{% if lote.aves %} · {{ '{:,}'.format(lote.aves).replace(',', '.') }} aves{% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="form-label-design" for="selSemana">Semana</label>
+                <select id="selSemana" class="form-select form-select-sm">
+                    {% for semana in semanas %}
+                    <option value="{{ semana }}"{% if semana == semana_inicial %} selected{% endif %}>{{ semana }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="pb-1">
+                <span class="badge-estado badge-neutro">
+                    <i class="fas fa-database me-1"></i> Datos automáticos
+                </span>
+                <span class="badge-estado badge-neutro">
+                    <i class="fas fa-book me-1"></i>
+                    {% if fuente_guia == 'bd' %}Tabla de la BD{% else %}Tabla genética del proyecto{% endif %}
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Resultado -->
+<div id="resumenLote">
+    <div class="card card-clean mb-3">
+        <div class="card-body empty-state">
+            <i class="fas fa-calculator"></i> Selecciona un lote y una semana para ver la calificación.
+        </div>
+    </div>
+</div>
+
+<!-- Vista previa: gráfico general del lote -->
+<div id="panelGrafico" class="card card-clean mb-3 d-none">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <span><i class="fas fa-chart-line me-2"></i> Gráfico general del lote</span>
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge-estado badge-neutro" id="chipSemanaGrafico"></span>
+            <form method="post" action="{{ url_for('semanal.grafico_general') }}" class="m-0" id="formGraficoGeneral">
+                <input type="hidden" name="lote" id="inputLoteGrafico" value="{{ lote_inicial.lote if lote_inicial else '' }}">
+                <button type="submit" class="btn btn-outline-primary btn-sm" title="Abrir el gráfico general completo">
+                    <i class="fas fa-arrow-up-right-from-square me-1"></i> Ver completo
+                </button>
+            </form>
+        </div>
+    </div>
+    <div class="card-body pb-2">
+        <div id="leyendaGrafico" class="leyenda-grafico"></div>
+        <div class="grafico-wrap">
+            <div id="graficoLote" class="grafico-lote"></div>
+            <div id="tooltipGrafico" class="tooltip-grafico d-none"></div>
+        </div>
+        <p class="form-text-muted mb-0 mt-1">
+            Línea continua: real · Línea discontinua: tabla genética ·
+            Eje izquierdo: % de producción y gramos · Eje derecho: peso del ave (g) ·
+            Clic en la leyenda para ocultar una serie.
+        </p>
+    </div>
+</div>
+
+<div id="detalleLote"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const URL_EVALUAR = "{{ url_for('calificacion_lotes.api_evaluar') }}";
+    const URL_SEMANAS = "{{ url_for('calificacion_lotes.api_semanas', lote_id=0) }}".replace(/\/0$/, '/');
+    const URL_SERIE = "{{ url_for('calificacion_lotes.api_serie', lote_id=0) }}".replace(/\/0$/, '/');
+    const LOTE_INICIAL = "{{ lote_inicial.id if lote_inicial else '' }}";
+    const SEMANA_INICIAL = "{{ semana_inicial if semana_inicial else '' }}";
+
+    const selLote = document.getElementById('selLote');
+    const selSemana = document.getElementById('selSemana');
+    const resumen = document.getElementById('resumenLote');
+    const detalle = document.getElementById('detalleLote');
+    const panelGrafico = document.getElementById('panelGrafico');
+    const cajaGrafico = document.getElementById('graficoLote');
+    const leyendaGrafico = document.getElementById('leyendaGrafico');
+    const tooltipGrafico = document.getElementById('tooltipGrafico');
+    const chipSemanaGrafico = document.getElementById('chipSemanaGrafico');
+    const inputLoteGrafico = document.getElementById('inputLoteGrafico');
+
+    const TONOS = { ok: 'ok', pendiente: 'pendiente', critica: 'critica' };
+
+    function esc(texto) {
+        return String(texto == null ? '' : texto)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function numero(valor, decimales) {
+        if (valor === null || valor === undefined) return '—';
+        return Number(valor).toLocaleString('es-CO', {
+            minimumFractionDigits: decimales,
+            maximumFractionDigits: decimales,
+        });
+    }
+
+    function etiquetaUnidad(unidad) {
+        if (unidad === 'huevos/ave') return 'huevos/ave';
+        if (unidad === 'kg/docena') return 'kg';
+        return '%';
+    }
+
+    function conUnidad(valor, unidad, decimales) {
+        if (valor === null || valor === undefined) return '—';
+        return `${numero(valor, decimales)} ${etiquetaUnidad(unidad)}`;
+    }
+
+    function decimalesDe(unidad) {
+        if (unidad === '%') return 2;
+        if (unidad === 'kg/docena') return 2;
+        return 1;
+    }
+
+    function mostrarMensaje(icono, texto) {
+        resumen.innerHTML = `
+            <div class="card card-clean mb-3">
+                <div class="card-body empty-state">
+                    <i class="fas ${icono}"></i> ${esc(texto)}
+                </div>
+            </div>`;
+        detalle.innerHTML = '';
+    }
+
+    function tarjetaVariable(v) {
+        const esSinDato = v.estado === 'sin_dato';
+        const dec = decimalesDe(v.unidad);
+        const estadoColor = v.estado === 'mejor' || v.estado === 'igual' ? 'ok' : 'peor';
+        const textoEstado = v.estado === 'mejor' ? 'Mejor que la tabla'
+            : v.estado === 'igual' ? 'En la tabla' : 'Por debajo de la tabla';
+
+        if (esSinDato) {
+            return `
+            <div class="col-lg-4">
+                <div class="card card-clean h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="var-nombre">${esc(v.nombre)}</span>
+                            <span class="badge-estado badge-neutro">${v.peso} %</span>
+                        </div>
+                        <div class="var-sin-dato">Sin dato para esta semana.</div>
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        const ancho = Math.max(0, Math.min(v.cumplimiento, 100));
+
+        return `
+        <div class="col-lg-4">
+            <div class="card card-clean h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="var-nombre">${esc(v.nombre)}</span>
+                        <span class="badge-estado badge-neutro">${v.peso} %</span>
+                    </div>
+                    <div class="var-valor">
+                        ${numero(v.real, dec)} <small>${etiquetaUnidad(v.unidad)}</small>
+                    </div>
+                    <div class="var-tabla">Tabla: ${conUnidad(v.guia, v.unidad, dec)}</div>
+                    <div class="progress" role="progressbar" aria-valuenow="${v.cumplimiento}" aria-valuemin="0" aria-valuemax="100">
+                        <div class="progress-bar ${estadoColor}" style="width: ${ancho}%"></div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="var-cumplimiento ${v.estado === 'mejor' ? 'es-ok' : v.estado === 'igual' ? 'es-igual' : 'es-peor'}">
+                            ${numero(v.cumplimiento, 1)} %
+                        </span>
+                        <span class="var-tabla">${textoEstado}</span>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+    }
+
+    function filaComposicion(v) {
+        if (v.estado === 'sin_dato') {
+            return `<tr>
+                <td class="col-text">${esc(v.nombre)}</td>
+                <td class="col-center">${v.peso} %</td>
+                <td class="col-center text-muted">—</td>
+                <td class="col-num text-muted">—</td>
+            </tr>`;
+        }
+        return `<tr>
+            <td class="col-text">${esc(v.nombre)}</td>
+            <td class="col-center">${v.peso} %</td>
+            <td class="col-center">${numero(v.cumplimiento, 1)} %</td>
+            <td class="col-num-strong">${numero(v.aporte, 2)}</td>
+        </tr>`;
+    }
+
+    function renderResumen(data) {
+        const tono = TONOS[data.calificacion.tono] || 'pendiente';
+        const lote = data.lote || {};
+
+        const chips = [];
+        if (lote.variedad && lote.variedad !== '—') chips.push(`<span class="dato-lote"><i class="fas fa-dna"></i> <strong>${esc(lote.variedad)}</strong></span>`);
+        if (lote.aves) chips.push(`<span class="dato-lote"><i class="fas fa-dove"></i> <strong>${numero(lote.aves, 0)}</strong> aves</span>`);
+        if (lote.fecha_encasetamiento) chips.push(`<span class="dato-lote"><i class="fas fa-calendar-day"></i> Encastre <strong>${esc(lote.fecha_encasetamiento)}</strong></span>`);
+        chips.push(`<span class="dato-lote"><i class="fas fa-calendar-week"></i> Semana <strong>${data.semana}</strong></span>`);
+
+        const avisos = (data.avisos || []).map(a =>
+            `<li><i class="fas fa-info-circle me-1"></i>${esc(a)}</li>`).join('');
+
+        resumen.innerHTML = `
+        <div class="card card-clean mb-3">
+            <div class="card-body">
+                <div class="d-flex flex-wrap gap-4 align-items-center">
+                    <div class="puntaje-bloque">
+                        <div class="puntaje-valor es-${tono}">${numero(data.indice, 1)}</div>
+                        <div class="puntaje-unidad">% de cumplimiento</div>
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <span class="badge-estado badge-${tono}">${esc(data.calificacion.etiqueta)}</span>
+                            ${data.parcial ? '<span class="badge-estado badge-pendiente">Cálculo parcial</span>' : ''}
+                        </div>
+                        <div class="text-muted" style="font-size: 0.82rem;">
+                            Lote <strong style="color: var(--text-primary)">${esc(lote.lote || '')}</strong>
+                            · cumple ${numero(data.indice, 1)} % del potencial genético ponderado
+                            (${data.pesos_aplicados} % de los pesos).
+                        </div>
+                        <div class="d-flex flex-wrap gap-2 mt-3">${chips.join('')}</div>
+                    </div>
+                </div>
+                ${avisos ? `<ul class="avisos-calificacion mt-3 mb-0">${avisos}</ul>` : ''}
+            </div>
+        </div>`;
+    }
+
+    function renderDetalle(data) {
+        detalle.innerHTML = `
+        <div class="row g-3 mb-3">
+            ${data.variables.map(tarjetaVariable).join('')}
+        </div>
+
+        <div class="card card-clean">
+            <div class="card-header">
+                <i class="fas fa-list-ol me-2"></i> Composición del índice
+            </div>
+            <div class="table-responsive">
+                <table class="table table-design align-middle mb-0" id="tablaComposicion">
+                    <thead>
+                        <tr>
+                            <th>Variable</th>
+                            <th>Peso</th>
+                            <th>Cumplimiento</th>
+                            <th>Aporte</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${data.variables.map(filaComposicion).join('')}
+                        <tr class="total fw-bold">
+                            <td>Índice del lote</td>
+                            <td class="col-center">${data.pesos_aplicados} %</td>
+                            <td class="col-center">—</td>
+                            <td class="col-num-strong">${numero(data.indice, 1)}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>`;
+    }
+
+    /* ==================== GRÁFICO GENERAL EMBEBIDO ==================== */
+
+    const SERIES_GRAFICO = [
+        { clave: 'prod_real', nombre: 'Producción real', color: '#2c3e50', eje: 1 },
+        { clave: 'prod_tabla', nombre: 'Producción tabla', color: '#adb5bd', eje: 1, dash: true },
+        { clave: 'consumo_real', nombre: 'Consumo real', color: '#0d6efd', eje: 1 },
+        { clave: 'consumo_tabla', nombre: 'Consumo tabla', color: '#9ec5fe', eje: 1, dash: true },
+        { clave: 'peso_huevo_real', nombre: 'Peso huevo real', color: '#198754', eje: 1 },
+        { clave: 'peso_huevo_tabla', nombre: 'Peso huevo tabla', color: '#a3cfbb', eje: 1, dash: true },
+        { clave: 'peso_ave_real', nombre: 'Peso ave real', color: '#6f42c1', eje: 2 },
+        { clave: 'peso_ave_tabla', nombre: 'Peso ave tabla', color: '#cbb6f0', eje: 2, dash: true },
+    ];
+
+    const UNIDAD_SERIE = {
+        prod_real: '%', prod_tabla: '%',
+        consumo_real: 'g/día', consumo_tabla: 'g/día',
+        peso_huevo_real: 'g', peso_huevo_tabla: 'g',
+        peso_ave_real: 'g', peso_ave_tabla: 'g',
+    };
+
+    // Geometría del SVG (se escala al ancho de la tarjeta)
+    const G = { W: 1000, H: 340, L: 54, R: 64, T: 24, B: 40 };
+
+    const serie = { semanas: [], valores: {}, lote: '' };
+    const seriesVisibles = new Set(SERIES_GRAFICO.map(s => s.clave));
+
+    function construirLeyenda() {
+        leyendaGrafico.innerHTML = SERIES_GRAFICO.map(s => `
+            <button type="button" class="leyenda-item${seriesVisibles.has(s.clave) ? ' activa' : ''}"
+                    data-clave="${s.clave}" aria-pressed="${seriesVisibles.has(s.clave)}">
+                <span class="leyenda-linea" style="border-top-color:${s.color};${s.dash ? 'border-top-style:dashed;' : ''}"></span>${esc(s.nombre)}
+            </button>`).join('');
+
+        leyendaGrafico.querySelectorAll('.leyenda-item').forEach(boton => {
+            boton.addEventListener('click', () => {
+                const clave = boton.dataset.clave;
+                if (seriesVisibles.has(clave)) seriesVisibles.delete(clave);
+                else seriesVisibles.add(clave);
+                dibujarGrafico();
+            });
+        });
+    }
+
+    function mostrarTooltip(indice) {
+        const filas = SERIES_GRAFICO
+            .filter(s => seriesVisibles.has(s.clave))
+            .map(s => {
+                const valor = (serie.valores[s.clave] || [])[indice];
+                if (valor === null || valor === undefined || valor === '') return '';
+                return `<div class="tt-fila"><span>${esc(s.nombre)}</span>
+                        <b>${numero(valor, 1)} ${UNIDAD_SERIE[s.clave]}</b></div>`;
+            })
+            .filter(Boolean)
+            .join('');
+
+        if (!filas) { ocultarTooltip(); return; }
+
+        tooltipGrafico.innerHTML = `<div class="tt-titulo">Semana ${serie.semanas[indice]}</div>${filas}`;
+
+        const n = serie.semanas.length;
+        const ancho = G.W - G.L - G.R;
+        const x = n === 1 ? 50 : ((G.L + (indice / (n - 1)) * ancho) / G.W) * 100;
+        tooltipGrafico.style.left = Math.min(88, Math.max(12, x)) + '%';
+        tooltipGrafico.classList.remove('d-none');
+    }
+
+    function ocultarTooltip() {
+        tooltipGrafico.classList.add('d-none');
+    }
+
+    function dibujarGrafico() {
+        const semanas = serie.semanas || [];
+        if (!semanas.length) return;
+
+        const n = semanas.length;
+        const { W, H, L, R, T, B } = G;
+        const ancho = W - L - R;
+        const alto = H - T - B;
+
+        const px = i => (n === 1 ? L + ancho / 2 : L + (i / (n - 1)) * ancho);
+        const y1 = v => T + (1 - Math.min(Math.max(v, 0), 120) / 120) * alto;
+        const y2 = v => T + (1 - (Math.min(Math.max(v, 1500), 3150) - 1500) / 1650) * alto;
+
+        const semanaSel = Number(selSemana.value);
+        const idxSel = semanas.indexOf(semanaSel);
+
+        const partes = [];
+        partes.push(`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Gráfico general del lote ${esc(serie.lote)}">`);
+        partes.push('<title>Producción, consumo y pesos del lote frente a la tabla genética</title>');
+
+        // Rejilla y eje izquierdo (% / g)
+        for (let v = 0; v <= 120; v += 20) {
+            const y = y1(v).toFixed(1);
+            partes.push(`<line x1="${L}" y1="${y}" x2="${L + ancho}" y2="${y}" stroke="#e9ecef" stroke-width="1"/>`);
+            partes.push(`<text x="${L - 8}" y="${Number(y) + 3}" text-anchor="end" font-size="10" fill="#6c757d">${v}</text>`);
+        }
+
+        // Eje derecho: peso ave (g)
+        [1500, 2050, 2600, 3150].forEach(v => {
+            const y = y2(v).toFixed(1);
+            partes.push(`<text x="${L + ancho + 8}" y="${Number(y) + 3}" font-size="10" fill="#6c757d">${v}</text>`);
+        });
+
+        // Etiquetas del eje X
+        const paso = Math.max(1, Math.ceil(n / 12));
+        semanas.forEach((sem, i) => {
+            if (i % paso !== 0 && i !== n - 1) return;
+            partes.push(`<text x="${px(i).toFixed(1)}" y="${T + alto + 16}" text-anchor="middle" font-size="10" fill="#6c757d">S${sem}</text>`);
+        });
+
+        // Series (los huecos cortan la línea)
+        SERIES_GRAFICO.forEach(s => {
+            if (!seriesVisibles.has(s.clave)) return;
+            const valores = serie.valores[s.clave] || [];
+            const proyectar = s.eje === 2 ? y2 : y1;
+            let trazo = '';
+            let abierto = false;
+
+            for (let i = 0; i < n; i++) {
+                const valor = valores[i];
+                if (valor === null || valor === undefined || valor === '') { abierto = false; continue; }
+                const numeroValor = Number(valor);
+                if (!isFinite(numeroValor)) { abierto = false; continue; }
+                trazo += `${abierto ? 'L' : 'M'}${px(i).toFixed(1)} ${proyectar(numeroValor).toFixed(1)} `;
+                abierto = true;
+            }
+
+            if (!trazo) return;
+            partes.push(`<path d="${trazo.trim()}" fill="none" stroke="${s.color}"
+                stroke-width="${s.eje === 2 ? 2.5 : 2}"
+                ${s.dash ? 'stroke-dasharray="5 4"' : ''}
+                stroke-linejoin="round" stroke-linecap="round"/>`);
+        });
+
+        // Marcador de la semana evaluada
+        if (idxSel >= 0) {
+            const x = px(idxSel).toFixed(1);
+            partes.push(`<line x1="${x}" y1="${T}" x2="${x}" y2="${T + alto}" stroke="#dc3545" stroke-width="1.5" stroke-dasharray="4 3"/>`);
+
+            const tx = Math.min(Math.max(px(idxSel), L + 26), L + ancho - 26);
+            partes.push(`<rect x="${(tx - 25).toFixed(1)}" y="${T - 4}" width="50" height="16" rx="3" fill="#dc3545"/>`);
+            partes.push(`<text x="${tx.toFixed(1)}" y="${T + 8}" text-anchor="middle" font-size="9" fill="#ffffff" font-weight="700">SEM ${semanaSel}</text>`);
+
+            SERIES_GRAFICO.forEach(s => {
+                if (!seriesVisibles.has(s.clave)) return;
+                const valor = (serie.valores[s.clave] || [])[idxSel];
+                if (valor === null || valor === undefined || valor === '') return;
+                const proyectar = s.eje === 2 ? y2 : y1;
+                partes.push(`<circle cx="${px(idxSel).toFixed(1)}" cy="${proyectar(Number(valor)).toFixed(1)}"
+                    r="3.2" fill="#ffffff" stroke="${s.color}" stroke-width="2"/>`);
+            });
+        }
+
+        // Zonas invisibles para el tooltip
+        const anchoCol = ancho / n;
+        for (let i = 0; i < n; i++) {
+            partes.push(`<rect class="col-hit" data-i="${i}" x="${(px(i) - anchoCol / 2).toFixed(1)}"
+                y="${T}" width="${anchoCol.toFixed(2)}" height="${alto}" fill="transparent"/>`);
+        }
+
+        partes.push('</svg>');
+        cajaGrafico.innerHTML = partes.join('');
+
+        construirLeyenda();
+
+        cajaGrafico.querySelectorAll('.col-hit').forEach(rect => {
+            rect.addEventListener('mouseenter', () => mostrarTooltip(Number(rect.dataset.i)));
+        });
+        const svg = cajaGrafico.querySelector('svg');
+        if (svg) svg.addEventListener('mouseleave', ocultarTooltip);
+
+        chipSemanaGrafico.textContent = idxSel >= 0 ? `Semana ${semanaSel} marcada` : '';
+    }
+
+    async function cargarSerie(loteId) {
+        const opcion = selLote.selectedOptions[0];
+        if (opcion && opcion.dataset.lote) inputLoteGrafico.value = opcion.dataset.lote;
+
+        if (!loteId) {
+            serie.semanas = [];
+            serie.valores = {};
+            panelGrafico.classList.add('d-none');
+            return;
+        }
+
+        // Evita mostrar el gráfico del lote anterior mientras llega el nuevo
+        panelGrafico.classList.remove('d-none');
+        leyendaGrafico.innerHTML = '';
+        cajaGrafico.innerHTML = '<div class="sv-empty">Cargando gráfico…</div>';
+        chipSemanaGrafico.textContent = '';
+
+        try {
+            const respuesta = await fetch(`${URL_SERIE}${loteId}`);
+            const datos = await respuesta.json();
+
+            panelGrafico.classList.remove('d-none');
+
+            if (datos.status !== 'ok') {
+                serie.semanas = [];
+                serie.valores = {};
+                leyendaGrafico.innerHTML = '';
+                cajaGrafico.innerHTML = `<div class="sv-empty">${esc(datos.mensaje || 'Sin datos para el gráfico general.')}</div>`;
+                return;
+            }
+
+            serie.semanas = datos.semanas || [];
+            serie.valores = datos.series || {};
+            serie.lote = datos.lote || '';
+            dibujarGrafico();
+        } catch (error) {
+            console.error('[calificacion] No se pudo cargar el gráfico', error);
+            serie.semanas = [];
+            serie.valores = {};
+            panelGrafico.classList.remove('d-none');
+            leyendaGrafico.innerHTML = '';
+            cajaGrafico.innerHTML = '<div class="sv-empty">No se pudo cargar el gráfico general.</div>';
+        }
+    }
+
+    async function cargarSemanas(loteId, seleccionar) {
+        if (!loteId) {
+            selSemana.innerHTML = '<option value="">Sin datos</option>';
+            mostrarMensaje('fa-inbox', 'El lote no tiene semanas evaluables.');
+            panelGrafico.classList.add('d-none');
+            return;
+        }
+
+        selSemana.innerHTML = '<option value="">Cargando…</option>';
+
+        try {
+            const [respuesta] = await Promise.all([
+                fetch(`${URL_SEMANAS}${loteId}`),
+                cargarSerie(loteId),
+            ]);
+            const datos = await respuesta.json();
+            const semanas = datos.semanas || [];
+
+            if (!semanas.length) {
+                selSemana.innerHTML = '<option value="">Sin datos</option>';
+                mostrarMensaje('fa-inbox', 'Este lote todavía no tiene semanas con datos de producción.');
+                panelGrafico.classList.add('d-none');
+                return;
+            }
+
+            selSemana.innerHTML = semanas.map(s => `<option value="${s}">${s}</option>`).join('');
+            const elegida = seleccionar && semanas.includes(Number(seleccionar)) ? Number(seleccionar) : semanas[semanas.length - 1];
+            selSemana.value = String(elegida);
+            evaluar();
+        } catch (error) {
+            console.error('[calificacion] No se pudieron cargar las semanas', error);
+            selSemana.innerHTML = '<option value="">Error</option>';
+            mostrarMensaje('fa-triangle-exclamation', 'No se pudieron cargar las semanas del lote.');
+        }
+    }
+
+    async function evaluar() {
+        const loteId = selLote.value;
+        const semana = selSemana.value;
+        if (!loteId || !semana) return;
+
+        resumen.innerHTML = `
+            <div class="card card-clean mb-3">
+                <div class="card-body empty-state">
+                    <span class="spinner-border spinner-border-sm me-2"></span> Calculando…
+                </div>
+            </div>`;
+
+        try {
+            const respuesta = await fetch(`${URL_EVALUAR}?lote_id=${encodeURIComponent(loteId)}&semana=${encodeURIComponent(semana)}`);
+            const datos = await respuesta.json();
+
+            if (datos.status !== 'ok') {
+                mostrarMensaje('fa-circle-info', datos.mensaje || 'No hay datos para esa semana.');
+            } else {
+                renderResumen(datos);
+                renderDetalle(datos);
+            }
+
+            if (serie.semanas.length) dibujarGrafico();
+        } catch (error) {
+            console.error('[calificacion] Error al evaluar', error);
+            mostrarMensaje('fa-triangle-exclamation', 'No se pudo calcular la calificación.');
+        }
+    }
+
+    selLote.addEventListener('change', () => cargarSemanas(selLote.value, null));
+    selSemana.addEventListener('change', evaluar);
+
+    document.addEventListener('DOMContentLoaded', () => {
+        if (!LOTE_INICIAL) return;
+
+        selLote.value = LOTE_INICIAL;
+        const opcion = selLote.selectedOptions[0];
+        if (opcion && opcion.dataset.lote) inputLoteGrafico.value = opcion.dataset.lote;
+
+        cargarSerie(LOTE_INICIAL);
+
+        if (SEMANA_INICIAL) {
+            evaluar();
+        } else {
+            cargarSemanas(LOTE_INICIAL, null);
+        }
+    });
+</script>
+{% endblock %}

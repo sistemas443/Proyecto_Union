@@ -225,6 +225,7 @@
 {% endblock %}
 {% block scripts %}
 <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+<script src="{{ url_for('static', filename='js/graficas/pantalla_completa.js') }}"></script>
 <script id="datos-grafico" type="application/json">
     {{ datos_grafico | tojson | safe if datos_grafico else 'null' }}
 </script>
@@ -377,21 +378,7 @@
             responsive: true,
             displayModeBar: true,
             displaylogo: false,
-            modeBarButtonsToAdd: [{
-                name: 'Pantalla Completa',
-                icon: {
-                    'width': 500, 'height': 500,
-                    'path': 'M80,80 H180 V120 H120 V180 H80 Z M320,80 H420 V180 H380 V120 H320 Z M80,320 H120 V380 H180 V420 H80 Z M380,320 H420 V420 H320 V380 H380 Z'
-                },
-                click: function(gd) {
-                    if (!document.fullscreenElement) {
-                        if (gd.requestFullscreen) gd.requestFullscreen();
-                        else if (gd.webkitRequestFullscreen) gd.webkitRequestFullscreen();
-                    } else {
-                        if (document.exitFullscreen) document.exitFullscreen();
-                    }
-                }
-            }]
+            modeBarButtonsToAdd: window.botonPantallaCompleta ? [window.botonPantallaCompleta()] : []
         };
         Plotly.newPlot(graficoDiv, trazas, layout, config);
     }

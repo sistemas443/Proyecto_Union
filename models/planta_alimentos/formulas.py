@@ -308,6 +308,81 @@ class FormulaDetalle:
         return list(dietas.values())
 
     @staticmethod
+    def replicar_formula(item_id, lote_origen, version, lotes_destino):
+        """
+        Copia una version de la formula a otros lotes.
+
+        Se copian insumos, cantidades, precios congelados (precio/IVA/flete),
+        el nucleo (es_nucleo y baches_nucleo) y las fechas de vigencia.
+        Los lotes que ya tienen esa dieta se omiten.
+        """
+        resultado = {'creados': [], 'omitidos': [], 'filas': 0, 'origen': 0}
+        if not lotes_destino:
+            return resultado
+
+        conn = get_db_connection()
+        try:
+            with conn.cursor(cursor_factory=DictCursor) as cur:
+                cur.execute("""
+                    SELECT materia_prima_id, cantidad_kg, es_nucleo, baches_nucleo,
+                           precio_guardado, iva_guardado, flete_guardado,
+                           fecha_creacion, fecha_vencimiento
+                    FROM formula_detalle
+                    WHERE item_id = %s AND lote_id = %s AND version = %s
+                """, (item_id, lote_origen, version))
+                origen = cur.fetchall()
+                resultado['origen'] = len(origen)
+                if not origen:
+                    return resultado
+
+                cur.execute("""
+                    SELECT DISTINCT lote_id
+                    FROM formula_detalle
+                    WHERE item_id = %s AND lote_id = ANY(%s)
+                """, (item_id, list(lotes_destino)))
+                ya_tienen = {fila['lote_id'] for fila in cur.fetchall()}
+
+                for lote in lotes_destino:
+                    if lote == lote_origen or lote in ya_tienen:
+                        resultado['omitidos'].append(lote)
+                        continue
+
+                    valores = [(
+                        item_id,
+                        lote,
+                        fila['materia_prima_id'],
+                        fila['cantidad_kg'],
+                        fila['es_nucleo'],
+                        fila['baches_nucleo'],
+                        fila['precio_guardado'],
+                        fila['iva_guardado'],
+                        fila['flete_guardado'],
+                        fila['fecha_creacion'],
+                        fila['fecha_vencimiento'],
+                        1,
+                    ) for fila in origen]
+
+                    cur.executemany("""
+                        INSERT INTO formula_detalle
+                            (item_id, lote_id, materia_prima_id, cantidad_kg, es_nucleo, baches_nucleo,
+                             precio_guardado, iva_guardado, flete_guardado,
+                             fecha_creacion, fecha_vencimiento, version)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """, valores)
+
+                    resultado['filas'] += len(valores)
+                    resultado['creados'].append(lote)
+
+            conn.commit()
+            return resultado
+        except Exception as e:
+            conn.rollback()
+            print(f"Error al replicar formula: {e}")
+            raise
+        finally:
+            conn.close()
+
+    @staticmethod
     def crear_nueva_version(item_id, lote_id):
         conn = get_db_connection()
         try:
@@ -427,6 +502,26 @@ class FormulaDetalle:
         finally:
             conn.close()
             
+    @staticmethod
+    def eliminar_insumos_version(item_id, lote_id, version):
+        """Elimina todos los insumos de una version de la receta. Devuelve cuantas filas borro."""
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    DELETE FROM formula_detalle
+                    WHERE item_id = %s AND lote_id = %s AND version = %s
+                """, (item_id, lote_id, version))
+                eliminados = cur.rowcount
+            conn.commit()
+            return eliminados
+        except Exception as e:
+            conn.rollback()
+            print(f"Error al eliminar insumos de la version: {e}")
+            raise
+        finally:
+            conn.close()
+
     @staticmethod
     def eliminar_formula_lote(item_id, lote_id):
         conn = get_db_connection()

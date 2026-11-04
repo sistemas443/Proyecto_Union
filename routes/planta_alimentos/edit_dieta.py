@@ -1,11 +1,13 @@
 from datetime import datetime
-from flask import render_template, request, redirect, url_for, flash
+import psycopg2.extras
+from flask import render_template, request, redirect, url_for, flash, jsonify, session
 from routes.planta_alimentos.catalogo_a import planta_bp
 from routes.routes import login_requerido
 from models.lotes.services import get_todos_los_lotes
 from models.planta_alimentos.maestros import MateriaPrima, CatalogoAlimento, Empresa
 from models.planta_alimentos.transacciones import RegistroProduccion
 from models.base import get_db_connection
+from models.auditoria.services import registrar_cambio
 from flask import render_template, request, redirect, url_for, flash, jsonify
 
 
@@ -59,6 +61,10 @@ def modificar_fecha_receta():
 
 
 from models.planta_alimentos.formulas import FormulaDetalle, FormulaProduccion
+from models.planta_alimentos.importar_receta import (
+    analizar as analizar_importacion,
+    insertar_insumos,
+)
 # Asegúrate de que MateriaPrima y CatalogoAlimento estén importados arriba
 
 from flask import request, flash, redirect, url_for, render_template
@@ -76,6 +82,189 @@ def parse_float(val_str, default=0.0):
     except ValueError:
         return default
 
+
+@planta_bp.route('/receta/replicar/opciones', methods=['GET'])
+@login_requerido
+def opciones_replicar_receta():
+    """Lista los lotes a los que se puede replicar una dieta, marcando los que ya la tienen."""
+    item_id = request.args.get('item_id', type=int)
+    lote_origen = (request.args.get('lote_origen') or '').strip()
+
+    if not item_id:
+        return jsonify({'status': 'error', 'msg': 'Falta la dieta.'}), 400
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("""
+                SELECT lote FROM cabecera_lotes
+                WHERE lote IS NOT NULL AND TRIM(lote) <> ''
+                  AND lote <> 'LOTE GENERAL'
+                ORDER BY lote
+            """)
+            lotes = [f['lote'] for f in cur.fetchall()]
+
+            cur.execute("""
+                SELECT DISTINCT lote_id FROM formula_detalle WHERE item_id = %s
+            """, (item_id,))
+            ya_tienen = {f['lote_id'] for f in cur.fetchall()}
+    finally:
+        conn.close()
+
+    return jsonify({
+        'status': 'ok',
+        'lotes': [{
+            'lote': lote,
+            'tiene': lote in ya_tienen,
+            'origen': lote == lote_origen,
+        } for lote in lotes]
+    })
+
+
+@planta_bp.route('/receta/replicar', methods=['POST'])
+@login_requerido
+def replicar_receta():
+    """Replica una version de la formula a los lotes seleccionados."""
+    if session.get('user_rol') == 'Lector':
+        return jsonify({'status': 'error', 'msg': 'No tiene permisos para replicar dietas.'}), 403
+
+    datos = request.get_json(silent=True) or {}
+    try:
+        item_id = int(datos.get('item_id'))
+        version = int(datos.get('version') or 1)
+    except (TypeError, ValueError):
+        return jsonify({'status': 'error', 'msg': 'Datos inválidos.'}), 400
+
+    lote_origen = (datos.get('lote_origen') or '').strip()
+    lotes = datos.get('lotes') or []
+    lotes = [str(l).strip() for l in lotes if str(l).strip()]
+
+    if not lote_origen or not lotes:
+        return jsonify({'status': 'error', 'msg': 'Seleccione al menos un lote destino.'}), 400
+
+    try:
+        resultado = FormulaDetalle.replicar_formula(item_id, lote_origen, version, lotes)
+    except Exception as e:
+        print(f"[ERROR REPLICAR DIETA]: {e}")
+        return jsonify({'status': 'error', 'msg': 'No se pudo replicar la dieta.'}), 500
+
+    if not resultado['origen']:
+        return jsonify({'status': 'error', 'msg': 'La receta de origen no tiene insumos.'}), 400
+
+    try:
+        conn = get_db_connection()
+        with conn.cursor() as cur:
+            registrar_cambio(
+                session.get('user_id'),
+                session.get('usuario_nombre') or session.get('user_nombre') or 'Sistema',
+                'formula_detalle',
+                item_id,
+                f'replicar {lote_origen} v{version}',
+                '-',
+                ', '.join(resultado['creados']) if resultado['creados'] else 'sin cambios',
+                'INSERT',
+                cur
+            )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"[AVISO AUDITORIA REPLICAR]: {e}")
+
+    return jsonify({
+        'status': 'ok',
+        'creados': resultado['creados'],
+        'omitidos': resultado['omitidos'],
+        'filas': resultado['filas'],
+        'insumos_origen': resultado['origen'],
+    })
+
+@planta_bp.route('/receta/importar/analizar', methods=['POST'])
+@login_requerido
+def importar_receta_analizar():
+    """Analiza un texto pegado o una imagen y devuelve los insumos detectados (sin guardar)."""
+    if session.get('user_rol') == 'Lector':
+        return jsonify({'status': 'error', 'msg': 'No tiene permisos para importar insumos.'}), 403
+
+    texto = request.form.get('texto') or ''
+    archivo = request.files.get('imagen')
+    if archivo is not None and not archivo.filename:
+        archivo = None
+
+    if not texto.strip() and archivo is None:
+        return jsonify({'status': 'error', 'msg': 'Pegue el texto o suba una imagen.'}), 400
+
+    try:
+        resultado = analizar_importacion(texto=texto, archivo=archivo)
+    except Exception as e:
+        print(f"[ERROR IMPORTAR ANALIZAR]: {e}")
+        return jsonify({'status': 'error', 'msg': 'No se pudo analizar el contenido.'}), 500
+
+    return jsonify({
+        'status': 'ok',
+        'filas': resultado['filas'],
+        'avisos': resultado['avisos'],
+    })
+
+
+@planta_bp.route('/receta/importar/confirmar', methods=['POST'])
+@login_requerido
+def importar_receta_confirmar():
+    """Inserta en la receta los insumos revisados por el usuario."""
+    if session.get('user_rol') == 'Lector':
+        return jsonify({'status': 'error', 'msg': 'No tiene permisos para importar insumos.'}), 403
+
+    datos = request.get_json(silent=True) or {}
+    try:
+        item_id = int(datos.get('item_id'))
+        version = int(datos.get('version') or 1)
+    except (TypeError, ValueError):
+        return jsonify({'status': 'error', 'msg': 'Datos inválidos.'}), 400
+
+    lote_id = (datos.get('lote_id') or '').strip()
+    if not lote_id or lote_id == '0':
+        return jsonify({'status': 'error', 'msg': 'Seleccione un lote antes de importar.'}), 400
+
+    filas = datos.get('filas') or []
+    filas = [f for f in filas if float(f.get('cantidad') or 0) > 0]
+    if not filas:
+        return jsonify({'status': 'error', 'msg': 'No hay insumos para agregar.'}), 400
+
+    try:
+        baches = float(datos.get('baches_nucleo') or 6)
+    except (TypeError, ValueError):
+        baches = 6
+
+    try:
+        resultado = insertar_insumos(item_id, lote_id, version, filas, baches_nucleo=baches)
+    except Exception as e:
+        print(f"[ERROR IMPORTAR CONFIRMAR]: {e}")
+        return jsonify({'status': 'error', 'msg': 'No se pudieron agregar los insumos.'}), 500
+
+    try:
+        conn = get_db_connection()
+        with conn.cursor() as cur:
+            registrar_cambio(
+                session.get('user_id'),
+                session.get('usuario_nombre') or session.get('user_nombre') or 'Sistema',
+                'formula_detalle',
+                item_id,
+                f'importar insumos {lote_id} v{version}',
+                '-',
+                f"{resultado['insertados']} insumos" + (
+                    f" (nuevas: {', '.join(resultado['creadas'])})" if resultado['creadas'] else ''),
+                'INSERT',
+                cur
+            )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"[AVISO AUDITORIA IMPORTAR]: {e}")
+
+    return jsonify({
+        'status': 'ok',
+        'insertados': resultado['insertados'],
+        'creadas': resultado['creadas'],
+    })
 
 @planta_bp.route('/planta_alimentos/editar-receta/<int:item_id>/<string:lote_id>', methods=['GET', 'POST'])
 @login_requerido
@@ -296,6 +485,46 @@ def eliminar_insumo_receta(id_registro):
         print(f"Error al eliminar insumo: {e}")
         
     return redirect(url_for('planta_alimentos.editar_receta', item_id=item_id, lote_id=lote_id))
+
+@planta_bp.route('/receta/eliminar-insumos', methods=['POST'])
+@login_requerido
+def eliminar_insumos_receta():
+    """Elimina todos los insumos de la version actual de la receta."""
+    item_id = request.form.get('item_id')
+    lote_id = request.form.get('lote_id')
+    version = request.form.get('version', type=int) or 1
+
+    if session.get('user_rol') == 'Lector':
+        flash('No tiene permisos para eliminar insumos.', 'warning')
+        return redirect(url_for('planta_alimentos.editar_receta', item_id=item_id, lote_id=lote_id, version=version))
+
+    try:
+        eliminados = FormulaDetalle.eliminar_insumos_version(item_id, lote_id, version)
+        try:
+            conn = get_db_connection()
+            with conn.cursor() as cur:
+                registrar_cambio(
+                    session.get('user_id'),
+                    session.get('usuario_nombre') or session.get('user_nombre') or 'Sistema',
+                    'formula_detalle',
+                    int(item_id),
+                    f'eliminar todos los insumos {lote_id} v{version}',
+                    f'{eliminados} insumos',
+                    '0 insumos',
+                    'DELETE',
+                    cur
+                )
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            print(f"[AVISO AUDITORIA ELIMINAR INSUMOS]: {e}")
+        flash(f'Se eliminaron {eliminados} insumo(s) de la receta.', 'success')
+    except Exception as e:
+        print(f"Error al eliminar todos los insumos: {e}")
+        flash('No se pudieron eliminar los insumos.', 'danger')
+
+    return redirect(url_for('planta_alimentos.editar_receta', item_id=item_id, lote_id=lote_id, version=version))
+
 
 @planta_bp.route('/planta_alimentos/receta/actualizar/<int:id_registro>', methods=['POST'])
 @login_requerido
