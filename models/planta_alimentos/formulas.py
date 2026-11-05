@@ -38,7 +38,26 @@ class FormulaDetalle:
         try:
             with conn.cursor() as cur:
                 consulta = f"""
-                    WITH VersionesVigentes AS (
+                    WITH EnsayosBase AS (
+                        -- Insumos de ensayo activos en la fecha de referencia
+                        SELECT e.item_id, e.lote_id,
+                               COUNT(DISTINCT e.id) AS n_ensayos,
+                               SUM(e.cantidad_kg) AS e_kg,
+                               SUM(e.cantidad_kg * COALESCE(NULLIF(e.precio_guardado, 0), mp.precio_actual_kg)) AS e_base,
+                               SUM(e.cantidad_kg * COALESCE(e.flete_guardado, mp.flete, 0)) AS e_flete,
+                               SUM(e.cantidad_kg * (COALESCE(NULLIF(e.precio_guardado, 0), mp.precio_actual_kg)
+                                                   * COALESCE(e.iva_guardado, mp.iva, 1))) AS e_iva
+                        FROM formula_ensayos e
+                        JOIN materias_primas mp ON mp.id = e.materia_prima_id
+                        WHERE e.eliminado_en IS NULL
+                          AND EXISTS (
+                              SELECT 1 FROM formula_ensayo_rangos r
+                              WHERE r.ensayo_id = e.id
+                                AND %s::date BETWEEN r.desde AND r.hasta
+                          )
+                        GROUP BY e.item_id, e.lote_id
+                    ),
+                    VersionesVigentes AS (
                         -- Version de cada receta cuya fecha de vencimiento cae en el rango
                         SELECT item_id, lote_id, MAX(version) AS version
                         FROM formula_detalle
@@ -75,6 +94,11 @@ class FormulaDetalle:
                         cb.total_precio_base,
                         cb.total_flete,
                         cb.total_con_iva,
+                        COALESCE(eb.e_kg, 0)          AS kg_ensayo,
+                        COALESCE(eb.n_ensayos, 0)     AS n_ensayos,
+                        COALESCE(eb.e_base, 0)        AS total_ensayo_base,
+                        COALESCE(eb.e_flete, 0)       AS total_ensayo_flete,
+                        COALESCE(eb.e_iva, 0)         AS total_ensayo_iva,
 
                         -- Motivo por el cual la dieta no se puede ubicar en la empresa
                         CASE
@@ -85,6 +109,8 @@ class FormulaDetalle:
                         END AS motivo_sin_empresa
 
                     FROM CostosBase cb
+                    LEFT JOIN EnsayosBase eb
+                           ON eb.item_id = cb.item_id AND eb.lote_id = cb.lote_id
                     LEFT JOIN catalogo_alimentos ca ON cb.item_id = ca.item_id 
                     LEFT JOIN cabecera_lotes cl ON cb.lote_id = cl.lote 
                     LEFT JOIN empresas e ON cl.empresa_id = e.id
@@ -94,7 +120,7 @@ class FormulaDetalle:
                           AND dce.version = cb.version
                     ORDER BY e.nombre NULLS FIRST, cb.lote_id;
                 """
-                cur.execute(consulta, parametros)
+                cur.execute(consulta, (hasta,) + tuple(parametros))
                 columnas = [desc[0] for desc in cur.description]
                 filas = [dict(zip(columnas, fila)) for fila in cur.fetchall()]
 
@@ -105,9 +131,9 @@ class FormulaDetalle:
                     maquila = float(fila.get('maquila_ton') or 0) * 1000      # por 1.000 t
                     flete_extra = float(fila.get('flete_ton') or 0) * 1000   # por 1.000 t
 
-                    base = float(fila['total_precio_base'] or 0)
-                    flete_insumos = float(fila['total_flete'] or 0)
-                    con_iva = float(fila['total_con_iva'] or 0)
+                    base = float(fila['total_precio_base'] or 0) + float(fila.get('total_ensayo_base') or 0)
+                    flete_insumos = float(fila['total_flete'] or 0) + float(fila.get('total_ensayo_flete') or 0)
+                    con_iva = float(fila['total_con_iva'] or 0) + float(fila.get('total_ensayo_iva') or 0)
 
                     con_maquila = dict(fila)
                     con_maquila['tipo_maquila'] = 'Con maquila'
@@ -168,7 +194,7 @@ class FormulaDetalle:
                     ORDER BY fd.materia_prima_id, fd.fecha_vencimiento DESC, fd.version DESC
                 """, parametros)
 
-                return {
+                resultado = {
                     fila['materia_prima_id']: {
                         'precio': float(fila['precio_guardado'] or 0),
                         'iva': float(fila['iva_guardado'] or 1),
@@ -176,6 +202,27 @@ class FormulaDetalle:
                     }
                     for fila in cur.fetchall()
                 }
+
+                # Precios de materias primas que solo aparecen en ensayos
+                cur.execute("""
+                    SELECT DISTINCT ON (e.materia_prima_id)
+                           e.materia_prima_id,
+                           e.precio_guardado, e.iva_guardado, e.flete_guardado
+                    FROM formula_ensayos e
+                    JOIN formula_ensayo_rangos r ON r.ensayo_id = e.id
+                    WHERE e.eliminado_en IS NULL
+                      AND r.desde <= %s::date AND r.hasta >= %s::date
+                      AND COALESCE(e.precio_guardado, 0) > 0
+                    ORDER BY e.materia_prima_id, r.desde DESC
+                """, (hasta, desde))
+                for fila in cur.fetchall():
+                    if fila['materia_prima_id'] not in resultado:
+                        resultado[fila['materia_prima_id']] = {
+                            'precio': float(fila['precio_guardado'] or 0),
+                            'iva': float(fila['iva_guardado'] or 1),
+                            'flete': float(fila['flete_guardado'] or 0),
+                        }
+                return resultado
         except Exception as e:
             print(f"Error al obtener precios historicos: {e}")
             return {}
@@ -305,10 +352,43 @@ class FormulaDetalle:
                 dieta['sin_maquila_flete'] += costo_flete
                 dieta['sin_maquila_iva_flete'] += costo_iva_flete
 
+        # --- Insumos de ensayo: se muestran en la version segun su vencimiento ---
+        from datetime import date
+        from models.planta_alimentos.ensayos import Ensayo
+        for dieta in dietas.values():
+            fecha_ref = dieta['fecha_vencimiento'] or date.today()
+            hoy = date.today()
+            if fecha_ref > hoy:
+                fecha_ref = hoy
+            for ens in Ensayo.vigentes_en(dieta['item_id'], lote, fecha_ref):
+                cantidad = float(ens['cantidad_kg'] or 0)
+                costo_iva = float(ens['costo_iva'] or 0)
+                costo_flete = float(ens['costo_flete'] or 0)
+                costo_iva_flete = float(ens['costo_iva_flete'] or 0)
+                dieta['insumos'].append({
+                    'materia': ens['insumo'],
+                    'cantidad': cantidad,
+                    'precio': float(ens['precio'] or 0),
+                    'iva': float(ens['iva'] or 1),
+                    'flete': float(ens['flete'] or 0),
+                    'es_maquila': False,
+                    'es_ensayo': True,
+                    'costo_iva': costo_iva,
+                    'costo_flete': costo_flete,
+                    'costo_iva_flete': costo_iva_flete,
+                })
+                dieta['total_cantidad'] += cantidad
+                dieta['total_iva'] += costo_iva
+                dieta['total_flete'] += costo_flete
+                dieta['total_iva_flete'] += costo_iva_flete
+                dieta['sin_maquila_iva'] += costo_iva
+                dieta['sin_maquila_flete'] += costo_flete
+                dieta['sin_maquila_iva_flete'] += costo_iva_flete
+
         return list(dietas.values())
 
     @staticmethod
-    def replicar_formula(item_id, lote_origen, version, lotes_destino):
+    def replicar_formula(item_id, lote_origen, version, lotes_destino, usuario=None):
         """
         Copia una version de la formula a otros lotes.
 
@@ -374,6 +454,11 @@ class FormulaDetalle:
                     resultado['creados'].append(lote)
 
             conn.commit()
+
+            # Los insumos de ensayo se replican aparte (aunque el lote ya tenga la dieta)
+            from models.planta_alimentos.ensayos import Ensayo
+            resultado['ensayos'] = Ensayo.replicar(item_id, lote_origen, lotes_destino,
+                                                    usuario or 'Sistema')
             return resultado
         except Exception as e:
             conn.rollback()
@@ -430,8 +515,9 @@ class FormulaDetalle:
                     WHERE item_id = %s AND lote_id = %s AND version = %s;
                 """
                 cur.execute(consulta, (nueva_fecha, item_id, lote_id, version))
+                afectadas = cur.rowcount
             conn.commit()
-            return True
+            return afectadas > 0
         except Exception as e:
             print(f"Error al modificar fecha de vencimiento: {e}")
             conn.rollback()
@@ -495,7 +581,22 @@ class FormulaDetalle:
                 """
                 cur.execute(consulta, (item_id, lote_id))
                 columnas = [desc[0] for desc in cur.description]
-                return [dict(zip(columnas, fila)) for fila in cur.fetchall()]
+                filas = [dict(zip(columnas, fila)) for fila in cur.fetchall()]
+
+            from datetime import date
+            from models.planta_alimentos.ensayos import Ensayo
+            for ens in Ensayo.vigentes_en(item_id, lote_id, date.today()):
+                filas.append({
+                    'insumo': ens['insumo'],
+                    'cantidad': float(ens['cantidad_kg'] or 0),
+                    'precio': float(ens['precio'] or 0),
+                    'iva': float(ens['iva'] or 1),
+                    'flete': float(ens['flete'] or 0),
+                    'es_maquila': False,
+                    'nombre_dieta': (filas[0]['nombre_dieta'] if filas else ''),
+                    'es_ensayo': True,
+                })
+            return filas
         except Exception as e:
             print(f"Error al obtener detalle de costos: {e}")
             return []
@@ -835,6 +936,18 @@ class FormulaProduccion:
                             VALUES (%s, 'SALIDA_PRODUCCION', %s, %s, %s);
                         """, (mp_id, gramos_descontar, fecha, f"{obs} | {toneladas} Ton"))
                 
+                # 2b. Descuento de los insumos de ensayo vigentes en la fecha
+                from models.planta_alimentos.ensayos import Ensayo
+                for ens in Ensayo.vigentes_en(item_id, lote_id, fecha):
+                    gramos_ensayo = (toneladas * float(ens['cantidad_kg'] or 0)) * 1000
+                    if gramos_ensayo > 0:
+                        cur.execute("""
+                            INSERT INTO movimientos_inventario
+                            (materia_prima_id, tipo_movimiento, cantidad, fecha, observacion)
+                            VALUES (%s, 'SALIDA_PRODUCCION', %s, %s, %s);
+                        """, (ens['materia_prima_id'], gramos_ensayo, fecha,
+                              f"Producción Dieta {item_id} | Lote {lote_id} | ENSAYO {ens['insumo']} | {toneladas} Ton"))
+
                 # 3. Descuento adicional para CAL (ID=7) y CALCIO (ID=4) si es venta y hay cantidades
                 if es_venta:
                     if cal_kg and float(cal_kg) > 0:

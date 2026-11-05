@@ -305,6 +305,40 @@
       background-color: transparent !important;
     }
   }
+  /* ===== Ajuste real de inventario ===== */
+  .ajuste-nota {
+    padding: 0.55rem 1rem;
+    font-size: 0.74rem;
+    color: var(--text-secondary);
+    background: #fffaf0;
+    border-bottom: 1px solid #f0e2c2;
+  }
+  .table-inventario .col-ajuste { text-align: right; padding-right: 0.5rem; }
+  .input-ajuste {
+    display: block;
+    width: 100%;
+    max-width: 120px;
+    margin-left: auto;
+    text-align: right;
+    font-size: 0.82rem;
+    border: 1px solid transparent;
+    background: transparent;
+    border-radius: 4px;
+    padding: 0.12rem 0.3rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .input-ajuste:hover { border-color: #c9d1dd; background: #ffffff; }
+  .input-ajuste:focus {
+    outline: none;
+    border-color: var(--action-primary);
+    background: #ffffff;
+    box-shadow: 0 0 0 2px rgba(44, 62, 80, .12);
+  }
+  .input-ajuste.con-ajuste { background: #fff8e6; border-color: #f0d28a; }
+  .input-ajuste::placeholder { color: #b6bdc8; }
+  @media print {
+    .input-ajuste { border: 0; background: transparent; }
+  }
 </style>
 {% endblock %}
 
@@ -321,9 +355,16 @@
                 <p class="page-subtitle mb-0">Existencias, entradas y salidas por mes</p>
             </div>
         </div>
-        <button class="btn btn-outline-secondary btn-sm" onclick="window.print()">
-            <i class="fas fa-print me-1"></i> Imprimir Reporte
-        </button>
+        <div class="d-flex gap-2 d-print-none">
+            <button class="btn btn-outline-secondary btn-sm" onclick="window.print()">
+                <i class="fas fa-print me-1"></i> Imprimir Reporte
+            </button>
+            <button type="submit" form="formAjuste" class="btn btn-primary btn-sm fw-semibold"
+                {% if session.get('user_rol') == 'Lector' %}disabled{% endif %}
+                title="Guardar los ajustes de inventario del mes">
+                <i class="fas fa-floppy-disk me-1"></i> Guardar ajustes
+            </button>
+        </div>
     </div>
 
     <!-- Filtros de Mes y Año + Acciones de Cierre/Reapertura -->
@@ -443,17 +484,26 @@
     <!-- Tabla Resumen -->
     <div class="card card-inventario">
         <div class="card-body p-0">
-            <div class="table-responsive">
+            <form id="formAjuste" method="POST" action="{{ url_for('planta_alimentos.guardar_ajuste_inventario') }}">
+                <input type="hidden" name="mes" value="{{ mes }}">
+                <input type="hidden" name="anio" value="{{ anio }}">
+                <div class="ajuste-nota d-print-none">
+                    <i class="fas fa-circle-info me-1"></i>
+                    El <b>ajuste</b> registra la merma o descuadre real del mes (roedores, derrames, etc.). Se suma al
+                    <b>inventario final</b> del mes seleccionado; no modifica compras, consumo ni el maestro de materias primas.
+                </div>
+                <div class="table-responsive">
                 <table class="table table-bordered table-hover align-middle mb-0 table-inventario" style="font-size: 0.85rem;">
                     <thead>
                         <tr>
-                            <th style="width: 22%; padding-left: 1rem;">MATERIA PRIMA</th>
-                            <th class="col-numeric" style="width: 13%;">CONSUMO MES (gr)</th>
-                            <th class="col-numeric" style="width: 11%;">INICIAL (gr)</th>
-                            <th class="col-numeric" style="width: 11%;">COMPRAS (gr)</th>
-                            <th class="col-numeric" style="width: 12%;">TOTAL DISP. (gr)</th>
-                            <th class="col-numeric" style="width: 13%;">INV. FINAL (gr)</th>
-                            <th class="col-numeric" style="width: 12%;">CONS. 7 DÍAS (gr)</th>
+                            <th style="width: 20%; padding-left: 1rem;">MATERIA PRIMA</th>
+                            <th class="col-numeric" style="width: 11%;">CONSUMO MES (gr)</th>
+                            <th class="col-numeric" style="width: 10%;">INICIAL (gr)</th>
+                            <th class="col-numeric" style="width: 10%;">COMPRAS (gr)</th>
+                            <th class="col-numeric" style="width: 11%;">TOTAL DISP. (gr)</th>
+                            <th class="col-numeric col-ajuste" style="width: 10%;">AJUSTE INV (gr)</th>
+                            <th class="col-numeric" style="width: 11%;">INV. FINAL (gr)</th>
+                            <th class="col-numeric" style="width: 9%;">CONS. 7 DÍAS (gr)</th>
                             <th class="col-seminv" style="width: 8%;">SEM INV.</th>
                         </tr>
                     </thead>
@@ -465,7 +515,16 @@
                             <td class="col-numeric">{{ "{:,.0f}".format(item['inicial']) }}</td>
                             <td class="col-numeric">{{ "{:,.0f}".format(item['compras']) }}</td>
                             <td class="col-numeric fw-bold">{{ "{:,.0f}".format(item['total_disponible']) }}</td>
-                            <td class="col-final {% if item['inventario_final'] < 0 %}negative{% else %}positive{% endif %}">
+                            <td class="col-ajuste">
+                                <input type="number" step="any" name="ajuste_{{ item['id'] }}"
+                                    class="input-ajuste {{ 'con-ajuste' if item['ajuste'] else '' }}"
+                                    value="{{ ('%.2f'|format(item['ajuste'])).rstrip('0').rstrip('.') if item['ajuste'] else '' }}"
+                                    placeholder="0"
+                                    title="Ajuste real del mes (puede ser negativo)"
+                                    {% if session.get('user_rol') == 'Lector' %}readonly{% endif %}>
+                            </td>
+                            <td class="col-final {% if item['inventario_final'] < 0 %}negative{% else %}positive{% endif %}"
+                                title="Calculado sin ajuste: {{ "{:,.0f}".format(item['inventario_final_calculado']) }} gr">
                                 {{ "{:,.0f}".format(item['inventario_final']) }}
                             </td>
                             <td class="col-consumo7">{{ "{:,.0f}".format(item['consumo_7_dias']) }}</td>
@@ -489,6 +548,7 @@
                         inicial=0,
                         compras=0,
                         disponible=0,
+                        ajuste=0,
                         final=0,
                         consumo7=0
                         ) %}
@@ -498,6 +558,7 @@
                         {% set totales.inicial = totales.inicial + item['inicial'] %}
                         {% set totales.compras = totales.compras + item['compras'] %}
                         {% set totales.disponible = totales.disponible + item['total_disponible'] %}
+                        {% set totales.ajuste = totales.ajuste + item['ajuste'] %}
                         {% set totales.final = totales.final + item['inventario_final'] %}
                         {% set totales.consumo7 = totales.consumo7 + item['consumo_7_dias'] %}
                         {% endfor %}
@@ -508,13 +569,15 @@
                             <th class="col-numeric">{{ "{:,.0f}".format(totales.inicial) }}</th>
                             <th class="col-numeric">{{ "{:,.0f}".format(totales.compras) }}</th>
                             <th class="col-numeric">{{ "{:,.0f}".format(totales.disponible) }}</th>
+                            <th class="col-ajuste">{{ "{:,.0f}".format(totales.ajuste) if totales.ajuste else '—' }}</th>
                             <th class="col-numeric {% if totales.final < 0 %}negative{% else %}positive{% endif %}">{{ "{:,.0f}".format(totales.final) }}</th>
                             <th class="col-consumo7">{{ "{:,.0f}".format(totales.consumo7) }}</th>
                             <th class="col-seminv">—</th>
                         </tr>
                     </tfoot>
                 </table>
-            </div>
+                </div>
+            </form>
         </div>
     </div>
 </div>

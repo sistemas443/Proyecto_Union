@@ -33,6 +33,15 @@ def _resumen_impacto(filas):
     }
 
 
+def _resumen_ensayos(filas):
+    """Cantidad de ensayos afectados y de dietas/lotes distintos."""
+    dietas = {(f['item_id'], f['lote_id']) for f in filas}
+    return {
+        'ensayos': len(filas),
+        'ensayos_dietas': len(dietas),
+    }
+
+
 @planta_bp.route('/consolidado-precios/precio', methods=['POST'])
 @login_requerido
 def consolidado_precio_editar():
@@ -97,7 +106,29 @@ def consolidado_precio_editar():
             """, parametros)
             filas = cur.fetchall()
 
+            # Insumos de ensayo del mismo producto (no viven en formula_detalle)
+            if alcance == 'todas':
+                condicion_ens = "e.materia_prima_id = %s AND e.eliminado_en IS NULL"
+                parametros_ens = [materia_prima_id]
+            else:
+                condicion_ens = (
+                    "e.materia_prima_id = %s AND e.eliminado_en IS NULL "
+                    "AND EXISTS (SELECT 1 FROM formula_ensayo_rangos r "
+                    "            WHERE r.ensayo_id = e.id "
+                    "              AND r.desde <= %s AND r.hasta >= %s)"
+                )
+                parametros_ens = [materia_prima_id, hasta, desde]
+
+            cur.execute(f"""
+                SELECT e.id, e.item_id, e.lote_id,
+                       e.precio_guardado, e.iva_guardado, e.flete_guardado
+                FROM formula_ensayos e
+                WHERE {condicion_ens}
+            """, parametros_ens)
+            ensayos = cur.fetchall()
+
             impacto = _resumen_impacto(filas)
+            impacto.update(_resumen_ensayos(ensayos))
             impacto['materia'] = materia['nombre']
 
             if solo_contar:
@@ -109,10 +140,10 @@ def consolidado_precio_editar():
                 })
                 return jsonify(impacto)
 
-            if not filas and not actualizar_maestro:
+            if not filas and not ensayos and not actualizar_maestro:
                 return jsonify({
                     'status': 'error',
-                    'msg': 'No hay dietas para actualizar con ese alcance.'
+                    'msg': 'No hay dietas ni ensayos para actualizar con ese alcance.'
                 }), 400
 
             os.makedirs(CARPETA_RESPALDOS, exist_ok=True)
@@ -144,6 +175,14 @@ def consolidado_precio_editar():
                     'iva': float(f['iva_guardado']) if f['iva_guardado'] is not None else None,
                     'flete': float(f['flete_guardado']) if f['flete_guardado'] is not None else None,
                 } for f in filas],
+                'ensayos': [{
+                    'id': e['id'],
+                    'item_id': e['item_id'],
+                    'lote_id': e['lote_id'],
+                    'precio': float(e['precio_guardado']) if e['precio_guardado'] is not None else None,
+                    'iva': float(e['iva_guardado']) if e['iva_guardado'] is not None else None,
+                    'flete': float(e['flete_guardado']) if e['flete_guardado'] is not None else None,
+                } for e in ensayos],
             }
             with open(ruta_respaldo, 'w', encoding='utf-8') as archivo:
                 json.dump(contenido, archivo, indent=2, ensure_ascii=False)
@@ -154,6 +193,13 @@ def consolidado_precio_editar():
                     SET precio_guardado = %s, iva_guardado = %s, flete_guardado = %s
                     WHERE id = %s
                 """, [(precio, iva, flete, f['id']) for f in filas])
+
+            if ensayos:
+                cur.executemany("""
+                    UPDATE formula_ensayos
+                    SET precio_guardado = %s, iva_guardado = %s, flete_guardado = %s
+                    WHERE id = %s
+                """, [(precio, iva, flete, e['id']) for e in ensayos])
 
             if actualizar_maestro:
                 cur.execute("""
@@ -168,7 +214,7 @@ def consolidado_precio_editar():
                 session.get('usuario_nombre') or session.get('user_nombre') or 'Sistema',
                 'formula_detalle',
                 materia_prima_id,
-                f'precio_guardado x{impacto["filas"]} filas',
+                f'precio_guardado x{impacto["filas"]} filas, x{len(ensayos)} ensayos',
                 f"{float(materia['precio_actual_kg'] or 0):.2f}",
                 f"{precio:.2f}" + (' (y maestro)' if actualizar_maestro else ''),
                 'UPDATE',
@@ -180,6 +226,7 @@ def consolidado_precio_editar():
             'status': 'ok',
             'respaldo': nombre_respaldo,
             'maestro_actualizado': actualizar_maestro,
+            'ensayos_actualizados': len(ensayos),
         })
         return jsonify(impacto)
     except Exception as e:
@@ -224,6 +271,14 @@ def consolidado_precio_deshacer():
                     WHERE id = %s
                 """, [(f['precio'], f['iva'], f['flete'], f['id']) for f in filas])
 
+            ensayos = contenido.get('ensayos') or []
+            if ensayos:
+                cur.executemany("""
+                    UPDATE formula_ensayos
+                    SET precio_guardado = %s, iva_guardado = %s, flete_guardado = %s
+                    WHERE id = %s
+                """, [(e['precio'], e['iva'], e['flete'], e['id']) for e in ensayos])
+
             maestro = contenido.get('maestro') or {}
             if maestro.get('actualizado'):
                 cur.execute("""
@@ -247,7 +302,7 @@ def consolidado_precio_deshacer():
             )
 
         conn.commit()
-        return jsonify({'status': 'ok', 'filas': len(contenido.get('filas') or [])})
+        return jsonify({'status': 'ok', 'filas': len(filas) + len(ensayos)})
     except Exception as e:
         conn.rollback()
         print(f"[ERROR DESHACER AJUSTE PRECIO]: {e}")
@@ -269,11 +324,59 @@ def costos_por_dieta():
 
     dietas = FormulaDetalle.costos_por_lote(lote) if lote else []
 
+    # Agrupacion: Mes -> Dieta (item) -> Versiones
+    grupos = []
+    indice_mes = {}
+    for d in dietas:
+        vencimiento = d.get('fecha_vencimiento')
+        clave_mes = vencimiento.strftime('%Y-%m') if vencimiento else 'sin-fecha'
+
+        if clave_mes not in indice_mes:
+            grupo = {
+                'clave': clave_mes,
+                'mes': d.get('mes') or 'Sin fecha',
+                'dietas': [],
+                'indice': {},
+                'n_versiones': 0,
+            }
+            indice_mes[clave_mes] = grupo
+            grupos.append(grupo)
+
+        grupo = indice_mes[clave_mes]
+        item = d['item_id']
+
+        if item not in grupo['indice']:
+            dieta_grupo = {
+                'item_id': item,
+                'nombre_dieta': d['nombre_dieta'],
+                'versiones': [],
+                'ultima_version': d['version'],
+                'total_actual': d['total_iva_flete'],
+                'n_versiones': 0,
+            }
+            grupo['indice'][item] = dieta_grupo
+            grupo['dietas'].append(dieta_grupo)
+
+        dieta_grupo = grupo['indice'][item]
+        dieta_grupo['versiones'].append(d)
+        dieta_grupo['n_versiones'] += 1
+        grupo['n_versiones'] += 1
+
+        if d['version'] >= dieta_grupo['ultima_version']:
+            dieta_grupo['ultima_version'] = d['version']
+            dieta_grupo['total_actual'] = d['total_iva_flete']
+
+    for grupo in grupos:
+        grupo['n_dietas'] = len(grupo['dietas'])
+        for dieta_grupo in grupo['dietas']:
+            dieta_grupo['versiones'].sort(key=lambda v: v['version'], reverse=True)
+
     return render_template(
         'planta_alimentos/costos_por_dieta.html',
         lotes=lotes,
         lote=lote,
-        dietas=dietas
+        dietas=dietas,
+        grupos=grupos
     )
 
 

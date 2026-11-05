@@ -224,6 +224,19 @@
     color: var(--text-secondary);
   }
 
+  .chip-ensayo {
+    display: inline-block;
+    margin-top: 3px;
+    font-size: 0.58rem;
+    font-weight: 600;
+    color: #8a5a00;
+    background: #fdf0d5;
+    border: 1px solid #f0d28a;
+    border-radius: 4px;
+    padding: 0.05rem 0.35rem;
+    line-height: 1.35;
+  }
+
   /* Badge de maquila en el consolidado */
   .badge-maquila {
     display: inline-block;
@@ -580,14 +593,24 @@
     aviso.textContent = '';
     boton.disabled = false;
 
-    if (previo.filas === 0 && !payload.maestro) {
-      aviso.textContent = 'No hay dietas para actualizar con ese alcance.';
+    if (previo.filas === 0 && (previo.ensayos || 0) === 0 && !payload.maestro) {
+      aviso.textContent = 'No hay dietas ni ensayos para actualizar con ese alcance.';
       return;
     }
 
     const alcanceTxt = payload.alcance === 'todas'
       ? 'todas las dietas que usan la materia'
       : 'las dietas del rango consultado';
+
+    const partes = [];
+    if (previo.filas) {
+      partes.push('<b>' + previo.filas + ' filas</b> de <b>' + previo.dietas +
+        ' dietas</b> (' + previo.versiones + ' versiones)');
+    }
+    if (previo.ensayos) {
+      partes.push('<b>' + previo.ensayos + ' ensayo(s)</b> en <b>' + previo.ensayos_dietas +
+        ' dieta(s)</b>');
+    }
 
     const confirma = await Swal.fire({
       title: 'Aplicar ajuste de precio',
@@ -596,8 +619,8 @@
         '<p class="mb-1"><b>' + previo.materia + '</b></p>' +
         '<p class="mb-1">Precio: <b>$ ' + Number(payload.precio).toLocaleString('es-CO') + '</b>' +
         ' · IVA ' + payload.iva + ' · Flete $ ' + Number(payload.flete).toLocaleString('es-CO') + '</p>' +
-        '<p class="mb-2">Se actualizarán <b>' + previo.filas + ' filas</b> de <b>' + previo.dietas +
-        ' dietas</b> (' + previo.versiones + ' versiones) en ' + alcanceTxt + '.</p>' +
+        '<p class="mb-2">Alcance: ' + alcanceTxt + '.</p>' +
+        '<p class="mb-2">Se actualizará: ' + partes.join(' y ') + '.</p>' +
         (payload.maestro ? '<p class="mb-0">También se actualizará el <b>precio del maestro</b>.</p>' : '') +
         '</div>',
       showCancelButton: true,
@@ -958,6 +981,12 @@
                                         <div>
                                             <span class="lote-etapa-lote">{{ dieta['lote'] }}</span>
                                             <span class="lote-etapa-nombre">{{ dieta['etapa'] }}</span>
+                                            {% if dieta['n_ensayos'] %}
+                                            <div class="chip-ensayo"
+                                                title="Incluye los insumos de ensayo vigentes a la fecha consultada">
+                                                {{ dieta['n_ensayos'] }} ensayo(s) · +{{ "{:,.2f}".format(dieta['kg_ensayo']|float).replace(',', 'X').replace('.', ',').replace('X', '.') }} kg · +$ {{ "{:,.0f}".format(dieta['total_ensayo_iva']|float).replace(',', '.') }}
+                                            </div>
+                                            {% endif %}
                                         </div>
                                         {% if session.get('user_rol') in ('Superadmin', 'Director de Planta') %}
                                         <button type="button" class="btn-dieta-costos"
@@ -1022,6 +1051,12 @@
                                         <div>
                                             <span class="lote-etapa-lote">{{ dieta['lote'] }}</span>
                                             <span class="lote-etapa-nombre">{{ dieta['etapa'] }}</span>
+                                            {% if dieta['n_ensayos'] %}
+                                            <div class="chip-ensayo"
+                                                title="Incluye los insumos de ensayo vigentes a la fecha consultada">
+                                                {{ dieta['n_ensayos'] }} ensayo(s) · +{{ "{:,.2f}".format(dieta['kg_ensayo']|float).replace(',', 'X').replace('.', ',').replace('X', '.') }} kg · +$ {{ "{:,.0f}".format(dieta['total_ensayo_iva']|float).replace(',', '.') }}
+                                            </div>
+                                            {% endif %}
                                         </div>
                                         {% if session.get('user_rol') in ('Superadmin', 'Director de Planta') %}
                                         <button type="button" class="btn-dieta-costos"
@@ -1079,6 +1114,12 @@
                                         <div>
                                             <span class="lote-etapa-lote">{{ dieta['lote'] }}</span>
                                             <span class="lote-etapa-nombre">{{ dieta['etapa'] }}</span>
+                                            {% if dieta['n_ensayos'] %}
+                                            <div class="chip-ensayo"
+                                                title="Incluye los insumos de ensayo vigentes a la fecha consultada">
+                                                {{ dieta['n_ensayos'] }} ensayo(s) · +{{ "{:,.2f}".format(dieta['kg_ensayo']|float).replace(',', 'X').replace('.', ',').replace('X', '.') }} kg · +$ {{ "{:,.0f}".format(dieta['total_ensayo_iva']|float).replace(',', '.') }}
+                                            </div>
+                                            {% endif %}
                                         </div>
                                         {% if session.get('user_rol') in ('Superadmin', 'Director de Planta') %}
                                         <button type="button" class="btn-dieta-costos"
@@ -1136,6 +1177,12 @@
                                         <div>
                                             <span class="lote-etapa-lote">{{ dieta['lote'] }}</span>
                                             <span class="lote-etapa-nombre">{{ dieta['etapa'] }}</span>
+                                            {% if dieta['n_ensayos'] %}
+                                            <div class="chip-ensayo"
+                                                title="Incluye los insumos de ensayo vigentes a la fecha consultada">
+                                                {{ dieta['n_ensayos'] }} ensayo(s) · +{{ "{:,.2f}".format(dieta['kg_ensayo']|float).replace(',', 'X').replace('.', ',').replace('X', '.') }} kg · +$ {{ "{:,.0f}".format(dieta['total_ensayo_iva']|float).replace(',', '.') }}
+                                            </div>
+                                            {% endif %}
                                         </div>
                                         {% if session.get('user_rol') in ('Superadmin', 'Director de Planta') %}
                                         <button type="button" class="btn-dieta-costos"

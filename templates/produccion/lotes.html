@@ -173,6 +173,11 @@
         </div>
         <div class="d-flex align-items-center gap-2">
             <span class="badge-estado badge-neutro">{{ lotes|length }} lotes</span>
+            {% if empresa_filtro %}
+            <span class="badge-estado badge-ok" title="Su rol solo puede ver los lotes de esta empresa">
+                <i class="fas fa-building me-1"></i> SAN MARTIN
+            </span>
+            {% endif %}
             {% if session.get('user_rol') != 'Lector' %}
             <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal"
                 data-bs-target="#modalLote" onclick="configurarModal('crear')">
@@ -181,6 +186,13 @@
             {% endif %}
         </div>
     </div>
+
+    {% if empresa_filtro %}
+    <div class="alert py-2 mb-3" style="background:#eef3fb; border:1px solid #cfdcee; color:#2c3e50; font-size:.8rem;">
+        <i class="fas fa-circle-info me-1"></i>
+        Con el rol <b>PRODUCCION</b> solo se muestran los lotes de la empresa <b>SAN MARTIN</b>.
+    </div>
+    {% endif %}
 
     <!-- Tabla que muestra la lista de lotes existentes -->
     <div class="card card-clean card-tabla-lotes" id="contenedorTablaLotes">
@@ -272,12 +284,20 @@
                         </div>
                         <div class="col-md-3 mb-2">
                             <label class="form-label-design">Empresa</label>
-                            <select name="empresa_id" id="f_empresa" class="form-select">
-                                <option value="">Sin empresa asignada</option>
-                                {% for emp in empresas %}
-                                <option value="{{ emp.id }}">{{ emp.nombre }}</option>
-                                {% endfor %}
-                            </select>
+                            <div class="input-group shadow-sm">
+                                <select name="empresa_id" id="f_empresa" class="form-select">
+                                    {% if not empresa_filtro %}
+                                    <option value="">Sin empresa asignada</option>
+                                    {% endif %}
+                                    {% for emp in empresas %}
+                                    <option value="{{ emp.id }}" {% if empresa_filtro == emp.id %}selected{% endif %}>{{ emp.nombre }}</option>
+                                    {% endfor %}
+                                </select>
+                                {% if not empresa_filtro %}
+                                <button type="button" class="btn-catalogo-add" onclick="abrirModalCatalogo('empresa')"
+                                    title="Nueva Empresa"><i class='bx bx-plus'></i></button>
+                                {% endif %}
+                            </div>
                             <div class="form-text-muted" title="Define en qué tabla del consolidado de costos aparece el lote.">
                                 <i class="fas fa-circle-info me-1"></i>Define su tabla en el consolidado
                             </div>
@@ -892,6 +912,7 @@
 
         const titulos = {
             responsable: 'Nuevo Responsable',
+            empresa: 'Nueva Empresa',
             nutricionista_lev: 'Nuevo Nutricionista (Levante)',
             nutricionista_prod: 'Nuevo Nutricionista (Producción)',
             variedad: 'Nueva Variedad',
@@ -909,11 +930,12 @@
     function guardarCatalogo() {
         const tipo = document.getElementById('tipo_catalogo').value;
         if (TIPOS_CON_FOTO.includes(tipo)) guardarCatalogoConFoto();
-        else guardarCatalogoResponsable();   // Ruta JSON original intacta
+        else guardarCatalogoResponsable();   // Ruta JSON (responsable / empresa)
     }
 
-    // ---- RESPONSABLE: comportamiento original sin cambios ----
+    // ---- RESPONSABLE / EMPRESA: alta por JSON ----
     function guardarCatalogoResponsable() {
+        const tipo = document.getElementById('tipo_catalogo').value || 'responsable';
         const nombre = document.getElementById('nuevo_nombre_catalogo').value.trim();
         if (!nombre) { alert("El nombre es obligatorio."); return; }
 
@@ -921,17 +943,36 @@
         fetch("{{ url_for('lotes.crear_catalogo') }}", {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tipo: 'responsable', nombre: nombre })
+            body: JSON.stringify({ tipo: tipo, nombre: nombre })
         })
             .then(res => res.json())
             .then(data => {
                 botonGuardarOcupado(false);
                 if (data.status === 'ok') {
-                    actualizarSelect('f_responsable', data.nombre);
+                    if (tipo === 'empresa') {
+                        agregarEmpresaSelect(data.id, data.nombre);
+                    } else {
+                        actualizarSelect('f_responsable', data.nombre);
+                    }
                     modalCatalogoUI.hide();
                     mostrarToastCatalogo(data.msg || 'Guardado exitosamente.', true);
                 } else { mostrarToastCatalogo(data.msg, false); }
             }).catch(() => { botonGuardarOcupado(false); mostrarToastCatalogo('Error de conexión.', false); });
+    }
+
+    // Agrega la empresa recien creada al select y la deja seleccionada
+    function agregarEmpresaSelect(id, nombre) {
+        const sel = document.getElementById('f_empresa');
+        if (!sel) return;
+        let opcion = sel.querySelector('option[value="' + id + '"]');
+        if (!opcion) {
+            opcion = document.createElement('option');
+            opcion.value = String(id);
+            opcion.textContent = nombre;
+            sel.appendChild(opcion);
+        }
+        sel.value = String(id);
+        sel.dispatchEvent(new Event('change'));
     }
 
     // ---- CATÁLOGOS CON FOTO: crear / editar (FormData + archivo) ----
@@ -1059,6 +1100,7 @@
 
     const etiquetasNombre = {
         responsable: 'Nombre Completo',
+        empresa: 'Nombre de la Empresa',
         nutricionista_lev: 'Nombre Completo',
         nutricionista_prod: 'Nombre Completo',
         variedad: 'Nombre de la Variedad',

@@ -109,6 +109,74 @@
         font-style: italic;
     }
 
+    /* --- Tarjetas de variable ampliables --- */
+    .tarjeta-variable {
+        cursor: pointer;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+    }
+    .tarjeta-variable:hover,
+    .tarjeta-variable:focus-visible {
+        border-color: var(--action-primary);
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.10);
+        transform: translateY(-2px);
+        outline: none;
+    }
+    .tarjeta-variable .var-ampliar {
+        font-size: 0.68rem;
+        color: var(--text-muted);
+        transition: color 0.15s ease;
+    }
+    .tarjeta-variable:hover .var-ampliar,
+    .tarjeta-variable:focus-visible .var-ampliar {
+        color: var(--action-primary);
+    }
+
+    /* --- Contenido ampliado --- */
+    .var-modal-nombre {
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+    }
+    .var-modal-valor {
+        font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+        font-size: 2.6rem;
+        font-weight: 700;
+        line-height: 1.1;
+        color: var(--text-primary);
+        font-variant-numeric: tabular-nums;
+    }
+    .var-modal-valor small {
+        font-size: 1rem;
+        font-weight: 500;
+        color: var(--text-muted);
+    }
+    .var-modal-tabla {
+        font-size: 0.9rem;
+        color: var(--text-muted);
+    }
+    .var-modal-etiqueta {
+        font-size: 0.66rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+    }
+    .var-modal-dato {
+        font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        font-variant-numeric: tabular-nums;
+    }
+    #modalVariable .progress {
+        height: 10px;
+        margin: 1rem 0 0.6rem;
+    }
+    #modalVariable .modal-content {
+        border-radius: 0.6rem;
+    }
+
     .avisos-calificacion {
         list-style: none;
         padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4);
@@ -169,6 +237,37 @@
         position: relative;
         overflow-x: auto;
         overflow-y: hidden;
+    }
+
+    /* --- Pantalla completa del gráfico --- */
+    #panelGrafico.pantalla-completa {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        margin: 0 !important;
+        border: 0;
+        border-radius: 0;
+        background-color: #ffffff;
+    }
+    #panelGrafico.pantalla-completa .card-body {
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 auto;
+        min-height: 0;
+        padding-bottom: var(--space-2);
+    }
+    #panelGrafico.pantalla-completa .grafico-wrap {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: hidden;
+    }
+    #panelGrafico.pantalla-completa .grafico-lote {
+        height: 100%;
+    }
+    #panelGrafico.pantalla-completa .grafico-lote svg {
+        width: 100%;
+        height: 100%;
+        min-width: 0;
     }
     .grafico-lote svg {
         display: block;
@@ -291,6 +390,11 @@
         <span><i class="fas fa-chart-line me-2"></i> Gráfico general del lote</span>
         <div class="d-flex align-items-center gap-2">
             <span class="badge-estado badge-neutro" id="chipSemanaGrafico"></span>
+            <button type="button" class="btn btn-outline-primary btn-sm" id="btnPantallaGrafico"
+                    title="Ver el gráfico en pantalla completa">
+                <i class="fas fa-expand" id="iconoPantallaGrafico"></i>
+                <span class="d-none d-sm-inline ms-1">Pantalla</span>
+            </button>
             <form method="post" action="{{ url_for('semanal.grafico_general') }}" class="m-0" id="formGraficoGeneral">
                 <input type="hidden" name="lote" id="inputLoteGrafico" value="{{ lote_inicial.lote if lote_inicial else '' }}">
                 <button type="submit" class="btn btn-outline-primary btn-sm" title="Abrir el gráfico general completo">
@@ -314,6 +418,19 @@
 </div>
 
 <div id="detalleLote"></div>
+
+<!-- Modal para ampliar una variable -->
+<div class="modal fade" id="modalVariable" tabindex="-1" aria-labelledby="modalVariableTitulo" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalVariableTitulo">Variable</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body" id="modalVariableCuerpo"></div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -336,6 +453,9 @@
     const inputLoteGrafico = document.getElementById('inputLoteGrafico');
 
     const TONOS = { ok: 'ok', pendiente: 'pendiente', critica: 'critica' };
+
+    // Última evaluación recibida, para alimentar el modal de cada variable
+    let evaluacionActual = null;
 
     function esc(texto) {
         return String(texto == null ? '' : texto)
@@ -381,18 +501,21 @@
     function tarjetaVariable(v) {
         const esSinDato = v.estado === 'sin_dato';
         const dec = decimalesDe(v.unidad);
-        const estadoColor = v.estado === 'mejor' || v.estado === 'igual' ? 'ok' : 'peor';
         const textoEstado = v.estado === 'mejor' ? 'Mejor que la tabla'
             : v.estado === 'igual' ? 'En la tabla' : 'Por debajo de la tabla';
 
         if (esSinDato) {
             return `
             <div class="col-lg-4">
-                <div class="card card-clean h-100">
+                <div class="card card-clean h-100 tarjeta-variable" data-variable="${v.clave}"
+                     role="button" tabindex="0" aria-label="Ampliar ${esc(v.nombre)}">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <span class="var-nombre">${esc(v.nombre)}</span>
-                            <span class="badge-estado badge-neutro">${v.peso} %</span>
+                            <span class="d-flex align-items-center gap-2">
+                                <span class="badge-estado badge-neutro">${v.peso} %</span>
+                                <i class="fas fa-expand var-ampliar"></i>
+                            </span>
                         </div>
                         <div class="var-sin-dato">Sin dato para esta semana.</div>
                     </div>
@@ -401,21 +524,26 @@
         }
 
         const ancho = Math.max(0, Math.min(v.cumplimiento, 100));
+        const claseBarra = v.estado === 'mejor' || v.estado === 'igual' ? 'es-ok' : 'es-peor';
 
         return `
         <div class="col-lg-4">
-            <div class="card card-clean h-100">
+            <div class="card card-clean h-100 tarjeta-variable" data-variable="${v.clave}"
+                 role="button" tabindex="0" aria-label="Ampliar ${esc(v.nombre)}">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <span class="var-nombre">${esc(v.nombre)}</span>
-                        <span class="badge-estado badge-neutro">${v.peso} %</span>
+                        <span class="d-flex align-items-center gap-2">
+                            <span class="badge-estado badge-neutro">${v.peso} %</span>
+                            <i class="fas fa-expand var-ampliar"></i>
+                        </span>
                     </div>
                     <div class="var-valor">
                         ${numero(v.real, dec)} <small>${etiquetaUnidad(v.unidad)}</small>
                     </div>
                     <div class="var-tabla">Tabla: ${conUnidad(v.guia, v.unidad, dec)}</div>
                     <div class="progress" role="progressbar" aria-valuenow="${v.cumplimiento}" aria-valuemin="0" aria-valuemax="100">
-                        <div class="progress-bar ${estadoColor}" style="width: ${ancho}%"></div>
+                        <div class="progress-bar ${claseBarra}" style="width: ${ancho}%"></div>
                     </div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="var-cumplimiento ${v.estado === 'mejor' ? 'es-ok' : v.estado === 'igual' ? 'es-igual' : 'es-peor'}">
@@ -485,6 +613,8 @@
     }
 
     function renderDetalle(data) {
+        evaluacionActual = data;
+
         detalle.innerHTML = `
         <div class="row g-3 mb-3">
             ${data.variables.map(tarjetaVariable).join('')}
@@ -516,19 +646,113 @@
                 </table>
             </div>
         </div>`;
+
+        // Clic (o Enter/Espacio) en una tarjeta abre su versión ampliada
+        detalle.querySelectorAll('.tarjeta-variable').forEach(tarjeta => {
+            const ampliar = () => abrirModalVariable(tarjeta.dataset.variable);
+            tarjeta.addEventListener('click', ampliar);
+            tarjeta.addEventListener('keydown', evento => {
+                if (evento.key === 'Enter' || evento.key === ' ') {
+                    evento.preventDefault();
+                    ampliar();
+                }
+            });
+        });
+    }
+
+    /* ==================== AMPLIAR UNA VARIABLE ==================== */
+
+    function contenidoVariable(v, lote, semana) {
+        const contexto = `
+            <div class="d-flex flex-wrap gap-2 mb-3">
+                <span class="dato-lote"><i class="fas fa-layer-group"></i> Lote <strong>${esc(lote.lote || '—')}</strong></span>
+                <span class="dato-lote"><i class="fas fa-calendar-week"></i> Semana <strong>${semana}</strong></span>
+            </div>`;
+
+        if (v.estado === 'sin_dato') {
+            const motivos = {
+                sin_real: 'El lote no registra este dato en la semana evaluada.',
+                sin_guia: 'La tabla genética no tiene referencia para esta semana.',
+                sin_referencia: 'No se pudo comparar el dato con la tabla genética.',
+            };
+            return `${contexto}
+                <div class="text-center py-3">
+                    <div class="var-modal-nombre mb-2">${esc(v.nombre)}</div>
+                    <div class="var-sin-dato">Sin dato para esta semana.</div>
+                    <p class="text-muted mt-3 mb-0" style="font-size:0.85rem;">
+                        ${esc(motivos[v.motivo] || 'No hay información suficiente para esta variable.')}
+                    </p>
+                </div>`;
+        }
+
+        const dec = decimalesDe(v.unidad);
+        const tono = v.estado === 'mejor' ? 'ok' : v.estado === 'igual' ? 'neutro' : 'critica';
+        const etiqueta = v.estado === 'mejor' ? 'Mejor que la tabla'
+            : v.estado === 'igual' ? 'En la tabla' : 'Por debajo de la tabla';
+        const claseBarra = v.estado === 'mejor' || v.estado === 'igual' ? 'es-ok' : 'es-peor';
+        const ancho = Math.max(0, Math.min(v.cumplimiento, 100));
+
+        return `${contexto}
+            <div class="text-center">
+                <div class="var-modal-nombre">${esc(v.nombre)}</div>
+                <div class="var-modal-valor mt-1">
+                    ${numero(v.real, dec)} <small>${etiquetaUnidad(v.unidad)}</small>
+                </div>
+                <div class="var-modal-tabla">Tabla genética: ${conUnidad(v.guia, v.unidad, dec)}</div>
+                <span class="badge-estado badge-${tono} d-inline-block mt-2">${etiqueta}</span>
+            </div>
+
+            <div class="progress" role="progressbar" aria-valuenow="${v.cumplimiento}" aria-valuemin="0" aria-valuemax="100">
+                <div class="progress-bar ${claseBarra}" style="width: ${ancho}%"></div>
+            </div>
+
+            <div class="row text-center g-2 mb-3">
+                <div class="col-4">
+                    <div class="var-modal-etiqueta">Cumplimiento</div>
+                    <div class="var-modal-dato">${numero(v.cumplimiento, 1)} %</div>
+                </div>
+                <div class="col-4">
+                    <div class="var-modal-etiqueta">Peso</div>
+                    <div class="var-modal-dato">${v.peso} %</div>
+                </div>
+                <div class="col-4">
+                    <div class="var-modal-etiqueta">Aporte</div>
+                    <div class="var-modal-dato">${numero(v.aporte, 2)}</div>
+                </div>
+            </div>
+
+            <p class="text-muted mb-0" style="font-size:0.78rem;">
+                El aporte es el peso de la variable multiplicado por su cumplimiento;
+                la suma de los tres aportes da el índice del lote.
+            </p>`;
+    }
+
+    function abrirModalVariable(clave) {
+        const datos = evaluacionActual;
+        if (!datos) return;
+
+        const variable = (datos.variables || []).find(v => v.clave === clave);
+        if (!variable) return;
+
+        document.getElementById('modalVariableTitulo').textContent = variable.nombre;
+        document.getElementById('modalVariableCuerpo').innerHTML =
+            contenidoVariable(variable, datos.lote || {}, datos.semana);
+
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('modalVariable')).show();
     }
 
     /* ==================== GRÁFICO GENERAL EMBEBIDO ==================== */
 
+    // Paleta tomada del gráfico de referencia (Consolidado L+P)
     const SERIES_GRAFICO = [
-        { clave: 'prod_real', nombre: 'Producción real', color: '#2c3e50', eje: 1 },
-        { clave: 'prod_tabla', nombre: 'Producción tabla', color: '#adb5bd', eje: 1, dash: true },
-        { clave: 'consumo_real', nombre: 'Consumo real', color: '#0d6efd', eje: 1 },
-        { clave: 'consumo_tabla', nombre: 'Consumo tabla', color: '#9ec5fe', eje: 1, dash: true },
-        { clave: 'peso_huevo_real', nombre: 'Peso huevo real', color: '#198754', eje: 1 },
-        { clave: 'peso_huevo_tabla', nombre: 'Peso huevo tabla', color: '#a3cfbb', eje: 1, dash: true },
-        { clave: 'peso_ave_real', nombre: 'Peso ave real', color: '#6f42c1', eje: 2 },
-        { clave: 'peso_ave_tabla', nombre: 'Peso ave tabla', color: '#cbb6f0', eje: 2, dash: true },
+        { clave: 'prod_real', nombre: 'Producción real', color: '#0000ff', eje: 1 },
+        { clave: 'prod_tabla', nombre: 'Producción tabla', color: '#808080', eje: 1, dash: true },
+        { clave: 'consumo_real', nombre: 'Consumo real', color: '#00a651', eje: 1 },
+        { clave: 'consumo_tabla', nombre: 'Consumo tabla', color: '#c00000', eje: 1, dash: true },
+        { clave: 'peso_huevo_real', nombre: 'Peso huevo real', color: '#808000', eje: 1 },
+        { clave: 'peso_huevo_tabla', nombre: 'Peso huevo tabla', color: '#00b0f0', eje: 1, dash: true },
+        { clave: 'peso_ave_real', nombre: 'Peso ave real', color: '#008000', eje: 2 },
+        { clave: 'peso_ave_tabla', nombre: 'Peso ave tabla', color: '#ff0000', eje: 2, dash: true },
     ];
 
     const UNIDAD_SERIE = {
@@ -628,7 +852,7 @@
             partes.push(`<text x="${px(i).toFixed(1)}" y="${T + alto + 16}" text-anchor="middle" font-size="10" fill="#6c757d">S${sem}</text>`);
         });
 
-        // Series (los huecos cortan la línea)
+        // Series (los huecos se unen con el siguiente punto que tenga dato)
         SERIES_GRAFICO.forEach(s => {
             if (!seriesVisibles.has(s.clave)) return;
             const valores = serie.valores[s.clave] || [];
@@ -638,9 +862,9 @@
 
             for (let i = 0; i < n; i++) {
                 const valor = valores[i];
-                if (valor === null || valor === undefined || valor === '') { abierto = false; continue; }
+                if (valor === null || valor === undefined || valor === '') continue;
                 const numeroValor = Number(valor);
-                if (!isFinite(numeroValor)) { abierto = false; continue; }
+                if (!isFinite(numeroValor)) continue;
                 trazo += `${abierto ? 'L' : 'M'}${px(i).toFixed(1)} ${proyectar(numeroValor).toFixed(1)} `;
                 abierto = true;
             }
@@ -691,6 +915,49 @@
 
         chipSemanaGrafico.textContent = idxSel >= 0 ? `Semana ${semanaSel} marcada` : '';
     }
+
+    /* --- Pantalla completa del gráfico --- */
+    const btnPantallaGrafico = document.getElementById('btnPantallaGrafico');
+    const iconoPantallaGrafico = document.getElementById('iconoPantallaGrafico');
+
+    function ajustarAlturaPantalla() {
+        if (document.fullscreenElement === panelGrafico) {
+            // Aprovecha el alto disponible manteniendo la proporción del SVG
+            const altoDisponible = Math.max(320, window.innerHeight - 150);
+            G.H = Math.min(1000, Math.round(G.W * (altoDisponible / window.innerWidth)));
+        } else {
+            G.H = 340;
+        }
+        if (serie.semanas.length) dibujarGrafico();
+    }
+
+    btnPantallaGrafico.addEventListener('click', () => {
+        if (!document.fullscreenElement) {
+            const pedir = panelGrafico.requestFullscreen || panelGrafico.webkitRequestFullscreen;
+            if (!pedir) return;
+            const resultado = pedir.call(panelGrafico);
+            if (resultado && typeof resultado.catch === 'function') {
+                resultado.catch(error => console.warn('[pantalla completa]', error));
+            }
+        } else {
+            const salir = document.exitFullscreen || document.webkitExitFullscreen;
+            if (salir) salir.call(document);
+        }
+    });
+
+    document.addEventListener('fullscreenchange', () => {
+        const activo = document.fullscreenElement === panelGrafico;
+        panelGrafico.classList.toggle('pantalla-completa', activo);
+        iconoPantallaGrafico.className = activo ? 'fas fa-compress' : 'fas fa-expand';
+        btnPantallaGrafico.title = activo
+            ? 'Salir de pantalla completa'
+            : 'Ver el gráfico en pantalla completa';
+        ajustarAlturaPantalla();
+    });
+
+    window.addEventListener('resize', () => {
+        if (document.fullscreenElement === panelGrafico) ajustarAlturaPantalla();
+    });
 
     async function cargarSerie(loteId) {
         const opcion = selLote.selectedOptions[0];

@@ -102,6 +102,89 @@
     font-size: 0.7rem;
     color: var(--text-muted);
   }
+
+  /* ===== Agrupacion Mes -> Dieta -> Versiones ===== */
+  .ps-mes-toggle {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.75rem;
+    width: 100%;
+    padding: 0.7rem 0.95rem;
+    border: 0;
+    background-color: var(--table-header-bg);
+    color: #ffffff;
+    text-align: left;
+    border-radius: 10px 10px 0 0;
+  }
+  .ps-mes-toggle:hover,
+  .ps-mes-toggle:focus-visible { background-color: #111827; }
+  .ps-mes-nombre {
+    font-size: 0.86rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .ps-mes-toggle .badge-estado {
+    background: rgba(255, 255, 255, .12);
+    color: #e8eaef;
+    border: 1px solid rgba(255, 255, 255, .18);
+  }
+  .ps-mes-toggle .ps-chevron { margin-left: auto; color: #c9ced8; }
+  .ps-mes-toggle.collapsed .ps-chevron { transform: rotate(-90deg); }
+
+  .ps-mes-body {
+    padding: 0.8rem 0.8rem 0.3rem;
+    background-color: #f6f8fb;
+  }
+
+  .ps-dieta-card {
+    background: #ffffff;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 0.7rem;
+    overflow: hidden;
+  }
+  .ps-dieta-card .ps-dieta-toggle:not(.collapsed) {
+    border-bottom: 1px solid var(--border);
+    background-color: var(--surface-alt);
+  }
+
+  .ps-version-bloque { border-top: 1px solid var(--border); }
+  .ps-version-bloque:first-child { border-top: 0; }
+
+  .ps-version-toggle {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.4rem 0.7rem;
+    width: 100%;
+    padding: 0.5rem 0.9rem 0.5rem 1.7rem;
+    border: 0;
+    background-color: #ffffff;
+    text-align: left;
+    color: var(--text-primary);
+  }
+  .ps-version-toggle:hover,
+  .ps-version-toggle:focus-visible { background-color: #f7f9fc; }
+  .ps-version-titulo {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--action-primary);
+  }
+  .badge-versiones {
+    background: #eef3fb;
+    color: #2c3e50;
+    border: 1px solid #cfdcee;
+  }
+  .ps-monto {
+    margin-left: auto;
+    font-weight: 700;
+    color: var(--action-primary);
+    font-variant-numeric: tabular-nums;
+  }
+  .ps-dieta-toggle .ps-chevron,
+  .ps-version-toggle .ps-chevron { margin-left: 0.35rem; }
 </style>
 {% endblock %}
 
@@ -158,81 +241,120 @@
 
   <p class="ps-hint mb-2">
     <i class="fas fa-circle-info me-1"></i>
-    Haga clic en una dieta para ver el detalle de costos.
+    Haga clic en el mes y luego en la dieta para ver sus versiones y el detalle de costos.
   </p>
 
-  {% for d in dietas %}
+  {% for grupo in grupos %}
   <div class="card card-clean mb-3">
-    <button class="ps-dieta-toggle collapsed" type="button" data-bs-toggle="collapse"
-      data-bs-target="#dieta-{{ d.item_id }}-{{ d.version }}" aria-expanded="false"
-      aria-controls="dieta-{{ d.item_id }}-{{ d.version }}">
-      <span class="ps-dieta-nombre">{{ d.nombre_dieta }}</span>
-      <span class="badge-estado badge-neutro">Ítem {{ d.item_id }}</span>
-      <span class="badge-estado badge-neutro">Versión {{ d.version }}</span>
-      <span class="ps-dieta-dato">
-        <i class="far fa-calendar me-1"></i>Vigencia: {{ d.mes }}
-      </span>
-      <span class="ps-dieta-dato">
-        Vence: {{ d.fecha_vencimiento.strftime('%d/%m/%Y') if d.fecha_vencimiento else '---' }}
-      </span>
-      <span class="ps-dieta-dato">{{ d.insumos|length }} insumos</span>
+    <button class="ps-mes-toggle {{ '' if loop.first else 'collapsed' }}" type="button"
+      data-bs-toggle="collapse" data-bs-target="#mes-{{ grupo.clave }}"
+      aria-expanded="{{ 'true' if loop.first else 'false' }}" aria-controls="mes-{{ grupo.clave }}">
+      <span class="ps-mes-nombre"><i class="far fa-calendar me-2"></i>{{ grupo.mes }}</span>
+      <span class="badge-estado">{{ grupo.n_dietas }} {{ 'dieta' if grupo.n_dietas == 1 else 'dietas' }}</span>
+      <span class="badge-estado">{{ grupo.n_versiones }} {{ 'versión' if grupo.n_versiones == 1 else 'versiones' }}</span>
       <i class='bx bx-chevron-down ps-chevron'></i>
     </button>
 
-    <div class="collapse" id="dieta-{{ d.item_id }}-{{ d.version }}">
-      <div class="ps-detalle-cabecera">
-        <span class="ps-detalle-titulo">{{ d.nombre_dieta }}</span>
-        <span class="ps-detalle-lote">LOTE {{ d.lote }}</span>
-      </div>
+    <div class="collapse {{ 'show' if loop.first }}" id="mes-{{ grupo.clave }}">
+      <div class="ps-mes-body">
+        {% for d in grupo.dietas %}
+        {% set id_dieta = 'dieta-' ~ grupo.clave ~ '-' ~ d.item_id %}
+        <div class="ps-dieta-card">
+          <button class="ps-dieta-toggle collapsed" type="button" data-bs-toggle="collapse"
+            data-bs-target="#{{ id_dieta }}" aria-expanded="false" aria-controls="{{ id_dieta }}">
+            <span class="ps-dieta-nombre">{{ d.nombre_dieta }}</span>
+            <span class="badge-estado badge-neutro">Ítem {{ d.item_id }}</span>
+            {% if d.n_versiones > 1 %}
+            <span class="badge-estado badge-versiones">{{ d.n_versiones }} versiones</span>
+            {% else %}
+            <span class="badge-estado badge-neutro">1 versión</span>
+            {% endif %}
+            <span class="ps-dieta-dato">Última del periodo: V{{ d.ultima_version }}</span>
+            <span class="ps-dieta-dato ps-monto">$ {{ "{:,.0f}".format(d.total_actual).replace(',', '.') }}</span>
+            <i class='bx bx-chevron-down ps-chevron'></i>
+          </button>
 
-      <div class="table-responsive">
-        <table class="table table-design tabla-costos-dieta mb-0">
-          <thead>
-            <tr>
-              <th class="col-materia">MATERIA PRIMA</th>
-              <th class="num">CANTIDAD (g)</th>
-              <th class="num">COSTO P + IVA</th>
-              <th class="num">COSTO P + FLETE</th>
-              <th class="num">COSTO P + IVA + FLETE</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for i in d.insumos %}
-            <tr>
-              <td class="col-materia">
-                {{ i.materia }}
-                {% if i.es_maquila %}
-                <span class="badge-estado badge-neutro ms-1" style="font-size: 0.58rem;">maquila</span>
-                {% endif %}
-              </td>
-              <td class="num">{{ "{:,.0f}".format(i.cantidad) }}</td>
-              <td class="num">$ {{ "{:,.0f}".format(i.costo_iva) }}</td>
-              <td class="num">$ {{ "{:,.0f}".format(i.costo_flete) }}</td>
-              <td class="num">$ {{ "{:,.0f}".format(i.costo_iva_flete) }}</td>
-            </tr>
+          <div class="collapse" id="{{ id_dieta }}">
+            {% for v in d.versiones %}
+            {% set id_version = 'version-' ~ grupo.clave ~ '-' ~ d.item_id ~ '-' ~ v.version %}
+            <div class="ps-version-bloque">
+              <button class="ps-version-toggle collapsed" type="button" data-bs-toggle="collapse"
+                data-bs-target="#{{ id_version }}" aria-expanded="false" aria-controls="{{ id_version }}">
+                <span class="ps-version-titulo">Versión {{ v.version }}</span>
+                <span class="ps-dieta-dato">
+                  <i class="far fa-calendar me-1"></i>Vence: {{ v.fecha_vencimiento.strftime('%d/%m/%Y') if v.fecha_vencimiento else '---' }}
+                </span>
+                <span class="ps-dieta-dato">{{ v.insumos|length }} insumos</span>
+                <span class="ps-dieta-dato ps-monto">$ {{ "{:,.0f}".format(v.total_iva_flete).replace(',', '.') }}</span>
+                <i class='bx bx-chevron-down ps-chevron'></i>
+              </button>
+
+              <div class="collapse" id="{{ id_version }}">
+                <div class="ps-detalle-cabecera">
+                  <span class="ps-detalle-titulo">{{ v.nombre_dieta }} · V{{ v.version }}</span>
+                  <span class="ps-detalle-lote">LOTE {{ v.lote }}</span>
+                </div>
+
+                <div class="table-responsive">
+                  <table class="table table-design tabla-costos-dieta mb-0">
+                    <thead>
+                      <tr>
+                        <th class="col-materia">MATERIA PRIMA</th>
+                        <th class="num">CANTIDAD (g)</th>
+                        <th class="num">COSTO P + IVA</th>
+                        <th class="num">COSTO P + FLETE</th>
+                        <th class="num">COSTO P + IVA + FLETE</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for i in v.insumos %}
+                      <tr>
+                        <td class="col-materia">
+                          {{ i.materia }}
+                          {% if i.es_maquila %}
+                          <span class="badge-estado badge-neutro ms-1" style="font-size: 0.58rem;">maquila</span>
+                          {% endif %}
+                          {% if i.es_ensayo %}
+                          <span class="badge-estado ms-1"
+                            style="font-size: 0.58rem; background:#fdf0d5; color:#8a5a00; border:1px solid #f0d28a;">ensayo</span>
+                          {% endif %}
+                        </td>
+                        <td class="num">{{ "{:,.0f}".format(i.cantidad) }}</td>
+                        <td class="num">$ {{ "{:,.0f}".format(i.costo_iva) }}</td>
+                        <td class="num">$ {{ "{:,.0f}".format(i.costo_flete) }}</td>
+                        <td class="num">$ {{ "{:,.0f}".format(i.costo_iva_flete) }}</td>
+                      </tr>
+                      {% endfor %}
+                    </tbody>
+                    <tfoot>
+                      <tr class="fila-total">
+                        <td class="col-materia text-uppercase">Total</td>
+                        <td class="num">{{ "{:,.0f}".format(v.total_cantidad) }}</td>
+                        <td class="num">$ {{ "{:,.0f}".format(v.total_iva) }}</td>
+                        <td class="num">$ {{ "{:,.0f}".format(v.total_flete) }}</td>
+                        <td class="num">$ {{ "{:,.0f}".format(v.total_iva_flete) }}</td>
+                      </tr>
+                      <tr class="fila-sin-maquila">
+                        <td class="col-materia">Sin maquila</td>
+                        <td class="num"></td>
+                        <td class="num">$ {{ "{:,.0f}".format(v.sin_maquila_iva) }}</td>
+                        <td class="num">$ {{ "{:,.0f}".format(v.sin_maquila_flete) }}</td>
+                        <td class="num">$ {{ "{:,.0f}".format(v.sin_maquila_iva_flete) }}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+            </div>
             {% endfor %}
-          </tbody>
-          <tfoot>
-            <tr class="fila-total">
-              <td class="col-materia text-uppercase">Total</td>
-              <td class="num">{{ "{:,.0f}".format(d.total_cantidad) }}</td>
-              <td class="num">$ {{ "{:,.0f}".format(d.total_iva) }}</td>
-              <td class="num">$ {{ "{:,.0f}".format(d.total_flete) }}</td>
-              <td class="num">$ {{ "{:,.0f}".format(d.total_iva_flete) }}</td>
-            </tr>
-            <tr class="fila-sin-maquila">
-              <td class="col-materia">Sin maquila</td>
-              <td class="num"></td>
-              <td class="num">$ {{ "{:,.0f}".format(d.sin_maquila_iva) }}</td>
-              <td class="num">$ {{ "{:,.0f}".format(d.sin_maquila_flete) }}</td>
-              <td class="num">$ {{ "{:,.0f}".format(d.sin_maquila_iva_flete) }}</td>
-            </tr>
-          </tfoot>
-        </table>
+          </div>
+        </div>
+        {% endfor %}
       </div>
     </div>
   </div>
   {% endfor %}
+
   {% endif %}
 </div>
 {% endblock %}
