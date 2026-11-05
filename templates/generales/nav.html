@@ -2,8 +2,8 @@
   <div class="container-fluid px-3 px-xl-4">
 
     <a class="navbar-brand app-brand" href="{{ url_for('main.pantalla_principal') }}">
-      <img src="{{ url_for('static', filename='img/LOGO_AVICOLA_SAN_MARTIN.svg') }}" alt="Avícola San Martín" class="app-brand-logo">
-      <span class="app-brand-name">AVÍCOLA SAN MARTÍN <span class="app-brand-suffix">S.A.</span></span>
+      <img src="{{ url_for('static', filename='img/LOGO_AVICOLA_SAN_MARTIN_SAS.png') }}" alt="Avícola San Martín" class="app-brand-logo">
+      <span class="app-brand-name">AVÍCOLA SAN MARTÍN <span class="app-brand-suffix">S.A.S</span></span>
     </a>
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMain"
@@ -27,6 +27,13 @@
           </li>
         </ul>
 
+        <!-- ROL: PRODUCCION - solo módulo de Producción -->
+        {% elif session.get('user_rol') == 'PRODUCCION' %}
+        {% set en_produccion = ep.startswith('lotes.') or ep.startswith('calificacion_lotes.') or ep.startswith('consolidados.') or ep.startswith('diario.') or ep.startswith('semanal.') or ep.startswith('semanal_levante.') or ep.startswith('primera_semana.') %}
+        <ul class="navbar-nav app-nav me-auto mb-2 mb-lg-0">
+          {% include 'generales/_menu_produccion.html' %}
+        </ul>
+
         <!-- ROLES: DIRECTOR DE PLANTA - Ven módulos: Producción, Clasificación, Planta de Alimentos -->
         {% elif session.get('user_rol') == 'Director de Planta' %}
         {% set en_produccion = ep.startswith('lotes.') or ep.startswith('calificacion_lotes.') or ep.startswith('diario.') or ep.startswith('semanal.') or ep.startswith('semanal_levante.') or ep.startswith('primera_semana.') %}
@@ -35,34 +42,13 @@
         <ul class="navbar-nav app-nav me-auto mb-2 mb-lg-0">
 
           <!-- PRODUCCIÓN -->
-          <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle{{ ' is-current' if en_produccion }}" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-              Producción
-            </a>
-            <ul class="dropdown-menu dropdown-menu-dark">
-              <li>
-                <a class="dropdown-item fw-semibold" href="{{ url_for('lotes.vista_lotes') }}" onclick="toggleSidebarLotes(event)">
-                  <i class='bx bx-sidebar'></i> Lotes
-                </a>
-              </li>
-              <li>
-                <a class="dropdown-item{{ ' active' if ep.startswith('calificacion_lotes.') }}" href="{{ url_for('calificacion_lotes.vista_calificacion') }}">
-                  <i class='bx bx-medal'></i> Calificación de lotes
-                </a>
-              </li>
-              <li>
-                <a class="dropdown-item{{ ' active' if ep.startswith('consolidados.') }}" href="{{ url_for('consolidados.vista_consolidados') }}">
-                  <i class='bx bx-grid-alt'></i> Consolidados
-                </a>
-              </li>
-            </ul>
-          </li>
+          {% include 'generales/_menu_produccion.html' %}
 
           <!-- PLANTA DE ALIMENTOS -->
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle{{ ' is-current' if en_planta }}" href="#" id="plantaDropdown"
               role="button" data-bs-toggle="dropdown" aria-expanded="false">
-              <i class="fas fa-industry"></i> Planta de Alimentos
+              <i class="fas fa-wheat-awn"></i> Planta de Alimentos
             </a>
             {% include 'generales/_menu_planta.html' %}
           </li>
@@ -70,7 +56,7 @@
           <!-- CLASIFICACIÓN -->
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle{{ ' is-current' if en_clasificacion }}" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-              Clasificación
+              <i class="fas fa-egg"></i> Clasificación
             </a>
             <ul class="dropdown-menu dropdown-menu-dark">
               <li class="dropdown-submenu">
@@ -94,34 +80,13 @@
         <ul class="navbar-nav app-nav me-auto mb-2 mb-lg-0">
 
           <!-- PRODUCCIÓN -->
-          <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle{{ ' is-current' if en_produccion }}" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-              Producción
-            </a>
-            <ul class="dropdown-menu dropdown-menu-dark">
-              <li>
-                <a class="dropdown-item fw-semibold" href="{{ url_for('lotes.vista_lotes') }}" onclick="toggleSidebarLotes(event)">
-                  <i class='bx bx-sidebar'></i> Lotes
-                </a>
-              </li>
-              <li>
-                <a class="dropdown-item{{ ' active' if ep.startswith('calificacion_lotes.') }}" href="{{ url_for('calificacion_lotes.vista_calificacion') }}">
-                  <i class='bx bx-medal'></i> Calificación de lotes
-                </a>
-              </li>
-              <li>
-                <a class="dropdown-item{{ ' active' if ep.startswith('consolidados.') }}" href="{{ url_for('consolidados.vista_consolidados') }}">
-                  <i class='bx bx-grid-alt'></i> Consolidados
-                </a>
-              </li>
-            </ul>
-          </li>
+          {% include 'generales/_menu_produccion.html' %}
 
           <!-- PLANTA DE ALIMENTOS -->
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle{{ ' is-current' if en_planta }}" href="#" id="plantaDropdown"
               role="button" data-bs-toggle="dropdown" aria-expanded="false">
-              <i class="fas fa-industry"></i> Planta de Alimentos
+              <i class="fas fa-wheat-awn"></i> Planta de Alimentos
             </a>
             {% include 'generales/_menu_planta.html' %}
           </li>
@@ -129,7 +94,7 @@
           <!-- CLASIFICACIÓN -->
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle{{ ' is-current' if en_clasificacion }}" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-              Clasificación
+              <i class="fas fa-egg"></i> Clasificación
             </a>
             <ul class="dropdown-menu dropdown-menu-dark">
               <li class="dropdown-submenu">
@@ -787,6 +752,78 @@
     .app-navbar .app-logout {
       transition: none !important;
     }
+  }
+
+  /* ============================================================
+     TEMA GRIS CLARO (nav)
+     ============================================================ */
+  .app-navbar {
+    --nav-ink: #1f2430;
+    color: #1f2430;
+    background-color: #f2f4f7;
+    border-bottom: 1px solid #e2e6eb;
+    box-shadow: 0 1px 0 rgba(16, 24, 40, .05), 0 8px 20px rgba(16, 24, 40, .08);
+  }
+  .app-navbar .app-brand-suffix { color: #667085; }
+
+  .app-navbar .navbar-nav .nav-link { color: #475467; }
+  .app-navbar .navbar-nav .nav-link:hover,
+  .app-navbar .navbar-nav .nav-link:focus-visible { color: #1f2430; background-color: #e6e9ee; }
+  .app-navbar .navbar-nav .nav-link.is-current { color: #97271C; background-color: #fbeae7; }
+  .app-navbar .navbar-nav .nav-link.is-current i { color: #97271C; }
+
+  .app-navbar .dropdown-menu {
+    background-color: #ffffff;
+    border: 1px solid #e7e9ee;
+    box-shadow: 0 .7rem 1.8rem rgba(16, 24, 40, .14);
+  }
+  .app-navbar .dropdown-item { color: #344054; }
+  .app-navbar .dropdown-item:hover,
+  .app-navbar .dropdown-item:focus { background-color: #f2f4f7; color: #1f2430; }
+  .app-navbar .dropdown-item i { color: #667085; }
+  .app-navbar .dropdown-item:hover i,
+  .app-navbar .dropdown-item:focus i { color: #1f2430; }
+  .app-navbar .dropdown-item.active { background-color: #fbeae7; color: #97271C; }
+  .app-navbar .dropdown-item.active i { color: #97271C; }
+  .app-navbar .dropdown-item.disabled { color: #98a2b3; }
+  .app-navbar .dropdown-item.disabled i { color: #98a2b3; }
+
+  .app-navbar .dropdown-item .nav-ico { color: #667085; }
+  .app-navbar .dropdown-item:hover .nav-ico,
+  .app-navbar .dropdown-item:focus .nav-ico { color: #1f2430; }
+  .app-navbar .dropdown-item.active .nav-ico { color: #97271C; }
+
+  .planta-menu .dropdown-header { color: #667085 !important; }
+  .planta-menu .dropdown-header::after { background: #e7e9ee; }
+
+  .app-navbar .app-avatar { background-color: #e2e6eb; color: #475467; border-color: #d6dce2; }
+  .app-navbar .app-avatar i { color: #475467; }
+  .app-navbar .app-user-name { color: #1f2430; }
+  .app-navbar .app-user-role { color: #97271C; }
+  .app-navbar .app-user-role::before { background-color: #97271C; }
+
+  .app-navbar .app-config-btn { background-color: #e2e6eb; color: #475467; border-color: #d6dce2; }
+  .app-navbar .app-config-btn:hover,
+  .app-navbar .app-config-btn:focus-visible { background-color: #d7dce2; border-color: #c6cdd4; }
+  .app-navbar .app-config-btn[aria-expanded="true"] { background-color: #d7dce2; border-color: #c6cdd4; }
+  .app-navbar .app-config.activo .app-config-btn { color: #97271C; border-color: #f3c5bd; }
+  .app-navbar .app-config.activo .app-config-btn::after { background-color: #97271C; }
+
+  .app-navbar .app-separador { background-color: #e7e9ee; }
+  .app-navbar .app-config-menu .dropdown-header { color: #667085; }
+  .app-navbar .app-config-menu .dropdown-item.active,
+  .app-navbar .app-config-menu .dropdown-item:active { background-color: #fbeae7; color: #97271C; }
+
+  .app-navbar .app-logout { color: #97271C; border-color: rgba(151, 39, 28, 0.45); }
+  .app-navbar .app-logout:hover { background-color: rgba(151, 39, 28, 0.08); border-color: rgba(151, 39, 28, 0.75); color: #97271C; }
+
+  .app-navbar .navbar-toggler { border-color: #e7e9ee; }
+
+  @media (max-width: 991.98px) {
+    .app-navbar .navbar-collapse { border-top-color: #e7e9ee; }
+    .app-navbar .dropdown-menu { background-color: #f8f9fb; border-color: #e7e9ee; }
+    .app-navbar .app-user { border-top-color: #e7e9ee; }
+    .planta-menu .planta-flyout { border-left-color: #e7e9ee; }
   }
 </style>
 

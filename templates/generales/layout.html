@@ -400,6 +400,56 @@
       border: 1.5px solid #dc3545 !important;
       box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25) !important;
     }
+
+    /* ============================================================
+       TEMA GRIS CLARO (menú lateral)
+       ============================================================ */
+    .sidebar-rapido,
+    .sidebar-th {
+      background: #f2f4f7;
+      border-right: 1px solid #e2e6eb;
+      box-shadow: 6px 0 20px rgba(16, 24, 40, .08);
+    }
+    .sidebar-rapido::-webkit-scrollbar-thumb,
+    .sidebar-th::-webkit-scrollbar-thumb { background: rgba(16, 24, 40, 0.16); }
+
+    .sidebar-rapido a,
+    .sidebar-th a { color: #475467; }
+    .sidebar-rapido a i,
+    .sidebar-th a i { color: #667085; }
+    .sidebar-rapido a:hover,
+    .sidebar-th a:hover { background-color: #e6e9ee; color: #1f2430; }
+    .sidebar-rapido a:hover i,
+    .sidebar-th a:hover i { color: #1f2430; }
+
+    .sidebar-rapido a.is-active,
+    .sidebar-th a.is-active {
+      background: linear-gradient(90deg, rgba(151, 39, 28, 0.10) 0%, rgba(151, 39, 28, 0.02) 100%);
+      color: #97271C;
+      font-weight: 600;
+    }
+    .sidebar-rapido a.is-active i,
+    .sidebar-th a.is-active i { color: #97271C; }
+    .sidebar-rapido a.is-active::before,
+    .sidebar-th a.is-active::before { background-color: #c33a2c; }
+
+    .sidebar-rapido a.is-disabled,
+    .sidebar-th a.is-disabled { color: #98a2b3; }
+    .sidebar-rapido a.is-disabled i,
+    .sidebar-th a.is-disabled i { color: #b3bac2; }
+    .sidebar-rapido a.is-disabled:hover,
+    .sidebar-th a.is-disabled:hover { background-color: #eef0f3; color: #98a2b3; }
+    .sidebar-rapido a.is-disabled:hover i,
+    .sidebar-th a.is-disabled:hover i { color: #b3bac2; }
+
+    .sidebar-rapido .badge-soon,
+    .sidebar-th .badge-soon { border-color: #d6dce2; background-color: #e6e9ee; color: #667085; }
+
+    .sidebar-divider { background-color: #e2e6eb; }
+    .sidebar-header { color: #667085; }
+
+    .sidebar-rapido .rail-parent .rail-chev,
+    .sidebar-th .rail-parent .rail-chev { color: #667085; }
   </style>
 
   {% block head %}{% endblock %}
