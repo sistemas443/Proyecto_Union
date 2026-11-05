@@ -129,12 +129,16 @@ def generar_estructura_diario(lote_nombre, id_lote, fecha_recepcion):
         cur.close()
         conn.close()
 
-def get_diario_all(lote_nombre: str = ''):
-    """ Obtiene la matriz completa y fuerza los parches de sincronizacion """
+def get_diario_all(lote_nombre: str = '', cabecera=None):
+    """ Obtiene la matriz completa y fuerza los parches de sincronizacion.
+
+    Si recibe la cabecera ya consultada por la ruta, evita volver a pedirla.
+    """
     if not lote_nombre or lote_nombre == 'VACIO': 
         return []
-    
-    cabecera = fetch_cabecera_by_lote(lote_nombre)
+
+    if cabecera is None:
+        cabecera = fetch_cabecera_by_lote(lote_nombre)
     if not cabecera: 
         return []
     

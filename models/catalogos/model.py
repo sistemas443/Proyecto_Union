@@ -3,8 +3,22 @@ validado desde services.py (whitelist de schemas.py)."""
 from models.base import get_db_connection
 
 
-def listar(tabla: str) -> list:
-    """Lista los valores ACTIVOS del catálogo (id, nombre)."""
+def listar(tabla: str, cur=None) -> list:
+    """Lista los valores ACTIVOS del catálogo (id, nombre).
+
+    Si recibe un cursor, lo reutiliza para no abrir otra conexión.
+    """
+    if cur is not None:
+        try:
+            cur.execute(f"""
+                SELECT id, nombre FROM {tabla}
+                WHERE activo = TRUE ORDER BY nombre ASC
+            """)
+            return [{'id': r[0], 'nombre': r[1]} for r in cur.fetchall()]
+        except Exception as e:
+            print(f"[ERROR LISTANDO {tabla}]: {e}")
+            return []
+
     conn = get_db_connection()
     cur = conn.cursor()
     try:

@@ -347,8 +347,19 @@
                             <!-- 6. ACCIONES -->
                             <td class="col-acciones px-3">
                                 <div class="d-flex justify-content-center gap-1">
+                                    {% if session.get('user_rol') != 'Lector' %}
+                                    <button type="button" class="btn btn-outline-secondary btn-sm"
+                                        onclick="abrirModalReplicar({{ formula['item_id'] }}, '{{ lote_id }}', {{ formula['ultima_version'] }}, '{{ formula['nombre_dieta'] | e }}')"
+                                        title="Copiar esta dieta a otros lotes">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+                                            <path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1z"/>
+                                            <path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0z"/>
+                                        </svg>
+                                    </button>
+                                    {% endif %}
+
                                     <!-- Botón Editar -->
-                                    <a href="{{ url_for('planta_alimentos.recetario_formulas', item_id=formula['item_id'], lote_id=lote_seleccionado, version=formula['ultima_version']) }}"
+                                    <a href="{{ url_for('planta_alimentos.recetario_formulas', item_id=formula['item_id'], lote_id=lote_id, version=formula['ultima_version']) }}"
                                         class="btn btn-outline-primary btn-sm" title="Editar Fórmula">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-pencil-square" viewBox="0 0 16 16">
                                             <path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/>
@@ -364,7 +375,7 @@
                                     </a>
 
                                     <!-- Botón Borrar -->
-                                    <form action="{{ url_for('planta_alimentos.eliminar_formula_lote', item_id=formula['item_id'], lote_id=lote_seleccionado) }}" method="POST" class="d-inline"
+                                    <form action="{{ url_for('planta_alimentos.eliminar_formula_lote', item_id=formula['item_id'], lote_id=lote_id) }}" method="POST" class="d-inline"
                                         data-confirm="Vas a eliminar la fórmula <strong>{{ formula['nombre_dieta'] }}</strong> de este lote." data-confirm-title="¿Eliminar fórmula?" data-confirm-ok="Sí, eliminar">
                                         <button type="submit" class="btn btn-outline-danger btn-sm" title="Eliminar Fórmula">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-trash3" viewBox="0 0 16 16">
@@ -383,4 +394,5 @@
 
     {% endif %}
 </div>
+{% include 'planta_alimentos/_modal_replicar.html' %}
 {% endblock %}

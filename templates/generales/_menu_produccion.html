@@ -1,0 +1,27 @@
+{# Menú Producción (compartido por Director de Planta, PRODUCCION y demás roles) #}
+<li class="nav-item dropdown">
+    <a class="nav-link dropdown-toggle{{ ' is-current' if en_produccion }}" href="#" role="button"
+        data-bs-toggle="dropdown" aria-expanded="false">
+        <i class="fas fa-feather"></i> Producción
+    </a>
+    <ul class="dropdown-menu dropdown-menu-dark">
+        <li>
+            <a class="dropdown-item fw-semibold" href="{{ url_for('lotes.vista_lotes') }}"
+                onclick="toggleSidebarLotes(event)">
+                <i class='bx bx-sidebar'></i> Lotes
+            </a>
+        </li>
+        <li>
+            <a class="dropdown-item{{ ' active' if ep.startswith('calificacion_lotes.') }}"
+                href="{{ url_for('calificacion_lotes.vista_calificacion') }}">
+                <i class='bx bx-medal'></i> Calificación de lotes
+            </a>
+        </li>
+        <li>
+            <a class="dropdown-item{{ ' active' if ep.startswith('consolidados.') }}"
+                href="{{ url_for('consolidados.vista_consolidados') }}">
+                <i class='bx bx-grid-alt'></i> Consolidados
+            </a>
+        </li>
+    </ul>
+</li>

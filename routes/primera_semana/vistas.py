@@ -23,7 +23,7 @@ def primera_semana():
     cabecera = None
     if lote_seleccionado and lote_seleccionado != 'VACIO':
         cabecera = get_cabecera_info(lote_seleccionado)
-        filas = get_primera_semana_by_lote(lote_seleccionado)
+        filas = get_primera_semana_by_lote(lote_seleccionado, cabecera)
 
     return render_template(
         'produccion/primera_semana.html',

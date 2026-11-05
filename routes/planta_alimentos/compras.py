@@ -1,8 +1,9 @@
-from flask import render_template, request, redirect, url_for, flash
+from flask import render_template, request, redirect, url_for, flash, session
 from datetime import datetime
 from collections import Counter
 import psycopg2.extras
 from models.base import get_db_connection, traducir_error
+from models.auditoria.services import registrar_cambio
 from routes.planta_alimentos.catalogo_a import planta_bp
 from routes.routes import login_requerido  # O tu decorador correspondiente
 
@@ -297,12 +298,26 @@ def resumen_inventario():
         
         inventario = cursor.fetchall()
 
+        # Ajustes manuales del mes: solo afectan el inventario final
+        cursor.execute("""
+            SELECT materia_prima_id, ajuste
+            FROM inventario_ajuste_mensual
+            WHERE mes = %s AND anio = %s
+        """, (mes, anio))
+        ajustes = {f['materia_prima_id']: float(f['ajuste'] or 0) for f in cursor.fetchall()}
+
         # 3. Procesar los cálculos matemáticos idénticos al Excel
         for item in inventario:
             row = dict(item)
             consumo_mes = float(row['consumo_mes'] or 0)
-            inv_final = float(row['inventario_final'] or 0)
-            
+            final_calculado = float(row['inventario_final'] or 0)
+            ajuste = ajustes.get(row['id'], 0.0)
+
+            row['inventario_final_calculado'] = final_calculado
+            row['ajuste'] = ajuste
+            row['inventario_final'] = final_calculado + ajuste
+            inv_final = row['inventario_final']
+
             # Cálculo 1: Consumo a 7 días (Consumo Mensual / Días del mes * 7)
             consumo_7_dias = (consumo_mes / dias_del_mes) * 7
             row['consumo_7_dias'] = consumo_7_dias
@@ -328,6 +343,92 @@ def resumen_inventario():
                            anio=anio, 
                            meses_nombres=meses_nombres, 
                            anios_disponibles=anios_disponibles)
+
+@planta_bp.route('/inventario/resumen/ajuste', methods=['POST'])
+@login_requerido
+def guardar_ajuste_inventario():
+    """Guarda el ajuste real de inventario (merma/descuadre) por materia prima y mes."""
+    if session.get('user_rol') == 'Lector':
+        flash('No tiene permisos para modificar inventarios.', 'warning')
+        return redirect(url_for('planta_alimentos.resumen_inventario'))
+
+    mes = request.form.get('mes', type=int) or datetime.now().month
+    anio = request.form.get('anio', type=int) or datetime.now().year
+    usuario = session.get('usuario_nombre') or session.get('user_nombre') or 'Sistema'
+
+    cambios = {}
+    for clave, valor in request.form.items():
+        if not clave.startswith('ajuste_'):
+            continue
+        try:
+            mp_id = int(clave.split('_', 1)[1])
+        except (IndexError, ValueError):
+            continue
+        texto = (valor or '').strip()
+        if not texto:
+            ajuste = 0.0
+        else:
+            try:
+                if ',' in texto:
+                    texto = texto.replace('.', '').replace(',', '.')
+                ajuste = float(texto)
+            except ValueError:
+                continue
+        cambios[mp_id] = ajuste
+
+    if not cambios:
+        flash('No se recibieron ajustes.', 'warning')
+        return redirect(url_for('planta_alimentos.resumen_inventario', mes=mes, anio=anio))
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
+            cur.execute("""
+                SELECT materia_prima_id, ajuste
+                FROM inventario_ajuste_mensual
+                WHERE mes = %s AND anio = %s
+            """, (mes, anio))
+            anteriores = {f['materia_prima_id']: float(f['ajuste'] or 0) for f in cur.fetchall()}
+
+            guardados = 0
+            for mp_id, ajuste in cambios.items():
+                if ajuste == anteriores.get(mp_id, 0.0):
+                    continue
+
+                if ajuste == 0:
+                    cur.execute("""
+                        DELETE FROM inventario_ajuste_mensual
+                        WHERE materia_prima_id = %s AND mes = %s AND anio = %s
+                    """, (mp_id, mes, anio))
+                else:
+                    cur.execute("""
+                        INSERT INTO inventario_ajuste_mensual
+                            (materia_prima_id, mes, anio, ajuste, actualizado_por)
+                        VALUES (%s, %s, %s, %s, %s)
+                        ON CONFLICT (materia_prima_id, mes, anio)
+                        DO UPDATE SET ajuste = EXCLUDED.ajuste,
+                                      actualizado_por = EXCLUDED.actualizado_por,
+                                      actualizado_en = now()
+                    """, (mp_id, mes, anio, ajuste, usuario))
+
+                registrar_cambio(
+                    session.get('user_id'), usuario,
+                    'inventario_ajuste_mensual', mp_id,
+                    f'ajuste {mes}/{anio}',
+                    str(anteriores.get(mp_id, 0.0)), str(ajuste), 'UPDATE', cur
+                )
+                guardados += 1
+        conn.commit()
+        flash(f'Se guardaron {guardados} ajuste(s) de inventario.', 'success')
+    except Exception as e:
+        conn.rollback()
+        print(f'[ERROR AJUSTE INVENTARIO]: {e}')
+        flash('No se pudieron guardar los ajustes.', 'danger')
+    finally:
+        conn.close()
+
+    return redirect(url_for('planta_alimentos.resumen_inventario', mes=mes, anio=anio))
+
 
 @planta_bp.route('/inventario/dietas', methods=['GET'])
 @login_requerido

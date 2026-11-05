@@ -1,0 +1,154 @@
+{# ============================================================
+   MODAL: NUEVO / EDITAR INSUMO DE ENSAYO
+   Lo abre la función abrirModalEnsayo() del editor de receta.
+   ============================================================ #}
+<div class="modal fade" id="modalEnsayo" tabindex="-1" aria-labelledby="tituloEnsayo" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <form method="POST" id="formEnsayo" action="{{ url_for('planta_alimentos.crear_ensayo') }}">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="tituloEnsayo" style="font-size: 0.95rem;">
+                        <i class="fas fa-flask me-2"></i>Nuevo ensayo
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+
+                <div class="modal-body">
+                    <input type="hidden" name="item_id" value="{{ item_id }}">
+                    <input type="hidden" name="lote_id" value="{{ lote_id }}">
+                    <input type="hidden" name="version" value="{{ version_actual }}">
+
+                    <div class="row g-3">
+                        <div class="col-md-8">
+                            <label class="form-label-design" for="ensayoMateria">INSUMO</label>
+                            <select name="materia_prima_id" id="ensayoMateria" class="form-select form-select-sm"
+                                required>
+                                <option value="" disabled selected>Seleccione materia prima...</option>
+                                {% for mp in materias_primas %}
+                                <option value="{{ mp['id'] }}">{{ mp['nombre'] }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label-design" for="ensayoCantidad">KG / BACHE</label>
+                            <input type="text" name="cantidad_kg" id="ensayoCantidad"
+                                class="form-control form-control-sm text-end fw-bold" placeholder="Ej. 1,5" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label-design" for="ensayoMotivo">MOTIVO (OPCIONAL)</label>
+                            <input type="text" name="motivo" id="ensayoMotivo" class="form-control form-control-sm"
+                                maxlength="200" placeholder="Ej. Ensayo de conversión">
+                        </div>
+                    </div>
+
+                    <div class="mt-3">
+                        <label class="form-label-design mb-2">RANGOS DE FECHAS</label>
+                        <div id="ensayoRangos"></div>
+                        <button type="button" class="btn-agregar-rango" onclick="agregarRangoEnsayo()">
+                            <i class="fas fa-plus me-1"></i> Agregar otro rango
+                        </button>
+                    </div>
+
+                    <div class="alert mb-0 mt-3 py-2"
+                        style="background:#fffaf0; border:1px solid #f0e2c2; color:#6b5a33; font-size:.78rem;">
+                        <i class="fas fa-industry me-1"></i>
+                        El ensayo se aplica a la <b>producción fabricada dentro de cada rango</b>. Esos kg se suman a la
+                        receta en costos, inventario y proyecciones.
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        <i class="fas fa-check me-1"></i> Guardar ensayo
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    let modalEnsayo = null;
+
+    function _isoHoy() {
+        const d = new Date();
+        d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+        return d.toISOString().slice(0, 10);
+    }
+
+    function _filaRango(desde, hasta) {
+        const div = document.createElement('div');
+        div.className = 'fila-rango-ensayo';
+        div.innerHTML =
+            '<input type="date" name="rango_desde" class="form-control form-control-sm" value="' + (desde || '') + '" required>' +
+            '<i class="fas fa-arrow-right-long" style="color:#9aa3b1;font-size:.75rem;"></i>' +
+            '<input type="date" name="rango_hasta" class="form-control form-control-sm" value="' + (hasta || '') + '" required>' +
+            '<button type="button" class="quitar-rango" title="Quitar rango"><i class="fas fa-xmark"></i></button>';
+        div.querySelector('.quitar-rango').addEventListener('click', function () {
+            const filas = document.querySelectorAll('#ensayoRangos .fila-rango-ensayo');
+            if (filas.length > 1) {
+                div.remove();
+            }
+        });
+        return div;
+    }
+
+    function agregarRangoEnsayo(desde, hasta) {
+        document.getElementById('ensayoRangos').appendChild(_filaRango(desde, hasta));
+    }
+
+    function abrirModalEnsayo(datos) {
+        const form = document.getElementById('formEnsayo');
+        const titulo = document.getElementById('tituloEnsayo');
+        const contenedor = document.getElementById('ensayoRangos');
+        const select = document.getElementById('ensayoMateria');
+
+        contenedor.innerHTML = '';
+        document.getElementById('ensayoCantidad').value = '';
+        document.getElementById('ensayoMotivo').value = '';
+
+        if (datos) {
+            form.action = '/receta/ensayo/' + datos.id + '/editar';
+            titulo.innerHTML = '<i class="fas fa-flask me-2"></i>Editar ensayo';
+            select.value = datos.mp;
+            select.disabled = true;
+            document.getElementById('ensayoCantidad').value = String(datos.cantidad).replace('.', ',');
+            document.getElementById('ensayoMotivo').value = datos.motivo || '';
+
+            let rangos = [];
+            try {
+                rangos = JSON.parse(datos.rangos || '[]');
+            } catch (e) {
+                rangos = [];
+            }
+            rangos.forEach(function (r) {
+                agregarRangoEnsayo(r.desde, r.hasta);
+            });
+            if (!rangos.length) {
+                agregarRangoEnsayo(_isoHoy(), _isoHoy());
+            }
+        } else {
+            form.action = "{{ url_for('planta_alimentos.crear_ensayo') }}";
+            titulo.innerHTML = '<i class="fas fa-flask me-2"></i>Nuevo ensayo';
+            select.disabled = false;
+            select.value = '';
+            agregarRangoEnsayo(_isoHoy(), _isoHoy());
+        }
+
+        if (!modalEnsayo) {
+            modalEnsayo = new bootstrap.Modal(document.getElementById('modalEnsayo'));
+        }
+        modalEnsayo.show();
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('.btn-editar-ensayo').forEach(function (boton) {
+            boton.addEventListener('click', function () {
+                abrirModalEnsayo(boton.dataset);
+            });
+        });
+    });
+</script>

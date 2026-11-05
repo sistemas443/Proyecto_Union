@@ -29,11 +29,17 @@ def fetch_lotes_distintos():
         conn.close()
 
 
-def fetch_todos_los_lotes():
+def fetch_todos_los_lotes(cur=None):
     """
     Extrae toda la información de la cabecera de todos los lotes creados.
     Se ordenan de forma descendente (DESC) para ver siempre los más recientes primero.
+
+    Si se recibe un cursor, lo reutiliza (para agrupar varias consultas en un solo viaje).
     """
+    if cur is not None:
+        cur.execute("SELECT * FROM cabecera_lotes ORDER BY id DESC")
+        return cur.fetchall()
+
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
@@ -169,29 +175,41 @@ def delete_lote(id_lote):
         conn.close()
 
 
-def fetch_opciones_dinamicas():
+def fetch_opciones_dinamicas(cur=None):
     """
     Extrae las opciones únicas digitadas históricamente por los usuarios en columnas de texto.
     Se utiliza para alimentar autocompletados o menús desplegables sugeridos en los formularios.
+
+    Hace las 8 columnas en una sola consulta (mismo resultado y mismo orden que antes).
     """
-    conn = get_db_connection()
-    cur = conn.cursor()
-    opciones = {}
-    
-    # Lista de columnas de las cuales queremos extraer el historial de respuestas
-    # 'variedad' y 'marca_galpon' ahora vienen de sus tablas de catálogo con foto
     columnas = ['cliente', 'ciudad', 'clima', 'responsable_tecnico', 'nutricionista', 'granja_lev', 'granja_prod', 'tipo_galpon']
-    
+
+    propio = cur is None
+    conn = get_db_connection() if propio else None
+    if propio:
+        cur = conn.cursor()
     try:
-        for col in columnas:
-            # Buscamos valores distintos que no estén vacíos
-            cur.execute(f'SELECT DISTINCT "{col}" FROM cabecera_lotes WHERE "{col}" IS NOT NULL AND TRIM("{col}"::text) != \'\' ORDER BY "{col}"')
-            opciones[col] = [row[0] for row in cur.fetchall()]
+        partes = ' UNION ALL '.join(
+            f'SELECT \'{col}\' AS campo, "{col}"::text AS valor FROM cabecera_lotes'
+            for col in columnas
+        )
+        cur.execute(f"""
+            SELECT campo, valor FROM ({partes}) t
+            WHERE valor IS NOT NULL AND TRIM(valor) != ''
+            GROUP BY campo, valor
+            ORDER BY campo, valor
+        """)
+        opciones = {col: [] for col in columnas}
+        for campo, valor in cur.fetchall():
+            if campo in opciones:
+                opciones[campo].append(valor)
         return opciones
-    except:
-        conn.rollback()
+    except Exception:
+        if conn is not None:
+            conn.rollback()
         # Si algo falla, devolvemos un diccionario con listas vacías para no romper la pantalla
         return {col: [] for col in columnas}
     finally:
-        cur.close()
-        conn.close()
+        if propio:
+            cur.close()
+            conn.close()

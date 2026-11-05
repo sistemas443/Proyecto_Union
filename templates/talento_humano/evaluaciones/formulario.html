@@ -1,0 +1,213 @@
+{% extends 'generales/layout.html' %}
+
+{% block title %}Nueva evaluación de desempeño – Avícola San Martín{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-3 pb-5">
+
+    <div class="d-flex justify-content-between align-items-end mb-3 flex-wrap gap-2 px-2">
+        <div class="d-flex align-items-center gap-2">
+            <span class="page-head-icon"><i class='bx bx-task'></i></span>
+            <div>
+                <h3 class="page-title mb-0">Nueva evaluación de desempeño</h3>
+                <p class="page-sub mb-0 mt-1">Formato GTH F 011 · escala Siempre(5) a Nunca(1)</p>
+            </div>
+        </div>
+        <a href="{{ url_for('talento_humano.evaluacion_catalogo') }}" class="btn btn-sm btn-outline-secondary" title="Administrar criterios y preguntas">
+            <i class='bx bx-slider-alt'></i> Catálogo de preguntas
+        </a>
+        <a href="{{ url_for('talento_humano.evaluaciones') }}" class="btn btn-sm btn-outline-secondary">
+            <i class='bx bx-arrow-back'></i> Volver
+        </a>
+    </div>
+
+    <form method="get" action="{{ url_for('talento_humano.evaluacion_nueva') }}" id="filtroColaborador" class="d-none"></form>
+
+    <form method="post" action="{{ url_for('talento_humano.evaluacion_nueva') }}">
+        <!-- IDENTIFICACIÓN Y PERIODO -->
+        <div class="card shadow-sm border-0 mb-3 px-2">
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-5">
+                        <label class="form-label fw-bold text-secondary small">Colaborador a evaluar <span class="text-danger">*</span></label>
+                        <select name="colaborador_id" class="form-select form-select-sm" required
+                                onchange="window.location.href = '{{ url_for('talento_humano.evaluacion_nueva') }}?colaborador_id=' + this.value;">
+                            <option value="">Seleccione colaborador</option>
+                            {% for col in colaboradores %}
+                            <option value="{{ col.id }}" {{ 'selected' if colaborador_sel and colaborador_sel.id == col.id }}>{{ col.nombre_completo }}{% if col.cargo %} · {{ col.cargo }}{% endif %}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold text-secondary small">Área del evaluado</label>
+                        <input type="text" class="form-control form-control-sm" value="{{ area or '' }}" disabled>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold text-secondary small">Evaluador (líder de área)</label>
+                        <select name="evaluador_id" class="form-select form-select-sm">
+                            <option value="">Seleccione evaluador</option>
+                            {% for col in colaboradores %}
+                            <option value="{{ col.id }}" {{ 'selected' if jefe_id and jefe_id == col.id }}>{{ col.nombre_completo }}</option>
+                            {% endfor %}
+                        </select>
+                        {% if jefe_nombre %}
+                        <div class="form-text small"><i class='bx bx-user-check'></i> Sugerido: {{ jefe_nombre }} (jefe inmediato)</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold text-secondary small">Fecha de evaluación</label>
+                        <input type="date" name="fecha_evaluacion" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold text-secondary small">Periodo desde</label>
+                        <input type="date" name="periodo_inicio" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold text-secondary small">Periodo hasta</label>
+                        <input type="date" name="periodo_fin" class="form-control form-control-sm">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if not colaborador_sel %}
+        <div class="card shadow-sm border-0 mb-3 px-2">
+            <div class="card-body text-center text-muted py-5">
+                <i class='bx bx-user-pin' style="font-size:2.4rem;"></i>
+                <div class="mt-2">Seleccione un colaborador para cargar las preguntas de su área.</div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- CRITERIOS -->
+        {% if colaborador_sel %}
+        {% for c in criterios %}
+        <div class="card shadow-sm border-0 mb-3 px-2 criterio" data-criterio-id="{{ c.id }}">
+            <div class="card-header bg-white border-0 d-flex align-items-center gap-2 px-3 py-2">
+                <i class='bx bx-task text-danger'></i>
+                <strong class="text-uppercase small">{{ c.nombre }}</strong>
+                <span class="ms-auto badge bg-light text-dark border promedio-criterio">—</span>
+            </div>
+            <div class="card-body pt-0">
+                <div class="row g-2 text-uppercase text-muted fw-semibold px-2" style="font-size:.72rem;">
+                    <div class="col-7">Indicador conductual</div>
+                    <div class="col-2 text-center">Evaluador</div>
+                    <div class="col-1 text-center">%</div>
+                    <div class="col-2 text-center">Autoevaluación</div>
+                </div>
+                {% for ind in c.indicadores %}
+                <div class="row g-2 align-items-center border-top py-2 px-2 indicador">
+                    <div class="col-7 small">{{ ind.descripcion }}</div>
+                    <div class="col-2">
+                        <select class="form-select form-select-sm score-evaluador" name="score_evaluador_{{ ind.id }}">
+                            <option value="">—</option>
+                            <option value="5">Siempre (5)</option>
+                            <option value="4">Casi siempre (4)</option>
+                            <option value="3">Ocasionalmente (3)</option>
+                            <option value="2">Casi nunca (2)</option>
+                            <option value="1">Nunca (1)</option>
+                        </select>
+                    </div>
+                    <div class="col-1 text-center small fw-semibold pct-evaluador">—</div>
+                    <div class="col-2">
+                        <select class="form-select form-select-sm score-autoevaluacion" name="score_autoevaluacion_{{ ind.id }}">
+                            <option value="">—</option>
+                            <option value="5">Siempre (5)</option>
+                            <option value="4">Casi siempre (4)</option>
+                            <option value="3">Ocasionalmente (3)</option>
+                            <option value="2">Casi nunca (2)</option>
+                            <option value="1">Nunca (1)</option>
+                        </select>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+
+        <!-- CAMPOS ABIERTOS -->
+        <div class="card shadow-sm border-0 mb-3 px-2">
+            <div class="card-header bg-white border-0 fw-bold text-secondary small"><i class='bx bx-comment-detail me-1'></i>Resultados evaluados</div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label fw-bold text-secondary small">Aspectos positivos</label>
+                        <textarea name="aspectos_positivos" class="form-control form-control-sm" rows="2"></textarea>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-bold text-secondary small">Aspectos a fortalecer</label>
+                        <textarea name="aspectos_fortalecer" class="form-control form-control-sm" rows="2"></textarea>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-bold text-secondary small">Objetivos trazados</label>
+                        <textarea name="objetivos" class="form-control form-control-sm" rows="2"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- BARRA FIJA DE RESULTADO -->
+        <div class="position-sticky bottom-0 bg-white border rounded shadow-sm p-3 d-flex align-items-center justify-content-between flex-wrap gap-2" style="z-index:50;">
+            <div>
+                <span class="text-muted small">Resultado final</span>
+                <span class="fs-4 fw-bold ms-2" id="resultado-final">—</span>
+                <span class="ms-3 badge fw-semibold" id="badge-resultado">Sin calificar</span>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{{ url_for('talento_humano.evaluaciones') }}" class="btn btn-outline-secondary btn-sm">Cancelar</a>
+                <button type="submit" class="btn btn-dark fw-bold btn-sm"><i class='bx bx-save me-1'></i>Guardar evaluación</button>
+            </div>
+        </div>
+        {% endif %}
+    </form>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const PCT = {1:0, 2:25, 3:50, 4:75, 5:100};
+  const MINIMO = 70;
+
+  function pct(v) { return v ? (PCT[v] || 0) : 0; }
+
+  function recalcular() {
+    let sumaFinal = 0, nCriterios = 0;
+    document.querySelectorAll('.criterio').forEach(function (criterio) {
+      const evPcts = [], auPcts = [];
+      criterio.querySelectorAll('.indicador').forEach(function (ind) {
+        const ev = parseInt(ind.querySelector('.score-evaluador').value) || 0;
+        const au = parseInt(ind.querySelector('.score-autoevaluacion').value) || 0;
+        ind.querySelector('.pct-evaluador').textContent = ev ? pct(ev) + '%' : '—';
+        ind.querySelector('.pct-autoevaluacion').textContent = au ? pct(au) + '%' : '—';
+        if (ev) evPcts.push(pct(ev));
+        if (au) auPcts.push(pct(au));
+      });
+      const evAvg = evPcts.length ? evPcts.reduce((a, b) => a + b, 0) / evPcts.length : 0;
+      const auAvg = auPcts.length ? auPcts.reduce((a, b) => a + b, 0) / auPcts.length : 0;
+      const prom = (evAvg + auAvg) / 2;
+      criterio.querySelector('.promedio-criterio').textContent = prom.toFixed(1) + '%';
+      if (evPcts.length || auPcts.length) { sumaFinal += prom; nCriterios++; }
+    });
+    const final = nCriterios ? sumaFinal / nCriterios : 0;
+    document.getElementById('resultado-final').textContent = final ? final.toFixed(1) + '%' : '—';
+    const badge = document.getElementById('badge-resultado');
+    if (nCriterios === 0) {
+      badge.textContent = 'Sin calificar';
+      badge.className = 'badge fw-semibold bg-secondary';
+    } else if (final >= MINIMO) {
+      badge.textContent = 'Aprobado';
+      badge.className = 'badge fw-semibold bg-success';
+    } else {
+      badge.textContent = 'Plan de mejora';
+      badge.className = 'badge fw-semibold bg-danger';
+    }
+  }
+
+  document.addEventListener('change', function (e) {
+    if (e.target.classList.contains('score-evaluador') || e.target.classList.contains('score-autoevaluacion')) {
+      recalcular();
+    }
+  });
+</script>
+{% endblock %}

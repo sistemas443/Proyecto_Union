@@ -4,100 +4,145 @@
 
 {% block head %}
 <style>
-    .ficha-wrap { max-width: 1100px; margin: 0 auto; }
+    :root {
+        --fh-ink: #1f2430;
+        --fh-muted: #667085;
+        --fh-line: #e7e9ee;
+        --fh-accent: #1d4ed8;
+        --fh-accent-soft: #e8f1fd;
+    }
+
+    .ficha-wrap { max-width: 1140px; margin: 0 auto; }
 
     .ficha-acciones {
         position: sticky; top: .5rem; z-index: 20;
-        background: rgba(255,255,255,.96);
-        border: 1px solid #e3e6ea; border-radius: 10px;
-        padding: .45rem .6rem;
-        box-shadow: 0 2px 6px rgba(0,0,0,.06);
+        background: rgba(255,255,255,.92);
+        backdrop-filter: blur(8px);
+        border: 1px solid var(--fh-line); border-radius: 12px;
+        padding: .5rem .7rem;
+        box-shadow: 0 2px 8px rgba(16,24,40,.08);
     }
 
+    /* --- Portada (perfil) --- */
     .ficha-portada {
-        background: linear-gradient(135deg, #97271C 0%, #b73a2c 100%);
-        color: #fff; border-radius: 14px; padding: 1.25rem 1.5rem;
-        display: flex; align-items: center; gap: 1.25rem;
+        position: relative; overflow: hidden;
+        background: #fff; border: 1px solid var(--fh-line); border-radius: 16px;
+        padding: 1.7rem 1.8rem;
+        display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap;
+        box-shadow: 0 1px 2px rgba(16,24,40,.05), 0 10px 28px rgba(16,24,40,.07);
+    }
+    .ficha-portada::before {
+        content: ""; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+        background: linear-gradient(90deg, var(--fh-accent) 0%, #0ea5e9 100%);
     }
     .ficha-foto {
-        width: 110px; height: 110px; border-radius: 50%; object-fit: cover;
-        border: 4px solid rgba(255,255,255,.85); background: #fff; flex: 0 0 auto;
+        width: 104px; height: 104px; border-radius: 50%; object-fit: cover;
+        border: 3px solid #fff; background: #fff; flex: 0 0 auto;
+        box-shadow: 0 0 0 1px var(--fh-line), 0 8px 20px rgba(16,24,40,.12);
     }
     .ficha-foto-vacia {
-        width: 110px; height: 110px; border-radius: 50%;
-        border: 4px solid rgba(255,255,255,.85);
+        width: 104px; height: 104px; border-radius: 50%;
+        border: 3px solid #fff; flex: 0 0 auto;
         display: flex; align-items: center; justify-content: center;
-        background: rgba(255,255,255,.15); flex: 0 0 auto;
+        background: var(--fh-accent-soft); color: var(--fh-accent);
+        box-shadow: 0 0 0 1px var(--fh-line), 0 8px 20px rgba(16,24,40,.12);
     }
-    .ficha-portada h1 { font-size: 1.5rem; font-weight: 700; margin: 0; }
-    .ficha-portada .doc { opacity: .92; font-size: .9rem; }
+    .ficha-portada h1 { font-size: 1.5rem; font-weight: 700; margin: 0; color: var(--fh-ink); letter-spacing: -0.01em; }
+    .ficha-portada .doc { color: var(--fh-muted); font-size: .9rem; margin-top: .15rem; }
     .ficha-chip {
-        display: inline-flex; align-items: center; gap: .35rem;
-        background: rgba(255,255,255,.18); border: 1px solid rgba(255,255,255,.35);
-        border-radius: 50px; padding: .18rem .7rem; font-size: .78rem;
+        display: inline-flex; align-items: center; gap: .4rem;
+        background: #f6f7f9; border: 1px solid var(--fh-line);
+        border-radius: 50px; padding: .26rem .8rem; font-size: .78rem;
+        color: #344054; font-weight: 500;
     }
+    .ficha-chip i { color: var(--fh-accent); font-size: .95rem; }
 
-    .ficha-card { border: 1px solid #e3e6ea; border-radius: 12px; background: #fff; }
+    /* --- Cards de sección --- */
+    .ficha-card {
+        border: 1px solid var(--fh-line); border-radius: 14px; background: #fff;
+        box-shadow: 0 1px 2px rgba(16,24,40,.04);
+        overflow: hidden;
+    }
     .ficha-card .card-header {
-        background: #f8f9fa; border-bottom: 1px solid #e3e6ea;
-        font-weight: 700; font-size: .82rem; text-transform: uppercase;
-        letter-spacing: .04em; color: #97271C; padding: .6rem 1rem;
-        border-radius: 12px 12px 0 0;
+        display: flex; align-items: center; gap: .65rem;
+        background: #fff; border-bottom: 1px solid var(--fh-line);
+        font-weight: 600; font-size: .98rem; color: var(--fh-ink);
+        padding: .8rem 1.1rem;
     }
+    .ficha-card .card-header > i {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 32px; height: 32px; border-radius: 9px;
+        background: var(--fh-accent-soft); color: var(--fh-accent);
+        font-size: 1.1rem; flex: 0 0 auto;
+    }
+    .ficha-card .card-body { padding: 1.1rem 1.2rem; }
 
-    .campo { margin-bottom: .55rem; }
+    /* --- Campos --- */
+    .campo { margin-bottom: .85rem; }
     .campo .etiqueta {
-        display: block; font-size: .68rem; text-transform: uppercase;
-        letter-spacing: .03em; color: #8a929c; font-weight: 600; line-height: 1.2;
+        display: block; font-size: .75rem; text-transform: uppercase;
+        letter-spacing: .045em; color: var(--fh-muted); font-weight: 600;
+        line-height: 1.3; margin-bottom: .12rem;
     }
-    .campo .valor { display: block; font-size: .86rem; color: #212529; font-weight: 500; word-break: break-word; }
-    .campo .valor.vacio { color: #adb5bd; font-weight: 400; }
+    .campo .valor { display: block; font-size: .9rem; color: var(--fh-ink); font-weight: 500; word-break: break-word; }
+    .campo .valor.vacio { color: var(--fh-muted); font-weight: 400; }
 
-    .mini-stat { text-align: center; padding: .7rem .4rem; border-radius: 10px; background: #f8f9fa; }
-    .mini-stat .num { display: block; font-size: 1.35rem; font-weight: 700; color: #97271C; line-height: 1.1; }
-    .mini-stat .lbl { font-size: .68rem; text-transform: uppercase; color: #6c757d; letter-spacing: .03em; }
+    /* --- Mini estadísticas --- */
+    .mini-stat {
+        display: flex; align-items: center; gap: .7rem;
+        padding: .8rem .9rem; border-radius: 12px; background: #fff;
+        border: 1px solid var(--fh-line);
+        box-shadow: 0 1px 2px rgba(16,24,40,.04);
+    }
+    .mini-stat .ico {
+        width: 40px; height: 40px; border-radius: 10px; flex: 0 0 auto;
+        display: inline-flex; align-items: center; justify-content: center;
+        font-size: 1.3rem;
+    }
+    .mini-stat .num { display: block; font-size: 1.35rem; font-weight: 700; color: var(--fh-ink); line-height: 1.1; font-variant-numeric: tabular-nums; }
+    .mini-stat .lbl { font-size: .75rem; color: var(--fh-muted); font-weight: 600; letter-spacing: .02em; }
 
-    .tabla-ficha { font-size: .78rem; margin: 0; }
+    /* --- Tablas --- */
+    .tabla-ficha { font-size: .8rem; margin: 0; }
     .tabla-ficha thead th {
-        background: #f1f3f5; font-size: .68rem; text-transform: uppercase;
-        letter-spacing: .03em; color: #495057; white-space: nowrap;
+        background: #f6f7f9; font-size: .75rem; text-transform: uppercase;
+        letter-spacing: .04em; color: #475467; white-space: nowrap;
+        border-bottom: 1px solid var(--fh-line);
     }
-    .tabla-ficha td, .tabla-ficha th { padding: .4rem .55rem; vertical-align: middle; }
+    .tabla-ficha td, .tabla-ficha th { padding: .5rem .6rem; vertical-align: middle; border-color: var(--fh-line); }
+    .tabla-ficha tbody tr:hover { background: #fafbfc; }
     .tabla-ficha td.num { background: #fff; }
 
-    .vacio-tabla { font-size: .8rem; color: #8a929c; padding: .8rem; text-align: center; }
+    .vacio-tabla { font-size: .82rem; color: var(--fh-muted); padding: 1rem; text-align: center; }
 
     .epp-chip {
-        display: inline-block; font-size: .72rem; padding: .15rem .5rem;
+        display: inline-block; font-size: .74rem; padding: .2rem .6rem;
         border-radius: 50px; background: #e9f7ef; color: #1e7e45;
-        border: 1px solid #b7e4c7; margin: 0 .2rem .25rem 0;
+        border: 1px solid #b7e4c7; margin: 0 .2rem .3rem 0;
     }
 
-    .epp-grupo { border: 1px solid #e6e1dd; border-radius: 8px; background: #fff; margin-bottom: .45rem; }
+    .epp-grupo { border: 1px solid var(--fh-line); border-radius: 10px; background: #fff; margin-bottom: .5rem; }
     .epp-grupo summary {
-        list-style: none; cursor: pointer; display: flex; align-items: center; gap: .5rem;
-        padding: .5rem .65rem; font-size: .82rem; font-weight: 600; color: #2c2825;
+        list-style: none; cursor: pointer; display: flex; align-items: center; gap: .55rem;
+        padding: .55rem .7rem; font-size: .85rem; font-weight: 600; color: var(--fh-ink);
     }
     .epp-grupo summary::-webkit-details-marker { display: none; }
-    .epp-grupo summary > i.fa-solid { color: #97271C; font-size: 1rem; width: 1.2rem; text-align: center; }
-    .epp-grupo-count { margin-left: auto; font-size: .7rem; color: #8b837d; font-weight: 500; white-space: nowrap; }
-    .epp-grupo summary .chev { color: #8b837d; transition: transform .15s ease; }
+    .epp-grupo summary > i.fa-solid { color: var(--fh-accent); font-size: 1rem; width: 1.2rem; text-align: center; }
+    .epp-grupo-count { margin-left: auto; font-size: .75rem; color: var(--fh-muted); font-weight: 500; white-space: nowrap; }
+    .epp-grupo summary .chev { color: var(--fh-muted); transition: transform .15s ease; }
     .epp-grupo[open] summary .chev { transform: rotate(180deg); }
-    .epp-grupo-body { padding: .25rem .65rem .55rem; border-top: 1px solid #f0ece8; }
-    .epp-grupo-body .table { font-size: .78rem; }
+    .epp-grupo-body { padding: .3rem .7rem .6rem; border-top: 1px solid var(--fh-line); }
+    .epp-grupo-body .table { font-size: .8rem; }
 
     @media print {
         details.epp-grupo:not([open]) > :not(summary) { display: block !important; }
         details.epp-grupo summary .chev { display: none !important; }
-    }
-
-    @media print {
         .sidebar-rapido, .sidebar-th, .navbar, .no-print, .toast-container { display: none !important; }
         body { background: #fff !important; }
         main.container-fluid { padding: 0 !important; margin: 0 !important; max-width: 100% !important; }
         .ficha-wrap { max-width: 100%; }
-        .ficha-card { break-inside: avoid; page-break-inside: avoid; }
-        .ficha-portada { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .ficha-card { break-inside: avoid; page-break-inside: avoid; box-shadow: none !important; }
+        .ficha-portada { -webkit-print-color-adjust: exact; print-color-adjust: exact; box-shadow: none !important; }
         .tabla-ficha thead th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         a[href]:after { content: ""; }
         @page { size: A4; margin: 12mm; }
@@ -140,11 +185,12 @@
     </div>
 
     <!-- PORTADA -->
-    <div class="ficha-portada shadow-sm mb-3">
+    {% set estado_clase = 'bg-success' if c.estado == 'Activo' else ('bg-secondary' if c.estado == 'Inactivo' else ('bg-warning text-dark' if c.estado == 'Licencia' else ('bg-danger' if c.estado in ['Retirado','Fallecido'] else 'bg-secondary'))) %}
+    <div class="ficha-portada mb-4">
         {% if c.foto_perfil %}
         <img src="{{ url_for('static', filename=c.foto_perfil) }}" alt="{{ c.nombre_completo }}" class="ficha-foto">
         {% else %}
-        <div class="ficha-foto-vacia"><i class='bx bxs-user text-white' style="font-size:3rem;"></i></div>
+        <div class="ficha-foto-vacia"><i class='bx bxs-user' style="font-size:2.8rem;"></i></div>
         {% endif %}
         <div class="flex-grow-1">
             <h1>{{ c.nombre_completo }}</h1>
@@ -153,23 +199,44 @@
                 {% if c.cargo %} &middot; {{ c.cargo }}{% endif %}
                 {% if c.area %} &middot; {{ c.area }}{% endif %}
             </div>
-            <div class="d-flex flex-wrap gap-2 mt-2">
-                <span class="ficha-chip"><i class='bx bx-check-circle'></i>{{ c.estado or 'Sin estado' }}</span>
+            <div class="d-flex flex-wrap align-items-center gap-2 mt-3">
+                <span class="badge fw-semibold {{ estado_clase }}" style="font-size:.75rem; padding:.3rem .6rem;"><i class='bx bx-check-circle me-1'></i>{{ c.estado or 'Sin estado' }}</span>
                 {% if c.fecha_ingreso %}
-                <span class="ficha-chip"><i class='bx bx-calendar'></i>Ingreso: {{ f(c.fecha_ingreso) }}</span>
-                <span class="ficha-chip"><i class='bx bx-time'></i>Antigüedad: {{ c.fecha_ingreso|tiempo_transcurrido }}</span>
+                <span class="ficha-chip"><i class='bx bx-calendar'></i>Ingreso {{ f(c.fecha_ingreso) }}</span>
+                <span class="ficha-chip"><i class='bx bx-time'></i>{{ c.fecha_ingreso|tiempo_transcurrido }}</span>
                 {% endif %}
                 {% if c.tipo_contrato %}<span class="ficha-chip"><i class='bx bx-briefcase'></i>{{ c.tipo_contrato }}</span>{% endif %}
+                {% if c.sede_planta %}<span class="ficha-chip"><i class='bx bx-building'></i>{{ c.sede_planta }}</span>{% endif %}
             </div>
         </div>
     </div>
 
     <!-- RESUMEN -->
-    <div class="row g-2 mb-3">
-        <div class="col-6 col-md-3"><div class="mini-stat"><span class="num">{{ resumen_docs.total or 0 }}</span><span class="lbl">Documentos</span></div></div>
-        <div class="col-6 col-md-3"><div class="mini-stat"><span class="num">{{ resumen_docs.vencidos or 0 }}</span><span class="lbl">Docs. vencidos</span></div></div>
-        <div class="col-6 col-md-3"><div class="mini-stat"><span class="num">{{ capacitaciones|length }}</span><span class="lbl">Capacitaciones</span></div></div>
-        <div class="col-6 col-md-3"><div class="mini-stat"><span class="num">{{ experiencia|length }}</span><span class="lbl">Experiencias</span></div></div>
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="mini-stat">
+                <span class="ico" style="background:#e8f1fd;color:#1d4ed8;"><i class='bx bx-folder'></i></span>
+                <div><span class="num">{{ resumen_docs.total or 0 }}</span><span class="lbl">Documentos</span></div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="mini-stat">
+                <span class="ico" style="background:#fdecea;color:#d92d20;"><i class='bx bx-error-circle'></i></span>
+                <div><span class="num">{{ resumen_docs.vencidos or 0 }}</span><span class="lbl">Vencidos</span></div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="mini-stat">
+                <span class="ico" style="background:#fef3e2;color:#b45309;"><i class='bx bx-certification'></i></span>
+                <div><span class="num">{{ capacitaciones|length }}</span><span class="lbl">Capacitaciones</span></div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="mini-stat">
+                <span class="ico" style="background:#e7f5ef;color:#0f766e;"><i class='bx bx-briefcase'></i></span>
+                <div><span class="num">{{ experiencia|length }}</span><span class="lbl">Experiencias</span></div>
+            </div>
+        </div>
     </div>
 
     <div class="row g-3">
@@ -597,7 +664,7 @@
         <div class="col-12">
             <div class="ficha-card shadow-sm">
                 <div class="card-header"><i class='bx bx-folder me-1'></i> Documentos
-                    <span class="float-end text-muted fw-normal" style="font-size:.72rem; text-transform:none;">
+                    <span class="float-end text-muted fw-normal" style="font-size:.78rem; text-transform:none;">
                         {{ resumen_docs.total or 0 }} en total · {{ resumen_docs.vencidos or 0 }} vencidos · {{ resumen_docs.por_vencer or 0 }} por vencer
                     </span>
                 </div>
@@ -650,7 +717,7 @@
         </div>
     </div>
 
-    <div class="text-center text-muted mt-3 mb-2" style="font-size:.72rem;">
+    <div class="text-center text-muted mt-3 mb-2" style="font-size:.78rem;">
         Hoja de vida generada el {{ hoy.strftime('%d/%m/%Y') }} · Avícola San Martín
     </div>
 

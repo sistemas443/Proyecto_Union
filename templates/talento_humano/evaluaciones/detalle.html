@@ -1,0 +1,128 @@
+{% extends 'generales/layout.html' %}
+
+{% block title %}Evaluación de {{ ev.colaborador_nombre }} – Avícola San Martín{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-3 pb-4">
+
+    <div class="d-flex justify-content-between align-items-end mb-3 flex-wrap gap-2 px-2">
+        <div class="d-flex align-items-center gap-2">
+            <span class="page-head-icon"><i class='bx bx-task'></i></span>
+            <div>
+                <h3 class="page-title mb-0">Evaluación de desempeño</h3>
+                <p class="page-sub mb-0 mt-1">{{ ev.colaborador_nombre }} · {{ ev.cargo or 'Sin cargo' }}</p>
+            </div>
+        </div>
+        <div class="d-flex gap-2 no-print">
+            <a href="{{ url_for('talento_humano.evaluaciones') }}" class="btn btn-sm btn-outline-secondary"><i class='bx bx-arrow-back'></i> Volver</a>
+            <button class="btn btn-sm btn-dark fw-bold" onclick="window.print()"><i class='bx bx-printer'></i> Imprimir</button>
+        </div>
+    </div>
+
+    <!-- RESUMEN -->
+    <div class="card shadow-sm border-0 mb-3 px-2">
+        <div class="card-body">
+            <div class="row g-3 align-items-center">
+                <div class="col-md-3 text-center">
+                    <div class="display-6 fw-bold {{ 'text-success' if ev.aprobada_calculada else 'text-danger' }}">{{ ev.resultado_calculado }}%</div>
+                    <span class="badge fw-semibold {{ 'bg-success' if ev.aprobada_calculada else 'bg-danger' }}">
+                        {{ 'Aprobado' if ev.aprobada_calculada else 'Plan de mejora' }}
+                    </span>
+                    <div class="text-muted small mt-1">Mínimo {{ minimo }}%</div>
+                </div>
+                <div class="col-md-9">
+                    <div class="row g-2 small">
+                        <div class="col-6 col-md-3"><span class="text-muted d-block">Evaluador</span><span class="fw-semibold">{{ ev.evaluador_nombre or '—' }}</span></div>
+                        <div class="col-6 col-md-3"><span class="text-muted d-block">Área</span><span class="fw-semibold">{{ ev.area or '—' }}</span></div>
+                        <div class="col-6 col-md-3"><span class="text-muted d-block">Periodo</span><span class="fw-semibold">{{ ev.periodo_inicio or '?' }} → {{ ev.periodo_fin or '?' }}</span></div>
+                        <div class="col-6 col-md-3"><span class="text-muted d-block">Fecha</span><span class="fw-semibold">{{ ev.fecha_evaluacion or '—' }}</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- GRÁFICOS -->
+    <div class="row g-3 mb-3">
+        <div class="col-md-5">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body"><div id="grafico-radar" style="height:320px;"></div></div>
+            </div>
+        </div>
+        <div class="col-md-7">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body"><div id="grafico-barras" style="height:320px;"></div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- DETALLE POR CRITERIO -->
+    {% for c in ev.criterios %}
+    <div class="card shadow-sm border-0 mb-3 px-2">
+        <div class="card-header bg-white border-0 d-flex align-items-center gap-2 px-3 py-2">
+            <i class='bx bx-task text-danger'></i>
+            <strong class="text-uppercase small">{{ c.nombre }}</strong>
+            <span class="ms-auto badge bg-light text-dark border">{{ c.promedio }}%</span>
+        </div>
+        <div class="card-body pt-0">
+            <table class="table table-sm align-middle mb-0">
+                <thead>
+                    <tr class="text-uppercase text-muted" style="font-size:.72rem;">
+                        <th>Indicador</th><th class="text-center">Evaluador</th><th class="text-center">Autoevaluación</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ind in c.indicadores %}
+                    <tr>
+                        <td class="small">{{ ind.descripcion }}</td>
+                        <td class="text-center small fw-semibold">{{ ind.score_evaluador or '—' }}</td>
+                        <td class="text-center small fw-semibold">{{ ind.score_autoevaluacion or '—' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endfor %}
+
+    <!-- CAMPOS ABIERTOS -->
+    <div class="card shadow-sm border-0 mb-3 px-2">
+        <div class="card-header bg-white border-0 fw-bold text-secondary small"><i class='bx bx-comment-detail me-1'></i>Resultados evaluados</div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-12"><div class="small text-muted fw-semibold">Aspectos positivos</div><div class="small">{{ ev.aspectos_positivos or '—' }}</div></div>
+                <div class="col-12"><div class="small text-muted fw-semibold">Aspectos a fortalecer</div><div class="small">{{ ev.aspectos_fortalecer or '—' }}</div></div>
+                <div class="col-12"><div class="small text-muted fw-semibold">Objetivos trazados</div><div class="small">{{ ev.objetivos or '—' }}</div></div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+<script>
+  const CRITERIOS = {{ ev.criterios | tojson }};
+  const nombres = CRITERIOS.map(function (c) { return c.nombre; });
+  const promedios = CRITERIOS.map(function (c) { return c.promedio; });
+  const evProm = CRITERIOS.map(function (c) { return c.promedio_evaluador; });
+  const auProm = CRITERIOS.map(function (c) { return c.promedio_autoevaluacion; });
+
+  Plotly.newPlot('grafico-radar', [{
+    type: 'scatterpolar', r: promedios, theta: nombres, fill: 'toself',
+    marker: { color: '#1d4ed8' }, line: { color: '#1d4ed8' }, name: 'Promedio'
+  }], {
+    polar: { radialaxis: { visible: true, range: [0, 100] } },
+    showlegend: false, margin: { t: 30, r: 30, b: 30, l: 30 }
+  }, { responsive: true, displayModeBar: false });
+
+  Plotly.newPlot('grafico-barras', [
+    { type: 'bar', x: nombres, y: evProm, name: 'Evaluador', marker: { color: '#1d4ed8' } },
+    { type: 'bar', x: nombres, y: auProm, name: 'Autoevaluación', marker: { color: '#0ea5e9' } }
+  ], {
+    barmode: 'group', yaxis: { range: [0, 100], title: '%' },
+    margin: { t: 20, r: 20, b: 80, l: 40 }
+  }, { responsive: true, displayModeBar: false });
+</script>
+{% endblock %}

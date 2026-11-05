@@ -37,19 +37,6 @@
     padding: 10px;
   }
 
-  /* Sidebar compacto SOLO en vistas de gráficos */
-  .sidebar-rapido { width: 40px !important; }
-  .sidebar-rapido:hover { width: 170px !important; }
-  .sidebar-rapido i { font-size: 1.25rem !important; min-width: 20px !important; }
-  .sidebar-rapido span { font-size: 0.7rem !important; margin-left: 8px !important; white-space: nowrap !important; }
-  .sidebar-rapido a { padding: 8px 10px !important; }
-  .sidebar-rapido { top: 47px !important; max-height: calc(100vh - 47px) !important; }
-  body.sidebar-activa main.container-fluid { padding-left: 55px !important; }
-  @media (max-width: 991.98px) {
-    .sidebar-rapido.expandido-tactil { width: 170px !important; }
-    .sidebar-rapido.expandido-tactil span { opacity: 1 !important; }
-  }
-
   /* Franja de fotos del lote (siempre visible, no colapsable) */
   .franja-lote { flex-shrink: 0; }
   .foto-lote { width: 40px; height: 40px; object-fit: cover; border-radius: 50%; border: 2px solid #dee2e6; }
@@ -244,6 +231,7 @@
 
 {% block scripts %}
 <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+<script src="{{ url_for('static', filename='js/graficas/pantalla_completa.js') }}"></script>
 
 <script id="datos-grafico" type="application/json">
     {{ datos_grafico | tojson | safe if datos_grafico else 'null' }}
@@ -328,21 +316,7 @@
                 responsive: true,
                 displayModeBar: true,
                 displaylogo: false,
-                modeBarButtonsToAdd: [{
-                    name: 'Pantalla Completa',
-                    icon: {
-                        'width': 500, 'height': 500,
-                        'path': 'M80,80 H180 V120 H120 V180 H80 Z M320,80 H420 V180 H380 V120 H320 Z M80,320 H120 V380 H180 V420 H80 Z M380,320 H420 V420 H320 V380 H380 Z'
-                    },
-                    click: function(gd) {
-                        if (!document.fullscreenElement) {
-                            if (gd.requestFullscreen) gd.requestFullscreen();
-                            else if (gd.webkitRequestFullscreen) gd.webkitRequestFullscreen();
-                        } else {
-                            if (document.exitFullscreen) document.exitFullscreen();
-                        }
-                    }
-                }]
+                modeBarButtonsToAdd: window.botonPantallaCompleta ? [window.botonPantallaCompleta()] : []
             };
 
             // Compensación de espaciado en la leyenda por desfase de cálculo de SVG bajo zoom CSS
@@ -374,24 +348,6 @@
 
             observer.observe(document.body);
         }
-    });
-    // Expansión táctil del sidebar: primer toque expande, segundo navega
-    document.addEventListener("DOMContentLoaded", function () {
-        const sb = document.querySelector('.sidebar-rapido');
-        if (!sb) return;
-        sb.addEventListener('click', function (e) {
-            if (window.innerWidth >= 992) return;
-            if (!sb.classList.contains('expandido-tactil')) {
-                e.preventDefault();
-                e.stopPropagation();
-                sb.classList.add('expandido-tactil');
-            }
-        });
-        document.addEventListener('click', function (e) {
-            if (window.innerWidth < 992 && !e.target.closest('.sidebar-rapido')) {
-                sb.classList.remove('expandido-tactil');
-            }
-        });
     });
 </script>
 {% endblock %}

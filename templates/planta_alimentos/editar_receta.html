@@ -1,8 +1,75 @@
 {% extends 'generales/layout.html' %}
+{% block title %}{% if nombre_dieta %}{{ nombre_dieta }} · {% endif %}Ítem {{ item_id }} · Formulación – Avícola San Martín{% endblock %}
+
+{% macro num(v) %}{{ "{:,.2f}".format((v if v is not none else 0)|float).replace(',', 'X').replace('.', ',').replace('X', '.') }}{% endmacro %}
 
 {% block head %}
 {% include 'planta_alimentos/_design_system.html' %}
 <style>
+  /* ============================================================
+     INSUMOS DE ENSAYO
+     ============================================================ */
+  .badge-ensayo {
+    display: inline-block; background: #fdf0d5; color: #8a5a00; border: 1px solid #f0d28a;
+    font-size: 0.55rem; font-weight: 700; letter-spacing: 0.06em;
+    padding: 0.1rem 0.32rem; border-radius: 4px; vertical-align: middle;
+  }
+  .ensayo-nombre { font-weight: 600; }
+  .ensayo-meta { font-size: 0.66rem; color: var(--text-muted); margin-top: 1px; white-space: normal; }
+  .chip-rango {
+    display: inline-block; font-size: 0.62rem; font-weight: 600; color: #4a5462;
+    background: #f2f4f8; border: 1px solid #dfe4ec; border-radius: 20px;
+    padding: 0 0.4rem; margin-left: 0.2rem;
+  }
+  tr.fila-ensayo-tabla td { background: #fffdf7; }
+  tr.fila-ensayo-tabla td:first-child { border-left: 3px solid #d99a00; }
+  tr.fila-ensayo-inactivo td { opacity: 0.72; }
+  tr.fila-seccion-ensayo td {
+    background: #fffaf0; color: #8a5a00; font-size: 0.62rem; font-weight: 700;
+    letter-spacing: 0.08em; padding-top: 0.45rem; padding-bottom: 0.35rem;
+    border-top: 2px solid #f0e2c2;
+  }
+  tr.fila-ensayo-total td {
+    background: #fffaf0 !important; color: #8a5a00; font-size: 0.8rem;
+    border-top: 1px dashed #e6d3a3;
+  }
+  tr.fila-total-ensayo td {
+    background: #f1f4f8 !important; font-size: 0.86rem;
+    border-top: 2px solid #cfd8e4; color: #1f2a3a;
+  }
+  .ensayo-resumen {
+    display: flex; align-items: center; gap: 0.9rem; flex-wrap: wrap;
+    padding: 0.45rem 0.9rem; background: #fffaf0; border-bottom: 1px solid #f0e2c2;
+    font-size: 0.7rem; color: #6b5a33;
+  }
+  .ensayo-resumen .dato i { color: #b8862b; }
+  .ensayo-pie {
+    font-size: 0.68rem; color: var(--text-muted);
+    padding: 0.45rem 0.9rem 0.55rem; border-top: 1px solid var(--border);
+  }
+  #tablaEnsayos thead th { font-size: 0.66rem; }
+  #tablaEnsayos td { padding-top: 0.4rem; padding-bottom: 0.4rem; }
+  .badge-activo { background: #e8f4ea; color: #2f6b3a; border: 1px solid #c3e2c9; }
+  .badge-programado { background: #eef2f8; color: #4a5a72; border: 1px solid #cfd9e6; }
+  .badge-pausa { background: #fff4d6; color: #8a5a00; border: 1px solid #f0d28a; }
+  .badge-finalizado { background: #f1f2f5; color: #5f6673; border: 1px solid #dcdfe6; }
+
+  .fila-rango-ensayo {
+    display: flex; align-items: center; gap: 0.5rem;
+    background: #f7f8fb; border: 1px solid #e5e9f0; border-radius: 8px;
+    padding: 0.45rem 0.6rem; margin-bottom: 0.45rem;
+  }
+  .fila-rango-ensayo input { max-width: 175px; }
+  .fila-rango-ensayo .quitar-rango {
+    border: 0; background: none; color: #b04a3f; padding: 0.1rem 0.3rem;
+  }
+  .fila-rango-ensayo .quitar-rango:hover { color: #97271C; }
+  .btn-agregar-rango {
+    width: 100%; border: 1px dashed #c9d1dd; background: #fff; color: #4a5462;
+    border-radius: 8px; font-size: 0.78rem; font-weight: 600; padding: 0.42rem;
+  }
+  .btn-agregar-rango:hover { border-color: #97271C; color: #97271C; }
+
   /* ============================================================
      FORMULACIÓN DE DIETA - ajustes sobre el design system
      ============================================================ */
@@ -111,13 +178,11 @@
                 <i class="fas fa-flask"></i>
             </div>
             <div>
-                <h2 class="page-title mb-0">Formulación de dieta · Ítem {{ item_id }}</h2>
+                <h2 class="page-title mb-0">
+                    {% if nombre_dieta %}{{ nombre_dieta }}{% else %}Formulación de dieta{% endif %}
+                </h2>
                 <p class="page-subtitle mb-0">
-                    {% if lote_id == '0' %}
-                    Selecciona un lote para cargar la formulación
-                    {% else %}
-                    Lote {{ lote_id }} · Versión {{ version_actual }}
-                    {% endif %}
+                    Ítem {{ item_id }}{% if lote_id == '0' %} · Selecciona un lote para cargar la formulación{% else %} · Lote {{ lote_id }} · Versión {{ version_actual }}{% endif %}
                 </p>
             </div>
         </div>
@@ -148,6 +213,13 @@
                     {% endif %}
                 </select>
             </div>
+            {% if lote_id != '0' and session.get('user_rol') != 'Lector' %}
+            <button type="button" class="btn btn-outline-secondary btn-sm"
+                onclick="abrirModalReplicar({{ item_id }}, '{{ lote_id }}', {{ version_actual }}, '{{ (nombre_dieta or ('Dieta ' ~ item_id)) | e }}')"
+                title="Copiar esta dieta a otros lotes">
+                <i class="fas fa-clone me-1"></i>Replicar a otros lotes
+            </button>
+            {% endif %}
             <a href="{{ url_for('planta_alimentos.resumen_lote_formulas', lote_id=lote_id) }}"
                 class="btn btn-outline-secondary btn-sm">
                 <i class="fas fa-arrow-left me-1"></i> Volver
@@ -185,14 +257,20 @@
                 <div class="d-flex align-items-center gap-2 flex-wrap">
                     <!-- Modificador de Fecha de Vencimiento -->
                     <form method="POST" action="{{ url_for('planta_alimentos.modificar_fecha_receta') }}"
-                        class="d-flex align-items-center gap-2">
+                        class="d-flex align-items-center gap-2"
+                        {% if not es_ultima_version %}
+                        data-confirm="Vas a cambiar el vencimiento de la <strong>Versión {{ version_actual }}</strong> (histórica). La versión pasará al mes de la nueva fecha, lo que puede cambiar el consolidado, los costos por dieta y las proyecciones. ¿Deseas continuar?"
+                        data-confirm-title="Cambiar vencimiento de versión histórica"
+                        data-confirm-ok="Sí, cambiar fecha"
+                        {% endif %}>
                         <input type="hidden" name="item_id" value="{{ item_id }}">
                         <input type="hidden" name="lote_id" value="{{ lote_id }}">
                         <input type="hidden" name="version" value="{{ version_actual }}">
                         <label class="form-label-design mb-0" for="nueva_fecha">Vence</label>
-                        <input type="date" id="nueva_fecha" name="nueva_fecha" class="form-control form-control-sm"
-                            style="width: 155px;" value="{{ fecha_vencimiento }}"
-                            {% if not es_ultima_version %}readonly{% endif %} required>
+                        <input type="date" id="cambiar_fecha_vencimiento" name="nueva_fecha"
+                            class="form-control form-control-sm" style="width: 155px;"
+                            value="{{ fecha_vencimiento }}" required
+                            title="{{ 'Versión histórica: al cambiar la fecha, su costo se mueve al mes de esa fecha' if not es_ultima_version else 'Fecha de vencimiento de la versión' }}">
                         <button type="submit" class="btn btn-outline-secondary btn-sm">
                             Guardar
                         </button>
@@ -238,13 +316,37 @@
 <div class="row">
     <!-- COLUMNA IZQUIERDA: RECETA BASE (1.000 KG) -->
     <div class="col-lg-7 mb-4">
-        <div class="card card-clean h-100">
+        <div class="card card-clean">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <span class="fw-bold"><i class="fas fa-list-ol me-2"></i> Composición base (1.000 kg)</span>
-                <button class="btn btn-sm btn-primary" data-bs-toggle="modal"
-                    data-bs-target="#modalAgregarInsumo">
-                    <i class="fas fa-plus me-1"></i> Insumo
-                </button>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-primary" data-bs-toggle="modal"
+                        data-bs-target="#modalAgregarInsumo">
+                        <i class="fas fa-plus me-1"></i> Insumo
+                    </button>
+                    {% if lote_id != '0' and session.get('user_rol') != 'Lector' %}
+                    <button type="button" class="btn btn-sm btn-outline-secondary"
+                        onclick="abrirModalImportar({{ item_id }}, '{{ lote_id }}', {{ version_actual }})"
+                        title="Importar varios insumos desde Excel o una imagen">
+                        <i class="fas fa-file-import me-1"></i> Importar
+                    </button>
+                    {% if insumos_receta %}
+                    <form method="POST" action="{{ url_for('planta_alimentos.eliminar_insumos_receta') }}"
+                        class="d-inline"
+                        data-confirm="Vas a eliminar <strong>todos los insumos</strong> de la dieta <strong>{{ (nombre_dieta or ('Dieta ' ~ item_id)) | e }}</strong> en el lote <strong>{{ lote_id }}</strong>. Esta acción no se puede deshacer."
+                        data-confirm-title="¿Eliminar todos los insumos?"
+                        data-confirm-ok="Sí, eliminar todos">
+                        <input type="hidden" name="item_id" value="{{ item_id }}">
+                        <input type="hidden" name="lote_id" value="{{ lote_id }}">
+                        <input type="hidden" name="version" value="{{ version_actual }}">
+                        <button type="submit" class="btn btn-sm btn-outline-danger"
+                            title="Eliminar todos los insumos de esta receta">
+                            <i class="fas fa-trash-can"></i>
+                        </button>
+                    </form>
+                    {% endif %}
+                    {% endif %}
+                </div>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
@@ -344,34 +446,279 @@
                                     lote.</td>
                             </tr>
                             {% endfor %}
+
+                            {% if ensayos %}
+                            <tr class="fila-seccion-ensayo">
+                                <td colspan="100%" class="ps-3">
+                                    <i class="fas fa-flask me-2"></i>INSUMOS DE ENSAYO · se suman a la receta
+                                </td>
+                            </tr>
+                            {% for e in ensayos %}
+                            {% set clase_estado = {'Activo': 'badge-activo', 'Programado': 'badge-programado',
+                                                   'En pausa': 'badge-pausa', 'Finalizado': 'badge-finalizado',
+                                                   'Eliminado': 'badge-finalizado'}.get(e.estado, 'badge-neutro') %}
+                            <tr class="fila-ensayo-tabla{{ ' fila-ensayo-inactivo' if e.estado in ('Finalizado', 'Eliminado') }}">
+                                <td class="ps-3">
+                                    <span class="badge-ensayo">ENSAYO</span>
+                                    <span class="ensayo-nombre">{{ e.insumo }}</span>
+                                    <span class="badge-estado {{ clase_estado }} ms-1" style="font-size: 0.56rem;">{{ e.estado }}</span>
+                                    <div class="ensayo-meta">
+                                        <i class="fas fa-calendar-range me-1"></i>
+                                        {% for r in e.rangos %}
+                                        <span class="chip-rango">{{ r.desde.strftime('%d/%m') }}–{{ r.hasta.strftime('%d/%m/%y') }}</span>
+                                        {% endfor %}
+                                    </div>
+                                </td>
+                                <td class="text-end fw-bold">{{ num(e.cantidad_kg) }}</td>
+                                {% for consumo in e.consumos_diarios %}
+                                <td class="text-end {{ 'text-secondary' if consumo is not none else 'text-muted' }}">
+                                    {% if consumo is none %}—{% else %}{{ num(consumo) }}{% endif %}
+                                </td>
+                                {% endfor %}
+                                <td class="text-end fw-bold"
+                                    style="background-color: #eef2f6; color: var(--action-primary);">
+                                    {{ num(e.total_consumo_g) }}
+                                </td>
+                                <td class="text-center col-acciones">
+                                    <div class="d-flex justify-content-center gap-1">
+                                        {% if session.get('user_rol') != 'Lector' %}
+                                        <button type="button" class="btn-icono-accion btn-editar-ensayo"
+                                            data-id="{{ e.id }}"
+                                            data-mp="{{ e.materia_prima_id }}"
+                                            data-insumo="{{ e.insumo | e }}"
+                                            data-cantidad="{{ e.cantidad_kg }}"
+                                            data-motivo="{{ (e.motivo or '') | e }}"
+                                            data-rangos='{{ e.rangos_json | tojson }}'
+                                            title="Editar ensayo">
+                                            <i class="fas fa-pen"></i>
+                                        </button>
+                                        {% if e.estado in ('Activo', 'En pausa', 'Programado') %}
+                                        <form method="POST"
+                                            action="{{ url_for('planta_alimentos.finalizar_ensayo', ensayo_id=e.id) }}"
+                                            class="d-inline"
+                                            data-confirm="Vas a finalizar el ensayo de <strong>{{ e.insumo | e }}</strong>. Se cierran los rangos futuros y deja de afectar costos e inventario."
+                                            data-confirm-title="¿Finalizar ensayo?" data-confirm-ok="Sí, finalizar">
+                                            <input type="hidden" name="item_id" value="{{ item_id }}">
+                                            <input type="hidden" name="lote_id" value="{{ lote_id }}">
+                                            <input type="hidden" name="version" value="{{ version_actual }}">
+                                            <button type="submit" class="btn-icono-accion" title="Finalizar ensayo">
+                                                <i class="fas fa-circle-pause"></i>
+                                            </button>
+                                        </form>
+                                        {% endif %}
+                                        <form method="POST"
+                                            action="{{ url_for('planta_alimentos.eliminar_ensayo', ensayo_id=e.id) }}"
+                                            class="d-inline"
+                                            data-confirm="Vas a eliminar el ensayo de <strong>{{ e.insumo | e }}</strong>. Si ya tiene producción registrada no se podrá eliminar; en ese caso finalízalo."
+                                            data-confirm-title="¿Eliminar ensayo?" data-confirm-ok="Sí, eliminar">
+                                            <input type="hidden" name="item_id" value="{{ item_id }}">
+                                            <input type="hidden" name="lote_id" value="{{ lote_id }}">
+                                            <input type="hidden" name="version" value="{{ version_actual }}">
+                                            <button type="submit" class="btn-icono-accion btn-icono-eliminar" title="Eliminar ensayo">
+                                                <i class="fas fa-trash3"></i>
+                                            </button>
+                                        </form>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            {% endif %}
                         </tbody>
 
                         <!-- PIE DE TABLA CON TOTALES DIARIOS Y GENERALES -->
                         <tfoot class="fw-bold" style="background-color: var(--surface-alt);">
                             <tr>
-                                <td class="ps-3 text-uppercase">TOTAL BACHE:</td>
-                                <td class="text-end text-dark">
-                                    {{ "{:,.2f}".format(totales['total_kg'] or 0).replace(',', 'X').replace('.',
-                                    ',').replace('X', '.') }}
-                                </td>
+                                <td class="ps-3 text-uppercase">Total bache (receta base)</td>
+                                <td class="text-end text-dark">{{ num(totales['total_kg']) }}</td>
 
-                                <!-- TOTALES CALCULADOS POR CADA DÍA -->
                                 {% for reg in registros_produccion %}
                                 <td class="text-end text-secondary">
-                                    {{ "{:,.2f}".format((totales['total_kg']|float or 0.0) *
-                                    reg['toneladas']|float).replace(',', 'X').replace('.', ',').replace('X', '.') }}
+                                    {{ num((totales['total_kg']|float or 0.0) * reg['toneladas']|float) }}
                                 </td>
                                 {% endfor %}
 
                                 <td class="text-end num-cop"
                                     style="background-color: #dbe4ee; color: var(--action-primary);">
-                                    {{ "{:,.2f}".format((totales['total_kg']|float or 0.0) *
-                                    total_toneladas).replace(',', 'X').replace('.', ',').replace('X', '.') }}
+                                    {{ num((totales['total_kg']|float or 0.0) * total_toneladas) }}
                                 </td>
                                 <td class="col-acciones"></td>
                             </tr>
+
+                            {% if resumen_ensayos.kg %}
+                            <tr class="fila-ensayo-total">
+                                <td class="ps-3 text-uppercase">
+                                    <i class="fas fa-plus me-1"></i>Ensayos activos
+                                </td>
+                                <td class="text-end">{{ num(resumen_ensayos.kg) }}</td>
+                                {% for reg in registros_produccion %}
+                                <td class="text-end">
+                                    {{ num(kg_ensayo_por_dia[loop.index0] * reg['toneladas']|float) }}
+                                </td>
+                                {% endfor %}
+                                <td class="text-end">{{ num(resumen_ensayos.kg * total_toneladas) }}</td>
+                                <td class="col-acciones"></td>
+                            </tr>
+                            <tr class="fila-total-ensayo">
+                                <td class="ps-3 text-uppercase">Total bache con ensayos</td>
+                                <td class="text-end">{{ num((totales['total_kg']|float or 0) + resumen_ensayos.kg) }}</td>
+                                {% for reg in registros_produccion %}
+                                <td class="text-end">
+                                    {{ num(((totales['total_kg']|float or 0) + kg_ensayo_por_dia[loop.index0]) * reg['toneladas']|float) }}
+                                </td>
+                                {% endfor %}
+                                <td class="text-end num-cop">
+                                    {{ num(((totales['total_kg']|float or 0) + resumen_ensayos.kg) * total_toneladas) }}
+                                </td>
+                                <td class="col-acciones"></td>
+                            </tr>
+                            {% endif %}
                         </tfoot>
                     </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==========================================
+             INSUMOS DE ENSAYO
+             ========================================== -->
+        <div class="card card-clean mt-3">
+            <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2 py-2">
+                <span class="fw-bold">
+                    <i class="fas fa-flask me-2"></i> Insumos de ensayo
+                </span>
+                <div class="d-flex gap-1">
+                    {% if session.get('user_rol') != 'Lector' %}
+                    <button type="button" class="btn btn-sm btn-primary" onclick="abrirModalEnsayo()">
+                        <i class="fas fa-plus me-1"></i> Ensayo
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card-body p-0">
+                <div class="ensayo-resumen">
+                    <span class="badge-ensayo">{{ ensayos_hoy|length }} ACTIVOS</span>
+                    <span class="dato"><i class="fas fa-scale-balanced me-1"></i>+{{ num(resumen_ensayos.kg) }} kg por bache</span>
+                    <span class="dato"><i class="fas fa-dollar-sign me-1"></i>+$ {{ "{:,.0f}".format(resumen_ensayos.costo_iva).replace(',', '.') }} por 1.000 t</span>
+                    {% set programados = ensayos | selectattr('estado', 'equalto', 'Programado') | list | length %}
+                    {% set en_pausa = ensayos | selectattr('estado', 'equalto', 'En pausa') | list | length %}
+                    {% if programados %}
+                    <span class="dato"><i class="far fa-clock me-1"></i>{{ programados }} programado(s)</span>
+                    {% endif %}
+                    {% if en_pausa %}
+                    <span class="dato"><i class="fas fa-pause me-1"></i>{{ en_pausa }} en pausa</span>
+                    {% endif %}
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-design table-hover align-middle mb-0" id="tablaEnsayos">
+                        <thead>
+                            <tr>
+                                <th class="ps-3">INSUMO / RANGOS</th>
+                                <th class="text-end" style="width: 85px;">KG</th>
+                                <th class="text-center" style="width: 100px;">ESTADO</th>
+                                <th class="text-end" style="width: 120px;">COSTO</th>
+                                <th class="text-center col-acciones" style="width: 100px;">ACC.</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for e in ensayos %}
+                            {% set clase_estado = {'Activo': 'badge-activo', 'Programado': 'badge-programado',
+                                                   'En pausa': 'badge-pausa', 'Finalizado': 'badge-finalizado',
+                                                   'Eliminado': 'badge-finalizado'}.get(e.estado, 'badge-neutro') %}
+                            <tr class="{{ 'fila-ensayo-inactivo' if e.estado in ('Finalizado', 'Eliminado') }}">
+                                <td class="ps-3">
+                                    <div class="ensayo-nombre">{{ e.insumo }}</div>
+                                    <div class="ensayo-meta">
+                                        <i class="fas fa-calendar-range me-1"></i>
+                                        {% for r in e.rangos %}
+                                        <span class="chip-rango">{{ r.desde.strftime('%d/%m') }}–{{ r.hasta.strftime('%d/%m/%y') }}</span>
+                                        {% endfor %}
+                                        {% if e.motivo %}<span class="ms-1">· {{ e.motivo }}</span>{% endif %}
+                                    </div>
+                                </td>
+                                <td class="text-end fw-bold">{{ num(e.cantidad_kg) }}</td>
+                                <td class="text-center">
+                                    <span class="badge-estado {{ clase_estado }}" style="font-size: 0.62rem;">{{ e.estado }}</span>
+                                </td>
+                                <td class="text-end">
+                                    {% if e.estado in ('Finalizado', 'Eliminado') %}
+                                    <span class="text-muted">$ {{ "{:,.0f}".format(e.costo_iva).replace(',', '.') }}</span>
+                                    {% else %}
+                                    $ {{ "{:,.0f}".format(e.costo_iva).replace(',', '.') }}
+                                    {% endif %}
+                                </td>
+                                <td class="text-center col-acciones">
+                                    <div class="d-flex justify-content-center gap-1">
+                                        {% if session.get('user_rol') != 'Lector' %}
+                                        <button type="button" class="btn-icono-accion btn-editar-ensayo"
+                                            data-id="{{ e.id }}"
+                                            data-mp="{{ e.materia_prima_id }}"
+                                            data-insumo="{{ e.insumo | e }}"
+                                            data-cantidad="{{ e.cantidad_kg }}"
+                                            data-motivo="{{ (e.motivo or '') | e }}"
+                                            data-rangos='{{ e.rangos_json | tojson }}'
+                                            title="Editar ensayo">
+                                            <i class="fas fa-pen"></i>
+                                        </button>
+                                        {% if e.estado in ('Activo', 'En pausa', 'Programado') %}
+                                        <form method="POST"
+                                            action="{{ url_for('planta_alimentos.finalizar_ensayo', ensayo_id=e.id) }}"
+                                            class="d-inline"
+                                            data-confirm="Vas a finalizar el ensayo de <strong>{{ e.insumo | e }}</strong>. Se cierran los rangos futuros y deja de afectar costos e inventario."
+                                            data-confirm-title="¿Finalizar ensayo?" data-confirm-ok="Sí, finalizar">
+                                            <input type="hidden" name="item_id" value="{{ item_id }}">
+                                            <input type="hidden" name="lote_id" value="{{ lote_id }}">
+                                            <input type="hidden" name="version" value="{{ version_actual }}">
+                                            <button type="submit" class="btn-icono-accion" title="Finalizar ensayo">
+                                                <i class="fas fa-circle-pause"></i>
+                                            </button>
+                                        </form>
+                                        {% endif %}
+                                        <form method="POST"
+                                            action="{{ url_for('planta_alimentos.eliminar_ensayo', ensayo_id=e.id) }}"
+                                            class="d-inline"
+                                            data-confirm="Vas a eliminar el ensayo de <strong>{{ e.insumo | e }}</strong>. Si ya tiene producción registrada no se podrá eliminar; en ese caso finalízalo."
+                                            data-confirm-title="¿Eliminar ensayo?" data-confirm-ok="Sí, eliminar">
+                                            <input type="hidden" name="item_id" value="{{ item_id }}">
+                                            <input type="hidden" name="lote_id" value="{{ lote_id }}">
+                                            <input type="hidden" name="version" value="{{ version_actual }}">
+                                            <button type="submit" class="btn-icono-accion btn-icono-eliminar" title="Eliminar ensayo">
+                                                <i class="fas fa-trash3"></i>
+                                            </button>
+                                        </form>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="empty-state">
+                                    No hay insumos de ensayo. Use “+ Ensayo” para agregar uno con sus rangos de fechas.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        {% if ensayos %}
+                        <tfoot class="fw-bold" style="background-color: var(--surface-alt);">
+                            <tr>
+                                <td class="ps-3 text-uppercase" style="font-size: 0.74rem;">Total activos</td>
+                                <td class="text-end">{{ num(resumen_ensayos.kg) }}</td>
+                                <td colspan="2" class="text-end">
+                                    $ {{ "{:,.0f}".format(resumen_ensayos.costo_iva).replace(',', '.') }}
+                                </td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                        {% endif %}
+                    </table>
+                </div>
+
+                <div class="ensayo-pie">
+                    <i class="fas fa-circle-info me-1"></i>
+                    Estos kg se suman a los del bache en producción, inventario y costos. Al finalizar, el ensayo deja de
+                    afectar esos cálculos y queda en el histórico.
                 </div>
             </div>
         </div>
@@ -1017,4 +1364,7 @@
             .catch(error => console.error('Error:', error));
     }
 </script>
+{% include 'planta_alimentos/_modal_importar.html' %}
+{% include 'planta_alimentos/_modal_replicar.html' %}
+{% include 'planta_alimentos/_modal_ensayo.html' %}
 {% endblock %}

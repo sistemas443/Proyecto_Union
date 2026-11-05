@@ -1,0 +1,120 @@
+{% extends 'generales/layout.html' %}
+
+{% block title %}Catálogo de preguntas – Evaluación de desempeño{% endblock %}
+
+{% block head %}
+<style>
+  .cat-criterio { border: 1px solid #e7e9ee; border-radius: 14px; background: #fff; margin-bottom: .8rem; box-shadow: 0 1px 2px rgba(16,24,40,.04); overflow: hidden; }
+  .cat-criterio .cat-head { display: flex; align-items: center; gap: .65rem; padding: .8rem 1.1rem; border-bottom: 1px solid #e7e9ee; }
+  .cat-criterio .cat-head .ico {
+    width: 34px; height: 34px; border-radius: 9px; flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: #eef4ff; color: #1d4ed8; font-size: 1.15rem;
+  }
+  .cat-criterio .cat-head .nombre { font-weight: 700; color: #1f2430; font-size: .95rem; }
+  .cat-criterio .cat-head .meta { color: #667085; font-size: .78rem; }
+
+  .area-grupo { border: 1px solid #eef0f3; border-radius: 10px; margin: .7rem .9rem; background: #fafbfc; }
+  .area-grupo summary {
+    list-style: none; cursor: pointer; display: flex; align-items: center; gap: .55rem;
+    padding: .55rem .75rem; font-size: .85rem; font-weight: 600; color: #1f2430;
+  }
+  .area-grupo summary::-webkit-details-marker { display: none; }
+  .area-grupo summary .chev { color: #98a2b3; transition: transform .15s ease; }
+  .area-grupo[open] summary .chev { transform: rotate(180deg); }
+  .area-grupo-body { border-top: 1px solid #eef0f3; background: #fff; border-radius: 0 0 10px 10px; }
+
+  .q-row { display: flex; align-items: center; gap: .6rem; padding: .5rem .8rem; border-bottom: 1px solid #f4f5f7; }
+  .q-row:last-child { border-bottom: 0; }
+  .q-row .txt { flex: 1; font-size: .82rem; color: #344054; }
+
+  .btn-ico { width: 30px; height: 30px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; }
+
+  .zona-agregar { padding: .8rem 1.1rem; border-top: 1px dashed #e7e9ee; }
+  .zona-agregar form { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; }
+  .zona-agregar form .desc { flex: 1; min-width: 220px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-3 pb-4">
+
+    <div class="d-flex justify-content-between align-items-end mb-3 flex-wrap gap-2 px-2">
+        <div class="d-flex align-items-center gap-2">
+            <span class="page-head-icon"><i class='bx bx-slider-alt'></i></span>
+            <div>
+                <h3 class="page-title mb-0">Catálogo de preguntas</h3>
+                <p class="page-sub mb-0 mt-1">Criterios agrupados por área · haz clic en un área para ver sus preguntas</p>
+            </div>
+        </div>
+        <a href="{{ url_for('talento_humano.evaluacion_nueva') }}" class="btn btn-sm btn-outline-secondary"><i class='bx bx-arrow-back'></i> Nueva evaluación</a>
+    </div>
+
+    <!-- NUEVO CRITERIO -->
+    <div class="card shadow-sm border-0 mb-3 px-2">
+        <div class="card-body py-3">
+            <form method="post" action="{{ url_for('talento_humano.evaluacion_catalogo_criterio') }}" class="d-flex gap-2 align-items-center flex-wrap">
+                <span class="text-muted small fw-semibold text-uppercase" style="letter-spacing:.04em;">Nuevo criterio</span>
+                <input type="text" name="nombre" class="form-control form-control-sm flex-grow-1" style="min-width:240px;" placeholder="Ej: LIDERAZGO" required>
+                <button type="submit" class="btn btn-nuevo btn-sm text-nowrap"><i class='bx bx-plus'></i> Agregar</button>
+            </form>
+        </div>
+    </div>
+
+    {% for c in criterios %}
+    <div class="cat-criterio">
+        <div class="cat-head">
+            <span class="ico"><i class='bx bx-task'></i></span>
+            <div>
+                <div class="nombre">{{ c.nombre|title }}</div>
+                <div class="meta">{{ c.grupos|length }} área{% if c.grupos|length != 1 %}s{% endif %} · {{ c.total_indicadores }} preguntas</div>
+            </div>
+            <span class="ms-auto">
+                <form method="post" action="{{ url_for('talento_humano.evaluacion_catalogo_criterio_eliminar', id=c.id) }}" class="d-inline" onsubmit="return confirm('¿Eliminar el criterio y sus preguntas?');">
+                    <button class="btn btn-sm btn-outline-danger btn-ico" title="Eliminar criterio"><i class='bx bx-trash'></i></button>
+                </form>
+            </span>
+        </div>
+
+        <!-- Grupos por área -->
+        {% for g in c.grupos %}
+        <details class="area-grupo">
+            <summary>
+                <span class="badge fw-semibold {{ 'bg-secondary' if g.area is none else 'bg-info text-dark' }}">{{ g.area_label }}</span>
+                <span class="text-muted small">{{ g.indicadores|length }} pregunta{% if g.indicadores|length != 1 %}s{% endif %}</span>
+                <i class='bx bx-chevron-down chev ms-auto'></i>
+            </summary>
+            <div class="area-grupo-body">
+                {% for ind in g.indicadores %}
+                <div class="q-row">
+                    <span class="txt">{{ ind.descripcion }}</span>
+                    <form method="post" action="{{ url_for('talento_humano.evaluacion_catalogo_indicador_eliminar', id=ind.id) }}" class="d-inline" onsubmit="return confirm('¿Eliminar esta pregunta?');">
+                        <button class="btn btn-sm btn-outline-danger btn-ico" title="Eliminar pregunta"><i class='bx bx-trash'></i></button>
+                    </form>
+                </div>
+                {% endfor %}
+            </div>
+        </details>
+        {% else %}
+        <div class="text-muted small px-3 py-2">Sin preguntas.</div>
+        {% endfor %}
+
+        <!-- Agregar pregunta a este criterio -->
+        <div class="zona-agregar">
+            <form method="post" action="{{ url_for('talento_humano.evaluacion_catalogo_indicador') }}">
+                <input type="hidden" name="criterio_id" value="{{ c.id }}">
+                <input type="text" name="descripcion" class="form-control form-control-sm desc" placeholder="Escribe la nueva pregunta…" required>
+                <select name="area" class="form-select form-select-sm" style="width:200px;">
+                    <option value="">Global (todas las áreas)</option>
+                    {% for a in areas %}
+                    <option value="{{ a }}">{{ a }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="btn btn-outline-primary btn-sm text-nowrap"><i class='bx bx-plus'></i> Agregar</button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+
+</div>
+{% endblock %}

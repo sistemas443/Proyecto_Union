@@ -69,12 +69,13 @@ def generar_estructura_semanal_levante(lote_nombre, fecha_recepcion, id_lote):
         cur.close()
         conn.close()
 
-def get_semanal_levante_all(lote_nombre: str = ''):
+def get_semanal_levante_all(lote_nombre: str = '', cabecera=None):
     # Retorna vacío si no hay nombre de lote válido
     if not lote_nombre or lote_nombre == 'VACIO':
         return []
 
-    cabecera = fetch_cabecera_by_lote(lote_nombre)
+    if cabecera is None:
+        cabecera = fetch_cabecera_by_lote(lote_nombre)
     if not cabecera:
         return []
 

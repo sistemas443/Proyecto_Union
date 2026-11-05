@@ -268,18 +268,22 @@ def aplicar_parche_guias_semanal(id_lote):
         if valores_update:
             cur.executemany("UPDATE bd_vargas SET prod_huevo_tab = %s, h_av_aloj_tab = %s, consumo_alim_tab = %s, mort_tab = %s, peso_ave_tab = %s, peso_huevo_tab = %s, masa_huevo_tab_sem = %s, masa_huevo_tab_acum = %s, cons_agua_tab = %s WHERE id_sem_prod = %s", valores_update)
             conn.commit()
+            return True
+        return False
     except Exception as e:
         conn.rollback()
         print(f"[ERROR PARCHE GUIAS SEMANAL]: {e}")
+        return False
     finally:
         cur.close()
         conn.close()
 
-def get_semanal_all(lote_nombre: str = ''):
+def get_semanal_all(lote_nombre: str = '', cabecera=None):
     # Orquestador inicial
     if not lote_nombre or lote_nombre == 'VACIO':
         return []
-    cabecera = fetch_cabecera_by_lote(lote_nombre)
+    if cabecera is None:
+        cabecera = fetch_cabecera_by_lote(lote_nombre)
     if not cabecera:
         return []
     id_lote = cabecera['id']
@@ -289,10 +293,11 @@ def get_semanal_all(lote_nombre: str = ''):
         generar_estructura_semanal_unificada(lote_nombre, cabecera.get('fecha_encasetamiento'), id_lote)
         rows = model.fetch_semanal_produccion(id_lote)
         
-    aplicar_parche_fechas_semanal(id_lote, cabecera.get('fecha_encasetamiento'), rows)
-    aplicar_parche_guias_semanal(id_lote)
-        
-    filas_db = model.fetch_semanal_produccion(id_lote)
+    cambio_fechas = aplicar_parche_fechas_semanal(id_lote, cabecera.get('fecha_encasetamiento'), rows)
+    cambio_guias = aplicar_parche_guias_semanal(id_lote)
+
+    # Solo se vuelve a leer si algun parche modifico datos (si no, el resultado es el mismo)
+    filas_db = model.fetch_semanal_produccion(id_lote) if (cambio_fechas or cambio_guias) else rows
     
     # CÁLCULO DE ACUMULADOS Y CONVERSIONES EN EL BACKEND
     filas_procesadas = []

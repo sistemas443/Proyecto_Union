@@ -103,22 +103,47 @@ class ProyeccionesModel:
                 # Consumo = SUM(toneladas * cantidad_kg * 1,000,000) por MP
                 # Une formula_produccion_diaria con formula_detalle
                 query = """
-                    SELECT 
-                        fd.materia_prima_id,
-                        mp.nombre,
-                        COALESCE(SUM(fpd.toneladas * fd.cantidad_kg * 1000000), 0) AS consumo_total_gramos,
-                        COUNT(DISTINCT fpd.fecha) as dias_con_produccion
-                    FROM formula_produccion_diaria fpd
-                    JOIN formula_detalle fd 
-                        ON fpd.item_id = fd.item_id 
-                        AND fpd.lote_id = fd.lote_id 
-                        AND fpd.version = fd.version
-                    JOIN materias_primas mp ON fd.materia_prima_id = mp.id
-                    WHERE fpd.fecha BETWEEN %s AND %s
-                    AND fd.fecha_vencimiento >= %s  -- Solo versiones vigentes
-                    GROUP BY fd.materia_prima_id, mp.nombre
+                    WITH consumo AS (
+                        SELECT 
+                            fd.materia_prima_id,
+                            mp.nombre,
+                            fpd.toneladas * fd.cantidad_kg * 1000000 AS gramos,
+                            fpd.fecha
+                        FROM formula_produccion_diaria fpd
+                        JOIN formula_detalle fd 
+                            ON fpd.item_id = fd.item_id 
+                            AND fpd.lote_id = fd.lote_id 
+                            AND fpd.version = fd.version
+                        JOIN materias_primas mp ON fd.materia_prima_id = mp.id
+                        WHERE fpd.fecha BETWEEN %s AND %s
+                          AND fd.fecha_vencimiento >= %s
+
+                        UNION ALL
+
+                        SELECT
+                            e.materia_prima_id,
+                            mp.nombre,
+                            fpd.toneladas * e.cantidad_kg * 1000000,
+                            fpd.fecha
+                        FROM formula_produccion_diaria fpd
+                        JOIN formula_ensayos e
+                            ON e.item_id = fpd.item_id
+                           AND e.lote_id = fpd.lote_id
+                           AND e.eliminado_en IS NULL
+                        JOIN formula_ensayo_rangos r
+                            ON r.ensayo_id = e.id
+                           AND fpd.fecha BETWEEN r.desde AND r.hasta
+                        JOIN materias_primas mp ON mp.id = e.materia_prima_id
+                        WHERE fpd.fecha BETWEEN %s AND %s
+                    )
+                    SELECT materia_prima_id, nombre,
+                           COALESCE(SUM(gramos), 0) AS consumo_total_gramos,
+                           COUNT(DISTINCT fecha) AS dias_con_produccion
+                    FROM consumo
+                    GROUP BY materia_prima_id, nombre
+                    ORDER BY nombre
                 """
-                cur.execute(query, (fecha_ini, fecha_fin, fecha_fin))
+                cur.execute(query, (fecha_ini, fecha_fin, fecha_fin, fecha_ini, fecha_fin))
                 rows = cur.fetchall()
                 
                 resultado = {}
@@ -157,22 +182,47 @@ class ProyeccionesModel:
         try:
             with conn.cursor() as cur:
                 query = """
-                    SELECT 
-                        fd.materia_prima_id,
-                        mp.nombre,
-                        SUM(fd.cantidad_kg * fpd.toneladas * 1000) AS total_gramos,
-                        COUNT(DISTINCT fpd.fecha) AS dias_con_produccion
-                    FROM formula_produccion_diaria fpd
-                    JOIN formula_detalle fd
-                        ON fd.item_id = fpd.item_id
-                       AND fd.lote_id = fpd.lote_id
-                       AND fd.version = fpd.version
-                       AND fd.fecha_vencimiento >= fpd.fecha
-                    JOIN materias_primas mp ON mp.id = fd.materia_prima_id
-                    WHERE fpd.fecha >= CURRENT_DATE - INTERVAL '6 days'
-                      AND fpd.fecha <= CURRENT_DATE
-                    GROUP BY fd.materia_prima_id, mp.nombre
-                    ORDER BY mp.nombre;
+                    WITH consumo AS (
+                        SELECT 
+                            fd.materia_prima_id,
+                            mp.nombre,
+                            fd.cantidad_kg * fpd.toneladas * 1000 AS gramos,
+                            fpd.fecha
+                        FROM formula_produccion_diaria fpd
+                        JOIN formula_detalle fd
+                            ON fd.item_id = fpd.item_id
+                           AND fd.lote_id = fpd.lote_id
+                           AND fd.version = fpd.version
+                           AND fd.fecha_vencimiento >= fpd.fecha
+                        JOIN materias_primas mp ON mp.id = fd.materia_prima_id
+                        WHERE fpd.fecha >= CURRENT_DATE - INTERVAL '6 days'
+                          AND fpd.fecha <= CURRENT_DATE
+
+                        UNION ALL
+
+                        SELECT
+                            e.materia_prima_id,
+                            mp.nombre,
+                            e.cantidad_kg * fpd.toneladas * 1000,
+                            fpd.fecha
+                        FROM formula_produccion_diaria fpd
+                        JOIN formula_ensayos e
+                            ON e.item_id = fpd.item_id
+                           AND e.lote_id = fpd.lote_id
+                           AND e.eliminado_en IS NULL
+                        JOIN formula_ensayo_rangos r
+                            ON r.ensayo_id = e.id
+                           AND fpd.fecha BETWEEN r.desde AND r.hasta
+                        JOIN materias_primas mp ON mp.id = e.materia_prima_id
+                        WHERE fpd.fecha >= CURRENT_DATE - INTERVAL '6 days'
+                          AND fpd.fecha <= CURRENT_DATE
+                    )
+                    SELECT materia_prima_id, nombre,
+                           SUM(gramos) AS total_gramos,
+                           COUNT(DISTINCT fecha) AS dias_con_produccion
+                    FROM consumo
+                    GROUP BY materia_prima_id, nombre
+                    ORDER BY nombre;
                 """
                 cur.execute(query)
                 rows = cur.fetchall()

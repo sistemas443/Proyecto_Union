@@ -6,12 +6,12 @@ from PIL import Image, ImageOps
 from models.catalogos import model, schemas
 
 
-def listar_catalogo(tipo: str) -> list:
+def listar_catalogo(tipo: str, cur=None) -> list:
     """Lista los valores activos de un catálogo validando el tipo."""
     tabla = schemas.obtener_tabla(tipo)
     if not tabla:
         return []
-    return model.listar(tabla)
+    return model.listar(tabla, cur)
 
 
 def _procesar_archivo(archivo):

@@ -23,7 +23,7 @@ def diario():
         cabecera = get_cabecera_info(lote_seleccionado)
         if cabecera:
             generar_estructura_diario(lote_seleccionado, cabecera.get('id'), cabecera.get('fecha_recepcion'))
-        filas = get_diario_all(lote_seleccionado)
+        filas = get_diario_all(lote_seleccionado, cabecera)
 
     return render_template(
         'produccion/diario.html',

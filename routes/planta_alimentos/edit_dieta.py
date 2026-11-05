@@ -1,11 +1,14 @@
 from datetime import datetime
-from flask import render_template, request, redirect, url_for, flash
+import psycopg2.extras
+from flask import render_template, request, redirect, url_for, flash, jsonify, session
 from routes.planta_alimentos.catalogo_a import planta_bp
 from routes.routes import login_requerido
 from models.lotes.services import get_todos_los_lotes
 from models.planta_alimentos.maestros import MateriaPrima, CatalogoAlimento, Empresa
 from models.planta_alimentos.transacciones import RegistroProduccion
 from models.base import get_db_connection, traducir_error
+from models.auditoria.services import registrar_cambio
+from models.planta_alimentos.ensayos import Ensayo
 from flask import render_template, request, redirect, url_for, flash, jsonify
 
 
@@ -30,6 +33,22 @@ def _validar_fecha_produccion(texto):
     return fecha, None
 
 
+def _rangos_formulario():
+    """Lee los pares rango_desde / rango_hasta enviados por el modal."""
+    desde = request.form.getlist('rango_desde')
+    hasta = request.form.getlist('rango_hasta')
+    return [{'desde': d, 'hasta': h} for d, h in zip(desde, hasta) if d]
+
+
+def _volver_editor(item_id, lote_id):
+    version = request.form.get('version', type=int)
+    if version:
+        return redirect(url_for('planta_alimentos.editar_receta',
+                                item_id=item_id, lote_id=lote_id, version=version))
+    return redirect(url_for('planta_alimentos.editar_receta',
+                            item_id=item_id, lote_id=lote_id))
+
+
 @planta_bp.route('/receta/nueva-version/<int:item_id>/<string:lote_id>', methods=['POST'])
 @login_requerido
 def crear_version_receta(item_id, lote_id):
@@ -47,18 +66,73 @@ def crear_version_receta(item_id, lote_id):
 def modificar_fecha_receta():
     item_id = request.form.get('item_id')
     lote_id = request.form.get('lote_id')
-    version = request.form.get('version')
-    nueva_fecha = request.form.get('nueva_fecha')
-    
-    if FormulaDetalle.modificar_fecha_vencimiento(item_id, lote_id, version, nueva_fecha):
-        flash('Fecha de vencimiento actualizada (Plazo ampliado).', 'success')
+    version_raw = request.form.get('version')
+    nueva_fecha = (request.form.get('nueva_fecha') or '').strip()
+
+    def volver():
+        version = request.form.get('version', type=int)
+        if version:
+            return redirect(url_for('planta_alimentos.editar_receta',
+                                    item_id=item_id, lote_id=lote_id, version=version))
+        return redirect(url_for('planta_alimentos.editar_receta', item_id=item_id, lote_id=lote_id))
+
+    try:
+        version = int(version_raw)
+    except (TypeError, ValueError):
+        flash('No se pudo identificar la versión.', 'danger')
+        return volver()
+
+    if not nueva_fecha:
+        flash('Seleccione una fecha de vencimiento.', 'warning')
+        return volver()
+
+    try:
+        fecha = datetime.strptime(nueva_fecha, '%Y-%m-%d').date()
+    except ValueError:
+        flash('La fecha no tiene un formato válido.', 'danger')
+        return volver()
+
+    # Valor anterior para la auditoría
+    anterior = None
+    try:
+        for info in FormulaDetalle.obtener_info_versiones(item_id, lote_id):
+            if info['version'] == version:
+                anterior = info['fecha_vencimiento']
+                break
+    except Exception as e:
+        print(f"[AVISO FECHA] no se pudo leer la fecha anterior: {e}")
+
+    if FormulaDetalle.modificar_fecha_vencimiento(item_id, lote_id, version, fecha):
+        try:
+            conn = get_db_connection()
+            with conn.cursor() as cur:
+                registrar_cambio(
+                    session.get('user_id'),
+                    session.get('usuario_nombre') or session.get('user_nombre') or 'Sistema',
+                    'formula_detalle',
+                    int(item_id),
+                    f'fecha_vencimiento lote {lote_id} v{version}',
+                    str(anterior) if anterior else 'sin fecha',
+                    str(fecha),
+                    'UPDATE',
+                    cur
+                )
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            print(f"[AVISO AUDITORIA FECHA]: {e}")
+        flash(f'Fecha de vencimiento de la versión {version} actualizada al {fecha.strftime("%d/%m/%Y")}.', 'success')
     else:
-        flash('Error al actualizar la fecha.', 'error')
-        
-    return redirect(url_for('planta_alimentos.editar_receta', item_id=item_id, lote_id=lote_id))
+        flash('No se pudo actualizar la fecha: la versión no existe.', 'danger')
+
+    return volver()
 
 
 from models.planta_alimentos.formulas import FormulaDetalle, FormulaProduccion
+from models.planta_alimentos.importar_receta import (
+    analizar as analizar_importacion,
+    insertar_insumos,
+)
 # Asegúrate de que MateriaPrima y CatalogoAlimento estén importados arriba
 
 from flask import request, flash, redirect, url_for, render_template
@@ -77,6 +151,192 @@ def parse_float(val_str, default=0.0):
         return default
 
 
+@planta_bp.route('/receta/replicar/opciones', methods=['GET'])
+@login_requerido
+def opciones_replicar_receta():
+    """Lista los lotes a los que se puede replicar una dieta, marcando los que ya la tienen."""
+    item_id = request.args.get('item_id', type=int)
+    lote_origen = (request.args.get('lote_origen') or '').strip()
+
+    if not item_id:
+        return jsonify({'status': 'error', 'msg': 'Falta la dieta.'}), 400
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("""
+                SELECT lote FROM cabecera_lotes
+                WHERE lote IS NOT NULL AND TRIM(lote) <> ''
+                  AND lote <> 'LOTE GENERAL'
+                ORDER BY lote
+            """)
+            lotes = [f['lote'] for f in cur.fetchall()]
+
+            cur.execute("""
+                SELECT DISTINCT lote_id FROM formula_detalle WHERE item_id = %s
+            """, (item_id,))
+            ya_tienen = {f['lote_id'] for f in cur.fetchall()}
+    finally:
+        conn.close()
+
+    return jsonify({
+        'status': 'ok',
+        'lotes': [{
+            'lote': lote,
+            'tiene': lote in ya_tienen,
+            'origen': lote == lote_origen,
+        } for lote in lotes]
+    })
+
+
+@planta_bp.route('/receta/replicar', methods=['POST'])
+@login_requerido
+def replicar_receta():
+    """Replica una version de la formula a los lotes seleccionados."""
+    if session.get('user_rol') == 'Lector':
+        return jsonify({'status': 'error', 'msg': 'No tiene permisos para replicar dietas.'}), 403
+
+    datos = request.get_json(silent=True) or {}
+    try:
+        item_id = int(datos.get('item_id'))
+        version = int(datos.get('version') or 1)
+    except (TypeError, ValueError):
+        return jsonify({'status': 'error', 'msg': 'Datos inválidos.'}), 400
+
+    lote_origen = (datos.get('lote_origen') or '').strip()
+    lotes = datos.get('lotes') or []
+    lotes = [str(l).strip() for l in lotes if str(l).strip()]
+
+    if not lote_origen or not lotes:
+        return jsonify({'status': 'error', 'msg': 'Seleccione al menos un lote destino.'}), 400
+
+    try:
+        usuario = session.get('usuario_nombre') or session.get('user_nombre') or 'Sistema'
+        resultado = FormulaDetalle.replicar_formula(item_id, lote_origen, version, lotes, usuario)
+    except Exception as e:
+        print(f"[ERROR REPLICAR DIETA]: {e}")
+        return jsonify({'status': 'error', 'msg': 'No se pudo replicar la dieta.'}), 500
+
+    if not resultado['origen']:
+        return jsonify({'status': 'error', 'msg': 'La receta de origen no tiene insumos.'}), 400
+
+    try:
+        conn = get_db_connection()
+        with conn.cursor() as cur:
+            registrar_cambio(
+                session.get('user_id'),
+                session.get('usuario_nombre') or session.get('user_nombre') or 'Sistema',
+                'formula_detalle',
+                item_id,
+                f'replicar {lote_origen} v{version}',
+                '-',
+                ', '.join(resultado['creados']) if resultado['creados'] else 'sin cambios',
+                'INSERT',
+                cur
+            )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"[AVISO AUDITORIA REPLICAR]: {e}")
+
+    return jsonify({
+        'status': 'ok',
+        'creados': resultado['creados'],
+        'omitidos': resultado['omitidos'],
+        'filas': resultado['filas'],
+        'insumos_origen': resultado['origen'],
+        'ensayos_creados': (resultado.get('ensayos') or {}).get('creados', 0),
+        'ensayos_omitidos': (resultado.get('ensayos') or {}).get('omitidos', 0),
+    })
+
+@planta_bp.route('/receta/importar/analizar', methods=['POST'])
+@login_requerido
+def importar_receta_analizar():
+    """Analiza un texto pegado o una imagen y devuelve los insumos detectados (sin guardar)."""
+    if session.get('user_rol') == 'Lector':
+        return jsonify({'status': 'error', 'msg': 'No tiene permisos para importar insumos.'}), 403
+
+    texto = request.form.get('texto') or ''
+    archivo = request.files.get('imagen')
+    if archivo is not None and not archivo.filename:
+        archivo = None
+
+    if not texto.strip() and archivo is None:
+        return jsonify({'status': 'error', 'msg': 'Pegue el texto o suba una imagen.'}), 400
+
+    try:
+        resultado = analizar_importacion(texto=texto, archivo=archivo)
+    except Exception as e:
+        print(f"[ERROR IMPORTAR ANALIZAR]: {e}")
+        return jsonify({'status': 'error', 'msg': 'No se pudo analizar el contenido.'}), 500
+
+    return jsonify({
+        'status': 'ok',
+        'filas': resultado['filas'],
+        'avisos': resultado['avisos'],
+    })
+
+
+@planta_bp.route('/receta/importar/confirmar', methods=['POST'])
+@login_requerido
+def importar_receta_confirmar():
+    """Inserta en la receta los insumos revisados por el usuario."""
+    if session.get('user_rol') == 'Lector':
+        return jsonify({'status': 'error', 'msg': 'No tiene permisos para importar insumos.'}), 403
+
+    datos = request.get_json(silent=True) or {}
+    try:
+        item_id = int(datos.get('item_id'))
+        version = int(datos.get('version') or 1)
+    except (TypeError, ValueError):
+        return jsonify({'status': 'error', 'msg': 'Datos inválidos.'}), 400
+
+    lote_id = (datos.get('lote_id') or '').strip()
+    if not lote_id or lote_id == '0':
+        return jsonify({'status': 'error', 'msg': 'Seleccione un lote antes de importar.'}), 400
+
+    filas = datos.get('filas') or []
+    filas = [f for f in filas if float(f.get('cantidad') or 0) > 0]
+    if not filas:
+        return jsonify({'status': 'error', 'msg': 'No hay insumos para agregar.'}), 400
+
+    try:
+        baches = float(datos.get('baches_nucleo') or 6)
+    except (TypeError, ValueError):
+        baches = 6
+
+    try:
+        resultado = insertar_insumos(item_id, lote_id, version, filas, baches_nucleo=baches)
+    except Exception as e:
+        print(f"[ERROR IMPORTAR CONFIRMAR]: {e}")
+        return jsonify({'status': 'error', 'msg': 'No se pudieron agregar los insumos.'}), 500
+
+    try:
+        conn = get_db_connection()
+        with conn.cursor() as cur:
+            registrar_cambio(
+                session.get('user_id'),
+                session.get('usuario_nombre') or session.get('user_nombre') or 'Sistema',
+                'formula_detalle',
+                item_id,
+                f'importar insumos {lote_id} v{version}',
+                '-',
+                f"{resultado['insertados']} insumos" + (
+                    f" (nuevas: {', '.join(resultado['creadas'])})" if resultado['creadas'] else ''),
+                'INSERT',
+                cur
+            )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"[AVISO AUDITORIA IMPORTAR]: {e}")
+
+    return jsonify({
+        'status': 'ok',
+        'insertados': resultado['insertados'],
+        'creadas': resultado['creadas'],
+    })
+
 @planta_bp.route('/planta_alimentos/editar-receta/<int:item_id>/<string:lote_id>', methods=['GET', 'POST'])
 @login_requerido
 def editar_receta(item_id, lote_id):
@@ -87,11 +347,18 @@ def editar_receta(item_id, lote_id):
     materias_primas = MateriaPrima.get_all()
 
     empresas = []
+    nombre_dieta = None
     try:
         conn = get_db_connection()
         with conn.cursor() as cur:
             cur.execute("SELECT id, nombre FROM empresas ORDER BY nombre ASC;")
             empresas = cur.fetchall()
+
+            # Nombre de la dieta para mostrarlo siempre junto al número de ítem
+            cur.execute("SELECT nombre FROM catalogo_alimentos WHERE item_id = %s LIMIT 1;", (item_id,))
+            fila_dieta = cur.fetchone()
+            if fila_dieta and fila_dieta[0]:
+                nombre_dieta = str(fila_dieta[0]).strip()
         conn.close()
     except Exception as e:
         print(f"Error al cargar empresas: {e}")
@@ -189,11 +456,39 @@ def editar_receta(item_id, lote_id):
             'baches_nucleo': float(insumo.get('baches_nucleo', 6)) if dict(insumo).get('baches_nucleo') is not None else 6.0
         })
 
+    # --- Insumos de ensayo (tabla principal y tarjeta) ---
+    hoy = datetime.now().date()
+    ensayos = Ensayo.listar(item_id, lote_id)
+    for e in ensayos:
+        e['consumos_diarios'] = [
+            Ensayo.consumo_dia(e, reg['fecha'], reg['toneladas'])
+            for reg in registros_produccion
+        ]
+        e['total_consumo_g'] = sum(c for c in e['consumos_diarios'] if c)
+        e['rangos_json'] = [
+            {'desde': r['desde'].isoformat(), 'hasta': r['hasta'].isoformat()}
+            for r in e['rangos']
+        ]
+
+    kg_ensayo_por_dia = [
+        sum(e['cantidad_kg'] for e in ensayos
+            if any(r['desde'] <= reg['fecha'] <= r['hasta'] for r in e['rangos']))
+        for reg in registros_produccion
+    ]
+    ensayos_hoy = [e for e in ensayos if e['hoy_activo']]
+    resumen_ensayos = {
+        'kg': sum(e['cantidad_kg'] for e in ensayos_hoy),
+        'costo_iva': sum(e['costo_iva'] for e in ensayos_hoy),
+        'costo_flete': sum(e['costo_flete'] for e in ensayos_hoy),
+        'costo_iva_flete': sum(e['costo_iva_flete'] for e in ensayos_hoy),
+    }
+
     insumos_nucleo = [i for i in receta_calculada if i['es_nucleo']]
 
     return render_template(
         'planta_alimentos/editar_receta.html',
         item_id=item_id,
+        nombre_dieta=nombre_dieta,
         lote_id=lote_id,
         version_actual=version_actual,
         lista_versiones=lista_versiones,
@@ -206,7 +501,12 @@ def editar_receta(item_id, lote_id):
         registros_produccion=registros_produccion,
         total_toneladas=total_toneladas_lote,
         insumos_nucleo=insumos_nucleo,
-        empresas=empresas
+        empresas=empresas,
+        ensayos=ensayos,
+        ensayos_hoy=ensayos_hoy,
+        resumen_ensayos=resumen_ensayos,
+        kg_ensayo_por_dia=kg_ensayo_por_dia,
+        hoy=hoy
     )
     
     
@@ -288,6 +588,118 @@ def eliminar_insumo_receta(id_registro):
         print(f"Error al eliminar insumo: {e}")
         
     return redirect(url_for('planta_alimentos.editar_receta', item_id=item_id, lote_id=lote_id))
+
+@planta_bp.route('/receta/eliminar-insumos', methods=['POST'])
+@login_requerido
+def eliminar_insumos_receta():
+    """Elimina todos los insumos de la version actual de la receta."""
+    item_id = request.form.get('item_id')
+    lote_id = request.form.get('lote_id')
+    version = request.form.get('version', type=int) or 1
+
+    if session.get('user_rol') == 'Lector':
+        flash('No tiene permisos para eliminar insumos.', 'warning')
+        return redirect(url_for('planta_alimentos.editar_receta', item_id=item_id, lote_id=lote_id, version=version))
+
+    try:
+        eliminados = FormulaDetalle.eliminar_insumos_version(item_id, lote_id, version)
+        try:
+            conn = get_db_connection()
+            with conn.cursor() as cur:
+                registrar_cambio(
+                    session.get('user_id'),
+                    session.get('usuario_nombre') or session.get('user_nombre') or 'Sistema',
+                    'formula_detalle',
+                    int(item_id),
+                    f'eliminar todos los insumos {lote_id} v{version}',
+                    f'{eliminados} insumos',
+                    '0 insumos',
+                    'DELETE',
+                    cur
+                )
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            print(f"[AVISO AUDITORIA ELIMINAR INSUMOS]: {e}")
+        flash(f'Se eliminaron {eliminados} insumo(s) de la receta.', 'success')
+    except Exception as e:
+        print(f"Error al eliminar todos los insumos: {e}")
+        flash('No se pudieron eliminar los insumos.', 'danger')
+
+    return redirect(url_for('planta_alimentos.editar_receta', item_id=item_id, lote_id=lote_id, version=version))
+
+
+@planta_bp.route('/receta/ensayo/crear', methods=['POST'])
+@login_requerido
+def crear_ensayo():
+    item_id = request.form.get('item_id')
+    lote_id = request.form.get('lote_id')
+    materia_prima_id = request.form.get('materia_prima_id', type=int)
+    cantidad = request.form.get('cantidad_kg')
+    motivo = (request.form.get('motivo') or '').strip()
+    usuario = session.get('usuario_nombre') or session.get('user_nombre') or 'Sistema'
+
+    if not (item_id and lote_id and materia_prima_id):
+        flash('Seleccione la materia prima del ensayo.', 'warning')
+        return _volver_editor(item_id, lote_id)
+
+    resultado = Ensayo.crear(item_id, lote_id, materia_prima_id, cantidad, motivo,
+                             _rangos_formulario(), usuario)
+    if resultado.get('ok'):
+        flash('Insumo de ensayo agregado.', 'success')
+    else:
+        flash(resultado.get('msg', 'No se pudo guardar el ensayo.'), 'danger')
+    return _volver_editor(item_id, lote_id)
+
+
+@planta_bp.route('/receta/ensayo/<int:ensayo_id>/editar', methods=['POST'])
+@login_requerido
+def editar_ensayo(ensayo_id):
+    item_id = request.form.get('item_id')
+    lote_id = request.form.get('lote_id')
+    cantidad = request.form.get('cantidad_kg')
+    motivo = (request.form.get('motivo') or '').strip()
+    usuario = session.get('usuario_nombre') or session.get('user_nombre') or 'Sistema'
+
+    resultado = Ensayo.editar(ensayo_id, cantidad, motivo, _rangos_formulario(), usuario)
+    if resultado.get('ok'):
+        flash('Ensayo actualizado.', 'success')
+    else:
+        flash(resultado.get('msg', 'No se pudo actualizar el ensayo.'), 'danger')
+    return _volver_editor(item_id, lote_id)
+
+
+@planta_bp.route('/receta/ensayo/<int:ensayo_id>/finalizar', methods=['POST'])
+@login_requerido
+def finalizar_ensayo(ensayo_id):
+    item_id = request.form.get('item_id')
+    lote_id = request.form.get('lote_id')
+    hasta = request.form.get('hasta') or None
+    usuario = session.get('usuario_nombre') or session.get('user_nombre') or 'Sistema'
+
+    resultado = Ensayo.finalizar(ensayo_id, usuario, hasta)
+    if resultado.get('ok'):
+        flash('Ensayo finalizado. Se conserva el histórico.', 'success')
+    else:
+        flash(resultado.get('msg', 'No se pudo finalizar el ensayo.'), 'danger')
+    return _volver_editor(item_id, lote_id)
+
+
+@planta_bp.route('/receta/ensayo/<int:ensayo_id>/eliminar', methods=['POST'])
+@login_requerido
+def eliminar_ensayo(ensayo_id):
+    item_id = request.form.get('item_id')
+    lote_id = request.form.get('lote_id')
+    forzar = request.form.get('forzar') == '1'
+    usuario = session.get('usuario_nombre') or session.get('user_nombre') or 'Sistema'
+
+    resultado = Ensayo.eliminar(ensayo_id, usuario, forzar=forzar)
+    if resultado.get('ok'):
+        flash('Ensayo eliminado. Queda registrado en el histórico.', 'success')
+    else:
+        flash(resultado.get('msg', 'No se pudo eliminar el ensayo.'), 'danger')
+    return _volver_editor(item_id, lote_id)
+
 
 @planta_bp.route('/planta_alimentos/receta/actualizar/<int:id_registro>', methods=['POST'])
 @login_requerido

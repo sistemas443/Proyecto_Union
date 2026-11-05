@@ -11,6 +11,21 @@ from models.cabecera.services import update_cabecera_unificada
 lotes_bp = Blueprint('lotes', __name__)
 
 
+def _empresa_id_por_nombre(nombre):
+    """Devuelve el id de la empresa por nombre (sin distinguir mayusculas)."""
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id FROM empresas WHERE UPPER(TRIM(nombre)) = %s LIMIT 1",
+                (nombre.strip().upper(),)
+            )
+            fila = cur.fetchone()
+            return fila[0] if fila else None
+    finally:
+        conn.close()
+
+
 @lotes_bp.route('/lotes')
 @login_requerido
 def vista_lotes():
@@ -22,18 +37,35 @@ def vista_lotes():
 
         cur.execute("SELECT id, nombre FROM empresas ORDER BY nombre ASC")
         lista_empresas = [{'id': row[0], 'nombre': row[1]} for row in cur.fetchall()]
+
+        # Los 4 catálogos con foto (solo activos) reutilizan la misma conexión
+        cat_nutr_lev = catalogos_services.listar_catalogo('nutricionista_lev', cur)
+        cat_nutr_prod = catalogos_services.listar_catalogo('nutricionista_prod', cur)
+        cat_variedades = catalogos_services.listar_catalogo('variedad', cur)
+        cat_marcas = catalogos_services.listar_catalogo('marca_galpon', cur)
+
+        # Lotes y opciones de autocompletado, también en la misma conexión
+        lotes = get_todos_los_lotes(cur)
+        opciones = get_opciones_dinamicas(cur)
     except Exception as e:
         print(f"[ERROR CATALOGOS]: {e}")
         lista_responsables, lista_empresas = [], []
+        cat_nutr_lev, cat_nutr_prod, cat_variedades, cat_marcas = [], [], [], []
+        lotes, opciones = [], {}
     finally:
         cur.close()
         conn.close()
 
-    # Los 4 catálogos con foto (solo activos)
-    cat_nutr_lev = catalogos_services.listar_catalogo('nutricionista_lev')
-    cat_nutr_prod = catalogos_services.listar_catalogo('nutricionista_prod')
-    cat_variedades = catalogos_services.listar_catalogo('variedad')
-    cat_marcas = catalogos_services.listar_catalogo('marca_galpon')
+    # El rol PRODUCCION solo ve y administra los lotes de SAN MARTIN
+    rol = (session.get('user_rol') or '').strip()
+    empresa_filtro = None
+    if rol == 'PRODUCCION':
+        empresa_filtro = next(
+            (e['id'] for e in lista_empresas
+             if e['nombre'].strip().upper() == 'SAN MARTIN'), None)
+        if empresa_filtro:
+            lotes = [l for l in lotes if l.get('empresa_id') == empresa_filtro]
+            lista_empresas = [e for e in lista_empresas if e['id'] == empresa_filtro]
 
     def _fotos(tipo, items):
         return {i['nombre']: catalogos_services.url_foto_por_id(tipo, i['id']) for i in items}
@@ -47,8 +79,8 @@ def vista_lotes():
 
     return render_template(
         'produccion/lotes.html',
-        lotes=get_todos_los_lotes(),
-        opciones=get_opciones_dinamicas(),
+        lotes=lotes,
+        opciones=opciones,
         cat_responsables=lista_responsables,
         empresas=lista_empresas,
         empresas_map={emp['id']: emp['nombre'] for emp in lista_empresas},
@@ -57,7 +89,8 @@ def vista_lotes():
         cat_variedades=cat_variedades,
         cat_marcas=cat_marcas,
         fotos_catalogo=fotos_catalogo,
-        user_rol=session.get('user_rol')
+        user_rol=session.get('user_rol'),
+        empresa_filtro=empresa_filtro
     )
 
 
@@ -72,6 +105,29 @@ def crear_catalogo():
 
     if not nombre:
         return jsonify({'status': 'error', 'msg': 'El nombre no puede estar vacío.'}), 400
+
+    # Las empresas se guardan en su propia tabla (el select usa el id)
+    if tipo == 'empresa':
+        conn = get_db_connection()
+        cur = conn.cursor()
+        try:
+            cur.execute("SELECT id FROM empresas WHERE UPPER(TRIM(nombre)) = %s", (nombre,))
+            if cur.fetchone():
+                return jsonify({'status': 'error', 'msg': 'Esta empresa ya existe.'}), 400
+
+            cur.execute("INSERT INTO empresas (nombre) VALUES (%s) RETURNING id", (nombre,))
+            empresa_id = cur.fetchone()[0]
+            conn.commit()
+            return jsonify({'status': 'ok', 'nombre': nombre, 'id': empresa_id})
+        except Exception as e:
+            conn.rollback()
+            if "unique constraint" in str(e).lower():
+                return jsonify({'status': 'error', 'msg': 'Esta empresa ya existe.'}), 400
+            print(f"[ERROR CREANDO EMPRESA]: {e}")
+            return jsonify({'status': 'error', 'msg': 'Error interno al guardar.'}), 500
+        finally:
+            cur.close()
+            conn.close()
 
     tabla = 'catalogo_nutricionistas' if tipo == 'nutricionista' else 'catalogo_responsables'
 
@@ -99,6 +155,13 @@ def guardar_lote():
     from flask import request
     datos = request.form.to_dict()
     id_lote = request.form.get('id')
+
+    # Un usuario de PRODUCCION solo puede guardar lotes de SAN MARTIN
+    if (session.get('user_rol') or '').strip() == 'PRODUCCION':
+        empresa_id = _empresa_id_por_nombre('SAN MARTIN')
+        if empresa_id:
+            datos['empresa_id'] = str(empresa_id)
+
     usuario_id = session.get('user_id')
     usuario_nombre = session.get('user_nombre', 'Desconocido')
     success, msg = actualizar_lote(id_lote, datos,
@@ -139,6 +202,13 @@ def actualizar_cabecera():
     lote, columna, valor = data.get('lote'), data.get('columna'), data.get('valor')
     if not lote or not columna:
         return jsonify({'status': 'error', 'msg': 'Faltan datos'}), 400
+
+    # Un usuario de PRODUCCION no puede mover el lote a otra empresa
+    if (session.get('user_rol') or '').strip() == 'PRODUCCION' and columna == 'empresa_id':
+        return jsonify({
+            'status': 'error',
+            'msg': 'No tiene permisos para cambiar la empresa del lote.'
+        }), 403
     success, msg = update_cabecera_unificada(lote, columna, valor)
     if success:
         return jsonify({'status': 'ok'}), 200

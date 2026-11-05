@@ -17,10 +17,11 @@ def clas_prod():
     else:
         lote_seleccionado = session.get('ultimo_lote', '')
 
+    cabecera = get_cabecera_info(lote_seleccionado)
     return render_template(
         'produccion/clas_prod.html',
-        filas=get_clasificacion_all(lote_seleccionado),
+        filas=get_clasificacion_all(lote_seleccionado, cabecera),
         lotes=get_lotes_distintos(),
         lote_seleccionado=lote_seleccionado,
-        cabecera=get_cabecera_info(lote_seleccionado)
+        cabecera=cabecera
     )

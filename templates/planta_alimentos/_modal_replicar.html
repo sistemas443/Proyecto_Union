@@ -1,0 +1,221 @@
+{# ============================================================
+   MODAL: replicar una dieta a varios lotes
+   Uso: {% include 'planta_alimentos/_modal_replicar.html' %}
+        abrirModalReplicar(itemId, loteOrigen, version, nombreDieta)
+   ============================================================ #}
+<style>
+  .ps-replicar-lista {
+    max-height: 240px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.35rem 0.5rem;
+    background-color: var(--surface);
+  }
+
+  .ps-replicar-item {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.18rem 0.1rem;
+    font-size: 0.82rem;
+  }
+
+  .ps-replicar-item.ocupado {
+    color: var(--text-muted);
+  }
+
+  .ps-replicar-item .ps-replicar-candado {
+    margin-left: auto;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+</style>
+
+<div class="modal fade" id="modalReplicar" tabindex="-1" aria-labelledby="modalReplicarTitulo" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header" style="background-color: var(--table-header-bg); color: #ffffff; border-bottom: none;">
+        <h5 class="modal-title" id="modalReplicarTitulo" style="font-size: 0.95rem;">
+          <i class="fas fa-clone me-2"></i>Replicar dieta a otros lotes
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-1"><strong id="rp_dieta"></strong></p>
+        <p class="text-muted mb-3" style="font-size: 0.78rem;">
+          Se copian los insumos, cantidades, precios, núcleo (baches) y fechas de la versión
+          <span id="rp_version"></span> del lote <span id="rp_origen"></span>.
+        </p>
+
+        <label class="form-label-design" for="rp_buscar">Lotes destino</label>
+        <input type="text" class="form-control form-control-sm mb-2" id="rp_buscar"
+          placeholder="Buscar lote…" oninput="filtrarLotesReplicar()">
+
+        <div class="d-flex justify-content-between align-items-center mb-1" style="font-size: 0.72rem;">
+          <span class="text-muted" id="rp_resumen">Cargando lotes…</span>
+          <span>
+            <button type="button" class="btn btn-link btn-sm p-0 me-2" style="font-size: 0.72rem;"
+              onclick="seleccionarLotesReplicar(true)">Todos</button>
+            <button type="button" class="btn btn-link btn-sm p-0" style="font-size: 0.72rem; color: var(--text-muted);"
+              onclick="seleccionarLotesReplicar(false)">Ninguno</button>
+          </span>
+        </div>
+
+        <div class="ps-replicar-lista" id="rp_lista"></div>
+
+        <div class="form-text-muted mt-3" id="rp_aviso"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary btn-sm" id="rp_aplicar" onclick="replicarDieta()">
+          <i class="fas fa-clone me-1"></i>Replicar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const URL_REPLICAR_OPCIONES = "{{ url_for('planta_alimentos.opciones_replicar_receta') }}";
+  const URL_REPLICAR = "{{ url_for('planta_alimentos.replicar_receta') }}";
+  let modalReplicar = null;
+  let replicarDatos = { item: null, lote: null, version: 1 };
+
+  document.addEventListener('DOMContentLoaded', function () {
+    const modalEl = document.getElementById('modalReplicar');
+    if (modalEl && typeof bootstrap !== 'undefined') {
+      modalReplicar = new bootstrap.Modal(modalEl);
+    }
+  });
+
+  async function abrirModalReplicar(itemId, loteOrigen, version, nombreDieta) {
+    replicarDatos = { item: itemId, lote: loteOrigen, version: version };
+    document.getElementById('rp_dieta').textContent = nombreDieta;
+    document.getElementById('rp_version').textContent = version;
+    document.getElementById('rp_origen').textContent = loteOrigen;
+    document.getElementById('rp_buscar').value = '';
+    document.getElementById('rp_aviso').textContent = '';
+    document.getElementById('rp_lista').innerHTML = '<div class="text-muted" style="font-size:.8rem;">Cargando…</div>';
+    document.getElementById('rp_resumen').textContent = 'Cargando lotes…';
+    if (modalReplicar) modalReplicar.show();
+
+    try {
+      const res = await fetch(URL_REPLICAR_OPCIONES + '?item_id=' + encodeURIComponent(itemId)
+        + '&lote_origen=' + encodeURIComponent(loteOrigen));
+      const data = await res.json();
+      if (data.status !== 'ok') {
+        document.getElementById('rp_lista').innerHTML = '<div class="text-danger">No se pudieron cargar los lotes.</div>';
+        return;
+      }
+      renderizarLotesReplicar(data.lotes || []);
+    } catch (e) {
+      document.getElementById('rp_lista').innerHTML = '<div class="text-danger">Error de conexión.</div>';
+    }
+  }
+
+  function renderizarLotesReplicar(lotes) {
+    const cont = document.getElementById('rp_lista');
+    cont.innerHTML = '';
+
+    const disponibles = lotes.filter(function (l) { return !l.tiene && !l.origen; }).length;
+    document.getElementById('rp_resumen').textContent = disponibles + ' lote(s) disponible(s) para replicar';
+
+    lotes.forEach(function (l) {
+      if (l.origen) return; // el lote de origen no se muestra
+
+      const etiqueta = document.createElement('label');
+      etiqueta.className = 'ps-replicar-item' + (l.tiene ? ' ocupado' : '');
+      etiqueta.dataset.lote = l.lote;
+      etiqueta.dataset.tiene = l.tiene ? '1' : '0';
+
+      const check = document.createElement('input');
+      check.type = 'checkbox';
+      check.className = 'form-check-input mt-0';
+      check.value = l.lote;
+      check.disabled = l.tiene;
+      check.dataset.lote = l.lote;
+
+      const texto = document.createElement('span');
+      texto.textContent = l.lote;
+
+      etiqueta.appendChild(check);
+      etiqueta.appendChild(texto);
+
+      if (l.tiene) {
+        const candado = document.createElement('span');
+        candado.className = 'ps-replicar-candado text-muted';
+        candado.textContent = 'ya la tiene';
+        etiqueta.appendChild(candado);
+      }
+      cont.appendChild(etiqueta);
+    });
+  }
+
+  function filtrarLotesReplicar() {
+    const texto = document.getElementById('rp_buscar').value.trim().toLowerCase();
+    document.querySelectorAll('#rp_lista .ps-replicar-item').forEach(function (el) {
+      el.style.display = (!texto || el.dataset.lote.toLowerCase().includes(texto)) ? 'flex' : 'none';
+    });
+  }
+
+  function seleccionarLotesReplicar(marcar) {
+    document.querySelectorAll('#rp_lista input[type=checkbox]').forEach(function (chk) {
+      if (!chk.disabled) chk.checked = marcar;
+    });
+  }
+
+  async function replicarDieta() {
+    const boton = document.getElementById('rp_aplicar');
+    const aviso = document.getElementById('rp_aviso');
+    const seleccionados = Array.from(document.querySelectorAll('#rp_lista input[type=checkbox]:checked'))
+      .map(function (c) { return c.value; });
+
+    if (!seleccionados.length) {
+      aviso.textContent = 'Seleccione al menos un lote destino.';
+      return;
+    }
+
+    boton.disabled = true;
+    aviso.textContent = 'Replicando…';
+
+    try {
+      const res = await fetch(URL_REPLICAR, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          item_id: replicarDatos.item,
+          lote_origen: replicarDatos.lote,
+          version: replicarDatos.version,
+          lotes: seleccionados
+        })
+      });
+      const data = await res.json();
+      if (data.status !== 'ok') {
+        aviso.textContent = data.msg || 'No se pudo replicar.';
+        boton.disabled = false;
+        return;
+      }
+
+      boton.disabled = false;
+      if (modalReplicar) modalReplicar.hide();
+
+      const creados = data.creados || [];
+      const omitidos = data.omitidos || [];
+      await Swal.fire({
+        icon: 'success',
+        title: 'Dieta replicada',
+        html: '<div style="font-size:.85rem;text-align:left">' +
+          '<p class="mb-1"><b>' + creados.length + '</b> lote(s): ' + creados.join(', ') + '</p>' +
+          (omitidos.length ? '<p class="mb-0 text-muted">Omitidos: ' + omitidos.join(', ') + '</p>' : '') +
+          '</div>',
+        confirmButtonColor: '#2c3e50'
+      });
+      window.location.reload();
+    } catch (e) {
+      aviso.textContent = 'Error de conexión.';
+      boton.disabled = false;
+    }
+  }
+</script>

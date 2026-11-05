@@ -1,0 +1,377 @@
+{# ============================================================
+   MODAL: importar insumos desde Excel (texto) o imagen (OCR)
+   Uso: {% include 'planta_alimentos/_modal_importar.html' %}
+        abrirModalImportar(itemId, loteId, version)
+   ============================================================ #}
+<style>
+  .imp-revision-wrap {
+    max-height: 320px;
+    overflow: auto;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+
+  .imp-revision-wrap table {
+    margin-bottom: 0;
+    font-size: 0.75rem;
+  }
+
+  .imp-revision-wrap th {
+    position: sticky;
+    top: 0;
+    background-color: var(--surface-alt);
+    z-index: 2;
+    font-size: 0.66rem;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+  }
+
+  .imp-revision-wrap .imp-aviso {
+    font-size: 0.68rem;
+    color: var(--text-muted);
+  }
+
+  .imp-revision-wrap .imp-nueva {
+    margin-top: 4px;
+    display: flex;
+    gap: 4px;
+  }
+
+  .imp-vacio {
+    padding: 1.5rem;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.82rem;
+  }
+</style>
+
+<div class="modal fade" id="modalImportar" tabindex="-1" aria-labelledby="modalImportarTitulo" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-xl">
+    <div class="modal-content">
+      <div class="modal-header" style="background-color: var(--table-header-bg); color: #ffffff; border-bottom: none;">
+        <h5 class="modal-title" id="modalImportarTitulo" style="font-size: 0.95rem;">
+          <i class="fas fa-file-import me-2"></i>Importar insumos
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+
+      <div class="modal-body">
+        <ul class="nav nav-tabs mb-3" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="tabTexto" data-bs-toggle="tab" data-bs-target="#panelTexto"
+              type="button" role="tab">
+              <i class="fas fa-table me-1"></i>Pegar de Excel
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tabImagen" data-bs-toggle="tab" data-bs-target="#panelImagen"
+              type="button" role="tab">
+              <i class="fas fa-image me-1"></i>Imagen (OCR)
+            </button>
+          </li>
+        </ul>
+
+        <div class="tab-content">
+          <div class="tab-pane fade show active" id="panelTexto" role="tabpanel">
+            <label class="form-label-design" for="imp_texto">Insumos (una fila por insumo: nombre + kg)</label>
+            <textarea id="imp_texto" class="form-control form-control-sm" rows="7"
+              placeholder="MAIZ&#9;566011&#10;TORTA DE SOYA&#9;165317&#10;NUCLEO&#10;PREMEZCLA&#9;1000"></textarea>
+            <div class="form-text-muted mt-1">
+              Pegue dos columnas (nombre y kg). Si incluye una fila “NÚCLEO”, los insumos siguientes se marcan como núcleo.
+            </div>
+          </div>
+
+          <div class="tab-pane fade" id="panelImagen" role="tabpanel">
+            <label class="form-label-design" for="imp_imagen">Captura de la tabla</label>
+            <input type="file" id="imp_imagen" class="form-control form-control-sm" accept="image/png,image/jpeg,image/webp">
+            <div class="form-text-muted mt-1">
+              Funciona mejor con capturas nítidas de Excel. La imagen se procesa en el servidor.
+            </div>
+          </div>
+        </div>
+
+        <div class="d-flex align-items-center gap-2 mt-3">
+          <button type="button" class="btn btn-outline-secondary btn-sm" id="imp_analizar" onclick="analizarImportacion()">
+            <i class="fas fa-magnifying-glass me-1"></i>Analizar
+          </button>
+          <span class="form-text-muted" id="imp_estado"></span>
+        </div>
+
+        <div class="mt-3" id="imp_avisos"></div>
+
+        <div class="imp-revision-wrap mt-2" id="imp_revision" style="display: none;">
+          <table class="table table-sm align-middle mb-0">
+            <thead>
+              <tr>
+                <th style="width: 40px;">✓</th>
+                <th style="width: 34%;">Materia prima</th>
+                <th style="width: 18%;">Kg / bache</th>
+                <th style="width: 70px;">Núcleo</th>
+                <th>Aviso</th>
+              </tr>
+            </thead>
+            <tbody id="imp_tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <span class="form-text-muted me-auto" id="imp_conteo"></span>
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary btn-sm" id="imp_confirmar" onclick="confirmarImportacion()" disabled>
+          <i class="fas fa-check me-1"></i>Agregar insumos
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const URL_IMPORTAR_ANALIZAR = "{{ url_for('planta_alimentos.importar_receta_analizar') }}";
+  const URL_IMPORTAR_CONFIRMAR = "{{ url_for('planta_alimentos.importar_receta_confirmar') }}";
+  let IMPORTAR_CONTEXTO = { item: null, lote: null, version: 1 };
+  let modalImportar = null;
+
+  document.addEventListener('DOMContentLoaded', function () {
+    const modalEl = document.getElementById('modalImportar');
+    if (modalEl && typeof bootstrap !== 'undefined') {
+      modalImportar = new bootstrap.Modal(modalEl);
+    }
+  });
+
+  function abrirModalImportar(itemId, loteId, version) {
+    IMPORTAR_CONTEXTO = { item: itemId, lote: loteId, version: version };
+    document.getElementById('imp_texto').value = '';
+    document.getElementById('imp_imagen').value = '';
+    document.getElementById('imp_tbody').innerHTML = '';
+    document.getElementById('imp_revision').style.display = 'none';
+    document.getElementById('imp_estado').textContent = '';
+    document.getElementById('imp_avisos').innerHTML = '';
+    document.getElementById('imp_conteo').textContent = '';
+    document.getElementById('imp_confirmar').disabled = true;
+    if (modalImportar) modalImportar.show();
+  }
+
+  function opcionesMaterias(seleccionado) {
+    const datos = JSON.parse(document.getElementById('imp_materias_json').textContent);
+    let html = '<option value="">— Sin asignar —</option>';
+    datos.forEach(function (m) {
+      html += '<option value="' + m.id + '"' + (String(m.id) === String(seleccionado) ? ' selected' : '') + '>'
+        + m.nombre + '</option>';
+    });
+    html += '<option value="nuevo">➕ Crear nueva materia prima…</option>';
+    return html;
+  }
+
+  async function analizarImportacion() {
+    const estado = document.getElementById('imp_estado');
+    const texto = document.getElementById('imp_texto').value.trim();
+    const archivo = document.getElementById('imp_imagen').files[0];
+    const boton = document.getElementById('imp_analizar');
+
+    if (!texto && !archivo) {
+      estado.textContent = 'Pegue el texto o seleccione una imagen.';
+      return;
+    }
+
+    const formData = new FormData();
+    if (texto) formData.append('texto', texto);
+    if (archivo) formData.append('imagen', archivo);
+
+    boton.disabled = true;
+    estado.textContent = 'Analizando…';
+
+    try {
+      const res = await fetch(URL_IMPORTAR_ANALIZAR, { method: 'POST', body: formData });
+      const data = await res.json();
+      if (data.status !== 'ok') {
+        estado.textContent = data.msg || 'No se pudo analizar.';
+        boton.disabled = false;
+        return;
+      }
+      estado.textContent = '';
+      renderizarRevision(data.filas || [], data.avisos || []);
+    } catch (e) {
+      estado.textContent = 'Error de conexión.';
+    }
+    boton.disabled = false;
+  }
+
+  function renderizarRevision(filas, avisos) {
+    const cont = document.getElementById('imp_avisos');
+    cont.innerHTML = '';
+    (avisos || []).forEach(function (a) {
+      const div = document.createElement('div');
+      div.className = 'alert alert-warning py-1 px-2 mb-1';
+      div.style.fontSize = '0.75rem';
+      div.textContent = a;
+      cont.appendChild(div);
+    });
+
+    const tbody = document.getElementById('imp_tbody');
+    tbody.innerHTML = '';
+
+    if (!filas.length) {
+      document.getElementById('imp_revision').style.display = 'block';
+      tbody.innerHTML = '<tr><td colspan="5" class="imp-vacio">No se detectaron insumos.</td></tr>';
+      document.getElementById('imp_confirmar').disabled = true;
+      return;
+    }
+
+    filas.forEach(function (f, i) {
+      const tr = document.createElement('tr');
+
+      const tdCheck = document.createElement('td');
+      const check = document.createElement('input');
+      check.type = 'checkbox';
+      check.className = 'form-check-input';
+      check.checked = true;
+      tdCheck.appendChild(check);
+
+      const tdMateria = document.createElement('td');
+      const select = document.createElement('select');
+      select.className = 'form-select form-select-sm imp-materia';
+      select.innerHTML = opcionesMaterias(f.materia_prima_id || '');
+      tdMateria.appendChild(select);
+
+      const nueva = document.createElement('div');
+      nueva.className = 'imp-nueva';
+      nueva.style.display = 'none';
+      nueva.innerHTML = '<input type="text" class="form-control form-control-sm imp-nuevo-nombre" placeholder="Nombre">'
+        + '<input type="number" step="0.01" min="0" class="form-control form-control-sm imp-nuevo-precio" placeholder="Precio/kg">';
+      tdMateria.appendChild(nueva);
+
+      select.addEventListener('change', function () {
+        nueva.style.display = select.value === 'nuevo' ? 'flex' : 'none';
+        actualizarConteoImportar();
+      });
+      nueva.querySelector('.imp-nuevo-nombre').addEventListener('input', actualizarConteoImportar);
+
+      const tdCantidad = document.createElement('td');
+      const cantidad = document.createElement('input');
+      cantidad.type = 'number';
+      cantidad.step = '0.001';
+      cantidad.min = '0';
+      cantidad.className = 'form-control form-control-sm imp-cantidad';
+      cantidad.value = f.cantidad;
+      tdCantidad.appendChild(cantidad);
+
+      const tdNucleo = document.createElement('td');
+      tdNucleo.className = 'text-center';
+      const nucleo = document.createElement('input');
+      nucleo.type = 'checkbox';
+      nucleo.className = 'form-check-input imp-nucleo';
+      nucleo.checked = !!f.es_nucleo;
+      tdNucleo.appendChild(nucleo);
+
+      const tdAviso = document.createElement('td');
+      tdAviso.className = 'imp-aviso';
+      tdAviso.textContent = f.aviso || ('Detectado: "' + f.texto + '"');
+
+      tr.appendChild(tdCheck);
+      tr.appendChild(tdMateria);
+      tr.appendChild(tdCantidad);
+      tr.appendChild(tdNucleo);
+      tr.appendChild(tdAviso);
+      tbody.appendChild(tr);
+
+      check.addEventListener('change', actualizarConteoImportar);
+    });
+
+    document.getElementById('imp_revision').style.display = 'block';
+    actualizarConteoImportar();
+  }
+
+  function actualizarConteoImportar() {
+    const filas = Array.from(document.querySelectorAll('#imp_tbody tr'));
+    let listos = 0;
+    filas.forEach(function (tr) {
+      const check = tr.querySelector('input[type=checkbox]');
+      const select = tr.querySelector('.imp-materia');
+      if (!check || !select || !check.checked) return;
+      if (select.value === 'nuevo') {
+        const nombre = tr.querySelector('.imp-nuevo-nombre');
+        if (nombre && nombre.value.trim()) listos++;
+        return;
+      }
+      if (select.value) listos++;
+    });
+    document.getElementById('imp_conteo').textContent = listos + ' insumo(s) listo(s) para agregar';
+    document.getElementById('imp_confirmar').disabled = listos === 0;
+  }
+
+  async function confirmarImportacion() {
+    const boton = document.getElementById('imp_confirmar');
+    const estado = document.getElementById('imp_estado');
+    const filas = [];
+
+    document.querySelectorAll('#imp_tbody tr').forEach(function (tr) {
+      const check = tr.querySelector('input[type=checkbox]');
+      const select = tr.querySelector('.imp-materia');
+      if (!check || !select || !check.checked) return;
+
+      const cantidad = parseFloat(tr.querySelector('.imp-cantidad').value || 0);
+      if (!cantidad || cantidad <= 0) return;
+
+      const fila = {
+        materia_prima_id: select.value === 'nuevo' ? null : (parseInt(select.value) || null),
+        cantidad: cantidad,
+        es_nucleo: tr.querySelector('.imp-nucleo').checked,
+      };
+
+      if (select.value === 'nuevo') {
+        fila.nuevo_nombre = tr.querySelector('.imp-nuevo-nombre').value.trim();
+        fila.nuevo_precio = tr.querySelector('.imp-nuevo-precio').value || 0;
+        if (!fila.nuevo_nombre) return;
+      }
+
+      filas.push(fila);
+    });
+
+    if (!filas.length) {
+      estado.textContent = 'No hay insumos completos para agregar.';
+      return;
+    }
+
+    boton.disabled = true;
+    estado.textContent = 'Guardando…';
+
+    try {
+      const res = await fetch(URL_IMPORTAR_CONFIRMAR, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          item_id: IMPORTAR_CONTEXTO.item,
+          lote_id: IMPORTAR_CONTEXTO.lote,
+          version: IMPORTAR_CONTEXTO.version,
+          filas: filas
+        })
+      });
+      const data = await res.json();
+      if (data.status !== 'ok') {
+        estado.textContent = data.msg || 'No se pudieron agregar.';
+        boton.disabled = false;
+        return;
+      }
+
+      if (modalImportar) modalImportar.hide();
+      await Swal.fire({
+        icon: 'success',
+        title: 'Insumos agregados',
+        html: '<div style="font-size:.85rem">' + data.insertados + ' insumo(s) agregados a la receta.' +
+          (data.creadas && data.creadas.length
+            ? '<br><span style="font-size:.75rem;color:#6c757d">Nuevas materias: ' + data.creadas.join(', ') + '</span>'
+            : '') + '</div>',
+        confirmButtonColor: '#2c3e50'
+      });
+      window.location.reload();
+    } catch (e) {
+      estado.textContent = 'Error de conexión.';
+      boton.disabled = false;
+    }
+  }
+</script>
+
+<script id="imp_materias_json" type="application/json">
+  [{% for mp in materias_primas %}{"id": {{ mp['id'] }}, "nombre": {{ mp['nombre'] | tojson }}}{% if not loop.last %},{% endif %}{% endfor %}]
+</script>
