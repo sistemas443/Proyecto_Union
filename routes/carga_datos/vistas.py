@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, request, session, redirect, url_for, flash
 from routes.routes import login_requerido
+from models.base import traducir_error
 from models.lotes.services import get_lotes_distintos
 
 carga_datos_bp = Blueprint('carga_datos', __name__)
@@ -69,12 +70,12 @@ def procesar_carga():
             if not exito:
                 _registrar_fallo(tabla_carga, contexto_carga, msj_resultado, lote_seleccionado,
                                  session.get('user_id'), session.get('user_nombre'))
-            flash(msj_resultado, "success" if exito else "danger")
+            flash(traducir_error(msj_resultado), "success" if exito else "danger")
         except Exception as e:
             print(f"Error procesando diario: {e}")
             _registrar_fallo(tabla_carga, contexto_carga, f"{type(e).__name__}: {e}", lote_seleccionado,
                              session.get('user_id'), session.get('user_nombre'))
-            flash(f"Error procesando el archivo diario: {e}", "danger")
+            flash(f"No se pudo cargar el archivo de diario. {traducir_error(str(e))}", "danger")
 
     elif modulo_seleccionado == 'semanal_prod':
         tabla_carga, contexto_carga = 'bd_vargas', 'Carga Excel de producción'
@@ -88,12 +89,12 @@ def procesar_carga():
             if not exito:
                 _registrar_fallo(tabla_carga, contexto_carga, msj_resultado, lote_seleccionado,
                                  session.get('user_id'), session.get('user_nombre'))
-            flash(msj_resultado, "success" if exito else "danger")
+            flash(traducir_error(msj_resultado), "success" if exito else "danger")
         except Exception as e:
             print(f"Error procesando semanal producción: {e}")
             _registrar_fallo(tabla_carga, contexto_carga, f"{type(e).__name__}: {e}", lote_seleccionado,
                              session.get('user_id'), session.get('user_nombre'))
-            flash(f"Error procesando el archivo semanal: {e}", "danger")
+            flash(f"No se pudo cargar el archivo de producción semanal. {traducir_error(str(e))}", "danger")
 
     elif modulo_seleccionado == 'primera_semana':
         tabla_carga, contexto_carga = 'primera_semana', 'Carga Excel de primera semana'
@@ -107,12 +108,12 @@ def procesar_carga():
             if not exito:
                 _registrar_fallo(tabla_carga, contexto_carga, msj_resultado, lote_seleccionado,
                                  session.get('user_id'), session.get('user_nombre'))
-            flash(msj_resultado, "success" if exito else "danger")
+            flash(traducir_error(msj_resultado), "success" if exito else "danger")
         except Exception as e:
             print(f"Error procesando primera semana: {e}")
             _registrar_fallo(tabla_carga, contexto_carga, f"{type(e).__name__}: {e}", lote_seleccionado,
                              session.get('user_id'), session.get('user_nombre'))
-            flash(f"Error procesando el archivo de primera semana: {e}", "danger")
+            flash(f"No se pudo cargar el archivo de primera semana. {traducir_error(str(e))}", "danger")
 
     elif modulo_seleccionado == 'semanal_levante':
         tabla_carga, contexto_carga = 'semanal_levante', 'Carga Excel de semanal levante'
@@ -126,12 +127,12 @@ def procesar_carga():
             if not exito:
                 _registrar_fallo(tabla_carga, contexto_carga, msj_resultado, lote_seleccionado,
                                  session.get('user_id'), session.get('user_nombre'))
-            flash(msj_resultado, "success" if exito else "danger")
+            flash(traducir_error(msj_resultado), "success" if exito else "danger")
         except Exception as e:
             print(f"Error procesando semanal levante: {e}")
             _registrar_fallo(tabla_carga, contexto_carga, f"{type(e).__name__}: {e}", lote_seleccionado,
                              session.get('user_id'), session.get('user_nombre'))
-            flash(f"Error procesando el archivo de levante: {e}", "danger")
+            flash(f"No se pudo cargar el archivo de semanal levante. {traducir_error(str(e))}", "danger")
 
     elif modulo_seleccionado == 'clasificacion':
         tabla_carga, contexto_carga = 'clasificacion_produccion', 'Carga Excel de clasificación'
@@ -145,12 +146,12 @@ def procesar_carga():
             if not exito:
                 _registrar_fallo(tabla_carga, contexto_carga, msj_resultado, lote_seleccionado,
                                  session.get('user_id'), session.get('user_nombre'))
-            flash(msj_resultado, "success" if exito else "danger")
+            flash(traducir_error(msj_resultado), "success" if exito else "danger")
         except Exception as e:
             print(f"Error procesando clasificación: {e}")
             _registrar_fallo(tabla_carga, contexto_carga, f"{type(e).__name__}: {e}", lote_seleccionado,
                              session.get('user_id'), session.get('user_nombre'))
-            flash(f"Error procesando el archivo de clasificación: {e}", "danger")
+            flash(f"No se pudo cargar el archivo de clasificación. {traducir_error(str(e))}", "danger")
 
     else:
         flash(f"La carga para '{modulo_seleccionado}' aún no está programada.", "warning")

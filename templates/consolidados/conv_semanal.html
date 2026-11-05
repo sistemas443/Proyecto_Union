@@ -48,7 +48,7 @@
         <tr data-semana="{{ s }}">
           <td class="col-semana fw-bold">{{ s }}</td>
           <td class="col-prom num" data-prom></td>
-          <td class="col-tabla num">{{ '{:,.3f}'.format(datos.tabla.get(s)) if datos.tabla.get(s) is not none else '' }}</td>
+          <td class="col-tabla num">{{ '{:,.1f}'.format(datos.tabla.get(s)).replace(',', 'X').replace('.', ',').replace('X', '.') if datos.tabla.get(s) is not none else '' }}</td>
           {% for l in datos.lotes %}
           {% set v = datos.matriz.get(s, {}).get(l.nombre) %}
           <td class="num" data-lote="{{ l.nombre }}" data-valor="{{ v if v is not none else '' }}">{{ '{:,.3f}'.format(v) if v is not none else '' }}</td>

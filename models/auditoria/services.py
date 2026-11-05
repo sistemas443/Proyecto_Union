@@ -1,5 +1,19 @@
 # models/auditoria/services.py
-from models.base import get_db_connection
+from models.base import get_db_connection, traducir_error
+
+
+def _explicar_errores(filas):
+    """
+    Devuelve las filas del historial con los errores explicados en lenguaje sencillo.
+    Solo toca las filas con acción ERROR, que son las que guardan el texto crudo.
+    """
+    resultado = []
+    for fila in filas:
+        valores = list(fila)
+        if len(valores) > 9 and valores[9] == 'ERROR' and valores[8]:
+            valores[8] = traducir_error(valores[8])
+        resultado.append(tuple(valores))
+    return resultado
 
 def registrar_cambio(usuario_id, usuario_nombre, tabla, id_registro, 
                      campo, valor_anterior, valor_nuevo, accion, cursor):
@@ -81,7 +95,7 @@ def registrar_error(tabla, contexto, mensaje, id_lote=None, id_fila=None,
                 str(tabla or 'desconocida')[:100],
                 id_lote,
                 str(contexto or 'Error de operación')[:100],
-                str(mensaje)[:4000] if mensaje is not None else 'Error desconocido',
+                (traducir_error(mensaje) if mensaje is not None else 'Error desconocido.')[:4000],
             ))
             conn.commit()
         finally:
@@ -130,7 +144,7 @@ def obtener_historial(limite=100, offset=0):
             ORDER BY a.fecha DESC
             LIMIT %s OFFSET %s
         """, (limite, offset))
-        return cur.fetchall()
+        return _explicar_errores(cur.fetchall())
     finally:
         cur.close()
         conn.close()
@@ -202,7 +216,7 @@ def obtener_historial_filtrado(filtros=None, limite=100, offset=0):
             ORDER BY a.fecha DESC
             LIMIT %s OFFSET %s
         """, (*parametros, limite, offset))
-        return cur.fetchall()
+        return _explicar_errores(cur.fetchall())
     finally:
         cur.close()
         conn.close()

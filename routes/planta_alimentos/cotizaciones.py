@@ -6,6 +6,7 @@ from datetime import datetime
 from flask import Blueprint, render_template, jsonify, request, send_file, redirect, url_for, flash, session
 from routes.planta_alimentos.catalogo_a import planta_bp
 from routes.routes import login_requerido
+from models.base import traducir_error
 from models.planta_alimentos.cotizaciones import CotizacionesModel
 
 cotizaciones_bp = Blueprint('cotizaciones', __name__, url_prefix='/cotizaciones')
@@ -65,7 +66,7 @@ def cotizacion_nueva():
                 flash('Cotización creada correctamente.', 'success')
             return redirect(url_for('planta_alimentos.cotizaciones.cotizacion_detalle', cotizacion_id=cotizacion_id))
         except Exception as e:
-            flash(f'Error al crear cotización: {str(e)}', 'danger')
+            flash(f'Error al crear cotización: {traducir_error(str(e))}', 'danger')
 
     # GET: mostrar formulario para crear nueva
     return render_template('planta_alimentos/cotizaciones_form.html', **contexto)
@@ -148,7 +149,7 @@ def eliminar_cotizacion(cotizacion_id):
         else:
             flash('La cotización no existe.', 'danger')
     except Exception as e:
-        flash(f'Error al eliminar la cotización: {str(e)}', 'danger')
+        flash(f'Error al eliminar la cotización: {traducir_error(str(e))}', 'danger')
 
     return redirect(url_for('planta_alimentos.cotizaciones.cotizaciones_list'))
 
@@ -197,7 +198,7 @@ def exportar_cotizacion(mes, anio):
             download_name=f'cotizacion_{mes}_{anio}.xlsx'
         )
     except Exception as e:
-        flash(f'Error al exportar: {str(e)}', 'danger')
+        flash(f'Error al exportar: {traducir_error(str(e))}', 'danger')
         return redirect(url_for('planta_alimentos.cotizaciones.cotizaciones_list'))
 
 

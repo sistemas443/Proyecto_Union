@@ -1295,8 +1295,8 @@ def procesar_excel_semanal_produccion(archivo, lote_nombre, usuario_id=None, usu
         # Registro en auditoría (1 solo registro por carga)
         from models.auditoria.services import registrar_cambio
         registrar_cambio(
-            usuario_id=usuario_id,
-            usuario_nombre=usuario_nombre or 'Desconocido',
+            usuario_id=usuario_id or 0,
+            usuario_nombre=usuario_nombre or 'Sistema',
             tabla='bd_vargas',
             id_registro=id_lote,
             campo='Carga Excel',

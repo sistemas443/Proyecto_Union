@@ -1458,7 +1458,7 @@ async function guardarNuevaFila(event) {
         }
     } catch (err) {
         console.error(err);
-        alert('Error de conexión: ' + err.message);
+        alert('No se pudo conectar con el servidor. Revise su conexión e intente de nuevo.');
     } finally {
         // Si falló, el modal queda abierto con los datos para reintentar
         btn.innerHTML = originalHtml;
@@ -1545,7 +1545,7 @@ async function eliminarFilaCotizacion(boton, materiaPrimaId, proveedorId, produc
         }
     } catch (err) {
         console.error(err);
-        alert('Error de conexión: ' + err.message);
+        alert('No se pudo conectar con el servidor. Revise su conexión e intente de nuevo.');
     } finally {
         if (boton) {
             boton.disabled = false;
@@ -1617,7 +1617,7 @@ async function guardarTodo(event) {
         }
     } catch (err) {
         console.error(err);
-        alert('Error de conexión: ' + err.message);
+        alert('No se pudo conectar con el servidor. Revise su conexión e intente de nuevo.');
     } finally {
         btn.innerHTML = originalHtml;
         btn.disabled = false;

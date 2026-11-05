@@ -484,9 +484,12 @@
 
         } catch (error) {
             console.error('Error cargando proyecciones:', error);
+            const detalle = error && error.message && !/^HTTP\s*\d+$/i.test(error.message)
+                ? escapeHtml(error.message)
+                : 'No se pudieron cargar las proyecciones. Verifique su conexión e intente de nuevo.';
             document.getElementById('tbodyProyeccion').innerHTML =
                 `<tr class="table-empty"><td colspan="7" style="color: var(--danger);">
-                    <i class="fas fa-exclamation-circle me-1"></i> Error: ${escapeHtml(error.message)}
+                    <i class="fas fa-exclamation-circle me-1"></i> ${detalle}
                 </td></tr>`;
         }
     }
@@ -609,7 +612,7 @@
             })
             .catch(err => {
                 console.error(err);
-                alert('Error exportando: ' + err.message);
+                alert('No se pudo generar la exportación. Verifique el rango de fechas e intente de nuevo.');
             })
             .finally(() => {
                 btn.innerHTML = originalHtml;

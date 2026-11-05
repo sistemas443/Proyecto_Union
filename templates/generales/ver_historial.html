@@ -1,6 +1,10 @@
 {% extends 'generales/layout.html' %}
 {% block title %}Ver Historial – Avícola San Martín{% endblock %}
 
+{% block head %}
+{% include 'planta_alimentos/_design_system.html' %}
+{% endblock %}
+
 {% block content %}
 <style>
   body {
@@ -70,6 +74,64 @@
   .dropdown-menu-filtro {
     max-height: 250px;
     overflow-y: auto;
+  }
+
+  /* ============================================================
+     PAGINACIÓN (design system)
+     ============================================================ */
+  .paginacion-barra {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-3);
+    margin-top: var(--space-3);
+    flex-wrap: wrap;
+  }
+
+  .pagina-info {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .pagination {
+    --bs-pagination-color: var(--text-secondary);
+    --bs-pagination-bg: var(--surface);
+    --bs-pagination-border-color: var(--border);
+    --bs-pagination-hover-color: var(--text-primary);
+    --bs-pagination-hover-bg: var(--surface-alt);
+    --bs-pagination-hover-border-color: var(--border);
+    --bs-pagination-focus-color: var(--text-primary);
+    --bs-pagination-focus-bg: var(--surface-alt);
+    --bs-pagination-focus-box-shadow: 0 0 0 2px rgba(44, 62, 80, 0.15);
+    --bs-pagination-active-color: var(--action-primary-text);
+    --bs-pagination-active-bg: var(--action-primary);
+    --bs-pagination-active-border-color: var(--action-primary);
+    --bs-pagination-disabled-color: var(--text-muted);
+    --bs-pagination-disabled-bg: var(--surface);
+    --bs-pagination-disabled-border-color: var(--border);
+    font-size: 0.78rem;
+  }
+
+  .pagination .page-link {
+    padding: 0.25rem 0.6rem;
+    border-radius: 0.35rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    transition: background-color 0.15s ease, color 0.15s ease;
+  }
+
+  .pagination .page-item.active .page-link {
+    font-weight: 700;
+    box-shadow: 0 1px 2px rgba(44, 62, 80, 0.25);
+  }
+
+  .pagination .page-item.disabled .page-link {
+    opacity: 0.55;
+  }
+
+  @media (max-width: 575.98px) {
+    .pagina-texto { display: none; }
   }
 </style>
 
@@ -208,8 +270,9 @@
     </div>
 
     <!-- Paginación -->
-    <nav aria-label="Paginación" class="mt-3" id="paginacion" style="display: none;">
-        <ul class="pagination justify-content-center mb-0" id="lista-paginacion">
+    <nav aria-label="Paginación" class="paginacion-barra" id="paginacion" style="display: none;">
+        <span class="pagina-info" id="paginacion-info"></span>
+        <ul class="pagination mb-0" id="lista-paginacion">
             <!-- Se llena dinámicamente con JavaScript -->
         </ul>
     </nav>
@@ -494,34 +557,65 @@
         return badges[accion] || accion;
     }
     
+    // Páginas a mostrar: primeras, últimas y las vecinas de la actual
+    function paginasAMostrar(pagina, total) {
+        if (total <= 7) {
+            return Array.from({ length: total }, (_, i) => i + 1);
+        }
+
+        const conjunto = new Set([1, total, pagina - 1, pagina, pagina + 1]);
+        const numeradas = Array.from(conjunto)
+            .filter(p => p >= 1 && p <= total)
+            .sort((a, b) => a - b);
+
+        const salida = [];
+        let anterior = 0;
+        numeradas.forEach(p => {
+            if (anterior && p - anterior > 1) salida.push('...');
+            salida.push(p);
+            anterior = p;
+        });
+        return salida;
+    }
+
     function actualizarPaginacion(pagina, totalPaginas) {
         const nav = document.getElementById('paginacion');
         const lista = document.getElementById('lista-paginacion');
-        
+        const info = document.getElementById('paginacion-info');
+
         if (totalPaginas <= 1) {
             nav.style.display = 'none';
             return;
         }
-        
-        nav.style.display = 'block';
+
+        nav.style.display = 'flex';
+        if (info) info.textContent = `Página ${pagina} de ${totalPaginas}`;
+
+        const iconoIzq = '<i class="fas fa-chevron-left"></i>';
+        const iconoDer = '<i class="fas fa-chevron-right"></i>';
         let html = '';
-        
-        if (pagina > 1) {
-            html += `<li class="page-item"><a class="page-link" href="#" onclick="irAPagina(${pagina - 1}); return false;">Anterior</a></li>`;
-        }
-        
-        for (let p = 1; p <= totalPaginas; p++) {
-            if (p === pagina) {
+
+        // Anterior (deshabilitado en la primera página)
+        html += pagina > 1
+            ? `<li class="page-item"><a class="page-link" href="#" aria-label="Página anterior" onclick="irAPagina(${pagina - 1}); return false;">${iconoIzq} <span class="pagina-texto">Anterior</span></a></li>`
+            : `<li class="page-item disabled"><span class="page-link">${iconoIzq} <span class="pagina-texto">Anterior</span></span></li>`;
+
+        // Números de página
+        paginasAMostrar(pagina, totalPaginas).forEach(p => {
+            if (p === '...') {
+                html += '<li class="page-item disabled"><span class="page-link">…</span></li>';
+            } else if (p === pagina) {
                 html += `<li class="page-item active"><span class="page-link">${p}</span></li>`;
             } else {
-                html += `<li class="page-item"><a class="page-link" href="#" onclick="irAPagina(${p}); return false;">${p}</a></li>`;
+                html += `<li class="page-item"><a class="page-link" href="#" aria-label="Ir a la página ${p}" onclick="irAPagina(${p}); return false;">${p}</a></li>`;
             }
-        }
-        
-        if (pagina < totalPaginas) {
-            html += `<li class="page-item"><a class="page-link" href="#" onclick="irAPagina(${pagina + 1}); return false;">Siguiente</a></li>`;
-        }
-        
+        });
+
+        // Siguiente (deshabilitado en la última página)
+        html += pagina < totalPaginas
+            ? `<li class="page-item"><a class="page-link" href="#" aria-label="Página siguiente" onclick="irAPagina(${pagina + 1}); return false;"><span class="pagina-texto">Siguiente</span> ${iconoDer}</a></li>`
+            : `<li class="page-item disabled"><span class="page-link"><span class="pagina-texto">Siguiente</span> ${iconoDer}</span></li>`;
+
         lista.innerHTML = html;
     }
     

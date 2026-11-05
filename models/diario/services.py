@@ -375,6 +375,26 @@ def procesar_excel_diario(archivo, lote_nombre, usuario_id=None, usuario_nombre=
         if not valores_a_insertar:
             return False, "El archivo está vacío o no tiene datos válidos."
 
+        # El archivo debe traer datos reales: si producción, consumo, mortalidad, saldo y
+        # agua vienen todas vacías o en cero, no se toca la información ya cargada.
+        def _trae_datos(fila):
+            for indice in (4, 5, 6, 7, 8, 10, 15):
+                valor = fila[indice]
+                if valor is None:
+                    continue
+                try:
+                    if float(valor) != 0:
+                        return True
+                except (TypeError, ValueError):
+                    continue
+            return False
+
+        if not any(_trae_datos(f) for f in valores_a_insertar):
+            conn.rollback()
+            return False, ("El archivo fue leído, pero no trae datos de producción, consumo, "
+                           "mortalidad ni saldo: todas las filas están vacías o en cero. "
+                           "No se modificó la información cargada.")
+
         # Barrido: se borran TODOS los registros previos del lote antes de insertar el archivo
         cur.execute("DELETE FROM data_diario WHERE id_lote = %s", (id_lote,))
 
@@ -396,8 +416,8 @@ def procesar_excel_diario(archivo, lote_nombre, usuario_id=None, usuario_nombre=
         # Registro en auditoría (1 solo registro por carga)
         from models.auditoria.services import registrar_cambio
         registrar_cambio(
-            usuario_id=usuario_id,
-            usuario_nombre=usuario_nombre or 'Desconocido',
+            usuario_id=usuario_id or 0,
+            usuario_nombre=usuario_nombre or 'Sistema',
             tabla='data_diario',
             id_registro=id_lote,
             campo='Carga Excel',

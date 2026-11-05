@@ -394,19 +394,49 @@ def fetch_conv_semanal() -> list:
 
 
 def fetch_conversion_acumulada() -> list:
-    """Devuelve sem_prod, lote, conv_acum_real y metadata."""
+    """Devuelve los insumos para calcular la conversión acumulada.
+
+    Incluye los kilos y los huevos de cada semana y la conversión semanal,
+    que es lo que usa el Excel de referencia: la semana 18 toma la conversión
+    semanal y de la 19 en adelante acumula kilos y huevos.
+    """
     conn = get_db_connection()
     cur = conn.cursor()
     try:
         cur.execute("""
-            SELECT b.sem_prod, b.lote, b.conv_acum_real,
+            SELECT b.sem_prod, b.lote, b.kg_sem, b.prod_huevo_sem, b.conv_sem_real,
+                   c.fecha_recepcion, c.no_pollitas_recibidas
+            FROM bd_vargas b
+            LEFT JOIN cabecera_lotes c ON c.id = b.id_lote
+            ORDER BY b.sem_prod, b.lote
+        """)
+        cols = ['sem_prod', 'lote', 'kg_sem', 'prod_huevo_sem', 'conv_sem_real',
+                'fecha_recepcion', 'aves_enc']
+        return [dict(zip(cols, r)) for r in cur.fetchall()]
+    finally:
+        cur.close()
+        conn.close()
+
+
+def fetch_masa_semanal() -> list:
+    """Devuelve por lote y semana los huevos producidos y las aves encasetadas.
+
+    Son los insumos de la masa de huevo semanal (Excel H16): los huevos del
+    período y las aves encasetadas, con las que se calcula el huevo por ave
+    alojada. El consumo de agua sale de fetch_masa_semanal_agua.
+    """
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            SELECT b.sem_prod, b.lote, b.prod_huevo_sem,
                    c.fecha_recepcion, c.no_pollitas_recibidas
             FROM bd_vargas b
             LEFT JOIN cabecera_lotes c ON c.id = b.id_lote
             ORDER BY b.sem_prod, b.lote
         """)
         return [
-            {'sem_prod': r[0], 'lote': r[1], 'conv_acum_real': r[2],
+            {'sem_prod': r[0], 'lote': r[1], 'huevos': r[2],
              'fecha_recepcion': r[3], 'aves_enc': r[4]}
             for r in cur.fetchall()
         ]
@@ -415,26 +445,26 @@ def fetch_conversion_acumulada() -> list:
         conn.close()
 
 
-def fetch_masa_semanal() -> list:
-    """Devuelve sem_prod, lote, prod_huevo_real, huevo_acum y metadata.
-    
-    Para calcular Masa Huevo Semanal segun Excel H16:
-    - Semana 18: masa = produccion * huevo_acum (de esa misma semana)
-    - Semana n > 18: si produccion=0 -> "" ; si no: masa = produccion * (huevo_acum_n - huevo_acum_{n-1})
+def fetch_masa_semanal_agua(lotes: list) -> list:
+    """Consumo de agua y saldo de aves del último día de cada semana.
+
+    El Excel toma el dato del día 7 de cada semana desde la hoja DIARIO
+    (día = semana x 7) y lo divide entre las aves para obtener el consumo
+    por ave.
     """
+    if not lotes:
+        return []
     conn = get_db_connection()
     cur = conn.cursor()
     try:
         cur.execute("""
-            SELECT b.sem_prod, b.lote, b.prod_huevo_real, b.huevo_acum,
-                   c.fecha_recepcion, c.no_pollitas_recibidas
-            FROM bd_vargas b
-            LEFT JOIN cabecera_lotes c ON c.id = b.id_lote
-            ORDER BY b.sem_prod, b.lote
-        """)
+            SELECT lote, dias, consumo_agua, saldo_aves
+            FROM data_diario
+            WHERE lote = ANY(%s) AND dias >= 126 AND dias %% 7 = 0
+            ORDER BY lote, dias
+        """, (lotes,))
         return [
-            {'sem_prod': r[0], 'lote': r[1], 'prod_huevo_real': r[2],
-             'huevo_acum': r[3], 'fecha_recepcion': r[4], 'aves_enc': r[5]}
+            {'lote': r[0], 'dias': r[1], 'consumo_agua': r[2], 'saldo_aves': r[3]}
             for r in cur.fetchall()
         ]
     finally:
@@ -482,7 +512,8 @@ def fetch_primera_semana_levante() -> list:
                    c.fecha_recepcion, c.no_pollitas_recibidas
             FROM primera_semana p
             LEFT JOIN cabecera_lotes c ON c.id = p.id_lote
-            LEFT JOIN data_diario d ON d.id_lote = p.id_lote AND d.fecha_dia = p.fecha::text
+            LEFT JOIN data_diario d ON d.id_lote = p.id_lote
+                AND d.dias = (p.fecha - c.fecha_recepcion)
             LEFT JOIN (
                 SELECT id_lote, sem, MAX(unif_porc_unif) AS unif_porc_unif
                 FROM semanal_levante
@@ -552,29 +583,39 @@ def fetch_aves_enc_semana17(lotes: list) -> dict:
         conn.close()
 
 
-def fetch_levante_consolidado(lotes: list) -> list:
-    """Promedios/sumas semanales de levante para los lotes dados."""
+def fetch_levante_por_lote(lotes: list) -> list:
+    """Serie semanal de levante de cada lote, sin consolidar entre lotes."""
     conn = get_db_connection()
     cur = conn.cursor()
     try:
         cur.execute("""
-            SELECT sem,
-                   AVG(peso_real),
-                   AVG(ganancia_ave),
-                   AVG(unif_porc_unif),
-                   AVG(cons_gr_ave_ao),
-                   AVG(cons_k_acum),
-                   AVG(conv_sem),
-                   SUM(mort), SUM(saldo_aves), COUNT(DISTINCT lote),
-                   AVG(porc_mort_acm)
+            SELECT lote, sem, peso_real, unif_porc_unif, cons_real,
+                   saldo_aves, porc_ms_acu
             FROM semanal_levante
             WHERE lote = ANY(%s)
-            GROUP BY sem
-            ORDER BY sem
+            ORDER BY lote, sem
         """, (lotes,))
-        cols = ['sem', 'peso_real', 'ganancia_ave',
-                'unif', 'grad_real', 'cons_acum',
-                'conv_real', 'mort', 'saldo', 'nro', 'mort_acum']
+        cols = ['lote', 'sem', 'peso_real', 'unif', 'grad_real', 'saldo', 'mort_acum']
+        return [dict(zip(cols, r)) for r in cur.fetchall()]
+    finally:
+        cur.close()
+        conn.close()
+
+
+def fetch_primera_semana_dia0(lotes: list) -> list:
+    """Datos del día 0 (fila de recepción) de la tabla primera_semana."""
+    if not lotes:
+        return []
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            SELECT lote, peso_real, porc_uniformidad, porc_mort_acum, saldo_aves
+            FROM primera_semana
+            WHERE semana = '0' AND lote = ANY(%s)
+            ORDER BY lote
+        """, (lotes,))
+        cols = ['lote', 'peso_real', 'unif', 'mort_acum', 'saldo']
         return [dict(zip(cols, r)) for r in cur.fetchall()]
     finally:
         cur.close()
@@ -587,7 +628,7 @@ def fetch_levante_consumo(lotes: list) -> list:
     cur = conn.cursor()
     try:
         cur.execute("""
-            SELECT sem, lote, cons_gr_ave_ao
+            SELECT sem, lote, cons_real
             FROM semanal_levante
             WHERE lote = ANY(%s)
             ORDER BY sem, lote
@@ -701,6 +742,54 @@ def fetch_uniformidad() -> list:
              'fecha_recepcion': r[3], 'aves_enc': r[4]}
             for r in cur.fetchall()
         ]
+    finally:
+        cur.close()
+        conn.close()
+
+
+def fetch_todos_los_lotes() -> list:
+    """Todos los lotes registrados, tengan o no datos en los módulos.
+
+    Sirve para que las vistas de consolidados muestren una columna por lote
+    aunque todavía no se haya cargado información.
+    """
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            SELECT lote, fecha_recepcion, no_pollitas_recibidas
+            FROM cabecera_lotes
+            WHERE lote IS NOT NULL AND TRIM(lote) <> ''
+            ORDER BY lote
+        """)
+        return [
+            {'lote': r[0], 'fecha_recepcion': r[1], 'aves_enc': r[2]}
+            for r in cur.fetchall()
+        ]
+    finally:
+        cur.close()
+        conn.close()
+
+
+def fetch_ultima_semana_por_lote() -> list:
+    """Última semana con producción real por lote.
+
+    Se usa para recortar las series: en los Excel las columnas de guía y los
+    porcentajes quedan arrastrados hasta la semana 110, así que después de la
+    última semana real el sistema mostraría datos repetidos.
+    """
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            SELECT lote, MAX(sem_prod) AS ultima
+            FROM bd_vargas
+            WHERE COALESCE(prod_huevo_sem, 0) > 0
+               OR COALESCE(kg_sem, 0) > 0
+               OR COALESCE(mort_sem, 0) > 0
+            GROUP BY lote
+        """)
+        return [{'lote': r[0], 'sem': r[1]} for r in cur.fetchall()]
     finally:
         cur.close()
         conn.close()

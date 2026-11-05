@@ -193,6 +193,103 @@
     color: var(--border);
     margin-bottom: 0.5rem;
   }
+
+  /* ============================================================
+     SELECCIÓN DE CELDAS: recuento, suma y promedio
+     ============================================================ */
+
+  /* Resaltado del rectángulo seleccionado en la tabla */
+  .tabla-scroll.seleccion-activa,
+  .tabla-scroll.seleccion-activa * {
+    user-select: none !important;
+    cursor: cell;
+  }
+
+  td.celda-seleccionada,
+  td.celda-seleccionada input {
+    background-color: rgba(44, 62, 80, 0.18) !important;
+  }
+
+  /* La fecha de cada día que queda dentro del rango, para ver qué días se incluyen */
+  td.celda-fecha-seleccionada,
+  td.celda-fecha-seleccionada input {
+    background-color: rgba(44, 62, 80, 0.08) !important;
+    font-weight: 700 !important;
+  }
+
+  /* Bloque de resultados al extremo derecho de la línea "Información del lote" */
+  .ps-seleccion {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    scrollbar-width: thin;
+    /* la tarjeta solo pinta el fondo: aquí el texto siempre va oscuro */
+    color: var(--text-primary);
+  }
+
+  .ps-seleccion-datos {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .ps-seleccion-grupo {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    font-size: 0.72rem;
+  }
+
+  .ps-seleccion-columna {
+    font-weight: 700;
+    color: var(--action-primary);
+  }
+
+  .ps-seleccion-dato {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.25rem;
+    padding-left: 0.5rem;
+    border-left: 1px solid var(--border);
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .ps-seleccion-etiqueta {
+    font-size: 0.63rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--text-muted);
+  }
+
+  .ps-seleccion-valor {
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .ps-seleccion-rango {
+    font-size: 0.64rem;
+    letter-spacing: 0.3px;
+  }
+
+  /* Botones compactos para no engrosar la línea de información */
+  .ps-seleccion-btn {
+    padding: 0.1rem 0.45rem;
+    font-size: 0.68rem;
+    line-height: 1.5;
+  }
+
+  .ps-seleccion-btn.ps-seleccion-ok {
+    background-color: var(--success) !important;
+    border-color: var(--success) !important;
+    color: #ffffff !important;
+  }
 </style>
 
 <!-- ENCABEZADO: TÍTULO + FILTRO DE LOTE -->
@@ -237,6 +334,22 @@
 <div class="card card-clean ps-info-lote">
   <div class="ps-info-titulo">
     <i class="fas fa-circle-info"></i> Información del lote
+
+    <!-- Resultados de la selección de celdas (recuento, suma y promedio) -->
+    <div class="ps-seleccion" id="panelSeleccion">
+      <div class="ps-seleccion-datos" id="seleccionDatos" style="display: none;">
+        <span class="badge-estado badge-neutro ps-seleccion-rango" id="seleccionRango"></span>
+        <span class="ps-seleccion-resultado" id="seleccionResultados"></span>
+        <button type="button" class="btn btn-primary btn-sm ps-seleccion-btn" id="btnCopiarSeleccion"
+          title="Copiar los resultados de la selección">
+          <i class="fas fa-copy"></i>
+        </button>
+        <button type="button" class="btn btn-outline-secondary btn-sm ps-seleccion-btn" id="btnCerrarSeleccion"
+          title="Cerrar la selección">
+          <i class="fas fa-xmark"></i>
+        </button>
+      </div>
+    </div>
   </div>
   <div class="collapse show" id="collapseInfoGeneral">
     <div class="ps-info-grid">
@@ -598,29 +711,448 @@
   });
 
   // --- SISTEMA INTELIGENTE DE ALTURA PERFECTA (RESIZE OBSERVER) ---
+  // Se recalcula también cuando aparecen o desaparecen los resultados de la selección,
+  // porque la línea de información puede crecer y mover la tabla.
+  function aplicarAlturaTabla() {
+    const contenedor = document.querySelector('.tabla-scroll');
+    if (!contenedor) return;
+
+    const rect = contenedor.getBoundingClientRect();
+    const pixelesLibres = window.innerHeight - rect.top;
+    const alturaPerfecta = Math.max(120, pixelesLibres - 10);
+
+    contenedor.style.height = alturaPerfecta + "px";
+    contenedor.style.maxHeight = alturaPerfecta + "px";
+  }
+
   document.addEventListener("DOMContentLoaded", function() {
     const tabla = document.querySelector('.tabla-scroll');
     
     if (tabla) {
       // Creamos un observador que vigila cualquier cambio en la pantalla
       const observer = new ResizeObserver(() => {
-        // Obtenemos a qué distancia está la tabla desde el techo de la pantalla
-        const rect = tabla.getBoundingClientRect();
-        
-        // Píxeles físicos que quedan libres hasta el fondo del monitor
-        const pixelesLibres = window.innerHeight - rect.top;
-        
-        /* Escala normal (100%) */
-        const alturaPerfecta = pixelesLibres - 10;
-        
-        // Inyectamos la altura exacta a la tabla
-        tabla.style.height = alturaPerfecta + "px";
-        tabla.style.maxHeight = alturaPerfecta + "px";
+        aplicarAlturaTabla();
       });
 
       // Le decimos que vigile todo el cuerpo de la página (incluyendo el acordeón)
       observer.observe(document.body);
     }
+  });
+
+  // ==================== SELECCIÓN DE RANGO CON EL RATÓN (ESTILO EXCEL) ====================
+  document.addEventListener("DOMContentLoaded", function () {
+    const contenedor = document.querySelector('.tabla-scroll');
+    const tabla = contenedor ? contenedor.querySelector('table') : null;
+    const panel = document.getElementById('panelSeleccion');
+    if (!tabla || !panel) return;
+
+    const cuerpo = tabla.querySelector('tbody');
+    const filas = Array.from(cuerpo.querySelectorAll('tr[data-id]'));
+    if (filas.length === 0) return;
+
+    const rangoTexto = document.getElementById('seleccionRango');
+    const resultados = document.getElementById('seleccionResultados');
+    const datos = document.getElementById('seleccionDatos');
+
+    // Nombres amigables de cada columna de la tabla
+    const etiquetas = {
+      fecha: 'Fecha Día',
+      dias: 'Días',
+      sem: 'Semana',
+      produccion: 'Producción',
+      consumo_kg: 'Consumo kilos',
+      mortalidad: 'Mortalidad',
+      sel: 'Sel',
+      otros: 'Otros',
+      observaciones: 'Observaciones',
+      saldo_aves: 'Saldo aves',
+      consumo_gr_a_d: 'Cons. Gr.A.D',
+      consumo_gr_a_tab: 'Gr.A.D Tab',
+      percent_diario_prod: '% Prod',
+      prom_ave_dia_cc: 'Prom. Ave',
+      consumo_agua: 'Agua'
+    };
+
+    let ancla = null;      // celda desde donde empezó la selección
+    let rango = null;      // rectángulo { r1, c1, r2, c2 }
+    let origen = null;     // posición donde se presionó el mouse
+    let pendiente = false; // esperando a ver si el usuario arrastra
+    let arrastrando = false;
+    let celdasMarcadas = [];
+
+    /* ---------------- utilidades ---------------- */
+
+    function rectangulo(a, b) {
+      return {
+        r1: Math.min(a.r, b.r), r2: Math.max(a.r, b.r),
+        c1: Math.min(a.c, b.c), c2: Math.max(a.c, b.c)
+      };
+    }
+
+    function inputDe(fila, columna) {
+      if (!fila) return null;
+      const celda = fila.cells[columna];
+      return celda ? celda.querySelector('input') : null;
+    }
+
+    function columnaDe(fila, columna) {
+      const input = inputDe(fila, columna);
+      return input ? (input.dataset.col || '') : '';
+    }
+
+    // Convierte el valor de una celda a número. Acepta coma decimal y punto de miles.
+    function parseNumero(valor) {
+      if (valor === null || valor === undefined) return null;
+      let texto = String(valor).trim();
+      if (texto === '') return null;
+      if (texto.includes(',') && texto.includes('.')) texto = texto.replace(/\./g, '').replace(',', '.');
+      else if (texto.includes(',')) texto = texto.replace(',', '.');
+      if (!/^-?\d+(\.\d+)?$/.test(texto)) return null;
+      const numero = parseFloat(texto);
+      return isFinite(numero) ? numero : null;
+    }
+
+    function formatear(numero) {
+      return numero.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    }
+
+    function fechaDeFila(fila) {
+      const input = fila ? fila.querySelector('input[data-col="fecha"]') : null;
+      const original = input ? (input.getAttribute('data-fecha-original') || '').trim() : '';
+      const partes = original.split('-');
+      if (partes.length < 3) return null;
+      const fecha = new Date(parseInt(partes[0], 10), parseInt(partes[1], 10) - 1, parseInt(partes[2].slice(0, 2), 10));
+      return isNaN(fecha.getTime()) ? null : fecha;
+    }
+
+    function textoFecha(fecha) {
+      if (!fecha) return '';
+      return fecha.toLocaleDateString('es-CO', { weekday: 'short', day: '2-digit', month: 'short' }).replace(/\./g, '');
+    }
+
+    // Fecha tal como está guardada (AAAA-MM-DD), para copiarla identificando el día
+    function fechaCrudaDe(fila) {
+      const input = fila ? fila.querySelector('input[data-col="fecha"]') : null;
+      if (!input) return '';
+      const original = (input.getAttribute('data-fecha-original') || '').trim();
+      return original ? original.split(' ')[0] : String(input.value || '');
+    }
+
+    /* ---------------- pintado de la selección ---------------- */
+
+    function limpiarMarcas() {
+      celdasMarcadas.forEach(celda => {
+        celda.classList.remove('celda-seleccionada');
+        celda.classList.remove('celda-fecha-seleccionada');
+        celda.style.boxShadow = '';
+      });
+      celdasMarcadas = [];
+    }
+
+    function esRangoMultiple() {
+      return !!rango && !(rango.r1 === rango.r2 && rango.c1 === rango.c2);
+    }
+
+    // Sin selección (o con una sola celda) la línea de información queda como estaba
+    function ocultarResultados() {
+      datos.style.display = 'none';
+      resultados.innerHTML = '';
+      aplicarAlturaTabla();
+    }
+
+    function pintar() {
+      limpiarMarcas();
+
+      if (!rango) {
+        ocultarResultados();
+        return;
+      }
+
+      for (let r = rango.r1; r <= rango.r2; r++) {
+        const fila = filas[r];
+        if (!fila) continue;
+
+        for (let c = rango.c1; c <= rango.c2; c++) {
+          const celda = fila.cells[c];
+          if (!celda) continue;
+          celda.classList.add('celda-seleccionada');
+
+          // Borde del rectángulo: solo las celdas del contorno
+          const sombras = [];
+          if (r === rango.r1) sombras.push('inset 0 1px 0 0 var(--action-primary)');
+          if (r === rango.r2) sombras.push('inset 0 -1px 0 0 var(--action-primary)');
+          if (c === rango.c1) sombras.push('inset 1px 0 0 0 var(--action-primary)');
+          if (c === rango.c2) sombras.push('inset -1px 0 0 0 var(--action-primary)');
+          celda.style.boxShadow = sombras.join(', ');
+
+          celdasMarcadas.push(celda);
+        }
+
+        // La fecha de cada día incluido, para ver de un vistazo qué días entran
+        if (rango.c1 > 0 && fila.cells[0]) {
+          fila.cells[0].classList.add('celda-fecha-seleccionada');
+          celdasMarcadas.push(fila.cells[0]);
+        }
+      }
+
+      // La línea solo se actualiza cuando el gesto terminó: si no, la tabla
+      // se movería debajo del cursor mientras el usuario está arrastrando.
+      if (!arrastrando && !pendiente) actualizarPanel();
+    }
+
+    /* ---------------- barra de resultados ---------------- */
+
+    // Recuento, suma y promedio de una columna dentro del rango seleccionado
+    function resumirColumna(columna, desde, hasta) {
+      let suma = 0;
+      let cuenta = 0;
+      for (let r = desde; r <= hasta; r++) {
+        const input = inputDe(filas[r], columna);
+        const valor = input ? parseNumero(input.value) : null;
+        if (valor !== null) {
+          suma += valor;
+          cuenta += 1;
+        }
+      }
+      if (cuenta === 0) return null;
+      return { suma: suma, cuenta: cuenta, promedio: suma / cuenta };
+    }
+
+    function datoHtml(etiqueta, valor) {
+      return `<span class="ps-seleccion-dato"><span class="ps-seleccion-etiqueta">${etiqueta}:</span>`
+           + `<span class="ps-seleccion-valor">${valor}</span></span>`;
+    }
+
+    function actualizarPanel() {
+      if (!esRangoMultiple()) {
+        ocultarResultados();
+        return;
+      }
+
+      const primeraFila = filas[rango.r1];
+      const ultimaFila = filas[rango.r2];
+      const fechaInicio = textoFecha(fechaDeFila(primeraFila));
+      const fechaFin = textoFecha(fechaDeFila(ultimaFila));
+      const hayFechas = fechaInicio && fechaFin;
+
+      rangoTexto.textContent = hayFechas ? `${fechaInicio} a ${fechaFin}` : '';
+      rangoTexto.style.display = hayFechas ? '' : 'none';
+
+      let gruposHtml = '';
+      for (let c = rango.c1; c <= rango.c2; c++) {
+        const columna = columnaDe(primeraFila, c);
+        if (!columna) continue;
+
+        const resumen = resumirColumna(c, rango.r1, rango.r2);
+        if (!resumen) continue;
+
+        gruposHtml += `<span class="ps-seleccion-grupo">
+            <span class="ps-seleccion-columna">${etiquetas[columna] || columna}</span>
+            ${datoHtml('Promedio', formatear(resumen.promedio))}
+            ${datoHtml('Recuento', resumen.cuenta)}
+            ${datoHtml('Suma', formatear(resumen.suma))}
+          </span>`;
+      }
+
+      if (!gruposHtml) {
+        gruposHtml = '<span class="ps-seleccion-grupo">La selección no contiene valores numéricos</span>';
+      }
+
+      resultados.innerHTML = gruposHtml;
+      datos.style.display = 'flex';
+      aplicarAlturaTabla();
+    }
+
+    function limpiarSeleccion() {
+      rango = null;
+      ancla = null;
+      pintar();
+    }
+
+    /* ---------------- eventos del mouse ---------------- */
+
+    function celdaBajo(x, y) {
+      const elemento = document.elementFromPoint(x, y);
+      if (!elemento) return null;
+      const celda = elemento.closest('td');
+      if (!celda) return null;
+      const fila = celda.closest('tr[data-id]');
+      if (!fila || !cuerpo.contains(fila)) return null;
+      return { fila: filas.indexOf(fila), celda };
+    }
+
+    function desplazarPorBorde(y) {
+      const rect = contenedor.getBoundingClientRect();
+      const margen = 32;
+      if (y - rect.top < margen) contenedor.scrollTop -= 45;
+      else if (rect.bottom - y < margen) contenedor.scrollTop += 45;
+    }
+
+    tabla.addEventListener('mousedown', function (e) {
+      if (e.button !== 0) return;
+      const celda = e.target.closest('td');
+      if (!celda) return;
+      const fila = celda.closest('tr[data-id]');
+      if (!fila || !cuerpo.contains(fila)) return;
+
+      const r = filas.indexOf(fila);
+      const c = celda.cellIndex;
+      if (r < 0) return;
+
+      // Shift + click extiende la selección desde el ancla
+      if (e.shiftKey && ancla) {
+        pendiente = false;
+        arrastrando = false;
+        rango = rectangulo(ancla, { r: r, c: c });
+        pintar();
+        return;
+      }
+
+      ancla = { r: r, c: c };
+      origen = { x: e.clientX, y: e.clientY };
+      pendiente = true;
+      arrastrando = false;
+      rango = { r1: r, c1: c, r2: r, c2: c };
+      pintar();
+    });
+
+    document.addEventListener('mousemove', function (e) {
+      if (!pendiente && !arrastrando) return;
+
+      if (!arrastrando) {
+        const distancia = Math.hypot(e.clientX - origen.x, e.clientY - origen.y);
+        if (distancia < 5) return;
+
+        // Arrastre confirmado: se pasa a modo selección
+        arrastrando = true;
+        pendiente = false;
+        contenedor.classList.add('seleccion-activa');
+        const seleccion = window.getSelection();
+        if (seleccion) seleccion.removeAllRanges();
+        if (document.activeElement && tabla.contains(document.activeElement)) {
+          document.activeElement.blur();
+        }
+      }
+
+      e.preventDefault();
+      desplazarPorBorde(e.clientY);
+
+      const destino = celdaBajo(e.clientX, e.clientY);
+      if (destino && destino.fila >= 0 && ancla) {
+        const siguiente = rectangulo(ancla, { r: destino.fila, c: destino.celda.cellIndex });
+        const cambio = !rango || siguiente.r1 !== rango.r1 || siguiente.r2 !== rango.r2 ||
+                       siguiente.c1 !== rango.c1 || siguiente.c2 !== rango.c2;
+        if (cambio) {
+          rango = siguiente;
+          pintar();
+        }
+      }
+    });
+
+    function terminarArrastre() {
+      if (arrastrando) {
+        contenedor.classList.remove('seleccion-activa');
+        arrastrando = false;
+        pintar();
+      }
+      pendiente = false;
+      aplicarAlturaTabla();
+    }
+
+    document.addEventListener('mouseup', terminarArrastre);
+    window.addEventListener('blur', terminarArrastre);
+
+    // Click fuera de la tabla: se cierra la selección
+    document.addEventListener('mousedown', function (e) {
+      if (!rango) return;
+      if (e.target.closest('#panelSeleccion')) return;
+      if (tabla.contains(e.target)) return;
+      limpiarSeleccion();
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && rango) limpiarSeleccion();
+    });
+
+    /* ---------------- copiar la selección ---------------- */
+
+    function copiarConRespaldo(texto, alTerminar) {
+      const area = document.createElement('textarea');
+      area.value = texto;
+      area.style.position = 'fixed';
+      area.style.opacity = '0';
+      document.body.appendChild(area);
+      area.select();
+      try {
+        document.execCommand('copy');
+        alTerminar();
+      } catch (err) {
+        console.error('No se pudo copiar la selección:', err);
+      }
+      document.body.removeChild(area);
+    }
+
+    function copiarAlPortapapeles(texto, boton) {
+      const confirmar = function () {
+        const original = boton.innerHTML;
+        boton.innerHTML = "<i class='fas fa-check'></i>";
+        boton.classList.add('ps-seleccion-ok');
+        setTimeout(() => {
+          boton.innerHTML = original;
+          boton.classList.remove('ps-seleccion-ok');
+        }, 1500);
+      };
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(texto)
+          .then(confirmar)
+          .catch(() => copiarConRespaldo(texto, confirmar));
+      } else {
+        copiarConRespaldo(texto, confirmar);
+      }
+    }
+
+    document.getElementById('btnCopiarSeleccion').addEventListener('click', function () {
+      if (!rango) return;
+
+      const primeraFila = filas[rango.r1];
+      const fechaInicio = fechaCrudaDe(primeraFila);
+      const fechaFin = fechaCrudaDe(filas[rango.r2]);
+      const filasTexto = [['Fecha inicio', 'Fecha fin', 'Columna', 'Promedio', 'Recuento', 'Suma']];
+
+      // Una fila por columna: el rango de fechas seleccionado y su resultado
+      for (let c = rango.c1; c <= rango.c2; c++) {
+        const columna = columnaDe(primeraFila, c);
+        if (!columna) continue;
+
+        const resumen = resumirColumna(c, rango.r1, rango.r2);
+        if (!resumen) continue;
+
+        filasTexto.push([
+          fechaInicio,
+          fechaFin,
+          etiquetas[columna] || columna,
+          formatear(resumen.promedio),
+          String(resumen.cuenta),
+          formatear(resumen.suma)
+        ]);
+      }
+
+      if (filasTexto.length < 2) return;
+
+      // Ancho fijo por columna: al pegar en un chat o en el bloc de notas
+      // (donde el tabulador se convierte en un solo espacio) las columnas quedan alineadas
+      const anchos = filasTexto[0].map((_, i) =>
+        Math.max(...filasTexto.map(fila => String(fila[i]).length))
+      );
+      const lineas = filasTexto.map(fila =>
+        fila.map((campo, i) => String(campo).padEnd(anchos[i], ' ')).join('   ').trimEnd()
+      );
+
+      copiarAlPortapapeles(lineas.join('\n'), this);
+    });
+
+    document.getElementById('btnCerrarSeleccion').addEventListener('click', limpiarSeleccion);
   });
 </script>
 {% endblock %}

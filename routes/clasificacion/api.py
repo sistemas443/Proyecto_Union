@@ -21,12 +21,13 @@ def actualizar_clasificacion():
         registrar_error(
             tabla='clasificacion_produccion',
             contexto='Guardar dato en línea',
-            mensaje=f'{columna}: Error de integridad SQL',
+            mensaje=f'{columna}: el valor no es válido para esa columna',
             id_fila=id_reg,
             usuario_id=session.get('user_id'),
             usuario_nombre=session.get('user_nombre', 'Desconocido'),
         )
-        return jsonify({'status': 'error', 'msg': 'Error de integridad SQL'}), 400
+        return jsonify({'status': 'error',
+                        'msg': 'No se pudo guardar el dato. Verifique el valor ingresado e intente de nuevo.'}), 400
     except Exception as e:
         print(f"[ERROR CRÍTICO EN API CLASIFICACIÓN]: {e}")
         registrar_error(

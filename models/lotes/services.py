@@ -1,5 +1,5 @@
 # models/lotes/services.py
-from models.base import parse_empty
+from models.base import parse_empty, traducir_error
 from models.lotes import model
 
 # Importamos los gatillos de las otras tablas
@@ -150,7 +150,7 @@ def guardar_nuevo_lote(datos, usuario_id=None, usuario_nombre=None):
             usuario_id=usuario_id,
             usuario_nombre=usuario_nombre,
         )
-        return False, str(e)
+        return False, traducir_error(str(e))
 
 
 def actualizar_lote(id_lote, datos, usuario_id=None, usuario_nombre=None):
@@ -227,7 +227,7 @@ def actualizar_lote(id_lote, datos, usuario_id=None, usuario_nombre=None):
             usuario_id=usuario_id,
             usuario_nombre=usuario_nombre,
         )
-        return False, f"Ocurrió un error al actualizar: {str(e)}"
+        return False, traducir_error(str(e))
 
 def borrar_lote(id_lote):
     """

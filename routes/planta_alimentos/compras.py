@@ -2,7 +2,7 @@ from flask import render_template, request, redirect, url_for, flash
 from datetime import datetime
 from collections import Counter
 import psycopg2.extras
-from models.base import get_db_connection
+from models.base import get_db_connection, traducir_error
 from routes.planta_alimentos.catalogo_a import planta_bp
 from routes.routes import login_requerido  # O tu decorador correspondiente
 
@@ -83,7 +83,7 @@ def guardar_ingreso_diario():
 
     except Exception as e:
         conn.rollback()
-        flash(f'Error al guardar el ingreso: {str(e)}', 'danger')
+        flash(f'Error al guardar el ingreso: {traducir_error(str(e))}', 'danger')
     finally:
         cursor.close()
         conn.close()
@@ -161,7 +161,7 @@ def matriz_mensual_compras():
                 matriz[dia][mp_id] = float(r['total_gramos'] or 0)
 
     except Exception as e:
-        flash(f'Error al cargar los datos de la matriz: {str(e)}', 'danger')
+        flash(f'Error al cargar los datos de la matriz: {traducir_error(str(e))}', 'danger')
         materias_primas = []
         matriz = {dia: {} for dia in range(1, 32)}
         anios_disponibles = [anio_actual]
@@ -316,7 +316,7 @@ def resumen_inventario():
             inventario_procesado.append(row)
 
     except Exception as e:
-        flash(f"Error al cargar el inventario: {str(e)}", "danger")
+        flash(f"Error al cargar el inventario: {traducir_error(str(e))}", "danger")
         anios_disponibles = [anio_actual]
     finally:
         cursor.close()
@@ -586,7 +586,7 @@ def inventario_dietas():
 
     except Exception as e:
         conn.rollback()
-        flash(f"Error al cargar el inventario de dietas: {str(e)}", "danger")
+        flash(f"Error al cargar el inventario de dietas: {traducir_error(str(e))}", "danger")
     finally:
         cursor.close()
         conn.close()
@@ -750,7 +750,7 @@ def guardar_capacidad_silos():
             flash('Capacidad de silos guardada.', 'success')
     except Exception as e:
         conn.rollback()
-        flash(f'Error al guardar la capacidad de silos: {str(e)}', 'danger')
+        flash(f'Error al guardar la capacidad de silos: {traducir_error(str(e))}', 'danger')
     finally:
         cursor.close()
         conn.close()
@@ -827,7 +827,7 @@ def guardar_ajuste_inventario_dieta():
         flash('Ajuste de inventario guardado.', 'success')
     except Exception as e:
         conn.rollback()
-        flash(f'Error al guardar el ajuste: {str(e)}', 'danger')
+        flash(f'Error al guardar el ajuste: {traducir_error(str(e))}', 'danger')
     finally:
         cursor.close()
         conn.close()
@@ -876,7 +876,7 @@ def guardar_capacidad_silos_lote():
         flash('Capacidad de silos del lote guardada.', 'success')
     except Exception as e:
         conn.rollback()
-        flash(f'Error al guardar la capacidad de silos: {str(e)}', 'danger')
+        flash(f'Error al guardar la capacidad de silos: {traducir_error(str(e))}', 'danger')
     finally:
         cursor.close()
         conn.close()
@@ -919,7 +919,7 @@ def guardar_ajuste_inventario_lote():
         flash('Ajuste de inventario del lote guardado.', 'success')
     except Exception as e:
         conn.rollback()
-        flash(f'Error al guardar el ajuste: {str(e)}', 'danger')
+        flash(f'Error al guardar el ajuste: {traducir_error(str(e))}', 'danger')
     finally:
         cursor.close()
         conn.close()
@@ -1044,7 +1044,7 @@ def registrar_inventario_inicial_dieta():
 
     except Exception as e:
         conn.rollback()
-        flash(f'Error al registrar el inventario inicial: {str(e)}', 'danger')
+        flash(f'Error al registrar el inventario inicial: {traducir_error(str(e))}', 'danger')
     finally:
         cursor.close()
         conn.close()
@@ -1101,7 +1101,7 @@ def guardar_celda_matriz():
         flash(f'Ingreso de {cantidad}gr de {mp_nombre} guardado correctamente.', 'success')
     except Exception as e:
         conn.rollback()
-        flash(f'Error al guardar en celda: {str(e)}', 'danger')
+        flash(f'Error al guardar en celda: {traducir_error(str(e))}', 'danger')
     finally:
         cursor.close()
         conn.close()

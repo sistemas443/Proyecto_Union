@@ -50,9 +50,9 @@
   left: 104px;
   z-index: 10;
   background-color: #f8f9fa;
-  width: 46px;
-  min-width: 46px;
-  max-width: 46px;
+  width: 58px;
+  min-width: 58px;
+  max-width: 58px;
   padding: 1px 2px;
   text-align: center;
   font-weight: 700;
@@ -74,3 +74,21 @@
 /* Resaltado de fila y columna con el mouse (lo activa consolidados_tabla.js) */
 .tabla-compacta tbody td.hover-fila,
 .tabla-compacta tbody td.hover-columna { background-color: rgba(180, 180, 180, 0.5) !important; }
+
+/* Columnas congeladas: las primeras de cada tabla quedan fijas al hacer scroll horizontal.
+   La posición (left) y el ancho los calcula consolidados_tabla.js con el tamaño real. */
+.tabla-compacta .col-congelada {
+  position: sticky;
+  z-index: 20;
+  background-color: #f8f9fa;
+}
+
+.tabla-compacta thead .col-congelada {
+  z-index: 40;
+  background-color: #212529;
+  color: #ffffff;
+}
+
+.tabla-compacta .col-congelada-fin {
+  box-shadow: 2px 0 0 rgba(0, 0, 0, 0.16);
+}

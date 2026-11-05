@@ -1,6 +1,7 @@
 from flask import request, jsonify, session
 from routes.semanal.vistas import semanal_bp
 from routes.routes import login_requerido, editor_requerido
+from models.base import traducir_error
 from models.semanal.services import update_semanal_field as update_produccion_field
 from models.semanal_levante.services import update_semanal_field as update_levante_field
 
@@ -51,7 +52,7 @@ def actualizar_semanal():
             return jsonify({'status': 'ok', 'updated_data': campos_actualizados})
         else:
             registrar_fallo(msg)
-            return jsonify({'status': 'error', 'msg': f"Rechazado por Base de Datos: {msg}"}), 400
+            return jsonify({'status': 'error', 'msg': traducir_error(msg)}), 400
     except Exception as e:
         print(f"[ERROR CRÍTICO EN API SEMANAL]: {e}")
         registrar_fallo(f"{type(e).__name__}: {e}")

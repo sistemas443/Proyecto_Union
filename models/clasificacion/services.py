@@ -624,7 +624,8 @@ def procesar_excel_clasificacion(archivo_excel, lote_nombre, usuario_id=None, us
                 valores.extend([id_lote, num_sv])
                 query = f"UPDATE clasificacion_produccion SET {', '.join(campos_a_actualizar)} WHERE id_lote = %s AND sv = %s"
                 cur.execute(query, valores)
-                filas_actualizadas += 1
+                # rowcount: solo cuenta las semanas que de verdad se actualizaron
+                filas_actualizadas += cur.rowcount
 
         # Registro en auditoría (1 solo registro por carga)
         if filas_actualizadas > 0:

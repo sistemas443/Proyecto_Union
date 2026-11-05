@@ -44,5 +44,7 @@ try:
     conn.close()
 
 except Exception as e:
-    print("❌ Error al conectar:")
-    print(e)
+    # Se evita cualquier carácter especial: si la consola no está en UTF-8, un emoji
+    # rompería el arranque con UnicodeEncodeError y ocultaría el error real.
+    print("[ERROR] No se pudo conectar con la base de datos:")
+    print(str(e).encode('ascii', 'replace').decode('ascii'))

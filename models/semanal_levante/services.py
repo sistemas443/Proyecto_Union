@@ -800,17 +800,40 @@ def procesar_excel_semanal_levante(archivo_excel, lote_nombre, usuario_id=None, 
                 valores.extend([id_lote, num_semana])
                 query = f"UPDATE semanal_levante SET {', '.join(campos_a_actualizar)} WHERE id_lote = %s AND sem = %s"
                 cur.execute(query, valores)
-                filas_actualizadas += 1
+                # rowcount: solo cuenta las semanas que de verdad se actualizaron
+                filas_actualizadas += cur.rowcount
 
-        # 8. Recalcular cascada general del lote
+        # 8. Si el archivo no actualizó ninguna semana, no se guarda ni se registra como éxito
+        if filas_actualizadas == 0:
+            conn.rollback()
+            cur.close()
+            conn.close()
+            return False, ("La tabla fue detectada, pero el archivo no trae datos para las "
+                           "semanas 1 a 18. Revisa que la hoja tenga peso, uniformidad, "
+                           "tarso o agua digitados.")
+
+        # Aviso: kilos, mortalidad y saldo no vienen del Excel de levante, salen del informe diario
+        cur.execute("""
+            SELECT COUNT(1),
+                   SUM(CASE WHEN consumo_kg > 0 OR mortalidad > 0 OR saldo_aves > 0
+                            THEN 1 ELSE 0 END)
+            FROM data_diario WHERE id_lote = %s
+        """, (id_lote,))
+        diario = cur.fetchone()
+        aviso_diario = ''
+        if not diario[0] or not (diario[1] or 0):
+            aviso_diario = (" Aviso: el informe diario de este lote está vacío, por lo que "
+                            "kilos, mortalidad y saldo saldrán en cero.")
+
+        # 9. Recalcular cascada general del lote
         recalcular_lote_semanal_levante_directo(id_lote, cur)
 
         # Registrar en auditoría (1 solo registro por carga)
         if filas_actualizadas > 0:
             from models.auditoria.services import registrar_cambio
             registrar_cambio(
-                usuario_id=usuario_id,
-                usuario_nombre=usuario_nombre or 'Desconocido',
+                usuario_id=usuario_id or 0,
+                usuario_nombre=usuario_nombre or 'Sistema',
                 tabla='semanal_levante',
                 id_registro=id_lote,
                 campo='Carga Excel',
@@ -824,10 +847,7 @@ def procesar_excel_semanal_levante(archivo_excel, lote_nombre, usuario_id=None, 
         cur.close()
         conn.close()
 
-        if filas_actualizadas > 0:
-            return True, f"¡Éxito! Se cargaron datos puros de {filas_actualizadas} semanas de levante."
-        else:
-            return False, "La tabla fue detectada, pero las filas de las semanas (1-18) estaban vacías."
+        return True, f"¡Éxito! Se cargaron datos de {filas_actualizadas} semanas de levante.{aviso_diario}"
 
     except Exception as e:
         import traceback

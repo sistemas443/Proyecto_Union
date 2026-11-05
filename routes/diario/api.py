@@ -1,6 +1,7 @@
 from flask import request, jsonify, session
 from routes.diario.vistas import diario_bp
 from routes.routes import login_requerido, editor_requerido
+from models.base import traducir_error
 from models.diario.services import update_registro_diario_field
 
 
@@ -38,7 +39,7 @@ def actualizar_diario():
                 usuario_id=session.get('user_id'),
                 usuario_nombre=session.get('user_nombre', 'Desconocido'),
             )
-            return jsonify({'status': 'error', 'msg': msg}), 400
+            return jsonify({'status': 'error', 'msg': traducir_error(msg)}), 400
     except Exception as e:
         print(f"[ERROR CRÍTICO EN API DIARIO]: {e}")
         from models.auditoria.services import registrar_error

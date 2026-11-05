@@ -1,147 +1,440 @@
 {% extends 'generales/layout.html' %}
 {% block title %}Datos de Levante – Avícola San Martín{% endblock %}
+
+{% block head %}
+{% include 'planta_alimentos/_design_system.html' %}
+{% endblock %}
+
 {% block content %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/consolidados.css') }}">
+
+{% macro num(valor, decimales) -%}
+{{- '{:,.{}f}'.format(valor, decimales).replace(',', 'X').replace('.', ',').replace('X', '.') if valor is not none else '' -}}
+{%- endmacro %}
+
 <style>
-  .nav-pills .nav-link {color: #212529; font-weight: 700; }
-  .nav-pills .nav-link.active {background-color: #97271C; color: #fff; }
-  .chk-lote {margin-right: 8px; }
+  /* Pestañas con el estilo del sistema */
+  .nav-pills .nav-link {
+    color: var(--text-secondary);
+    font-weight: 700;
+    font-size: 0.78rem;
+    border-radius: 0.4rem;
+    padding: 0.35rem 0.8rem;
+  }
+  .nav-pills .nav-link:hover { background-color: var(--surface-alt); }
+  .nav-pills .nav-link.active { background-color: var(--action-primary); color: #ffffff; }
+
+  /* ===== Selector de lotes ===== */
+  .lotes-acciones {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
+  }
+  .lotes-acciones .btn { font-size: 0.75rem; }
+
+  .lotes-lista {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    max-height: 112px;
+    overflow-y: auto;
+    padding: 2px;
+  }
+
+  /* Cada lote es una ficha que se enciende al marcarla */
+  .lote-chip {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background-color: var(--surface);
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  }
+  .lote-chip:hover {
+    border-color: var(--action-primary);
+    color: var(--text-primary);
+  }
+  .lote-chip input {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+    margin: 0;
+    pointer-events: none;
+  }
+  .lote-chip .fa-check {
+    font-size: 0.62rem;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  }
+  .lote-chip.activo {
+    background-color: var(--action-primary);
+    border-color: var(--action-primary);
+    color: #ffffff;
+  }
+  .lote-chip.activo .fa-check { opacity: 1; }
+  .lote-chip:focus-within {
+    outline: 2px solid var(--action-primary);
+    outline-offset: 2px;
+  }
+
+  .lotes-pie {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    margin-top: var(--space-3);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--border);
+  }
+  .lotes-aviso {
+    font-size: 0.75rem;
+    color: var(--warning-text);
+    background-color: #fff8e1;
+    border: 1px solid #ffe9a8;
+    border-radius: 0.35rem;
+    padding: 0.2rem 0.55rem;
+  }
+
+  /* ===== Serie semanal ===== */
+  .series-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+    gap: var(--space-4);
+    align-items: start;
+  }
+
+  .serie-card .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    padding: 0.45rem 0.9rem;
+  }
+
+  .btn-pantalla {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.1rem 0.4rem;
+    font-size: 0.7rem;
+    line-height: 1.4;
+  }
+
+  /* Celdas angostas y números centrados */
+  .serie-tabla {
+    width: 100%;
+    table-layout: fixed;
+    margin-bottom: 0;
+  }
+  .serie-tabla thead th {
+    padding: 0.4rem 0.25rem;
+    white-space: normal;
+    line-height: 1.3;
+  }
+  .serie-tabla tbody td {
+    padding: 0.2rem 0.25rem;
+    font-size: 0.75rem;
+    white-space: nowrap;
+  }
+  .serie-tabla .col-sem {
+    width: 44px;
+    text-align: center;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+  .serie-tabla .col-num {
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-secondary);
+  }
+  .serie-tabla tbody td.hover-fila,
+  .serie-tabla tbody td.hover-columna {
+    background-color: rgba(44, 62, 80, 0.10) !important;
+  }
+
+  /* Pantalla completa de una tarjeta de la serie */
+  .serie-card:fullscreen {
+    background-color: var(--surface);
+    border-radius: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .serie-card:fullscreen .card-header {
+    background-color: var(--surface-alt);
+    border-bottom: 1px solid var(--border);
+  }
+  .serie-card:fullscreen .card-body {
+    flex: 1 1 auto;
+    overflow: auto;
+  }
+  .serie-card:fullscreen .serie-tabla thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
+  .serie-card:fullscreen .serie-tabla tbody td {
+    font-size: 0.85rem;
+    padding: 0.3rem 0.35rem;
+  }
 </style>
-<div class="container-fluid px-4 py-3 h-100 d-flex flex-column">
-  <div class="d-flex flex-wrap align-items-center mb-3 px-3 py-2 rounded shadow-sm" style="background-color: #212529;">
-    <a href="{{ url_for('consolidados.vista_consolidados') }}" class="btn btn-sm btn-outline-light fw-bold me-3">
-      <i class='bx bx-arrow-back me-1'></i>VOLVER
+
+<div class="container-fluid px-4 py-3">
+  <div class="page-header">
+    <div class="d-flex align-items-center gap-3">
+      <div class="page-icon">
+        <i class="fas fa-clipboard-list"></i>
+      </div>
+      <div>
+        <h2 class="page-title mb-0">Datos de levante</h2>
+        <p class="page-subtitle mb-0">Serie semanal por lote, con el día 0 de primera semana</p>
+      </div>
+    </div>
+    <a href="{{ url_for('consolidados.vista_consolidados') }}" class="btn btn-outline-secondary btn-sm">
+      <i class="fas fa-arrow-left me-1"></i>Volver
     </a>
-    <h5 class="mb-0 fw-bold text-uppercase text-white" style="letter-spacing: 0.5px;">
-      <i class='bx bx-clipboard-data me-2'></i>DATOS DE LEVANTE
-    </h5>
   </div>
 
-  <div class="card shadow-sm mb-3">
-    <div class="card-body py-2" id="panelLotes">
-      <span class="fw-bold text-secondary small me-2">LOTES:</span>
-      {% for t in datos.todos %}
-      <label class="chk-lote small">
-        <input type="checkbox" class="chk-lote-cb form-check-input me-1" value="{{ t.nombre }}" {% if t.activo %}checked{% endif %}>
-        {{ t.nombre }}
-      </label>
-      {% endfor %}
-      <button type="button" class="btn btn-sm fw-bold text-white ms-2" style="background-color: #97271C;" id="btnAplicarLotes">Aplicar</button>
+  <!-- Selector de lotes -->
+  <div class="card card-clean mb-3">
+    <div class="card-header d-flex align-items-center justify-content-between gap-2">
+      <span><i class="fas fa-filter me-2"></i>Lotes a consultar</span>
+      <span class="badge-estado badge-neutro" id="contadorLotes">0 seleccionados</span>
+    </div>
+    <div class="card-body">
+      <div class="lotes-acciones">
+        <button type="button" class="btn btn-outline-secondary" id="btnTodosLotes">
+          <i class="fas fa-check-double me-1"></i>Todos
+        </button>
+        <button type="button" class="btn btn-outline-secondary" id="btnNingunoLotes">
+          <i class="fas fa-eraser me-1"></i>Ninguno
+        </button>
+        <span class="form-text-muted ms-1">Marca los lotes que quieras comparar.</span>
+      </div>
+
+      <div class="lotes-lista" id="listaLotes">
+        {% for t in datos.todos %}
+        <label class="lote-chip{% if t.activo %} activo{% endif %}">
+          <input type="checkbox" class="chk-lote-cb" value="{{ t.nombre }}" {% if t.activo %}checked{% endif %}>
+          <i class="fas fa-check"></i>
+          {{ t.nombre }}
+        </label>
+        {% endfor %}
+      </div>
+
+      <div class="lotes-pie">
+        <span class="lotes-aviso" id="avisoCambios" style="display: none;">
+          <i class="fas fa-circle-exclamation me-1"></i>Hay cambios sin aplicar
+        </span>
+        <button type="button" class="btn btn-primary btn-sm ms-auto" id="btnAplicarLotes">
+          <i class="fas fa-check me-1"></i>Aplicar selección
+        </button>
+      </div>
     </div>
   </div>
 
   <ul class="nav nav-pills mb-3" role="tablist">
     <li class="nav-item" role="presentation">
-      <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tab-serie" type="button" role="tab">Serie semanal</button>
+      <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tab-serie" type="button" role="tab">
+        <i class="fas fa-table-list me-1"></i>Serie semanal
+      </button>
     </li>
     <li class="nav-item" role="presentation">
-      <button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-consumo" type="button" role="tab">Consumo en granja</button>
+      <button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-consumo" type="button" role="tab">
+        <i class="fas fa-wheat-awn me-1"></i>Consumo en granja
+      </button>
     </li>
   </ul>
 
   <div class="tab-content">
     {% if not datos.lotes %}
-    <div class="alert alert-info">Selecciona uno o varios lotes y pulsa Aplicar para ver la serie consolidada.</div>
+    <div class="card card-clean">
+      <div class="card-body text-center py-5">
+        <i class="fas fa-hand-pointer d-block mb-2" style="font-size: 1.7rem; color: var(--border);"></i>
+        <p class="mb-1 fw-semibold" style="color: var(--text-secondary);">Selecciona uno o varios lotes</p>
+        <p class="mb-0" style="font-size: 0.8rem; color: var(--text-muted);">
+          Marca los lotes de arriba y pulsa Aplicar para ver la serie de cada uno.
+        </p>
+      </div>
+    </div>
     {% endif %}
+
     <div class="tab-pane fade show active" id="tab-serie" role="tabpanel">
-      <div class="contenedor-matriz shadow-sm border rounded">
-        <table class="table table-sm table-bordered mb-0 tabla-compacta">
-          <thead>
-            <tr>
-              <th class="col-fija">SEM</th>
-              <th colspan="3">Peso</th>
-              <th colspan="2">Ganancia</th>
-              <th>Unif</th>
-              <th colspan="3">Gr.A.D.</th>
-              <th colspan="2">Cons Ac</th>
-              <th colspan="2">Conv</th>
-              <th>Mort</th>
-              <th>Mort Acum</th>
-              <th>Saldo</th>
-              <th>Nro</th>
-              <th>Viab %</th>
-            </tr>
-            <tr>
-              <th class="col-fija"></th>
-              <th>Real</th><th>Tab</th><th>%</th>
-              <th>Real</th><th>Tab</th>
-              <th>Real</th>
-              <th>Real</th><th>Tab</th><th>%</th>
-              <th>Real</th><th>Tab</th>
-              <th>Real</th><th>Tab</th>
-              <th>Real</th>
-              <th>Real</th>
-              <th>Real</th>
-              <th>Nro</th>
-              <th>%</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for f in datos.serie %}
-            <tr>
-              <td class="col-fija fw-bold">{{ f.sem }}</td>
-              <td class="num">{{ '{:,.2f}'.format(f.peso_real) if f.peso_real is not none else '' }}</td>
-              <td class="num">{{ '{:,.0f}'.format(f.peso_tab).replace(',', '.') if f.peso_tab is not none else '' }}</td>
-              <td class="num">{{ '{:,.2f}'.format(f.pct_peso) if f.pct_peso is not none else '' }}</td>
-              <td class="num">{{ '{:,.2f}'.format(f.ganancia) if f.ganancia is not none else '' }}</td>
-              <td class="num">{{ '{:,.0f}'.format(f.ganancia_tab) if f.ganancia_tab is not none else '' }}</td>
-              <td class="num">{{ '{:,.2f}'.format(f.unif) if f.unif is not none else '' }}</td>
-              <td class="num">{{ '{:,.2f}'.format(f.grad_real) if f.grad_real is not none else '' }}</td>
-              <td class="num">{{ '{:,.0f}'.format(f.grad_tab).replace(',', '.') if f.grad_tab is not none else '' }}</td>
-              <td class="num">{{ '{:,.2f}'.format(f.pct_grad) if f.pct_grad is not none else '' }}</td>
-              <td class="num">{{ '{:,.2f}'.format(f.cons_acum) if f.cons_acum is not none else '' }}</td>
-              <td class="num">{{ '{:,.0f}'.format(f.cons_tab) if f.cons_tab is not none else '' }}</td>
-              <td class="num">{{ '{:,.2f}'.format(f.conv_real) if f.conv_real is not none else '' }}</td>
-              <td class="num">{{ '{:,.2f}'.format(f.conv_tab) if f.conv_tab is not none else '' }}</td>
-              <td class="num">{{ '{:,.0f}'.format(f.mort).replace(',', '.') if f.mort is not none else '' }}</td>
-              <td class="num">{{ '{:,.2f}'.format(f.mort_acum * 100) if f.mort_acum is not none else '' }}</td>
-              <td class="num">{{ '{:,.0f}'.format(f.saldo).replace(',', '.') if f.saldo is not none else '' }}</td>
-              <td class="num">{{ f.nro }}</td>
-              <td class="num">{{ '{:,.2f}'.format(f.viab) if f.viab is not none else '' }}</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+      <div class="series-grid">
+        {% for bloque in datos.series %}
+        <div class="card card-clean serie-card">
+          <div class="card-header">
+            <span>Lote {{ bloque.lote }}</span>
+            <div class="d-flex align-items-center gap-2">
+              <span class="badge-estado badge-neutro">{{ bloque.filas|length }} filas</span>
+              <button type="button" class="btn btn-outline-secondary btn-pantalla" title="Pantalla completa">
+                <i class="fas fa-expand"></i>
+              </button>
+            </div>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-sm table-design serie-tabla mb-0">
+                <thead>
+                  <tr>
+                    <th class="col-sem">Sem</th>
+                    <th>Gr.A.D.</th>
+                    <th>Peso</th>
+                    <th>Uniformidad</th>
+                    <th>% Mort. acumulada</th>
+                    <th>Mortalidad semanal</th>
+                    <th>N.° aves</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for f in bloque.filas %}
+                  <tr>
+                    <td class="col-sem">{{ f.sem }}</td>
+                    <td class="col-num">{{ num(f.grad_real, 1) }}</td>
+                    <td class="col-num">{{ num(f.peso_real, 1) }}</td>
+                    <td class="col-num">{{ num(f.unif, 2) }}</td>
+                    <td class="col-num">{{ num(f.mort_acum, 2) }}</td>
+                    <td class="col-num">{{ num(f.mort_sem, 2) }}</td>
+                    <td class="col-num">{{ num(f.aves, 0) }}</td>
+                  </tr>
+                  {% endfor %}
+                  {% if not bloque.filas %}
+                  <tr>
+                    <td colspan="7" class="text-center text-muted py-3">Este lote no tiene datos de levante.</td>
+                  </tr>
+                  {% endif %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
       </div>
     </div>
 
     <div class="tab-pane fade" id="tab-consumo" role="tabpanel">
-      <div class="contenedor-matriz shadow-sm border rounded">
-        <table class="table table-sm table-bordered mb-0 tabla-compacta" id="tablaConsumoLev">
-          <thead>
-            <tr>
-              <th class="col-fija">SEM</th>
-              {% for l in datos.lotes %}
-              <th class="col-lote">
-                <input type="checkbox" class="chk-incluir form-check-input me-1" data-lote="{{ l }}" checked>
-                {{ l }}
-              </th>
-              {% endfor %}
-            </tr>
-          </thead>
-          <tbody>
-            {% for s in datos.consumo.semanas %}
-            <tr data-semana="{{ s }}">
-              <td class="col-fija fw-bold">{{ s }}</td>
-              {% for l in datos.lotes %}
-              {% set v = datos.consumo.matriz.get(s, {}).get(l) %}
-              <td class="num" data-lote="{{ l }}" data-valor="{{ v if v is not none else '' }}">{{ '{:,.1f}'.format(v) if v is not none else '' }}</td>
-              {% endfor %}
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+      <div class="card card-clean">
+        <div class="card-body p-0">
+          <div class="contenedor-matriz">
+            <table class="table table-sm table-bordered mb-0 tabla-compacta" id="tablaConsumoLev">
+              <thead>
+                <tr>
+                  <th class="col-fija">SEM</th>
+                  {% for l in datos.lotes %}
+                  <th class="col-lote">
+                    <input type="checkbox" class="chk-incluir form-check-input me-1" data-lote="{{ l }}" checked>
+                    {{ l }}
+                  </th>
+                  {% endfor %}
+                </tr>
+              </thead>
+              <tbody>
+                {% for s in datos.consumo.semanas %}
+                <tr data-semana="{{ s }}">
+                  <td class="col-fija fw-bold">{{ s }}</td>
+                  {% for l in datos.lotes %}
+                  {% set v = datos.consumo.matriz.get(s, {}).get(l) %}
+                  <td class="num" data-lote="{{ l }}" data-valor="{{ v if v is not none else '' }}">
+                    {{- '{:,.1f}'.format(v).replace(',', 'X').replace('.', ',').replace('X', '.') if v is not none else '' -}}
+                  </td>
+                  {% endfor %}
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </div>
+
 <script>
   document.addEventListener("DOMContentLoaded", function () {
-    document.getElementById('btnAplicarLotes').addEventListener('click', function () {
-      const sel = [];
-      document.querySelectorAll('.chk-lote-cb:checked').forEach(function (c) { sel.push(c.value); });
-      window.location.href = "{{ url_for('consolidados.datos_levante') }}?lotes=" + encodeURIComponent(sel.join(','));
+    // ===== Selector de lotes =====
+    const chips = Array.from(document.querySelectorAll('.lote-chip'));
+    const contador = document.getElementById('contadorLotes');
+    const aviso = document.getElementById('avisoCambios');
+    const aplicados = new Set({{ datos.lotes | tojson }});
+
+    function seleccionados() {
+      return chips.filter(function (chip) { return chip.querySelector('.chk-lote-cb').checked; });
+    }
+
+    function actualizar() {
+      chips.forEach(function (chip) {
+        const marcado = chip.querySelector('.chk-lote-cb').checked;
+        chip.classList.toggle('activo', marcado);
+      });
+
+      const total = seleccionados().length;
+      contador.textContent = total === 1 ? '1 seleccionado' : total + ' seleccionados';
+
+      // Aviso cuando la selección no coincide con lo que se está mostrando
+      const actuales = seleccionados().map(function (chip) {
+        return chip.querySelector('.chk-lote-cb').value;
+      });
+      const hayCambios = actuales.length !== aplicados.size ||
+        actuales.some(function (n) { return !aplicados.has(n); });
+      aviso.style.display = hayCambios ? '' : 'none';
+    }
+
+    chips.forEach(function (chip) {
+      chip.querySelector('.chk-lote-cb').addEventListener('change', actualizar);
     });
+
+    document.getElementById('btnTodosLotes').addEventListener('click', function () {
+      chips.forEach(function (chip) { chip.querySelector('.chk-lote-cb').checked = true; });
+      actualizar();
+    });
+
+    document.getElementById('btnNingunoLotes').addEventListener('click', function () {
+      chips.forEach(function (chip) { chip.querySelector('.chk-lote-cb').checked = false; });
+      actualizar();
+    });
+
+    document.getElementById('btnAplicarLotes').addEventListener('click', function () {
+      const sel = seleccionados().map(function (chip) {
+        return chip.querySelector('.chk-lote-cb').value;
+      });
+      window.location.href = "{{ url_for('consolidados.datos_levante') }}?lotes=" +
+        encodeURIComponent(sel.join(','));
+    });
+
+    actualizar();
+
+    // ===== Pantalla completa por tarjeta =====
+    document.querySelectorAll('.btn-pantalla').forEach(function (boton) {
+      boton.addEventListener('click', function () {
+        const tarjeta = boton.closest('.serie-card');
+        if (!document.fullscreenElement) {
+          if (tarjeta.requestFullscreen) tarjeta.requestFullscreen();
+          else if (tarjeta.webkitRequestFullscreen) tarjeta.webkitRequestFullscreen();
+        } else if (document.exitFullscreen) {
+          document.exitFullscreen();
+        }
+      });
+    });
+
+    document.addEventListener('fullscreenchange', function () {
+      const pantalla = !!document.fullscreenElement;
+      document.querySelectorAll('.btn-pantalla i').forEach(function (icono) {
+        icono.classList.toggle('fa-expand', !pantalla);
+        icono.classList.toggle('fa-compress', pantalla);
+      });
+    });
+
+    // ===== Matriz de consumo =====
     const tabla = document.getElementById('tablaConsumoLev');
     if (tabla) {
       tabla.querySelectorAll('.chk-incluir').forEach(function (chk) {

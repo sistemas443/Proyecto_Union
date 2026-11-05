@@ -5,7 +5,7 @@ from routes.routes import login_requerido
 from models.lotes.services import get_todos_los_lotes
 from models.planta_alimentos.maestros import MateriaPrima, CatalogoAlimento, Empresa
 from models.planta_alimentos.transacciones import RegistroProduccion
-from models.base import get_db_connection
+from models.base import get_db_connection, traducir_error
 from flask import render_template, request, redirect, url_for, flash, jsonify
 
 
@@ -140,7 +140,7 @@ def editar_receta(item_id, lote_id):
                         flash('Error al guardar la producción.', 'danger')
                 except Exception as e:
                     print(f"Error al registrar producción/kárdex: {e}")
-                    flash(f'Error al guardar la producción: {str(e)}', 'danger')
+                    flash(f'Error al guardar la producción: {traducir_error(str(e))}', 'danger')
             else:
                 flash('Por favor ingrese una fecha válida y una cantidad de toneladas mayor a 0.', 'warning')
 
@@ -390,7 +390,7 @@ def registro_baches():
             
         except Exception as e:
             print(f"Error al descontar Kárdex: {e}")
-            flash(f'Se guardó la producción pero hubo un error: {str(e)}', 'danger')
+            flash(f'Se guardó la producción pero hubo un error: {traducir_error(str(e))}', 'danger')
             
         return redirect(url_for('main.registro_baches'))
         
@@ -421,7 +421,7 @@ def realizar_cierre_mes():
     if exito:
         flash(f'¡Éxito! {mensaje}', 'success')
     else:
-        flash(f'Error al procesar el cierre de mes: {mensaje}', 'danger')
+        flash(f'Error al procesar el cierre de mes: {traducir_error(str(mensaje))}', 'danger')
         
     return redirect(url_for('planta_alimentos.ver_consolidado', mes=mes_origen, anio=anio_origen))
 
@@ -436,7 +436,7 @@ def reabrir_mes():
         if exito:
             flash(mensaje, 'info')
         else:
-            flash(f'Error al reabrir el mes: {mensaje}', 'danger')
+            flash(f'Error al reabrir el mes: {traducir_error(str(mensaje))}', 'danger')
             
     return redirect(url_for('planta_alimentos.resumen_inventario', mes=mes, anio=anio))
 

@@ -710,7 +710,8 @@ def procesar_excel_primera_semana(archivo_excel, lote_nombre, usuario_id=None, u
                 valores.extend([lote_nombre, val_semana])
                 query = f"UPDATE primera_semana SET {', '.join(campos_a_actualizar)} WHERE lote = %s AND semana = %s"
                 cur.execute(query, valores)
-                filas_actualizadas += 1
+                # rowcount: solo cuenta los días que de verdad se actualizaron
+                filas_actualizadas += cur.rowcount
 
         # 7. Disparar el recálculo matemático
         id_lote = cabecera.get('id')

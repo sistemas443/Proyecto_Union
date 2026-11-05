@@ -32,8 +32,6 @@ BOTONES = [
     # Fila 4
     {'titulo': 'HUEVOS AVE ALOJADA', 'icono': '🥚', 'hoja': 'H12', 'endpoint': 'consolidados.huevos_ave_alojada'},
     {'titulo': 'GRAMOS AVES', 'icono': '🌾', 'hoja': 'H13', 'endpoint': 'consolidados.gramos_aves'},
-    {'titulo': 'ACUMULADOS CLASIFICADORA', 'icono': '🗂️', 'hoja': 'ACUM. CLASIF.', 'endpoint': 'consolidados.acumulados_clasificadora'},
-    {'titulo': 'ROTURA DE HUEVO', 'icono': '💔', 'hoja': 'ROTURA', 'endpoint': 'consolidados.rotura_huevo'},
     {'titulo': 'DATOS DE LEVANTE', 'icono': '📋', 'hoja': 'H19', 'endpoint': 'consolidados.datos_levante'},
     {'titulo': 'CONSOLIDADO CONSUMO DE AGUA', 'icono': '💧', 'hoja': 'H7', 'endpoint': 'consolidados.consumo_agua'},
 ]

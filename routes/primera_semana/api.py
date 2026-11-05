@@ -1,6 +1,7 @@
 from flask import request, jsonify, session
 from routes.primera_semana.vistas import primera_semana_bp
 from routes.routes import login_requerido, editor_requerido
+from models.base import traducir_error
 from models.primera_semana.services import update_primera_semana_field
 
 
@@ -33,7 +34,7 @@ def actualizar_primera_semana():
                 usuario_id=session.get('user_id'),
                 usuario_nombre=session.get('user_nombre', 'Desconocido'),
             )
-            return jsonify({'status': 'error', 'msg': msg}), 400
+            return jsonify({'status': 'error', 'msg': traducir_error(msg)}), 400
     except Exception as e:
         print(f"[ERROR CRÍTICO EN API PRIMERA SEMANA]: {e}")
         from models.auditoria.services import registrar_error
