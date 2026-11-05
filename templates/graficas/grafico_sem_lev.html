@@ -26,18 +26,6 @@
     flex: 1 1 auto;
     padding: 10px;
   }
-  /* Sidebar compacto SOLO en vistas de gráficos */
-  .sidebar-rapido { width: 40px !important; }
-  .sidebar-rapido:hover { width: 170px !important; }
-  .sidebar-rapido i { font-size: 1.25rem !important; min-width: 20px !important; }
-  .sidebar-rapido span { font-size: 0.7rem !important; margin-left: 8px !important; white-space: nowrap !important; }
-  .sidebar-rapido a { padding: 8px 10px !important; }
-  .sidebar-rapido { top: 47px !important; max-height: calc(100vh - 47px) !important; }
-  body.sidebar-activa main.container-fluid { padding-left: 55px !important; }
-  @media (max-width: 991.98px) {
-    .sidebar-rapido.expandido-tactil { width: 170px !important; }
-    .sidebar-rapido.expandido-tactil span { opacity: 1 !important; }
-  }
   /* Franja de fotos del lote (siempre visible, no colapsable) */
   .franja-lote { flex-shrink: 0; }
   .foto-lote { width: 40px; height: 40px; object-fit: cover; border-radius: 50%; border: 2px solid #dee2e6; }
@@ -386,24 +374,6 @@
             });
             observer.observe(document.body);
         }
-    });
-    // Expansión táctil del sidebar: primer toque expande, segundo navega
-    document.addEventListener("DOMContentLoaded", function () {
-        const sb = document.querySelector('.sidebar-rapido');
-        if (!sb) return;
-        sb.addEventListener('click', function (e) {
-            if (window.innerWidth >= 992) return;
-            if (!sb.classList.contains('expandido-tactil')) {
-                e.preventDefault();
-                e.stopPropagation();
-                sb.classList.add('expandido-tactil');
-            }
-        });
-        document.addEventListener('click', function (e) {
-            if (window.innerWidth < 992 && !e.target.closest('.sidebar-rapido')) {
-                sb.classList.remove('expandido-tactil');
-            }
-        });
     });
 </script>
 {% endblock %}
