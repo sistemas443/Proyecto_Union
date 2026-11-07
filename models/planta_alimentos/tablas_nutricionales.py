@@ -537,7 +537,7 @@ class TablaNutricional:
                            c.nutricionista, c.nutricionista_prod,
                            c.tipo_galpon, c.variedad, c.marca_galpon,
                            c.fecha_recepcion, c.fecha_encasetamiento,
-                           c.no_aves_encasetadas, c.cliente
+                           c.no_aves_encasetadas
                     FROM cabecera_lotes c
                     LEFT JOIN empresas e ON e.id = c.empresa_id
                     WHERE c.lote = %s
