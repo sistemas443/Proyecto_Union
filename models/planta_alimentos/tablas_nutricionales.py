@@ -89,7 +89,7 @@ GRAFICOS = [
     {'codigo': 'valina', 'titulo': 'Valina', 'nutriente': 'valina', 'unidad': 'mg'},
     {'codigo': 'calcio', 'titulo': 'Calcio', 'nutriente': 'calcio', 'unidad': 'g'},
     {'codigo': 'rel_ca_p', 'titulo': 'Relación Ca / P', 'nutriente': 'rel_ca_p', 'unidad': ''},
-    {'codigo': 'fosforo', 'titulo': 'Fósforo disponible', 'nutriente': 'fosforo', 'unidad': 'mg'},
+    {'codigo': 'fosforo', 'titulo': 'Fósforo disponible', 'nutriente': 'fosforo', 'unidad': 'g'},
     {'codigo': 'sodio', 'titulo': 'Sodio', 'nutriente': 'sodio', 'unidad': 'g'},
     {'codigo': 'energia', 'titulo': 'Energía', 'nutriente': 'energia', 'unidad': 'Kcal'},
 ]
@@ -98,6 +98,10 @@ GRAFICOS = [
 def _serie_limpia(valores):
     """En las graficas, un 0 se trata como dato faltante para no dibujar caidas."""
     return [None if (v is None or v == 0) else v for v in valores]
+
+
+def _limpio(valor):
+    return None if (valor is None or valor == 0) else valor
 
 
 def _promedio(valores):
@@ -413,6 +417,9 @@ class TablaNutricional:
         """Series y KPIs del grafico seleccionado."""
         definicion = next((g for g in GRAFICOS if g['codigo'] == codigo), GRAFICOS[0])
         semanas = datos.get('semanas') or []
+        tope = datos.get('semana_max')
+        if tope:
+            semanas = [s for s in semanas if s['semana'] <= tope]
         x = [s['semana'] for s in semanas]
         serie_actual = datos.get('semana_actual')
 
@@ -440,37 +447,57 @@ class TablaNutricional:
                     'y2_titulo': 'Consumo (g/ave/día)', 'nota': 'Doble eje: peso a la izquierda, consumo a la derecha.'}
 
         if definicion.get('tipo') == 'capr':
-            calcio_guia, calcio_real, fosf_guia, fosf_real, rel_guia, rel_real = [], [], [], [], [], []
+            calcio_guia, calcio_real = [], []
+            fosf_guia, fosf_real = [], []
+            rel_guia, rel_real = [], []
+            gramos_ave, consumo1 = [], []
             for s in semanas:
                 nodos = s.get('nutrientes') or {}
                 calcio = nodos.get('calcio') or {}
                 fosforo = nodos.get('fosforo') or {}
                 relacion = nodos.get('rel_ca_p') or {}
-                calcio_guia.append(None if calcio.get('tabla') == 0 else calcio.get('tabla'))
-                calcio_real.append(None if calcio.get('real') == 0 else calcio.get('real'))
-                fosf_guia.append(None if fosforo.get('tabla') == 0 else fosforo.get('tabla'))
-                fosf_real.append(None if fosforo.get('real') == 0 else fosforo.get('real'))
-                rel_guia.append(None if relacion.get('tabla') == 0 else relacion.get('tabla'))
-                rel_real.append(None if relacion.get('real') == 0 else relacion.get('real'))
+
+                calcio_guia.append(_limpio(_num(calcio.get('tabla'))))
+                calcio_real.append(_limpio(_num(calcio.get('real'))))
+                rel_guia.append(_limpio(_num(relacion.get('tabla'))))
+                rel_real.append(_limpio(_num(relacion.get('real'))))
+
+                # El Excel grafica el fosforo x10 para que se vea en el eje 0-20
+                fosf_tabla = _num(fosforo.get('tabla'))
+                fosf_real_val = _num(fosforo.get('real'))
+                fosf_guia.append(fosf_tabla * 10 if fosf_tabla else None)
+                fosf_real.append(fosf_real_val * 10 if fosf_real_val else None)
+
+                # Consumo: eje derecho, igual que el libro de Excel
+                extras = s.get('extras') or {}
+                gramos = _num(extras.get('gramos'))
+                if gramos is None:
+                    gramos = _num(s.get('consumo'))
+                gramos_ave.append(_limpio(gramos))
+                consumo1.append(_limpio(_num(extras.get('consumo1'))))
 
             series = [
+                {'nombre': 'Relación tabla', 'y': rel_guia, 'color': '#c9a227', 'dash': 'dot'},
+                {'nombre': 'Relación real', 'y': rel_real, 'color': '#97271C', 'ancho': 2.4},
                 {'nombre': 'Calcio real', 'y': calcio_real, 'color': '#2c3e50', 'ancho': 2.4},
-                {'nombre': 'Calcio tabla', 'y': calcio_guia, 'color': '#9aa3b1', 'dash': 'dot'},
-                {'nombre': 'Fósforo real', 'y': fosf_real, 'color': '#2f6b3a', 'ancho': 2.4},
-                {'nombre': 'Fósforo tabla', 'y': fosf_guia, 'color': '#8fb8d9', 'dash': 'dot'},
-                {'nombre': 'Relación real', 'y': rel_real, 'color': '#97271C', 'eje': 'y2', 'ancho': 2.4},
-                {'nombre': 'Relación tabla', 'y': rel_guia, 'color': '#c9a227', 'dash': 'dot', 'eje': 'y2'},
+                {'nombre': 'Calcio tabla', 'y': calcio_guia, 'color': '#8fb8d9', 'dash': 'dot'},
+                {'nombre': 'Fósforo real (×10)', 'y': fosf_real, 'color': '#2f6b3a', 'ancho': 2.4},
+                {'nombre': 'Fósforo tabla (×10)', 'y': fosf_guia, 'color': '#93c9a8', 'dash': 'dot'},
+                {'nombre': 'Gramos ave', 'y': gramos_ave, 'color': '#1f4e79', 'eje': 'y2', 'ancho': 2.0},
+                {'nombre': 'Consumo 1', 'y': consumo1, 'color': '#4a90c2', 'eje': 'y2', 'ancho': 2.0},
             ]
             kpis = [
                 {'label': 'Calcio real (último)', 'valor': _ultimo(calcio_real), 'detalle': 'g/ave/día'},
-                {'label': 'Fósforo real (último)', 'valor': _ultimo(fosf_real), 'detalle': 'mg/ave/día'},
+                {'label': 'Fósforo real (último)', 'valor': _ultimo(fosf_real) / 10 if _ultimo(fosf_real) else None, 'detalle': 'g/ave/día'},
                 {'label': 'Relación Ca/P actual', 'valor': _ultimo(rel_real), 'detalle': 'Ca real / P real'},
             ]
             return {'codigo': definicion['codigo'], 'titulo': definicion['titulo'],
-                    'unidad': 'Calcio / Fósforo', 'dual': True, 'x': x, 'series': series,
+                    'unidad': 'gramos/ave/día', 'dual': True, 'x': x, 'series': series,
                     'kpis': kpis, 'semana_actual': serie_actual,
-                    'y2_titulo': 'Relación Ca / P',
-                    'nota': 'Calcio y fósforo a la izquierda; relación Ca/P a la derecha.'}
+                    'y2_titulo': 'Consumo (g/ave/día)',
+                    'y_rango': [0, 20], 'y_dtick': 2.2, 'y_formato': '.2f',
+                    'y2_formato': '.0f',
+                    'nota': 'Eje izquierdo: calcio, fósforo (×10) y relación Ca/P (0 a 20). Eje derecho: consumo.'}
 
         clave = definicion['nutriente']
         guia, pro, real, dif = [], [], [], []
@@ -709,9 +736,17 @@ class TablaNutricional:
         for fila in lista:
             fila['es_actual'] = (fila['semana'] == semana_actual)
 
+        # Ultima semana con informacion: nutricion importada o produccion
+        con_datos = [
+            f['semana'] for f in lista
+            if f.get('nutrientes')
+            or any(f.get(k) not in (None, 0) for k in ('consumo', 'peso', 'conversion', 'produccion'))
+        ]
+        semana_max = max(con_datos) if con_datos else (lista[-1]['semana'] if lista else None)
+
         meta['nutricionista_visible'] = meta.get('nutricionista_prod') or meta.get('nutricionista') or ''
         return {'lote': lote, 'meta': meta, 'semanas': lista,
-                'semana_actual': semana_actual, 'hoy': hoy}
+                'semana_actual': semana_actual, 'semana_max': semana_max, 'hoy': hoy}
 
     # ------------------------------------------------------------------
     # Importacion del Excel

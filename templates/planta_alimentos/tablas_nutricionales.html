@@ -413,21 +413,30 @@
               marker: { size: 3 }
             };
           });
+          var extraEje = D.dual ? 55 : 0;
+          var margenEtiquetas = 60 + extraEje;
+          D.series.forEach(function (s) {
+            margenEtiquetas = Math.max(margenEtiquetas, Math.min(300, String(s.nombre).length * 5.4 + 72 + extraEje));
+          });
           const layout = {
-            margin: { l: 55, r: 55, t: 18, b: 45 },
+            margin: { l: 55, r: margenEtiquetas, t: 18, b: 45 },
             paper_bgcolor: 'white',
             plot_bgcolor: 'white',
             font: { family: 'Segoe UI', size: 11, color: '#4a5462' },
-            xaxis: { title: 'Semana de vida', dtick: 5, gridcolor: '#eef1f5' },
+            xaxis: { title: 'Semana', dtick: 5, gridcolor: '#eef1f5' },
             yaxis: { title: D.unidad, gridcolor: '#eef1f5' },
             legend: { orientation: 'h', y: 1.12 },
             hovermode: 'x unified'
           };
+          if (D.y_rango) layout.yaxis.range = D.y_rango;
+          if (D.y_dtick) layout.yaxis.dtick = D.y_dtick;
+          if (D.y_formato) layout.yaxis.tickformat = D.y_formato;
           if (D.x && D.x.length) {
             layout.xaxis.range = [0.5, Math.max.apply(null, D.x) + 0.5];
           }
           if (D.dual) {
             layout.yaxis2 = { title: D.y2_titulo || 'Consumo (g/ave/día)', overlaying: 'y', side: 'right', gridcolor: '#f7f9fc' };
+            if (D.y2_formato) layout.yaxis2.tickformat = D.y2_formato;
           }
           if (D.semana_actual) {
             layout.shapes = [{
@@ -495,19 +504,15 @@
 
             var anotaciones = [];
             var guias = [];
-            var ultimaX = -Infinity;
-            var anchoMax = 0;
 
             items.forEach(function (it) {
               var color = it.serie.color || '#4a5462';
               var textoClaro = _luminancia(color) > 0.62;
               var yEtiqueta = it.eje.p2l(it.py);
-              var ancho = String(it.serie.nombre).length * 5.4 + 16;
-              anchoMax = Math.max(anchoMax, ancho);
-              ultimaX = Math.max(ultimaX, it.x);
+              var xPunto = fl.xaxis.l2p(it.x) / fl._size.w;
 
               anotaciones.push({
-                xref: 'x', x: it.x, xanchor: 'left', xshift: 7,
+                xref: 'paper', x: 1.0, xanchor: 'left', xshift: (D.dual ? 85 : 42),
                 yref: it.yref, y: yEtiqueta, yanchor: 'middle',
                 text: it.serie.nombre,
                 showarrow: false,
@@ -519,10 +524,10 @@
                 opacity: 0.97
               });
 
-              if (Math.abs(it.py - it.eje.l2p(it.y)) > 4) {
+              if (Math.abs(it.py - it.eje.l2p(it.y)) > 4 && xPunto < 0.999) {
                 guias.push({
-                  type: 'line', xref: 'x', yref: it.yref,
-                  x0: it.x, x1: it.x,
+                  type: 'line', xref: 'paper', yref: it.yref,
+                  x0: xPunto, x1: 1.0,
                   y0: it.y, y1: yEtiqueta,
                   line: { color: color, width: 1, dash: 'dot' },
                   opacity: 0.8
@@ -540,23 +545,10 @@
               });
             }
 
-            var cambios = {
+            Plotly.relayout(gd, {
               annotations: anotaciones,
               shapes: base.concat(guias)
-            };
-
-            // Si la ultima etiqueta no cabe a la derecha, ampliar el eje X
-            if (!gd._tnRangoOriginal) {
-              gd._tnRangoOriginal = (fl.xaxis.range || [0, 1]).slice();
-            }
-            var rangoBase = gd._tnRangoOriginal;
-            var pxSemana = fl._size.w / Math.max(0.001, rangoBase[1] - rangoBase[0]);
-            var nuevoMax = Math.max(rangoBase[1], ultimaX + ((anchoMax + 12) / pxSemana));
-            if (Math.abs(nuevoMax - rangoBase[1]) > 0.05) {
-              cambios['xaxis.range'] = [rangoBase[0], nuevoMax];
-            }
-
-            Plotly.relayout(gd, cambios);
+            });
           }
 
           function _observarLeyenda(gd, D) {
