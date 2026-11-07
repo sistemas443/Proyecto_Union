@@ -18,7 +18,22 @@
   .tn-rail {
     flex: 0 0 250px; background: #fff; border: 1px solid var(--border);
     border-radius: 12px; padding: .45rem; position: sticky; top: .8rem;
+    transition: flex-basis .18s ease, padding .18s ease;
   }
+  .tn-rail-toggle {
+    width: 100%; display: flex; align-items: center; justify-content: center; gap: .4rem;
+    border: 1px solid var(--border); background: #fbfcfd; color: var(--text-secondary);
+    border-radius: 8px; padding: .32rem .4rem; font-size: .7rem; font-weight: 700;
+    cursor: pointer; margin-bottom: .25rem;
+  }
+  .tn-rail-toggle:hover { background: var(--surface-alt); }
+  .tn-layout.rail-min .tn-rail { flex: 0 0 38px; padding: .3rem .25rem; }
+  .tn-layout.rail-min .tn-rail .tn-h,
+  .tn-layout.rail-min .tn-rail a,
+  .tn-layout.rail-min .tn-rail-txt,
+  .tn-layout.rail-min .tn-rail .tn-badge-fase { display: none; }
+  .tn-layout.rail-min .tn-rail-toggle { width: 100%; padding: .45rem 0; }
+  .tn-layout.rail-min .tn-rail-toggle i { font-size: .9rem; }
   .tn-rail .tn-h {
     font-size: .6rem; font-weight: 800; letter-spacing: .09em;
     color: #8a93a1; padding: .55rem .6rem .25rem;
@@ -349,18 +364,32 @@
     </span>
   </div>
 
-  <div class="tn-layout">
+  <div class="tn-layout" id="tnLayout">
+    <script>
+      (function () {
+        try {
+          if (localStorage.getItem('tn_rail_min') === '1') {
+            document.getElementById('tnLayout').classList.add('rail-min');
+          }
+        } catch (e) {}
+      })();
+    </script>
     <aside class="tn-rail">
+      <button type="button" class="tn-rail-toggle" id="tnRailToggle"
+        title="Comprimir menú" aria-label="Comprimir menú" aria-expanded="true">
+        <i class="fas fa-angles-left" aria-hidden="true"></i>
+        <span class="tn-rail-txt">Comprimir</span>
+      </button>
       <div class="tn-h">DATOS</div>
-      <a class="{% if vista == 'datos' %}act{% endif %}"
+      <a class="{% if vista == 'datos' %}act{% endif %}" title="Tabla nutricional"
         href="{{ url_for('tablas_nutricionales.vista', lote=lote, vista='datos') }}">
-        <i class="fas fa-table-cells"></i> Tabla nutricional
+        <i class="fas fa-table-cells"></i> <span class="tn-rail-txt">Tabla nutricional</span>
       </a>
       <div class="tn-h">ANÁLISIS</div>
       {% for g in graficos %}
-      <a class="{% if vista == 'analisis' and grafico == g.codigo %}act{% endif %}"
+      <a class="{% if vista == 'analisis' and grafico == g.codigo %}act{% endif %}" title="{{ g.titulo }}"
         href="{{ url_for('tablas_nutricionales.vista', lote=lote, vista='analisis', grafico=g.codigo) }}">
-        <i class="fas fa-chart-line"></i> {{ g.titulo }}
+        <i class="fas fa-chart-line"></i> <span class="tn-rail-txt">{{ g.titulo }}</span>
       </a>
       {% endfor %}
     </aside>
@@ -682,6 +711,12 @@
               _etiquetasFin(gd, D);
               _observarLeyenda(gd, D);
               _pantallaCompleta(gd, D);
+              window.addEventListener('tn:layout', function () {
+                setTimeout(function () {
+                  Plotly.Plots.resize(gd);
+                  _etiquetasFin(gd, D);
+                }, 240);
+              });
             });
         })();
       </script>
@@ -900,6 +935,36 @@
   </div>
   {% endif %}
 </div>
+
+<script>
+  (function () {
+    var layout = document.getElementById('tnLayout');
+    var boton = document.getElementById('tnRailToggle');
+    if (!layout || !boton) return;
+    var icono = boton.querySelector('i');
+    var texto = boton.querySelector('span');
+
+    function pintar(compacto) {
+      layout.classList.toggle('rail-min', compacto);
+      boton.setAttribute('aria-expanded', compacto ? 'false' : 'true');
+      boton.title = compacto ? 'Expandir menú' : 'Comprimir menú';
+      if (icono) icono.className = 'fas ' + (compacto ? 'fa-angles-right' : 'fa-angles-left');
+      if (texto) texto.textContent = compacto ? 'Expandir' : 'Comprimir';
+      try {
+        localStorage.setItem('tn_rail_min', compacto ? '1' : '0');
+      } catch (e) {}
+    }
+
+    boton.addEventListener('click', function () {
+      pintar(!layout.classList.contains('rail-min'));
+      try {
+        window.dispatchEvent(new Event('tn:layout'));
+      } catch (e) {}
+    });
+
+    pintar(layout.classList.contains('rail-min'));
+  })();
+</script>
 
 <!-- Modal importar -->
 <div class="modal fade" id="modalImportarTN" tabindex="-1" aria-hidden="true">
