@@ -139,6 +139,11 @@
   .tn-table tbody tr.tn-etapa-fin td {
     border-bottom: 2px solid var(--stage-borde, #b9c6d6);
   }
+  /* La celda combinada de ETAPA vive en la primera fila del bloque:
+     su borde inferior cierra la etapa en toda la columna */
+  .tn-table td.tn-etapa-cell-fin {
+    border-bottom: 2px solid var(--stage-borde, #b9c6d6);
+  }
   .tn-table tbody tr.tn-stage:first-child td {
     border-top: 2px solid var(--stage-borde, #b9c6d6);
   }
@@ -438,7 +443,7 @@
                 <td class="tn-sem">{{ s.semana }}{% if s.es_actual %}<span class="tn-actual-dot" title="Semana vigente"></span>{% endif %}</td>
                 <td class="tn-txt">{{ s.fecha.strftime('%d/%m/%Y') if s.fecha else '—' }}</td>
                 {% if s.etapa_rowspan %}
-                <td class="tn-txt tn-etapa-cell" rowspan="{{ s.etapa_rowspan }}">
+                <td class="tn-txt tn-etapa-cell{% if s.etapa_cierra %} tn-etapa-cell-fin{% endif %}" rowspan="{{ s.etapa_rowspan }}">
                   <span class="tn-etapa">{{ s.etapa }}</span>
                 </td>
                 {% endif %}

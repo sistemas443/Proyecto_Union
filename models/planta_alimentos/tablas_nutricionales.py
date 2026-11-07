@@ -690,6 +690,7 @@ class TablaNutricional:
                 j += 1
             lista[i]['etapa_rowspan'] = j - i + 1
             lista[i]['inicio_etapa'] = True
+            lista[i]['etapa_cierra'] = True
             lista[j]['fin_etapa'] = True
             clase = ETAPA_CLASES.get(lista[i]['etapa'], 'pro')
             for k in range(i, j + 1):
