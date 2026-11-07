@@ -1,13 +1,30 @@
+import time
+
 import psycopg2
 import psycopg2.extras
 from models.base import get_db_connection
 
 
+# Cache de proceso para el catalogo de materias primas.
+# Se invalida en cada alta/edicion/borrado y en los cambios de precio.
+_CACHE_MP = {'filas': None, 'expira': 0.0}
+_TTL_MP = 60.0
+
+
 class MateriaPrima:
+
+    @staticmethod
+    def invalidar_cache():
+        _CACHE_MP['filas'] = None
+        _CACHE_MP['expira'] = 0.0
 
     @staticmethod
     def get_all():
         """Obtiene las materias primas calculando las columnas financieras del Excel."""
+        ahora = time.monotonic()
+        if _CACHE_MP['filas'] is not None and ahora < _CACHE_MP['expira']:
+            return list(_CACHE_MP['filas'])
+
         conn = get_db_connection()
         try:
             with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
@@ -32,7 +49,10 @@ class MateriaPrima:
                     FROM materias_primas
                     ORDER BY nombre ASC;
                 """)
-                return cur.fetchall()
+                filas = cur.fetchall()
+                _CACHE_MP['filas'] = filas
+                _CACHE_MP['expira'] = ahora + _TTL_MP
+                return list(filas)
         finally:
             conn.close()
 
@@ -46,6 +66,7 @@ class MateriaPrima:
                     VALUES (%s, %s, %s, %s, %s, %s, NOW());
                 """, (nombre, precio_actual_kg, proveedor, iva, flete, es_maquila))
                 conn.commit()
+                MateriaPrima.invalidar_cache()
         finally:
             conn.close()
 
@@ -66,6 +87,7 @@ class MateriaPrima:
                     WHERE id = %s;
                 """, (nombre, precio_actual_kg, proveedor, iva, flete, es_maquila, id_mp))
                 conn.commit()
+                MateriaPrima.invalidar_cache()
         finally:
             conn.close()
 
@@ -76,6 +98,7 @@ class MateriaPrima:
             with conn.cursor() as cur:
                 cur.execute("DELETE FROM materias_primas WHERE id = %s;", (id_mp,))
                 conn.commit()
+                MateriaPrima.invalidar_cache()
         finally:
             conn.close()
 
