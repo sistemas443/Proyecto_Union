@@ -39,7 +39,7 @@ DB_POOL_MIN = int(os.environ.get('DB_POOL_MIN', '1'))
 DB_POOL_MAX = int(os.environ.get('DB_POOL_MAX', '10'))
 
 # Segundos de inactividad tras los cuales se comprueba que la conexion sigue viva
-DB_POOL_VALIDAR = float(os.environ.get('DB_POOL_VALIDAR_SEGUNDOS', '30'))
+DB_POOL_VALIDAR = float(os.environ.get('DB_POOL_VALIDAR_SEGUNDOS', '120'))
 
 PARAMETROS_CONEXION = dict(
     host=Config.DB_HOST,
@@ -175,13 +175,22 @@ class PoolConexiones:
                     pass
                 continue
 
-            inactiva = time.monotonic() - self._ultimo_uso.pop(id(conn), 0.0)
+            ahora = time.monotonic()
+            ultimo = self._ultimo_uso.get(id(conn))
+            if ultimo is None:
+                # Conexion nueva: no necesita ping; se registra desde ya.
+                self._ultimo_uso[id(conn)] = ahora
+                ultimo = ahora
+
+            inactiva = ahora - ultimo
             if inactiva > DB_POOL_VALIDAR:
                 try:
                     with conn.cursor() as cur:
                         cur.execute('SELECT 1')
                     conn.rollback()
+                    self._ultimo_uso[id(conn)] = time.monotonic()
                 except Exception:
+                    self._ultimo_uso.pop(id(conn), None)
                     try:
                         pool.putconn(conn, close=True)
                     except Exception:

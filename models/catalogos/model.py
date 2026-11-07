@@ -37,19 +37,30 @@ def listar(tabla: str, cur=None) -> list:
         conn.close()
 
 
-def buscar_por_nombre(tabla: str, nombre: str):
-    """Devuelve {id, nombre, foto_data, foto, activo} si existe (activo o no), o None."""
-    conn = get_db_connection()
-    cur = conn.cursor()
-    try:
-        cur.execute(
-            f"SELECT id, nombre, foto_data, foto, activo FROM {tabla} WHERE nombre = %s",
-            (nombre,))
+def buscar_por_nombre(tabla: str, nombre: str, cur=None, ligero: bool = False):
+    """Devuelve {id, nombre, foto_data, foto, activo} si existe (activo o no), o None.
+
+    ``cur`` permite reutilizar la conexión del llamador.
+    ``ligero`` evita transferir el BYTEA: devuelve True/False en ``foto_data``.
+    """
+    campo_foto = "(foto_data IS NOT NULL) AS foto_data" if ligero else "foto_data"
+    consulta = f"SELECT id, nombre, {campo_foto}, foto, activo FROM {tabla} WHERE nombre = %s"
+
+    if cur is not None:
+        cur.execute(consulta, (nombre,))
         r = cur.fetchone()
         return ({'id': r[0], 'nombre': r[1], 'foto_data': r[2], 'foto': r[3], 'activo': r[4]}
                 if r else None)
+
+    conn = get_db_connection()
+    cur_bd = conn.cursor()
+    try:
+        cur_bd.execute(consulta, (nombre,))
+        r = cur_bd.fetchone()
+        return ({'id': r[0], 'nombre': r[1], 'foto_data': r[2], 'foto': r[3], 'activo': r[4]}
+                if r else None)
     finally:
-        cur.close()
+        cur_bd.close()
         conn.close()
 
 

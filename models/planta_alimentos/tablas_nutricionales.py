@@ -280,7 +280,7 @@ class TablaNutricional:
             if not nombre:
                 return None
             for tipo in tipos:
-                _, url = catalogos_services.foto_por_nombre(tipo, nombre)
+                _, url = catalogos_services.foto_por_nombre(tipo, nombre, cur=cur)
                 if url and 'placeholder-catalogo' not in url:
                     return url
             return None
