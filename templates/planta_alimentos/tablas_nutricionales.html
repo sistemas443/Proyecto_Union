@@ -71,6 +71,8 @@
     padding: .42rem .38rem; text-align: center; white-space: nowrap;
   }
   .tn-table thead tr.grupo th { background: #2c3e50; font-size: .56rem; letter-spacing: .07em; }
+  .tn-table thead tr.grupo th { top: 0; z-index: 4; }
+  .tn-table thead tr:not(.grupo) th { top: var(--tn-head-grupo, 34px); z-index: 3; }
   .tn-table thead th.tn-sem { z-index: 5; left: 0; }
   .tn-table td {
     padding: .3rem .38rem; border-bottom: 1px solid #edf0f4;
@@ -248,6 +250,16 @@
   .tn-card:fullscreen .tn-nota,
   .tn-card:-webkit-full-screen .tn-nota,
   .tn-card.tn-fs-fallback .tn-nota { flex: 0 0 auto; }
+
+  /* Pantalla completa de la tabla nutricional */
+  .tn-card.tn-card-tabla:fullscreen,
+  .tn-card.tn-card-tabla:-webkit-full-screen,
+  .tn-card.tn-card-tabla.tn-fs-fallback { overflow: hidden; }
+  .tn-card.tn-card-tabla:fullscreen .tn-scroll,
+  .tn-card.tn-card-tabla:-webkit-full-screen .tn-scroll,
+  .tn-card.tn-card-tabla.tn-fs-fallback .tn-scroll {
+    flex: 1 1 auto; max-height: none; min-height: 0;
+  }
 
   /* Respaldo cuando el navegador no permite la API de pantalla completa */
   .tn-card.tn-fs-fallback {
@@ -722,17 +734,20 @@
       </script>
 
       {% else %}
-      <div class="tn-card">
+      <div class="tn-card tn-card-tabla" id="tnTablaCard">
         <div class="tn-card-head">
           <div>
             <div class="t">Hy-Line Brown · Lote {{ lote }}</div>
             <div class="s">Consumo, peso, conversión y aportes por nutriente (tabla vs. real)</div>
           </div>
-          <div class="s">
+          <div class="tn-chart-tools">
             {% if puede_editar %}<span class="tn-leyenda-edicion">Haga clic en un valor para editarlo</span>{% endif %}
             {% if datos.semana_actual %}
             <span class="tn-leyenda"><span class="tn-actual-dot"></span> Semana vigente: {{ datos.semana_actual }}</span>
             {% endif %}
+            <button type="button" class="tn-fs-btn" id="tnTablaFsBtn" title="Ver en pantalla completa">
+              <i class="fas fa-expand"></i> <span>Pantalla completa</span>
+            </button>
           </div>
         </div>
 
@@ -963,6 +978,92 @@
     });
 
     pintar(layout.classList.contains('rail-min'));
+  })();
+</script>
+
+<script>
+  (function () {
+    var tabla = document.querySelector('.tn-table');
+    if (!tabla) return;
+    var fila = tabla.querySelector('thead tr.grupo');
+    if (!fila) return;
+    function medir() {
+      var alto = Math.round(fila.getBoundingClientRect().height);
+      if (alto > 0) tabla.style.setProperty('--tn-head-grupo', alto + 'px');
+    }
+    medir();
+    window.addEventListener('resize', medir);
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(medir);
+    }
+  })();
+</script>
+
+<script>
+  (function () {
+    var tarjeta = document.getElementById('tnTablaCard');
+    var boton = document.getElementById('tnTablaFsBtn');
+    if (!tarjeta || !boton) return;
+    var icono = boton.querySelector('i');
+    var texto = boton.querySelector('span');
+
+    function pintar(activo) {
+      if (icono) icono.className = 'fas ' + (activo ? 'fa-compress' : 'fa-expand');
+      if (texto) texto.textContent = activo ? 'Salir' : 'Pantalla completa';
+      boton.title = activo ? 'Salir de pantalla completa' : 'Ver en pantalla completa';
+    }
+
+    function estaActivo() {
+      return document.fullscreenElement === tarjeta
+        || document.webkitFullscreenElement === tarjeta
+        || tarjeta.classList.contains('tn-fs-fallback');
+    }
+
+    function cerrarRespaldo() {
+      if (!tarjeta.classList.contains('tn-fs-fallback')) return;
+      tarjeta.classList.remove('tn-fs-fallback');
+      pintar(false);
+    }
+
+    boton.addEventListener('click', function () {
+      if (estaActivo()) {
+        var salir = document.exitFullscreen
+          || document.webkitExitFullscreen
+          || document.msExitFullscreen;
+        if (document.fullscreenElement || document.webkitFullscreenElement) {
+          if (salir) salir.call(document);
+        } else {
+          cerrarRespaldo();
+        }
+        return;
+      }
+
+      var pedir = tarjeta.requestFullscreen
+        || tarjeta.webkitRequestFullscreen
+        || tarjeta.msRequestFullscreen;
+      if (pedir) {
+        var promesa = pedir.call(tarjeta);
+        if (promesa && promesa.catch) {
+          promesa.catch(function () {
+            tarjeta.classList.add('tn-fs-fallback');
+            pintar(true);
+          });
+        }
+      } else {
+        tarjeta.classList.add('tn-fs-fallback');
+        pintar(true);
+      }
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') cerrarRespaldo();
+    });
+    document.addEventListener('fullscreenchange', function () {
+      pintar(estaActivo());
+    });
+    document.addEventListener('webkitfullscreenchange', function () {
+      pintar(estaActivo());
+    });
   })();
 </script>
 
