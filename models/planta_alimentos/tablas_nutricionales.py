@@ -908,9 +908,9 @@ class TablaNutricional:
                 columnas['core']['peso'] = c
             elif norm_titulo.startswith('% prod'):
                 columnas['core']['produccion'] = c
-            elif norm_titulo == 'consumo 1':
+            elif norm_titulo.replace(' ', '').startswith('consumo1'):
                 columnas['core']['consumo1'] = c
-            elif norm_titulo == 'consumo 2':
+            elif norm_titulo.replace(' ', '').startswith('consumo2'):
                 columnas['core']['consumo2'] = c
             elif norm_titulo.startswith('observaciones'):
                 columnas['core']['observaciones'] = c
