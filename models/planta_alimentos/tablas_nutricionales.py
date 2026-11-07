@@ -139,6 +139,15 @@ ETAPAS = [
     (999, 'Producción'),
 ]
 
+# Clase CSS de cada etapa: pinta toda la fila con un color propio
+ETAPA_CLASES = {
+    'Pre-iniciación': 'pre',
+    'Iniciación': 'ini',
+    'Crecimiento': 'cre',
+    'Desarrollo': 'des',
+    'Producción': 'pro',
+}
+
 
 def _norm(texto):
     if texto is None:
@@ -682,6 +691,9 @@ class TablaNutricional:
             lista[i]['etapa_rowspan'] = j - i + 1
             lista[i]['inicio_etapa'] = True
             lista[j]['fin_etapa'] = True
+            clase = ETAPA_CLASES.get(lista[i]['etapa'], 'pro')
+            for k in range(i, j + 1):
+                lista[k]['etapa_clase'] = clase
             for k in range(i + 1, j + 1):
                 lista[k]['etapa_rowspan'] = 0
             i = j + 1

@@ -71,8 +71,10 @@
   .tn-dif-neg { color: #b03a2e; font-weight: 600; }
   .tn-dif-pos { color: #2f6b3a; font-weight: 600; }
   .tn-etapa {
-    display: inline-block; background: #eef2f8; color: #3d4a5c;
+    display: inline-block; background: rgba(255, 255, 255, .78); color: #3d4a5c;
+    border: 1px solid var(--stage-borde, #c7d2df);
     border-radius: 4px; padding: .05rem .35rem; font-size: .62rem;
+    white-space: nowrap;
   }
   .tn-nota {
     padding: .55rem .85rem; font-size: .72rem; color: var(--text-muted);
@@ -135,37 +137,43 @@
 
   /* Division entre etapas */
   .tn-table tbody tr.tn-etapa-fin td {
-    border-bottom: 2px solid #b9c6d6;
+    box-shadow: inset 0 -2px 0 var(--stage-borde, #b9c6d6);
   }
   .tn-table tbody tr:first-child td {
-    border-top: 2px solid #b9c6d6;
+    box-shadow: inset 0 2px 0 var(--stage-borde, #b9c6d6);
+  }
+  .tn-table tbody tr.tn-fila-actual td {
+    box-shadow: inset 0 2px 0 rgba(151, 39, 28, .5), inset 0 -2px 0 rgba(151, 39, 28, .5);
   }
 
-  .tn-etapa-cell {
+  /* Cada etapa pinta toda su fila con un color propio */
+  .tn-table tbody tr.tn-stage-pre { --stage-fondo: #f2f8fe; --stage-fuerte: #e2eefb; --stage-guia: #d9e9f9; --stage-hover: #e8f1fb; --stage-borde: #6f9fcc; }
+  .tn-table tbody tr.tn-stage-ini { --stage-fondo: #f4faef; --stage-fuerte: #e4f2d8; --stage-guia: #dcefd0; --stage-hover: #ebf5e4; --stage-borde: #7dae5d; }
+  .tn-table tbody tr.tn-stage-cre { --stage-fondo: #fdf9ec; --stage-fuerte: #f8efd0; --stage-guia: #f5e9c1; --stage-hover: #faf3de; --stage-borde: #c9a63f; }
+  .tn-table tbody tr.tn-stage-des { --stage-fondo: #f8f3fc; --stage-fuerte: #efe2f7; --stage-guia: #e9d9f3; --stage-hover: #f3e9f9; --stage-borde: #9a76bd; }
+  .tn-table tbody tr.tn-stage-pro { --stage-fondo: #fdf4f1; --stage-fuerte: #f9e2db; --stage-guia: #f6d9d0; --stage-hover: #fbeae4; --stage-borde: #c07f68; }
+
+  .tn-table tbody tr.tn-stage td { background: var(--stage-fondo) !important; }
+  .tn-table tbody tr.tn-stage td.tn-sem { background: var(--stage-fuerte) !important; }
+  .tn-table tbody tr.tn-stage td.tn-guia { background: var(--stage-guia) !important; }
+  .tn-table tbody tr.tn-stage td.tn-etapa-cell {
+    background: var(--stage-fuerte) !important;
     vertical-align: top !important;
-    background: #f2f6fb !important;
-    border-right: 1px solid #dfe6ef;
-    border-left: 3px solid rgba(151, 39, 28, .28);
+    border-right: 1px solid rgba(0, 0, 0, .06);
+    border-left: 3px solid var(--stage-borde);
     font-weight: 700;
     padding-top: .5rem !important;
   }
-  .tn-table tbody tr:nth-child(even) td.tn-etapa-cell { background: #eef3fa !important; }
+  .tn-table tbody tr.tn-stage:hover td { background: var(--stage-hover) !important; }
+  .tn-table tbody tr.tn-stage:hover td.tn-sem { background: var(--stage-fuerte) !important; }
+  .tn-table tbody tr.tn-stage:hover td.tn-guia { background: var(--stage-guia) !important; }
   .tn-table td.tn-col-core { border-right: 1px solid #e6eaf0; }
 
-  /* Semana vigente */
-  .tn-table tbody tr.tn-fila-actual td {
-    background: #e4e8ee !important;
-  }
-  .tn-table tbody tr.tn-fila-actual td.tn-guia {
-    background: #e8e2d1 !important;
-  }
+  /* Semana vigente: conserva el color de su etapa y se marca con linea vino */
   .tn-table tbody tr.tn-fila-actual td.tn-sem {
-    background: #d5dbe4 !important;
     text-decoration: underline;
     text-underline-offset: 3px;
-  }
-  .tn-table tbody tr.tn-fila-actual td.tn-etapa-cell {
-    background: #dfe5ee !important;
+    font-weight: 800;
   }
   .tn-actual-dot {
     display: inline-block;
@@ -425,7 +433,7 @@
             <tbody>
               {% for s in datos.semanas %}
               <tr data-semana="{{ s.semana }}"
-                class="{% if s.fin_etapa %}tn-etapa-fin {% endif %}{% if s.es_actual %}tn-fila-actual{% endif %}">
+                class="tn-stage tn-stage-{{ s.etapa_clase }} {% if s.fin_etapa %}tn-etapa-fin {% endif %}{% if s.es_actual %}tn-fila-actual{% endif %}">
                 <td class="tn-sem">{{ s.semana }}{% if s.es_actual %}<span class="tn-actual-dot" title="Semana vigente"></span>{% endif %}</td>
                 <td class="tn-txt">{{ s.fecha.strftime('%d/%m/%Y') if s.fecha else '—' }}</td>
                 {% if s.etapa_rowspan %}
