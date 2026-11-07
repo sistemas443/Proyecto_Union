@@ -2,6 +2,7 @@
 {% block title %}Tablas Nutricionales – Avícola San Martín{% endblock %}
 
 {% macro num(v) %}{% if v is none or v == '' %}—{% else %}{{ "{:,.2f}".format(v|float).replace(',', 'X').replace('.', ',').replace('X', '.') }}{% endif %}{% endmacro %}
+{% macro num0(v) %}{% if v is none or v == '' %}—{% else %}{{ "{:,.0f}".format(v|float).replace(',', 'X').replace('.', ',').replace('X', '.') }}{% endif %}{% endmacro %}
 
 {% block head %}
 {% include 'planta_alimentos/_design_system.html' %}
@@ -80,6 +81,7 @@
     padding: .55rem .85rem; font-size: .72rem; color: var(--text-muted);
     border-top: 1px solid var(--border);
   }
+  .tn-nota-critica { color: #1f4e79; font-weight: 700; margin-left: .35rem; }
   .tn-vacio { padding: 3rem 1rem; text-align: center; color: var(--text-muted); }
   .tn-col-obs { max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
@@ -273,7 +275,7 @@
 
   .tn-kpis {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
     gap: 0.7rem;
     padding: 0.8rem 0.85rem 0.2rem;
   }
@@ -389,11 +391,19 @@
             <div class="d">{{ k.detalle }}</div>
           </div>
           {% endfor %}
+          <div class="tn-kpi">
+            <div class="l">Precio dieta actual</div>
+            <div class="v">{% if datos.precio_dieta_actual is not none %}$ {{ num0(datos.precio_dieta_actual) }}{% else %}—{% endif %}</div>
+            <div class="d">{% if datos.semana_precio %}semana {{ datos.semana_precio }}{% else %}sin dato{% endif %}</div>
+          </div>
         </div>
 
         <div id="tnChart" style="height: 440px;"></div>
         <div class="tn-nota">
           {{ chart.nota or 'La línea punteada marca la semana vigente. Use la rueda del mouse para acercar.' }}
+          {% if chart.criticas %}
+          <span class="tn-nota-critica">Franja punteada: semanas críticas {{ chart.criticas[0] }}–{{ chart.criticas[1] }}.</span>
+          {% endif %}
         </div>
       </div>
 
@@ -438,13 +448,23 @@
             layout.yaxis2 = { title: D.y2_titulo || 'Consumo (g/ave/día)', overlaying: 'y', side: 'right', gridcolor: '#f7f9fc' };
             if (D.y2_formato) layout.yaxis2.tickformat = D.y2_formato;
           }
+          layout.shapes = [];
+          if (D.criticas && D.criticas.length === 2) {
+            layout.shapes.push({
+              type: 'rect', xref: 'x', yref: 'paper',
+              x0: D.criticas[0], x1: D.criticas[1], y0: 0, y1: 1,
+              fillcolor: 'rgba(31,78,121,0.05)',
+              line: { color: '#1f4e79', width: 1.4, dash: 'dash' },
+              layer: 'below'
+            });
+          }
           if (D.semana_actual) {
-            layout.shapes = [{
+            layout.shapes.push({
               type: 'line',
               x0: D.semana_actual, x1: D.semana_actual,
               y0: 0, y1: 1, yref: 'paper',
               line: { color: '#97271C', width: 1, dash: 'dot' }
-            }];
+            });
           }
 
           // Etiquetas al final de cada linea: identifican la serie sin ambiguedad
@@ -536,6 +556,15 @@
             });
 
             var base = [];
+            if (D.criticas && D.criticas.length === 2) {
+              base.push({
+                type: 'rect', xref: 'x', yref: 'paper',
+                x0: D.criticas[0], x1: D.criticas[1], y0: 0, y1: 1,
+                fillcolor: 'rgba(31,78,121,0.05)',
+                line: { color: '#1f4e79', width: 1.4, dash: 'dash' },
+                layer: 'below'
+              });
+            }
             if (D.semana_actual) {
               base.push({
                 type: 'line', xref: 'x', yref: 'paper',

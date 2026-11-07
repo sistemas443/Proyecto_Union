@@ -94,6 +94,9 @@ GRAFICOS = [
     {'codigo': 'energia', 'titulo': 'Energía', 'nutriente': 'energia', 'unidad': 'Kcal'},
 ]
 
+# Tramo de semanas criticas que la empresa marca con linea punteada en el Excel
+SEMANAS_CRITICAS = (12, 24)
+
 
 def _serie_limpia(valores):
     """En las graficas, un 0 se trata como dato faltante para no dibujar caidas."""
@@ -444,6 +447,7 @@ class TablaNutricional:
             return {'codigo': definicion['codigo'], 'titulo': definicion['titulo'],
                     'unidad': 'Peso (g)', 'dual': True, 'x': x, 'series': series,
                     'kpis': kpis, 'semana_actual': serie_actual,
+                    'criticas': list(SEMANAS_CRITICAS),
                     'y2_titulo': 'Consumo (g/ave/día)', 'nota': 'Doble eje: peso a la izquierda, consumo a la derecha.'}
 
         if definicion.get('tipo') == 'capr':
@@ -494,6 +498,7 @@ class TablaNutricional:
             return {'codigo': definicion['codigo'], 'titulo': definicion['titulo'],
                     'unidad': 'gramos/ave/día', 'dual': True, 'x': x, 'series': series,
                     'kpis': kpis, 'semana_actual': serie_actual,
+                    'criticas': list(SEMANAS_CRITICAS),
                     'y2_titulo': 'Consumo (g/ave/día)',
                     'y_rango': [0, 20], 'y_dtick': 2.2, 'y_formato': '.2f',
                     'y2_formato': '.0f',
@@ -521,14 +526,21 @@ class TablaNutricional:
             series.append({'nombre': 'PRO', 'y': pro, 'color': '#c9a227', 'dash': 'dash'})
         series.append({'nombre': 'Real', 'y': real, 'color': '#97271C', 'ancho': 2.6})
 
+        semana_ultima = next(
+            (s['semana'] for s in reversed(semanas)
+             if _limpio(((s.get('nutrientes') or {}).get(clave) or {}).get('real')) is not None),
+            None,
+        )
         kpis = [
             {'label': 'Real promedio', 'valor': _promedio(real), 'detalle': definicion['unidad']},
             {'label': 'Diferencia promedio', 'valor': _promedio(dif), 'detalle': 'vs. guía'},
-            {'label': 'Última semana', 'valor': _ultimo(real), 'detalle': f"semana {_ultimo([s['semana'] for s in semanas if s.get('nutrientes', {}).get(clave, {}).get('real') is not None]) or '—'}"},
+            {'label': 'Última semana', 'valor': _ultimo(real),
+             'detalle': f'semana {semana_ultima}' if semana_ultima else 'sin dato'},
         ]
         return {'codigo': definicion['codigo'], 'titulo': definicion['titulo'],
                 'unidad': definicion['unidad'], 'dual': False, 'x': x, 'series': series,
-                'kpis': kpis, 'semana_actual': serie_actual}
+                'kpis': kpis, 'semana_actual': serie_actual,
+                'criticas': list(SEMANAS_CRITICAS)}
 
     # ------------------------------------------------------------------
     # Consulta unificada (Produccion + nutricion)
@@ -744,9 +756,21 @@ class TablaNutricional:
         ]
         semana_max = max(con_datos) if con_datos else (lista[-1]['semana'] if lista else None)
 
+        # Precio de la dieta: ultimo valor registrado (el Excel lo deja vacio al final)
+        precio_dieta_actual = None
+        semana_precio = None
+        for fila in reversed(lista):
+            precio = _num(fila.get('precio_formula'))
+            if precio:
+                precio_dieta_actual = precio
+                semana_precio = fila['semana']
+                break
+
         meta['nutricionista_visible'] = meta.get('nutricionista_prod') or meta.get('nutricionista') or ''
         return {'lote': lote, 'meta': meta, 'semanas': lista,
-                'semana_actual': semana_actual, 'semana_max': semana_max, 'hoy': hoy}
+                'semana_actual': semana_actual, 'semana_max': semana_max,
+                'precio_dieta_actual': precio_dieta_actual,
+                'semana_precio': semana_precio, 'hoy': hoy}
 
     # ------------------------------------------------------------------
     # Importacion del Excel
