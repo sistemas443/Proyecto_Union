@@ -382,7 +382,148 @@
               line: { color: '#97271C', width: 1, dash: 'dot' }
             }];
           }
-          Plotly.newPlot('tnChart', trazas, layout, { responsive: true, displayModeBar: false });
+
+          // Etiquetas al final de cada linea: identifican la serie sin ambiguedad
+          function _luminancia(hex) {
+            var c = String(hex || '').replace('#', '');
+            if (c.length === 3) c = c[0] + c[0] + c[1] + c[1] + c[2] + c[2];
+            var r = parseInt(c.substring(0, 2), 16) || 0;
+            var g = parseInt(c.substring(2, 4), 16) || 0;
+            var b = parseInt(c.substring(4, 6), 16) || 0;
+            return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+          }
+
+          function _etiquetasFin(gd, D) {
+            if (!gd || !gd._fullLayout) return;
+            var fl = gd._fullLayout;
+            var alto = fl._size.h;
+            var sep = 19;
+            var arriba = 14;
+            var abajo = alto - 14;
+            var items = [];
+
+            D.series.forEach(function (s, orden) {
+              if (gd.data[orden] && gd.data[orden].visible === 'legendonly') return;
+              var ultimo = -1;
+              for (var k = s.y.length - 1; k >= 0; k--) {
+                var v = s.y[k];
+                if (v !== null && v !== undefined && !isNaN(v)) { ultimo = k; break; }
+              }
+              if (ultimo < 0) return;
+              var eje = (s.eje === 'y2') ? fl.yaxis2 : fl.yaxis;
+              items.push({
+                serie: s,
+                x: D.x[ultimo],
+                y: s.y[ultimo],
+                py: eje.l2p(s.y[ultimo]),
+                eje: eje,
+                yref: (s.eje === 'y2') ? 'y2' : 'y'
+              });
+            });
+
+            if (!items.length) return;
+            items.sort(function (a, b) { return a.py - b.py; });
+
+            var hueco = Math.min(sep, (abajo - arriba) / Math.max(1, items.length - 1));
+            items.forEach(function (it) {
+              it.py = Math.min(abajo, Math.max(arriba, it.py));
+            });
+            for (var i = 1; i < items.length; i++) {
+              if (items[i].py < items[i - 1].py + hueco) {
+                items[i].py = items[i - 1].py + hueco;
+              }
+            }
+            var sobra = items[items.length - 1].py - abajo;
+            if (sobra > 0) items.forEach(function (it) { it.py -= sobra; });
+            var falta = arriba - items[0].py;
+            if (falta > 0) items.forEach(function (it) { it.py += falta; });
+
+            var anotaciones = [];
+            var guias = [];
+            var ultimaX = -Infinity;
+            var anchoMax = 0;
+
+            items.forEach(function (it) {
+              var color = it.serie.color || '#4a5462';
+              var textoClaro = _luminancia(color) > 0.62;
+              var yEtiqueta = it.eje.p2l(it.py);
+              var ancho = String(it.serie.nombre).length * 5.4 + 16;
+              anchoMax = Math.max(anchoMax, ancho);
+              ultimaX = Math.max(ultimaX, it.x);
+
+              anotaciones.push({
+                xref: 'x', x: it.x, xanchor: 'left', xshift: 7,
+                yref: it.yref, y: yEtiqueta, yanchor: 'middle',
+                text: it.serie.nombre,
+                showarrow: false,
+                bgcolor: color,
+                bordercolor: 'rgba(255,255,255,0.9)',
+                borderwidth: 1,
+                borderpad: 3,
+                font: { size: 10, color: textoClaro ? '#1f2937' : '#ffffff' },
+                opacity: 0.97
+              });
+
+              if (Math.abs(it.py - it.eje.l2p(it.y)) > 4) {
+                guias.push({
+                  type: 'line', xref: 'x', yref: it.yref,
+                  x0: it.x, x1: it.x,
+                  y0: it.y, y1: yEtiqueta,
+                  line: { color: color, width: 1, dash: 'dot' },
+                  opacity: 0.8
+                });
+              }
+            });
+
+            var base = [];
+            if (D.semana_actual) {
+              base.push({
+                type: 'line', xref: 'x', yref: 'paper',
+                x0: D.semana_actual, x1: D.semana_actual,
+                y0: 0, y1: 1,
+                line: { color: '#97271C', width: 1, dash: 'dot' }
+              });
+            }
+
+            var cambios = {
+              annotations: anotaciones,
+              shapes: base.concat(guias)
+            };
+
+            // Si la ultima etiqueta no cabe a la derecha, ampliar el eje X
+            if (!gd._tnRangoOriginal) {
+              gd._tnRangoOriginal = (fl.xaxis.range || [0, 1]).slice();
+            }
+            var rangoBase = gd._tnRangoOriginal;
+            var pxSemana = fl._size.w / Math.max(0.001, rangoBase[1] - rangoBase[0]);
+            var nuevoMax = Math.max(rangoBase[1], ultimaX + ((anchoMax + 12) / pxSemana));
+            if (Math.abs(nuevoMax - rangoBase[1]) > 0.05) {
+              cambios['xaxis.range'] = [rangoBase[0], nuevoMax];
+            }
+
+            Plotly.relayout(gd, cambios);
+          }
+
+          function _observarLeyenda(gd, D) {
+            var pendiente = null;
+            function refrescar() {
+              clearTimeout(pendiente);
+              pendiente = setTimeout(function () { _etiquetasFin(gd, D); }, 90);
+            }
+            gd.on('plotly_legendclick', refrescar);
+            gd.on('plotly_legenddoubleclick', refrescar);
+            var tardanza = null;
+            window.addEventListener('resize', function () {
+              clearTimeout(tardanza);
+              tardanza = setTimeout(function () { _etiquetasFin(gd, D); }, 250);
+            });
+          }
+
+          Plotly.newPlot('tnChart', trazas, layout, { responsive: true, displayModeBar: false })
+            .then(function (gd) {
+              _etiquetasFin(gd, D);
+              _observarLeyenda(gd, D);
+            });
         })();
       </script>
 
