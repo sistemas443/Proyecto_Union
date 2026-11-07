@@ -192,6 +192,56 @@
   }
   .tn-leyenda { color: #97271C; font-weight: 600; }
 
+  /* Pantalla completa del grafico */
+  .tn-chart-tools {
+    display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;
+  }
+  .tn-fs-btn {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    border: 1px solid var(--border); border-radius: 8px;
+    background: #fff; color: var(--text-primary);
+    font-size: 0.7rem; font-weight: 700; padding: 0.3rem 0.6rem;
+    cursor: pointer; white-space: nowrap;
+  }
+  .tn-fs-btn:hover { background: #f3f6fa; border-color: #c7d2df; }
+  .tn-fs-btn i { font-size: 0.72rem; }
+  .tn-card:fullscreen,
+  .tn-card:-webkit-full-screen,
+  .tn-card.tn-fs-fallback {
+    width: 100%; height: 100vh; max-height: 100vh;
+    border: 0; border-radius: 0; background: #fff;
+    padding: 1rem 1.2rem; overflow: auto;
+    display: flex; flex-direction: column;
+  }
+  .tn-card:fullscreen .tn-card-head,
+  .tn-card:-webkit-full-screen .tn-card-head,
+  .tn-card.tn-fs-fallback .tn-card-head {
+    flex: 0 0 auto; padding-bottom: 0.6rem;
+  }
+  .tn-card:fullscreen .tn-kpis,
+  .tn-card:-webkit-full-screen .tn-kpis,
+  .tn-card.tn-fs-fallback .tn-kpis { flex: 0 0 auto; }
+  .tn-card:fullscreen #tnChart,
+  .tn-card:-webkit-full-screen #tnChart,
+  .tn-card.tn-fs-fallback #tnChart {
+    flex: 0 0 auto;
+    height: calc(100vh - 250px) !important;
+    min-height: 280px;
+  }
+  .tn-card:fullscreen .tn-nota,
+  .tn-card:-webkit-full-screen .tn-nota,
+  .tn-card.tn-fs-fallback .tn-nota { flex: 0 0 auto; }
+
+  /* Respaldo cuando el navegador no permite la API de pantalla completa */
+  .tn-card.tn-fs-fallback {
+    position: fixed; inset: 0; z-index: 9999;
+  }
+
+  @media (max-width: 640px) {
+    .tn-fs-btn span { display: none; }
+    .tn-fs-btn { padding: 0.35rem 0.5rem; }
+  }
+
   .tn-chip-persona {
     display: inline-flex;
     align-items: center;
@@ -315,15 +365,20 @@
 
     <div class="tn-main">
       {% if vista == 'analisis' and chart %}
-            <div class="tn-card">
+      <div class="tn-card" id="tnChartCard">
         <div class="tn-card-head">
           <div>
             <div class="t">{{ chart.titulo }} · Lote {{ lote }}</div>
             <div class="s">Guía vs. real por semana de vida</div>
           </div>
-          {% if datos.semana_actual %}
-          <span class="tn-leyenda"><span class="tn-actual-dot"></span> Semana vigente: {{ datos.semana_actual }}</span>
-          {% endif %}
+          <div class="tn-chart-tools">
+            {% if datos.semana_actual %}
+            <span class="tn-leyenda"><span class="tn-actual-dot"></span> Semana vigente: {{ datos.semana_actual }}</span>
+            {% endif %}
+            <button type="button" class="tn-fs-btn" id="tnFsBtn" title="Ver en pantalla completa">
+              <i class="fas fa-expand"></i> <span>Pantalla completa</span>
+            </button>
+          </div>
         </div>
 
         <div class="tn-kpis">
@@ -519,10 +574,93 @@
             });
           }
 
+          function _pantallaCompleta(gd, D) {
+            var tarjeta = document.getElementById('tnChartCard');
+            var boton = document.getElementById('tnFsBtn');
+            if (!tarjeta || !boton) return;
+            var icono = boton.querySelector('i');
+            var texto = boton.querySelector('span');
+
+            function pintar(activo) {
+              if (icono) icono.className = 'fas ' + (activo ? 'fa-compress' : 'fa-expand');
+              if (texto) texto.textContent = activo ? 'Salir' : 'Pantalla completa';
+              boton.title = activo ? 'Salir de pantalla completa' : 'Ver en pantalla completa';
+            }
+
+            function ajustar() {
+              var grafico = document.getElementById('tnChart');
+              if (!grafico || !window.Plotly) return;
+              requestAnimationFrame(function () { Plotly.Plots.resize(grafico); });
+              setTimeout(function () {
+                Plotly.Plots.resize(grafico);
+                _etiquetasFin(grafico, D);
+              }, 260);
+            }
+
+            function estaActivo() {
+              return document.fullscreenElement === tarjeta
+                || document.webkitFullscreenElement === tarjeta
+                || tarjeta.classList.contains('tn-fs-fallback');
+            }
+
+            function cerrarRespaldo() {
+              if (!tarjeta.classList.contains('tn-fs-fallback')) return;
+              tarjeta.classList.remove('tn-fs-fallback');
+              pintar(false);
+              ajustar();
+            }
+
+            boton.addEventListener('click', function () {
+              if (estaActivo()) {
+                var salir = document.exitFullscreen
+                  || document.webkitExitFullscreen
+                  || document.msExitFullscreen;
+                if (document.fullscreenElement || document.webkitFullscreenElement) {
+                  if (salir) salir.call(document);
+                } else {
+                  cerrarRespaldo();
+                }
+                return;
+              }
+
+              var pedir = tarjeta.requestFullscreen
+                || tarjeta.webkitRequestFullscreen
+                || tarjeta.msRequestFullscreen;
+              if (pedir) {
+                var promesa = pedir.call(tarjeta);
+                if (promesa && promesa.catch) {
+                  promesa.catch(function () {
+                    tarjeta.classList.add('tn-fs-fallback');
+                    pintar(true);
+                    ajustar();
+                  });
+                }
+              } else {
+                tarjeta.classList.add('tn-fs-fallback');
+                pintar(true);
+                ajustar();
+              }
+            });
+
+            document.addEventListener('keydown', function (e) {
+              if (e.key === 'Escape') cerrarRespaldo();
+            });
+
+            document.addEventListener('fullscreenchange', function () {
+              pintar(estaActivo());
+              ajustar();
+            });
+            document.addEventListener('webkitfullscreenchange', function () {
+              pintar(estaActivo());
+              ajustar();
+            });
+          }
+
           Plotly.newPlot('tnChart', trazas, layout, { responsive: true, displayModeBar: false })
             .then(function (gd) {
               _etiquetasFin(gd, D);
               _observarLeyenda(gd, D);
+              _pantallaCompleta(gd, D);
             });
         })();
       </script>
