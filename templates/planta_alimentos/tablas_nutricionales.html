@@ -1,0 +1,625 @@
+{% extends 'generales/layout.html' %}
+{% block title %}Tablas Nutricionales – Avícola San Martín{% endblock %}
+
+{% macro num(v) %}{% if v is none or v == '' %}—{% else %}{{ "{:,.2f}".format(v|float).replace(',', 'X').replace('.', ',').replace('X', '.') }}{% endif %}{% endmacro %}
+
+{% block head %}
+{% include 'planta_alimentos/_design_system.html' %}
+<style>
+  .tn-chips { display: flex; gap: .5rem; flex-wrap: wrap; margin: .2rem 0 .9rem; }
+  .tn-chip {
+    background: #fff; border: 1px solid var(--border); border-radius: 20px;
+    padding: .22rem .7rem; font-size: .72rem; color: var(--text-secondary);
+  }
+  .tn-chip b { color: var(--text-primary); }
+
+  .tn-layout { display: flex; gap: 1rem; align-items: flex-start; }
+  .tn-rail {
+    flex: 0 0 250px; background: #fff; border: 1px solid var(--border);
+    border-radius: 12px; padding: .45rem; position: sticky; top: .8rem;
+  }
+  .tn-rail .tn-h {
+    font-size: .6rem; font-weight: 800; letter-spacing: .09em;
+    color: #8a93a1; padding: .55rem .6rem .25rem;
+  }
+  .tn-rail a {
+    display: flex; align-items: center; gap: .5rem; padding: .42rem .55rem;
+    border-radius: 7px; color: var(--text-secondary); text-decoration: none; font-size: .79rem;
+  }
+  .tn-rail a:hover { background: var(--surface-alt); }
+  .tn-rail a.act { background: rgba(151, 39, 28, .08); color: #97271C; font-weight: 700; }
+  .tn-rail a.disabled { color: #a9b0bb; pointer-events: none; }
+  .tn-rail .tn-badge-fase {
+    margin-left: auto; font-size: .55rem; font-weight: 700; letter-spacing: .05em;
+    background: #eef1f5; color: #7b8494; border-radius: 4px; padding: .05rem .3rem;
+  }
+
+  .tn-main { flex: 1; min-width: 0; }
+  .tn-card { background: #fff; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .tn-card-head {
+    display: flex; justify-content: space-between; align-items: center; gap: .6rem;
+    padding: .6rem .85rem; border-bottom: 1px solid var(--border);
+  }
+  .tn-card-head .t { font-weight: 700; font-size: .9rem; }
+  .tn-card-head .s { font-size: .72rem; color: var(--text-muted); }
+
+  .tn-scroll { overflow: auto; max-height: 66vh; }
+  .tn-table {
+    border-collapse: separate; border-spacing: 0; width: 100%;
+    font-size: .72rem; font-variant-numeric: tabular-nums;
+  }
+  .tn-table thead th {
+    position: sticky; top: 0; z-index: 3;
+    background: var(--table-header-bg, #1a202c); color: #fff;
+    font-size: .6rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+    padding: .42rem .38rem; text-align: center; white-space: nowrap;
+  }
+  .tn-table thead tr.grupo th { background: #2c3e50; font-size: .56rem; letter-spacing: .07em; }
+  .tn-table thead th.tn-sem { z-index: 5; left: 0; }
+  .tn-table td {
+    padding: .3rem .38rem; border-bottom: 1px solid #edf0f4;
+    text-align: right; white-space: nowrap;
+  }
+  .tn-table td.tn-txt { text-align: left; }
+  .tn-table td.tn-sem {
+    position: sticky; left: 0; z-index: 2; background: #fff;
+    text-align: center; font-weight: 700; color: var(--text-primary);
+  }
+  .tn-table tbody tr:nth-child(even) td { background: #fafbfd; }
+  .tn-table tbody tr:nth-child(even) td.tn-sem { background: #fafbfd; }
+  .tn-table tbody tr:hover td { background: #f2f6fb; }
+  .tn-dif-neg { color: #b03a2e; font-weight: 600; }
+  .tn-dif-pos { color: #2f6b3a; font-weight: 600; }
+  .tn-etapa {
+    display: inline-block; background: #eef2f8; color: #3d4a5c;
+    border-radius: 4px; padding: .05rem .35rem; font-size: .62rem;
+  }
+  .tn-nota {
+    padding: .55rem .85rem; font-size: .72rem; color: var(--text-muted);
+    border-top: 1px solid var(--border);
+  }
+  .tn-vacio { padding: 3rem 1rem; text-align: center; color: var(--text-muted); }
+  .tn-col-obs { max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* Encabezados por parametro: base oscura + barra de acento */
+  .tn-table thead th.tn-grupo {
+    background: #22303f;
+    border-left: 2px solid #eef1f5;
+    font-size: 0.58rem;
+    padding-top: 0.42rem;
+    padding-bottom: 0.5rem;
+    line-height: 1.15;
+  }
+  .tn-table thead th.tn-grupo.tn-par {
+    background: #1d2734;
+  }
+  .tn-barra {
+    display: block;
+    width: 26px;
+    height: 3px;
+    margin: 0 auto 4px;
+    border-radius: 2px;
+    background: #9fb2c9;
+    opacity: 0.9;
+  }
+  .tn-a0 .tn-barra { background: #8fb8d9; }
+  .tn-a1 .tn-barra { background: #e3c47e; }
+  .tn-a2 .tn-barra { background: #93c9a8; }
+  .tn-a3 .tn-barra { background: #d9a08f; }
+  .tn-a4 .tn-barra { background: #b3a6cf; }
+  .tn-a5 .tn-barra { background: #a9b8c9; }
+  .tn-unidad {
+    display: block;
+    font-weight: 500;
+    font-size: 0.5rem;
+    opacity: 0.65;
+    letter-spacing: 0.04em;
+    margin-top: 1px;
+  }
+
+  /* Columna Guia: fondo suave para separarla del valor real */
+  .tn-table thead th.tn-th-guia {
+    color: #f0d9a8;
+  }
+  .tn-table td.tn-guia {
+    background: #faf5e6 !important;
+    color: #5f5335;
+    font-weight: 600;
+  }
+  .tn-table tbody tr:nth-child(even) td.tn-guia {
+    background: #f5eeda !important;
+  }
+  .tn-table tbody tr:hover td.tn-guia {
+    background: #f1e8cf !important;
+  }
+
+  /* Division entre etapas */
+  .tn-table tbody tr.tn-etapa-fin td {
+    border-bottom: 2px solid #b9c6d6;
+  }
+  .tn-table tbody tr:first-child td {
+    border-top: 2px solid #b9c6d6;
+  }
+
+  .tn-etapa-cell {
+    vertical-align: top !important;
+    background: #f2f6fb !important;
+    border-right: 1px solid #dfe6ef;
+    border-left: 3px solid rgba(151, 39, 28, .28);
+    font-weight: 700;
+    padding-top: .5rem !important;
+  }
+  .tn-table tbody tr:nth-child(even) td.tn-etapa-cell { background: #eef3fa !important; }
+  .tn-table td.tn-col-core { border-right: 1px solid #e6eaf0; }
+
+  /* Semana vigente */
+  .tn-table tbody tr.tn-fila-actual td {
+    background: #e4e8ee !important;
+  }
+  .tn-table tbody tr.tn-fila-actual td.tn-guia {
+    background: #e8e2d1 !important;
+  }
+  .tn-table tbody tr.tn-fila-actual td.tn-sem {
+    background: #d5dbe4 !important;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .tn-table tbody tr.tn-fila-actual td.tn-etapa-cell {
+    background: #dfe5ee !important;
+  }
+  .tn-actual-dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #97271C;
+    margin-left: 5px;
+    vertical-align: middle;
+  }
+  .tn-leyenda { color: #97271C; font-weight: 600; }
+
+  .tn-chip-persona {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding-left: 0.28rem;
+  }
+  .tn-chip-persona img {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid var(--border);
+    background: #ffffff;
+  }
+
+  /* Celdas editables */
+  .tn-table td.tn-edit { cursor: text; }
+  .tn-table td.tn-edit:hover { box-shadow: inset 0 0 0 1px #c9d4e2; }
+  .tn-table td.tn-editando {
+    background: #fff8e1 !important;
+    box-shadow: inset 0 0 0 2px #97271C;
+    outline: none;
+  }
+  .tn-table td.tn-guardando { opacity: .55; }
+  .tn-leyenda-edicion {
+    font-size: .68rem; color: var(--text-muted); margin-top: .3rem;
+    display: block;
+  }
+
+  .tn-kpis {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.7rem;
+    padding: 0.8rem 0.85rem 0.2rem;
+  }
+  .tn-kpi {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.6rem 0.75rem;
+    background: #fbfcfd;
+  }
+  .tn-kpi .l {
+    font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.05em; color: #8a93a1;
+  }
+  .tn-kpi .v {
+    font-size: 1.25rem; font-weight: 800; color: var(--text-primary);
+    font-variant-numeric: tabular-nums; margin-top: 0.1rem;
+  }
+  .tn-kpi .d { font-size: 0.68rem; color: var(--text-muted); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-3">
+  <div class="page-header">
+    <div class="d-flex align-items-center gap-3">
+      <div class="page-icon"><i class="fas fa-table"></i></div>
+      <div>
+        <h2 class="page-title mb-0">Tablas Nutricionales</h2>
+        <p class="page-subtitle mb-0">Indicadores de Producción + evaluación nutricional del lote</p>
+      </div>
+    </div>
+
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      <form method="GET" action="{{ url_for('tablas_nutricionales.vista') }}" class="d-flex align-items-center gap-2">
+        <label class="form-label-design mb-0" for="lote">Lote</label>
+        <select name="lote" id="lote" class="form-select form-select-sm" style="min-width: 170px;"
+          onchange="this.form.submit()">
+          {% for l in lotes %}
+          <option value="{{ l.lote }}" {% if l.lote == lote %}selected{% endif %}>
+            {{ l.lote }}{% if l.tiene_datos %} · con tabla{% endif %}
+          </option>
+          {% endfor %}
+        </select>
+      </form>
+      {% if session.get('user_rol') != 'Lector' %}
+      <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalImportarTN">
+        <i class="fas fa-file-excel me-1"></i> Importar Excel
+      </button>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if datos %}
+  {% set m = datos.meta %}
+  <div class="tn-chips">
+    <span class="tn-chip">Granja <b>{{ m.granja_lev or m.granja_prod or '—' }}</b></span>
+    <span class="tn-chip">Lote <b>{{ m.lote }}</b></span>
+    <span class="tn-chip tn-chip-persona">
+      <img src="{{ m.foto_nutricionista or url_for('static', filename='img/placeholder-catalogo.png') }}"
+        alt="Nutricionista">
+      Nutricionista <b>{{ m.nutricionista_visible or '—' }}</b>
+    </span>
+    <span class="tn-chip tn-chip-persona">
+      <img src="{{ m.foto_variedad or url_for('static', filename='img/placeholder-catalogo.png') }}"
+        alt="Variedad">
+      Variedad <b>{{ m.variedad or '—' }}</b>
+    </span>
+    <span class="tn-chip tn-chip-persona">
+      <img src="{{ m.foto_marca or url_for('static', filename='img/placeholder-catalogo.png') }}"
+        alt="Marca">
+      Marca <b>{{ m.marca_galpon or '—' }}</b>
+    </span>
+  </div>
+
+  <div class="tn-layout">
+    <aside class="tn-rail">
+      <div class="tn-h">DATOS</div>
+      <a class="{% if vista == 'datos' %}act{% endif %}"
+        href="{{ url_for('tablas_nutricionales.vista', lote=lote, vista='datos') }}">
+        <i class="fas fa-table-cells"></i> Tabla nutricional
+      </a>
+      <div class="tn-h">ANÁLISIS</div>
+      {% for g in graficos %}
+      <a class="{% if vista == 'analisis' and grafico == g.codigo %}act{% endif %}"
+        href="{{ url_for('tablas_nutricionales.vista', lote=lote, vista='analisis', grafico=g.codigo) }}">
+        <i class="fas fa-chart-line"></i> {{ g.titulo }}
+      </a>
+      {% endfor %}
+    </aside>
+
+    <div class="tn-main">
+      {% if vista == 'analisis' and chart %}
+            <div class="tn-card">
+        <div class="tn-card-head">
+          <div>
+            <div class="t">{{ chart.titulo }} · Lote {{ lote }}</div>
+            <div class="s">Guía vs. real por semana de vida</div>
+          </div>
+          {% if datos.semana_actual %}
+          <span class="tn-leyenda"><span class="tn-actual-dot"></span> Semana vigente: {{ datos.semana_actual }}</span>
+          {% endif %}
+        </div>
+
+        <div class="tn-kpis">
+          {% for k in chart.kpis %}
+          <div class="tn-kpi">
+            <div class="l">{{ k.label }}</div>
+            <div class="v">{{ num(k.valor) }}</div>
+            <div class="d">{{ k.detalle }}</div>
+          </div>
+          {% endfor %}
+        </div>
+
+        <div id="tnChart" style="height: 440px;"></div>
+        <div class="tn-nota">
+          {{ chart.nota or 'La línea punteada marca la semana vigente. Use la rueda del mouse para acercar.' }}
+        </div>
+      </div>
+
+      <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+      <script>
+        (function () {
+          const D = {{ chart | tojson }};
+          const trazas = D.series.map(function (s) {
+            return {
+              x: D.x,
+              y: s.y,
+              name: s.nombre,
+              mode: 'lines+markers',
+              line: { color: s.color, width: s.ancho || 1.8, dash: s.dash || 'solid' },
+              yaxis: s.eje === 'y2' ? 'y2' : 'y',
+              connectgaps: true,
+              marker: { size: 3 }
+            };
+          });
+          const layout = {
+            margin: { l: 55, r: 55, t: 18, b: 45 },
+            paper_bgcolor: 'white',
+            plot_bgcolor: 'white',
+            font: { family: 'Segoe UI', size: 11, color: '#4a5462' },
+            xaxis: { title: 'Semana de vida', dtick: 5, gridcolor: '#eef1f5' },
+            yaxis: { title: D.unidad, gridcolor: '#eef1f5' },
+            legend: { orientation: 'h', y: 1.12 },
+            hovermode: 'x unified'
+          };
+          if (D.x && D.x.length) {
+            layout.xaxis.range = [0.5, Math.max.apply(null, D.x) + 0.5];
+          }
+          if (D.dual) {
+            layout.yaxis2 = { title: D.y2_titulo || 'Consumo (g/ave/día)', overlaying: 'y', side: 'right', gridcolor: '#f7f9fc' };
+          }
+          if (D.semana_actual) {
+            layout.shapes = [{
+              type: 'line',
+              x0: D.semana_actual, x1: D.semana_actual,
+              y0: 0, y1: 1, yref: 'paper',
+              line: { color: '#97271C', width: 1, dash: 'dot' }
+            }];
+          }
+          Plotly.newPlot('tnChart', trazas, layout, { responsive: true, displayModeBar: false });
+        })();
+      </script>
+
+      {% else %}
+      <div class="tn-card">
+        <div class="tn-card-head">
+          <div>
+            <div class="t">Hy-Line Brown · Lote {{ lote }}</div>
+            <div class="s">Consumo, peso, conversión y aportes por nutriente (tabla vs. real)</div>
+          </div>
+          <div class="s">
+            {% if puede_editar %}<span class="tn-leyenda-edicion">Haga clic en un valor para editarlo</span>{% endif %}
+            {% if datos.semana_actual %}
+            <span class="tn-leyenda"><span class="tn-actual-dot"></span> Semana vigente: {{ datos.semana_actual }}</span>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="tn-scroll">
+          <table class="tn-table" data-lote="{{ lote }}">
+            <thead>
+              <tr class="grupo">
+                <th class="tn-sem"></th>
+                <th colspan="10">Indicadores (Producción + guía)</th>
+                {% for codigo, etiqueta, unidad, subs in columnas %}
+                <th colspan="{{ subs|length }}" class="tn-grupo tn-a{{ loop.index0 % 6 }}{{ ' tn-par' if loop.index0 % 2 }}">
+                  <span class="tn-barra"></span>
+                  {{ etiqueta }}
+                  {% if unidad %}<span class="tn-unidad">{{ unidad }}</span>{% endif %}
+                </th>
+                {% endfor %}
+                <th>Obs.</th>
+              </tr>
+              <tr>
+                <th class="tn-sem">Sem</th>
+                <th>Fecha</th>
+                <th>Etapa</th>
+                <th>Cons. 1</th>
+                <th>Cons. 2</th>
+                <th>Gramos</th>
+                <th>Conv.</th>
+                <th>Peso</th>
+                <th>% Prod.</th>
+                <th>$ Fórmula</th>
+                <th>$ Huevo</th>
+                {% for codigo, etiqueta, unidad, subs in columnas %}
+                {% for clave, etiqueta_sub in subs %}
+                <th class="{% if clave in ('tabla', 'tabla_min', 'tabla_sup') %}tn-th-guia{% endif %}">{{ etiqueta_sub }}</th>
+                {% endfor %}
+                {% endfor %}
+                <th>Observaciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for s in datos.semanas %}
+              <tr data-semana="{{ s.semana }}"
+                class="{% if s.fin_etapa %}tn-etapa-fin {% endif %}{% if s.es_actual %}tn-fila-actual{% endif %}">
+                <td class="tn-sem">{{ s.semana }}{% if s.es_actual %}<span class="tn-actual-dot" title="Semana vigente"></span>{% endif %}</td>
+                <td class="tn-txt">{{ s.fecha.strftime('%d/%m/%Y') if s.fecha else '—' }}</td>
+                {% if s.etapa_rowspan %}
+                <td class="tn-txt tn-etapa-cell" rowspan="{{ s.etapa_rowspan }}">
+                  <span class="tn-etapa">{{ s.etapa }}</span>
+                </td>
+                {% endif %}
+                <td>{{ num(s.extras.get('consumo1')) }}</td>
+                <td>{{ num(s.extras.get('consumo2')) }}</td>
+                <td class="{% if puede_editar %}tn-edit{% endif %}" data-campo="core.gramos"
+                  {% if puede_editar %}contenteditable="true"{% endif %}>{{ num(s.consumo) }}</td>
+                <td class="{% if puede_editar %}tn-edit{% endif %}" data-campo="core.conversion"
+                  {% if puede_editar %}contenteditable="true"{% endif %}>{{ num(s.conversion) }}</td>
+                <td class="{% if puede_editar %}tn-edit{% endif %}" data-campo="core.peso"
+                  {% if puede_editar %}contenteditable="true"{% endif %}>{{ num(s.peso) }}</td>
+                <td class="{% if puede_editar %}tn-edit{% endif %}" data-campo="core.produccion"
+                  data-porcentaje="1" {% if puede_editar %}contenteditable="true"{% endif %}>
+                  {% if s.produccion is not none %}{{ num(s.produccion) }}%{% else %}—{% endif %}
+                </td>
+                <td class="{% if puede_editar %}tn-edit{% endif %}" data-campo="core.precio_formula"
+                  {% if puede_editar %}contenteditable="true"{% endif %}>{{ num(s.precio_formula) }}</td>
+                <td class="{% if puede_editar %}tn-edit{% endif %}" data-campo="core.costo_huevo"
+                  {% if puede_editar %}contenteditable="true"{% endif %}>{{ num(s.costo_huevo_mostrar) }}</td>
+                {% for codigo, etiqueta, unidad, subs in columnas %}
+                {% set n = s.nutrientes.get(codigo) or {} %}
+                {% for clave, etiqueta_sub in subs %}
+                <td data-campo="{{ codigo }}.{{ clave }}"
+                  class="{% if clave in ('tabla', 'tabla_min', 'tabla_sup') %}tn-guia {% endif %}{% if clave in subs_editables and puede_editar %}tn-edit {% endif %}{% if clave == 'dif' and n.get('dif') is not none %}{{ 'tn-dif-neg' if n.get('dif') < 0 else 'tn-dif-pos' }}{% endif %}"
+                  {% if clave in subs_editables and puede_editar %}contenteditable="true"{% endif %}>{{ num(n.get(clave)) }}</td>
+                {% endfor %}
+                {% endfor %}
+                <td class="tn-txt tn-col-obs {% if puede_editar %}tn-edit{% endif %}" data-campo="observaciones"
+                  title="{{ s.observaciones or '' }}"
+                  {% if puede_editar %}contenteditable="true"{% endif %}>{{ s.observaciones or '' }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="tn-nota">
+          Los indicadores (consumo, peso, conversión y % producción) se toman del <b>módulo de Producción</b>.
+          Del archivo de Excel solo se importan los nutrientes y las observaciones.
+          En cada nutriente se muestra la tabla, el valor real y la diferencia.
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      var cont = document.querySelector('.tn-scroll');
+      var fila = document.querySelector('.tn-fila-actual');
+      if (!cont || !fila) return;
+      var r = fila.getBoundingClientRect();
+      var c = cont.getBoundingClientRect();
+      cont.scrollTop += (r.top - c.top) - (cont.clientHeight / 2) + (r.height / 2);
+    });
+  </script>
+
+
+  <script>
+    (function () {
+      const tabla = document.querySelector('.tn-table[data-lote]');
+      if (!tabla) return;
+      const lote = tabla.dataset.lote;
+      const url = "{{ url_for('tablas_nutricionales.guardar_celda') }}";
+
+      function formatear(valor) {
+        if (valor === null || valor === undefined || valor === '') return '—';
+        const n = Number(valor);
+        if (!isFinite(n)) return '—';
+        return n.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+
+      function leerNumero(texto) {
+        let t = (texto || '').trim().replace('%', '').replace(/\s/g, '');
+        if (!t || t === '—' || t === '-') return null;
+        t = t.replace(/\./g, '').replace(',', '.');
+        const n = Number(t);
+        return isFinite(n) ? n : null;
+      }
+
+      async function guardar(celda) {
+        const fila = celda.closest('tr');
+        const campo = celda.dataset.campo;
+        const valor = leerNumero(celda.textContent);
+        celda.classList.add('tn-guardando');
+        try {
+          const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              lote: lote,
+              semana: Number(fila.dataset.semana),
+              campo: campo,
+              valor: valor
+            })
+          });
+          const data = await res.json();
+          if (data.status !== 'ok') {
+            alert(data.msg || 'No se pudo guardar.');
+            celda.textContent = celda.dataset.original || '—';
+            return;
+          }
+          Object.entries(data.valores).forEach(function (par) {
+            const destino = fila.querySelector('[data-campo="' + par[0] + '"]');
+            if (!destino) return;
+            if (par[0] === 'observaciones') {
+              destino.textContent = par[1] || '';
+              destino.title = par[1] || '';
+              return;
+            }
+            destino.textContent = formatear(par[1]) + (destino.dataset.porcentaje ? '%' : '');
+            if (destino.classList.contains('tn-dif-neg') || destino.classList.contains('tn-dif-pos')) {
+              destino.classList.remove('tn-dif-neg', 'tn-dif-pos');
+              if (par[1] !== null && par[1] !== undefined) {
+                destino.classList.add(Number(par[1]) < 0 ? 'tn-dif-neg' : 'tn-dif-pos');
+              }
+            }
+          });
+        } catch (e) {
+          alert('Error de conexión al guardar.');
+          celda.textContent = celda.dataset.original || '—';
+        } finally {
+          celda.classList.remove('tn-guardando');
+        }
+      }
+
+      document.querySelectorAll('.tn-edit').forEach(function (celda) {
+        celda.addEventListener('focus', function () {
+          this.dataset.original = this.textContent.trim();
+          this.classList.add('tn-editando');
+        });
+        celda.addEventListener('blur', function () {
+          this.classList.remove('tn-editando');
+          if (this.textContent.trim() !== (this.dataset.original || '').trim()) guardar(this);
+        });
+        celda.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') { e.preventDefault(); this.blur(); }
+          if (e.key === 'Escape') {
+            this.textContent = this.dataset.original || '—';
+            this.blur();
+          }
+        });
+      });
+    })();
+  </script>
+
+  {% else %}
+  <div class="card card-clean">
+    <div class="tn-vacio">
+      <i class="fas fa-table d-block mb-2" style="font-size: 1.7rem; color: var(--border);"></i>
+      <p class="mb-1 fw-semibold">No hay lotes para mostrar</p>
+      <p class="mb-0" style="font-size: .8rem;">Cree un lote en Gestión de lotes y luego importe su tabla nutricional.</p>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Modal importar -->
+<div class="modal fade" id="modalImportarTN" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="POST" action="{{ url_for('tablas_nutricionales.importar') }}" enctype="multipart/form-data">
+        <div class="modal-header">
+          <h5 class="modal-title" style="font-size: .95rem;">
+            <i class="fas fa-file-excel me-2"></i>Importar tabla nutricional
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" name="lote" value="{{ lote }}">
+          <div class="mb-3">
+            <label class="form-label-design" for="tn_archivo">ARCHIVO EXCEL (.xlsm o .xlsx)</label>
+            <input type="file" name="archivo" id="tn_archivo" class="form-control form-control-sm"
+              accept=".xlsm,.xlsx" required>
+          </div>
+          <div class="alert mb-0 py-2"
+            style="background:#fffaf0; border:1px solid #f0e2c2; color:#6b5a33; font-size:.78rem;">
+            <i class="fas fa-circle-info me-1"></i>
+            El sistema lee la hoja <b>Hy line Brown</b> y detecta el lote desde el nombre del archivo.
+            Los indicadores de producción no se duplican: solo se guardan los nutrientes.
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary btn-sm">
+            <i class="fas fa-upload me-1"></i> Importar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

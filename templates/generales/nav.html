@@ -37,7 +37,7 @@
         <!-- ROLES: DIRECTOR DE PLANTA - Ven módulos: Producción, Clasificación, Planta de Alimentos -->
         {% elif session.get('user_rol') == 'Director de Planta' %}
         {% set en_produccion = ep.startswith('lotes.') or ep.startswith('calificacion_lotes.') or ep.startswith('diario.') or ep.startswith('semanal.') or ep.startswith('semanal_levante.') or ep.startswith('primera_semana.') %}
-        {% set en_planta = ep.startswith('planta_alimentos.') %}
+        {% set en_planta = ep.startswith('planta_alimentos.') or ep.startswith('tablas_nutricionales.') %}
         {% set en_clasificacion = ep.startswith('clasificacion.') %}
         <ul class="navbar-nav app-nav me-auto mb-2 mb-lg-0">
 
@@ -75,7 +75,7 @@
         <!-- ROLES: SUPERADMIN, EDITOR, LECTOR - Ven módulos operativos + extras Superadmin -->
         {% else %}
         {% set en_produccion = ep.startswith('lotes.') or ep.startswith('calificacion_lotes.') or ep.startswith('diario.') or ep.startswith('semanal.') or ep.startswith('semanal_levante.') or ep.startswith('primera_semana.') %}
-        {% set en_planta = ep.startswith('planta_alimentos.') %}
+        {% set en_planta = ep.startswith('planta_alimentos.') or ep.startswith('tablas_nutricionales.') %}
         {% set en_clasificacion = ep.startswith('clasificacion.') %}
         <ul class="navbar-nav app-nav me-auto mb-2 mb-lg-0">
 
@@ -848,6 +848,15 @@
         const fly = this.nextElementSibling;
         if (!fly) return;
         const abrir = !fly.classList.contains('show');
+
+        // Solo un panel abierto a la vez
+        document.querySelectorAll('.planta-flyout.show').forEach(function (otro) {
+          if (otro !== fly) otro.classList.remove('show');
+        });
+        document.querySelectorAll('.nutricion-toggle[aria-expanded="true"]').forEach(function (otro) {
+          if (otro !== toggle) otro.setAttribute('aria-expanded', 'false');
+        });
+
         fly.classList.toggle('show', abrir);
         this.setAttribute('aria-expanded', abrir ? 'true' : 'false');
       });

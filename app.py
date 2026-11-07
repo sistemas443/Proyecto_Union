@@ -6,6 +6,7 @@ import werkzeug.serving
 # Importación de Blueprints
 from routes.routes import bp
 from routes.planta_alimentos.catalogo_a import planta_bp
+from routes.planta_alimentos.tablas_nutricionales import tn_bp
 from routes.primera_semana.vistas import primera_semana_bp
 from routes.semanal_levante.vistas import semanal_levante_bp
 from routes.semanal.vistas import semanal_bp
@@ -166,6 +167,7 @@ def create_app():
     # Registro de TODOS los Blueprints del proyecto
     app.register_blueprint(bp)                    # Blueprint principal (main)
     app.register_blueprint(planta_bp)              # Blueprint modular de planta de alimentos
+    app.register_blueprint(tn_bp)                  # Tablas Nutricionales (Planta de Alimentos)
     app.register_blueprint(primera_semana_bp)      # Blueprint modular de primera semana
     app.register_blueprint(semanal_levante_bp)     # Blueprint modular de semanal levante
     app.register_blueprint(semanal_bp)             # Blueprint modular de semanal producción (+ gráficos)

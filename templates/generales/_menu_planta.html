@@ -35,4 +35,28 @@
       <li><a class="dropdown-item{{ ' active' if ep == 'planta_alimentos.inventario_dietas' }}" href="{{ url_for('planta_alimentos.inventario_dietas') }}"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill-rule="evenodd" d="M12 2.2 19.8 8.2H4.2L12 2.2ZM6.6 8.2h10.8v11.9l-2.7 2.3H9.3l-2.7-2.3V8.2ZM7.6 11.9h8.8v.9H7.6ZM7.6 15.9h8.8v.9H7.6Z"/></svg> Inventario Dietas</a></li>
     </ul>
   </li>
+
+  <li class="planta-nutricion">
+    <a class="dropdown-item nutricion-toggle{{ ' active' if ep.startswith('tablas_nutricionales.') }}"
+      href="#" role="button" aria-expanded="false" aria-controls="menuTablasNutricionales">
+      <i class="fas fa-table"></i> Tablas Nutricionales
+      <i class="fas fa-chevron-right nutricion-chev" aria-hidden="true"></i>
+    </a>
+
+    <ul class="dropdown-menu dropdown-menu-dark planta-flyout" id="menuTablasNutricionales">
+      <li><h6 class="dropdown-header">Tablas Nutricionales</h6></li>
+      <li>
+        <a class="dropdown-item{{ ' active' if ep == 'tablas_nutricionales.vista' }}"
+          href="{{ url_for('tablas_nutricionales.vista') }}">
+          <i class="fas fa-table-cells"></i> Tabla de datos
+        </a>
+      </li>
+      <li>
+        <a class="dropdown-item{{ ' active' if ep == 'tablas_nutricionales.vista' and request.args.get('vista') == 'analisis' }}"
+          href="{{ url_for('tablas_nutricionales.vista', vista='analisis') }}">
+          <i class="fas fa-chart-line"></i> Análisis
+        </a>
+      </li>
+    </ul>
+  </li>
 </ul>
