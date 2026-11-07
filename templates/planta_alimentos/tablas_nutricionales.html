@@ -3,6 +3,8 @@
 
 {% macro num(v) %}{% if v is none or v == '' %}—{% else %}{{ "{:,.2f}".format(v|float).replace(',', 'X').replace('.', ',').replace('X', '.') }}{% endif %}{% endmacro %}
 {% macro num0(v) %}{% if v is none or v == '' %}—{% else %}{{ "{:,.0f}".format(v|float).replace(',', 'X').replace('.', ',').replace('X', '.') }}{% endif %}{% endmacro %}
+{% macro num1(v) %}{% if v is none or v == '' %}—{% else %}{{ "{:,.1f}".format(v|float).replace(',', 'X').replace('.', ',').replace('X', '.') }}{% endif %}{% endmacro %}
+{% macro num3(v) %}{% if v is none or v == '' %}—{% else %}{{ "{:,.3f}".format(v|float).replace(',', 'X').replace('.', ',').replace('X', '.') }}{% endif %}{% endmacro %}
 
 {% block head %}
 {% include 'planta_alimentos/_design_system.html' %}
@@ -100,7 +102,22 @@
   }
   .tn-nota-critica { color: #1f4e79; font-weight: 700; margin-left: .35rem; }
   .tn-vacio { padding: 3rem 1rem; text-align: center; color: var(--text-muted); }
-  .tn-col-obs { max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tn-col-obs {
+    max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    position: relative; padding-right: 1.55rem !important;
+  }
+  .tn-obs-btn {
+    position: absolute; right: 2px; top: 50%; transform: translateY(-50%);
+    width: 18px; height: 18px; padding: 0; display: inline-flex;
+    align-items: center; justify-content: center;
+    border: 1px solid var(--border); border-radius: 4px;
+    background: #fff; color: #5b6675; font-size: .55rem; cursor: pointer;
+  }
+  .tn-obs-btn:hover { background: #eef3fa; color: #1f4e79; }
+  .tn-obs-full { white-space: pre-wrap; font-size: .85rem; line-height: 1.5; color: var(--text-primary); }
+  .tn-card:fullscreen .modal,
+  .tn-card:-webkit-full-screen .modal,
+  .tn-card.tn-fs-fallback .modal { background: rgba(15, 23, 42, .45); }
 
   /* Encabezados por parametro: base oscura + barra de acento */
   .tn-table thead th.tn-grupo {
@@ -428,7 +445,7 @@
           {% for k in chart.kpis %}
           <div class="tn-kpi">
             <div class="l">{{ k.label }}</div>
-            <div class="v">{{ num(k.valor) }}</div>
+            <div class="v">{% if k.formato == 'entero' %}{{ num0(k.valor) }}{% elif k.formato == 'tres' %}{{ num3(k.valor) }}{% elif k.formato == 'uno' %}{{ num1(k.valor) }}{% else %}{{ num(k.valor) }}{% endif %}</div>
             <div class="d">{{ k.detalle }}</div>
           </div>
           {% endfor %}
@@ -802,12 +819,12 @@
                 <td class="{% if puede_editar %}tn-edit{% endif %}" data-campo="core.gramos"
                   {% if puede_editar %}contenteditable="true"{% endif %}>{{ num(s.consumo) }}</td>
                 <td class="{% if puede_editar %}tn-edit{% endif %}" data-campo="core.conversion"
-                  {% if puede_editar %}contenteditable="true"{% endif %}>{{ num(s.conversion) }}</td>
+                  {% if puede_editar %}contenteditable="true"{% endif %}>{{ num3(s.conversion) }}</td>
                 <td class="{% if puede_editar %}tn-edit{% endif %}" data-campo="core.peso"
-                  {% if puede_editar %}contenteditable="true"{% endif %}>{{ num(s.peso) }}</td>
+                  {% if puede_editar %}contenteditable="true"{% endif %}>{{ num0(s.peso) }}</td>
                 <td class="{% if puede_editar %}tn-edit{% endif %}" data-campo="core.produccion"
                   data-porcentaje="1" {% if puede_editar %}contenteditable="true"{% endif %}>
-                  {% if s.produccion is not none %}{{ num(s.produccion) }}%{% else %}—{% endif %}
+                  {% if s.produccion is not none %}{{ num1(s.produccion) }}%{% else %}—{% endif %}
                 </td>
                 <td class="{% if puede_editar %}tn-edit{% endif %}" data-campo="core.precio_formula"
                   {% if puede_editar %}contenteditable="true"{% endif %}>{{ num(s.precio_formula) }}</td>
@@ -823,7 +840,16 @@
                 {% endfor %}
                 <td class="tn-txt tn-col-obs {% if puede_editar %}tn-edit{% endif %}" data-campo="observaciones"
                   title="{{ s.observaciones or '' }}"
-                  {% if puede_editar %}contenteditable="true"{% endif %}>{{ s.observaciones or '' }}</td>
+                  {% if puede_editar %}contenteditable="true"{% endif %}>
+                  <span class="tn-obs-texto">{{ s.observaciones or '' }}</span>
+                  {% if s.observaciones and s.observaciones|length > 40 %}
+                  <button type="button" class="tn-obs-btn" contenteditable="false"
+                    data-obs="{{ s.observaciones }}" data-semana="{{ s.semana }}"
+                    title="Ver observación completa">
+                    <i class="fas fa-expand"></i>
+                  </button>
+                  {% endif %}
+                </td>
               </tr>
               {% endfor %}
             </tbody>
@@ -834,6 +860,26 @@
           Los indicadores (consumo, peso, conversión y % producción) se toman del <b>módulo de Producción</b>.
           Del archivo de Excel solo se importan los nutrientes y las observaciones.
           En cada nutriente se muestra la tabla, el valor real y la diferencia.
+        </div>
+
+        <!-- Modal observación completa -->
+        <div class="modal fade" id="modalObsTN" tabindex="-1" aria-hidden="true">
+          <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title" style="font-size: .95rem;">
+                  <i class="fas fa-note-sticky me-2"></i>Observación · Semana <span id="tnObsSemana"></span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+              </div>
+              <div class="modal-body">
+                <div id="tnObsTexto" class="tn-obs-full"></div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       {% endif %}
@@ -859,11 +905,43 @@
       const lote = tabla.dataset.lote;
       const url = "{{ url_for('tablas_nutricionales.guardar_celda') }}";
 
-      function formatear(valor) {
+      function formatear(valor, celda) {
         if (valor === null || valor === undefined || valor === '') return '—';
-        const n = Number(valor);
+        let n = Number(valor);
         if (!isFinite(n)) return '—';
-        return n.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const campo = celda ? celda.dataset.campo : '';
+        const esPorcentaje = celda && celda.dataset.porcentaje;
+        if (esPorcentaje && Math.abs(n) <= 1) n *= 100;
+        let decimales = 2;
+        if (campo === 'core.peso') decimales = 0;
+        else if (campo === 'core.conversion') decimales = 3;
+        else if (esPorcentaje) decimales = 1;
+        const texto = n.toLocaleString('es-CO', {
+          minimumFractionDigits: decimales,
+          maximumFractionDigits: decimales
+        });
+        return esPorcentaje ? texto + '%' : texto;
+      }
+
+      function pintarObs(celda, texto) {
+        texto = texto || '';
+        celda.title = texto;
+        celda.innerHTML = '';
+        const span = document.createElement('span');
+        span.className = 'tn-obs-texto';
+        span.textContent = texto;
+        celda.appendChild(span);
+        if (texto.length > 40) {
+          const boton = document.createElement('button');
+          boton.type = 'button';
+          boton.className = 'tn-obs-btn';
+          boton.contentEditable = 'false';
+          boton.title = 'Ver observación completa';
+          boton.dataset.obs = texto;
+          boton.dataset.semana = celda.closest('tr').dataset.semana || '';
+          boton.innerHTML = '<i class="fas fa-expand"></i>';
+          celda.appendChild(boton);
+        }
       }
 
       function leerNumero(texto) {
@@ -877,7 +955,9 @@
       async function guardar(celda) {
         const fila = celda.closest('tr');
         const campo = celda.dataset.campo;
-        const valor = leerNumero(celda.textContent);
+        const valor = campo === 'observaciones'
+          ? celda.textContent.trim()
+          : leerNumero(celda.textContent);
         celda.classList.add('tn-guardando');
         try {
           const res = await fetch(url, {
@@ -900,11 +980,10 @@
             const destino = fila.querySelector('[data-campo="' + par[0] + '"]');
             if (!destino) return;
             if (par[0] === 'observaciones') {
-              destino.textContent = par[1] || '';
-              destino.title = par[1] || '';
+              pintarObs(destino, par[1] || '');
               return;
             }
-            destino.textContent = formatear(par[1]) + (destino.dataset.porcentaje ? '%' : '');
+            destino.textContent = formatear(par[1], destino);
             if (destino.classList.contains('tn-dif-neg') || destino.classList.contains('tn-dif-pos')) {
               destino.classList.remove('tn-dif-neg', 'tn-dif-pos');
               if (par[1] !== null && par[1] !== undefined) {
@@ -936,6 +1015,22 @@
             this.blur();
           }
         });
+      });
+
+      document.addEventListener('mousedown', function (e) {
+        if (e.target.closest && e.target.closest('.tn-obs-btn')) e.preventDefault();
+      });
+
+      document.addEventListener('click', function (e) {
+        const boton = e.target.closest ? e.target.closest('.tn-obs-btn') : null;
+        if (!boton) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const modalEl = document.getElementById('modalObsTN');
+        if (!modalEl || !window.bootstrap) return;
+        document.getElementById('tnObsTexto').textContent = boton.dataset.obs || '';
+        document.getElementById('tnObsSemana').textContent = boton.dataset.semana || '';
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
       });
     })();
   </script>
