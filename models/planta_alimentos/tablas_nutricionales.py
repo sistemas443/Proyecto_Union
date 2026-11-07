@@ -107,6 +107,17 @@ def _limpio(valor):
     return None if (valor is None or valor == 0) else valor
 
 
+def _porcentaje(valor):
+    """Normaliza porcentajes: 0.95 -> 95, 95 -> 95."""
+    if valor is None:
+        return None
+    try:
+        valor = float(valor)
+    except (TypeError, ValueError):
+        return None
+    return valor * 100 if 0 <= valor <= 1 else valor
+
+
 def _promedio(valores):
     limpios = [v for v in valores if v is not None]
     return (sum(limpios) / len(limpios)) if limpios else None
@@ -383,7 +394,10 @@ class TablaNutricional:
                         if sub not in SUBS_EDITABLES:
                             return {'ok': False, 'msg': 'Ese campo es una fórmula.'}
                         nodo = nutrientes.setdefault(codigo, {})
-                    nodo[sub] = _num(valor)
+                    valor_num = _num(valor)
+                    if sub == 'produccion' and valor_num is not None and abs(valor_num) > 1:
+                        valor_num = valor_num / 100.0
+                    nodo[sub] = valor_num
                     TablaNutricional._recalcular(nutrientes)
 
                 cur.execute("""
@@ -438,11 +452,11 @@ class TablaNutricional:
                 {'nombre': 'Consumo tabla', 'y': consumo_tabla, 'color': '#9aa3b1', 'dash': 'dot', 'eje': 'y2'},
             ]
             kpis = [
-                {'label': 'Peso actual', 'valor': _ultimo(peso), 'detalle': 'g'},
+                {'label': 'Peso actual', 'valor': _ultimo(peso), 'detalle': 'g', 'formato': 'entero'},
                 {'label': 'Consumo actual', 'valor': _ultimo(consumo), 'detalle': 'g/ave/día'},
                 {'label': 'Conversión actual',
                  'valor': _ultimo(_serie_limpia([s.get('conversion') for s in semanas])),
-                 'detalle': ''},
+                 'detalle': '', 'formato': 'tres'},
             ]
             return {'codigo': definicion['codigo'], 'titulo': definicion['titulo'],
                     'unidad': 'Peso (g)', 'dual': True, 'x': x, 'series': series,
@@ -699,6 +713,10 @@ class TablaNutricional:
                 valor_excel = _num(fila['extras'].get(origen))
                 if valor_excel is not None:
                     fila[destino] = valor_excel
+
+            # El Excel guarda el % de produccion como fraccion (0.95 = 95%)
+            fila['produccion'] = _porcentaje(fila.get('produccion'))
+            fila['produccion_tabla'] = _porcentaje(fila.get('produccion_tabla'))
 
             if fila.get('precio_dieta') is None:
                 fila['precio_dieta'] = _num(fila['extras'].get('precio_formula'))
