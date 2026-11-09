@@ -520,7 +520,7 @@
                 <td class="tn-txt">{{ p.fecha.strftime('%d/%m/%Y') if p.fecha else '' }}</td>
                 <td>{{ num0(p.consumo_kg) }}</td>
                 <td>{{ num0(p.produccion_huevos) }}</td>
-                <td>{{ num0(p.precio_dieta) }}</td>
+                <td>{% if p.precio_dieta is not none %}$ {{ num0(p.precio_dieta) }}{% endif %}</td>
                 <td class="tn-col-precio">{% if p.precio_huevo is not none %}$ {{ num0(p.precio_huevo) }}{% endif %}</td>
               </tr>
               {% else %}
