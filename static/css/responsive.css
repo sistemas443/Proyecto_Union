@@ -1,0 +1,107 @@
+/* ==========================================================================
+   AJUSTES RESPONSIVE — solo tablet y móvil
+   Todas las reglas viven dentro de @media: el modo escritorio no cambia.
+   ========================================================================== */
+
+@media (max-width: 991.98px) {
+  main.container-fluid { padding-left: 1rem; padding-right: 1rem; }
+  body.sidebar-activa main.container-fluid,
+  body.sidebar-th-activa main.container-fluid { padding-left: 1rem; }
+
+  /* Encabezados de página: título y controles se acomodan en varias líneas */
+  .page-header { flex-wrap: wrap; align-items: flex-start; gap: 0.75rem; }
+  .page-header > * { min-width: 0; max-width: 100%; }
+  .page-header > .d-flex { width: 100%; }
+  .page-header .d-flex { flex-wrap: wrap; min-width: 0; }
+  .page-header form { max-width: 100%; }
+
+  /* Filtros con select de ancho fijo */
+  .ps-filtro-lote { width: 100%; }
+  .ps-filtro-lote .form-select { flex: 1 1 140px; width: auto !important; min-width: 0; }
+
+  /* Gráficos: títulos y botones pueden ocupar varias líneas */
+  .ps-grafico-titulo { flex-wrap: wrap; row-gap: 0.3rem; }
+  .tn-chart-tools { flex-wrap: wrap; }
+
+  /* Tablas: desplazamiento táctil suave */
+  .tabla-scroll,
+  .tn-scroll,
+  .contenedor-matriz,
+  .table-responsive,
+  .imp-revision-wrap { -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+
+  /* Modales */
+  .modal-dialog { margin: 0.6rem auto; }
+}
+
+@media (max-width: 767.98px) {
+  main.container-fluid { padding-left: 0.8rem; padding-right: 0.8rem; }
+
+  /* Menú superior desplegable con scroll propio */
+  .app-navbar .navbar-collapse { max-height: calc(100vh - 56px); overflow-y: auto; }
+  .app-navbar .app-user { flex-wrap: wrap; gap: 0.45rem; }
+
+  /* Ficha del lote de los gráficos: una sola columna */
+  .ps-franja-grid { grid-template-columns: 1fr; }
+
+  /* Buscador de observaciones del diario */
+  .ps-buscar-obs { align-items: stretch; }
+  .ps-buscar-obs .ps-buscar-campo { flex: 1 1 100%; max-width: none; }
+
+  /* Tablas Nutricionales: el riel lateral pasa a barra horizontal */
+  .tn-layout { flex-direction: column; gap: 0.6rem; }
+  .tn-layout .tn-rail,
+  .tn-layout.rail-min .tn-rail {
+    position: static !important;
+    flex: 0 0 auto !important;
+    width: 100% !important;
+    max-height: none !important;
+    display: flex;
+    flex-direction: row !important;
+    align-items: center;
+    gap: 0.15rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0.35rem !important;
+  }
+  .tn-layout .tn-rail .tn-h,
+  .tn-layout .tn-rail .tn-rail-toggle,
+  .tn-layout .tn-rail .tn-badge-fase { display: none !important; }
+  .tn-layout .tn-rail a {
+    flex: 0 0 auto;
+    width: auto !important;
+    white-space: nowrap;
+    padding: 0.38rem 0.55rem !important;
+  }
+  .tn-layout .tn-rail a .tn-rail-txt { display: inline !important; opacity: 1 !important; }
+  .tn-layout.rail-min .tn-rail a { display: flex !important; }
+  .tn-main { width: 100%; }
+
+  .tn-card-head { flex-wrap: wrap; }
+  .tn-chips { gap: 0.35rem; }
+  .tn-kpis { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)) !important; }
+  .tn-fs-btn span { display: none; }
+  .tn-filtro-todo { margin-left: 0; }
+}
+
+@media (max-width: 575.98px) {
+  main.container-fluid { padding-left: 0.65rem; padding-right: 0.65rem; }
+
+  .page-title { font-size: 1.2rem; }
+  .page-subtitle { font-size: 0.76rem; }
+
+  /* Encabezados: los controles bajan debajo del título */
+  .page-header { align-items: stretch; }
+  .page-header > div { flex: 1 1 100%; }
+  .page-header .badge-estado { align-self: flex-start; }
+  .page-header form,
+  .page-header .ps-filtro-lote { flex: 1 1 100%; }
+  .page-header form .btn { flex: 0 0 auto; }
+
+  /* Tablas Nutricionales */
+  .tn-filtro { padding: 0.4rem 0.55rem; }
+  .tn-chip-serie { font-size: 0.66rem; }
+
+  /* Diario: contador y flechas del buscador */
+  .ps-buscar-nav { order: 3; }
+}
