@@ -492,8 +492,8 @@
                 <td class="tn-txt">{{ p.fecha.strftime('%d/%m/%Y') if p.fecha else '—' }}</td>
                 <td>{{ num0(p.consumo_kg) }}</td>
                 <td>{{ num0(p.produccion_huevos) }}</td>
-                <td>{{ num(p.precio_dieta) }}</td>
-                <td>{{ num(p.precio_huevo) }}</td>
+                <td>{{ num0(p.precio_dieta) }}</td>
+                <td>{{ num0(p.precio_huevo) }}</td>
               </tr>
               {% else %}
               <tr>
@@ -898,14 +898,14 @@
                 {% endif %}
                 <td class="tn-txt">{{ s.fecha.strftime('%d/%m/%Y') if s.fecha else '—' }}</td>
                 <td class="tn-sem">{{ s.semana }}{% if s.es_actual %}<span class="tn-actual-dot" title="Semana vigente"></span>{% endif %}</td>
-                <td>{{ num(s.extras.get('consumo1')) }}</td>
-                <td>{{ num(s.extras.get('consumo2')) }}</td>
+                <td>{{ num0(s.extras.get('consumo1')) }}</td>
+                <td>{{ num0(s.extras.get('consumo2')) }}</td>
                 <td class="{% if puede_editar %}tn-edit{% endif %}" data-campo="core.gramos"
                   {% if puede_editar %}contenteditable="true"{% endif %}>{{ num(s.consumo) }}</td>
                 <td class="{% if puede_editar %}tn-edit{% endif %}" data-campo="core.precio_formula"
-                  {% if puede_editar %}contenteditable="true"{% endif %}>{{ num(s.precio_formula) }}</td>
+                  {% if puede_editar %}contenteditable="true"{% endif %}>{{ num0(s.precio_formula) }}</td>
                 <td class="{% if puede_editar %}tn-edit{% endif %}" data-campo="core.costo_huevo"
-                  {% if puede_editar %}contenteditable="true"{% endif %}>{{ num(s.costo_huevo_mostrar) }}</td>
+                  {% if puede_editar %}contenteditable="true"{% endif %}>{{ num0(s.costo_huevo_mostrar) }}</td>
                 <td class="{% if puede_editar %}tn-edit{% endif %}" data-campo="core.conversion"
                   {% if puede_editar %}contenteditable="true"{% endif %}>{{ num3(s.conversion) }}</td>
                 <td class="{% if puede_editar %}tn-edit{% endif %}" data-campo="core.peso"
@@ -997,7 +997,9 @@
         const esPorcentaje = celda && celda.dataset.porcentaje;
         let sufijo = '';
         let decimales = 2;
-        if (campo === 'core.peso') decimales = 0;
+        if (campo === 'core.peso' || campo === 'core.precio_formula'
+            || campo === 'core.costo_huevo' || campo === 'core.consumo1'
+            || campo === 'core.consumo2') decimales = 0;
         else if (campo === 'core.conversion') decimales = 3;
         else if (campo && campo.endsWith('.formu')) {
           const code = campo.split('.')[0];
