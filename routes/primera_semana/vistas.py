@@ -4,8 +4,15 @@ from models.primera_semana.services import get_primera_semana_by_lote, get_data_
 from models.cabecera.services import get_cabecera_info
 from models.lotes.services import get_lotes_distintos
 from models.catalogos import services as catalogos_services
+from models.comparador_lotes import construir_paneles, datos_lotes
 
 primera_semana_bp = Blueprint('primera_semana', __name__)
+
+# Interruptor del comparador de lotes (piloto en Primera semana).
+# Si se necesita desactivar sin revertir el código, basta con dejarlo en False.
+COMPARADOR_LOTES_ACTIVO = True
+LETRAS_COMPARADOR = ('A', 'B', 'C', 'D')
+COLORES_COMPARADOR = ('#97271C', '#1f4e79', '#2f7d4f', '#a06a00')
 
 
 @primera_semana_bp.route('/primera-semana', methods=['GET', 'POST'])
@@ -25,12 +32,83 @@ def primera_semana():
         cabecera = get_cabecera_info(lote_seleccionado)
         filas = get_primera_semana_by_lote(lote_seleccionado, cabecera)
 
+    # --- Comparador de lotes (piloto) ---
+    comparar = (
+        COMPARADOR_LOTES_ACTIVO
+        and request.args.get('comparar') == '1'
+        and bool(lote_seleccionado)
+        and lote_seleccionado != 'VACIO'
+    )
+    try:
+        cantidad = int(request.args.get('cantidad', 2))
+    except (TypeError, ValueError):
+        cantidad = 2
+    cantidad = max(2, min(4, cantidad))
+
+    lotes_extra = [
+        (request.args.get('lote_b') or '').strip(),
+        (request.args.get('lote_c') or '').strip(),
+        (request.args.get('lote_d') or '').strip(),
+    ]
+
+    paneles = []
+    lote_a = lote_seleccionado
+    if comparar:
+        # El lote A se puede cambiar dentro de la comparación sin alterar
+        # el lote recordado para la vista normal (Salir vuelve a ese lote).
+        candidato_a = (request.args.get('lote_a') or '').strip()
+        if candidato_a and candidato_a != 'VACIO':
+            cab_candidata = get_cabecera_info(candidato_a)
+            if cab_candidata:
+                lote_a = candidato_a
+
+        if lote_a == lote_seleccionado:
+            cab_a, filas_a = cabecera, filas
+        else:
+            cab_a = get_cabecera_info(lote_a)
+            filas_a = get_primera_semana_by_lote(lote_a, cab_a)
+
+        usados = {lote_a}
+        paneles.append({
+            'letra': LETRAS_COMPARADOR[0],
+            'color': COLORES_COMPARADOR[0],
+            'lote': lote_a,
+            'cabecera': cab_a,
+            'filas': filas_a,
+        })
+        for indice in range(1, cantidad):
+            lote_extra = lotes_extra[indice - 1]
+            if not lote_extra or lote_extra == 'VACIO' or lote_extra in usados:
+                paneles.append({
+                    'letra': LETRAS_COMPARADOR[indice],
+                    'color': COLORES_COMPARADOR[indice],
+                    'lote': '',
+                    'cabecera': None,
+                    'filas': [],
+                })
+                continue
+            usados.add(lote_extra)
+            cab_extra = get_cabecera_info(lote_extra)
+            paneles.append({
+                'letra': LETRAS_COMPARADOR[indice],
+                'color': COLORES_COMPARADOR[indice],
+                'lote': lote_extra,
+                'cabecera': cab_extra,
+                'filas': get_primera_semana_by_lote(lote_extra, cab_extra),
+            })
+
     return render_template(
         'produccion/primera_semana.html',
         filas=filas,
         lotes=get_lotes_distintos(),
         lote_seleccionado=lote_seleccionado,
-        cabecera=cabecera
+        cabecera=cabecera,
+        comparador_activo=COMPARADOR_LOTES_ACTIVO,
+        comparar=comparar,
+        cantidad=cantidad,
+        paneles=paneles,
+        lotes_extra=lotes_extra,
+        lote_a=lote_a,
     )
 
 
@@ -43,7 +121,26 @@ def grafico_primera_semana():
         if lote_seleccionado and lote_seleccionado != 'VACIO':
             session['ultimo_lote'] = lote_seleccionado
     else:
-        lote_seleccionado = session.get('ultimo_lote', '')
+        lote_seleccionado = request.args.get('lote') or session.get('ultimo_lote', '')
+
+    embed = request.args.get('embed') == '1'
+    if embed:
+        lote_embed = (request.args.get('lote') or '').strip()
+        if lote_embed:
+            lote_seleccionado = lote_embed
+
+    paneles, cantidad = construir_paneles(request)
+    if paneles:
+        lotes = get_lotes_distintos()
+        return render_template(
+            'produccion/comparador_modulo.html',
+            paneles=paneles,
+            cantidad=cantidad,
+            lotes=lotes,
+            datos_lotes=datos_lotes(lotes),
+            endpoint=request.endpoint,
+            titulo='Gráfico 1era semana',
+        )
 
     datos_grafico = None
     info_lote = None
