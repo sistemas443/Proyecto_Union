@@ -202,6 +202,46 @@
   .table-form .col-insumos {
     text-align: center;
   }
+  .ins-resumen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+  }
+  .ins-principal {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3rem;
+    white-space: nowrap;
+  }
+  .ins-version {
+    background: #1f3b5c;
+    color: #ffffff;
+    border-radius: 5px;
+    padding: 0.05rem 0.35rem;
+    font-size: 0.64rem;
+    font-weight: 800;
+    white-space: nowrap;
+  }
+  .ins-cantidad {
+    background: #eef2f7;
+    color: #344054;
+    border: 1px solid #d9e2ec;
+    border-radius: 20px;
+    padding: 0.05rem 0.5rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .ins-versiones {
+    color: #667085;
+    font-size: 0.6rem;
+    line-height: 1.1;
+    white-space: nowrap;
+    cursor: help;
+  }
 
   /* Columna Peso */
   .table-form .col-peso {
@@ -379,7 +419,20 @@
                             <td class="col-nombre px-3">{{ formula['nombre_dieta'] }}</td>
 
                             <!-- 3. N° INSUMOS -->
-                            <td class="col-insumos">{{ formula['resumen_insumos_html'] | safe }}</td>
+                            <td class="col-insumos">
+                                <div class="ins-resumen">
+                                    <div class="ins-principal">
+                                        <span class="ins-version">V-{{ formula['ultima_version'] }}</span>
+                                        <span class="ins-cantidad"
+                                            title="{{ formula['insumos_ultima'] or 0 }} insumos">{{ formula['insumos_ultima'] or 0 }} insumos</span>
+                                    </div>
+                                    {% if (formula['num_versiones'] or 0) > 1 %}
+                                    <div class="ins-versiones" title="{{ formula['versiones_detalle'] }}">
+                                        {{ formula['num_versiones'] }} versiones
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </td>
 
                             <!-- 4. TOTAL PESO -->
                             <td class="col-peso px-3">{{ "{:,.0f}".format(formula['total_peso'] | default(0) | float) }} kg</td>

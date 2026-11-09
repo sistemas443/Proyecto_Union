@@ -308,6 +308,15 @@ html[data-bs-theme="dark"] .comparador-panel-head { background: #20272e; border-
 html[data-bs-theme="dark"] .comparador-panel tbody tr.cmp-fila-hover td { background-color: #3a3320 !important; }
 html[data-bs-theme="dark"] .comparador-aviso { color: #ff9c93; }
 
+/* Insignias de insumos en resumen de fórmulas */
+html[data-bs-theme="dark"] .ins-cantidad {
+  background: #232b34;
+  color: var(--text-primary);
+  border-color: var(--border);
+}
+html[data-bs-theme="dark"] .ins-versiones { color: var(--text-muted); }
+html[data-bs-theme="dark"] .ins-version { background: #1f4e79; }
+
 /* Separador por mes de vencimiento en resumen de fórmulas */
 html[data-bs-theme="dark"] .table-form tbody tr.fila-mes td {
   background: #232b34;

@@ -703,7 +703,7 @@ class FormulaDetalle:
                 consulta = """
                     SELECT 
                         COALESCE(SUM(fd.cantidad_kg), 0) AS total_kg,
-                        COALESCE(SUM(fd.cantidad_kg * COALESCE(fd.precio_guardado, mp.precio_actual_kg)), 0) AS total_costo
+                        COALESCE(SUM(fd.cantidad_kg * COALESCE(NULLIF(fd.precio_guardado, 0), mp.precio_actual_kg)), 0) AS total_costo
                     FROM formula_detalle fd
                     JOIN materias_primas mp ON fd.materia_prima_id = mp.id
                     WHERE fd.item_id = %s AND fd.lote_id = %s AND fd.version = %s;
@@ -807,7 +807,7 @@ class FormulaDetalle:
                             fd.version,
                             COUNT(fd.materia_prima_id) AS num_insumos,
                             SUM(fd.cantidad_kg) AS peso_version,
-                            SUM(fd.cantidad_kg * mp.precio_actual_kg) AS costo_version,
+                            SUM(fd.cantidad_kg * COALESCE(NULLIF(fd.precio_guardado, 0), mp.precio_actual_kg)) AS costo_version,
                             MIN(fd.fecha_vencimiento) AS fecha_vencimiento
                         FROM formula_detalle fd
                         JOIN materias_primas mp ON fd.materia_prima_id = mp.id
@@ -824,11 +824,10 @@ class FormulaDetalle:
                         uv.max_version AS ultima_version,
                         ca.nombre AS nombre_dieta,
                         
-                        STRING_AGG(
-                            '<span class="badge bg-primary me-1">V-' || rv.version || '</span>' ||
-                            '<span class="badge bg-secondary me-2">' || rv.num_insumos || ' insumos</span>',
-                            ' ' ORDER BY rv.version ASC
-                        ) AS resumen_insumos_html,
+                        MAX(CASE WHEN rv.version = uv.max_version THEN rv.num_insumos END) AS insumos_ultima,
+                        COUNT(*) AS num_versiones,
+                        STRING_AGG('V-' || rv.version || ': ' || rv.num_insumos || ' insumos',
+                                   ' · ' ORDER BY rv.version ASC) AS versiones_detalle,
                         
                         MAX(CASE WHEN rv.version = uv.max_version THEN rv.peso_version ELSE 0 END) AS total_peso,
                         MAX(CASE WHEN rv.version = uv.max_version THEN rv.costo_version ELSE 0 END) AS costo_bache,
