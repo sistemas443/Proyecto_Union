@@ -82,8 +82,15 @@
 
     if (control.tagName !== 'INPUT') return false;
     const tipo = (control.type || 'text').toLowerCase();
-    if (!['text', 'search', 'number', 'tel', 'email', 'url', 'password'].includes(tipo)) return false;
-    if (typeof control.selectionStart !== 'number') return false;
+
+    // Los campos numéricos y de fecha no exponen la posición del cursor
+    // (selectionStart es null): se permite mover siempre en horizontal.
+    if (['number', 'date', 'time', 'month', 'week', 'datetime-local'].includes(tipo)) {
+      return true;
+    }
+
+    if (!['text', 'search', 'tel', 'email', 'url', 'password'].includes(tipo)) return false;
+    if (typeof control.selectionStart !== 'number') return true;
     if (control.selectionStart !== control.selectionEnd) return false;
     return direccion < 0
       ? control.selectionStart === 0
@@ -95,6 +102,32 @@
     destino.focus({ preventScroll: true });
     if (destino.scrollIntoView) {
       destino.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    }
+
+    // Deja el cursor al final para que la flecha derecha avance de una vez.
+    if (destino.tagName === 'INPUT') {
+      const tipo = (destino.type || 'text').toLowerCase();
+      if (['text', 'search', 'tel', 'email', 'url', 'password'].includes(tipo)
+          && typeof destino.selectionStart === 'number') {
+        try {
+          const fin = destino.value.length;
+          destino.setSelectionRange(fin, fin);
+        } catch (e) {}
+      }
+    } else if (destino.isContentEditable) {
+      // Algunas vistas seleccionan todo el texto al enfocar; se coloca el
+      // cursor al final para que la navegación horizontal funcione.
+      setTimeout(function () {
+        if (document.activeElement !== destino) return;
+        try {
+          const rango = document.createRange();
+          rango.selectNodeContents(destino);
+          rango.collapse(false);
+          const seleccion = window.getSelection();
+          seleccion.removeAllRanges();
+          seleccion.addRange(rango);
+        } catch (e) {}
+      }, 0);
     }
     return true;
   }
