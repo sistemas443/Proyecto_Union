@@ -154,6 +154,27 @@
     border-color: var(--border);
   }
 
+  /* Separador por mes de vencimiento */
+  .table-form tbody tr.fila-mes td {
+    background: #eaf2f9;
+    color: #344054;
+    font-size: 0.68rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-top: 1px solid #d9e2ec;
+    border-bottom: 1px solid #d9e2ec;
+    padding: 0.35rem 0.75rem;
+  }
+  .table-form tbody tr.fila-mes:hover td { background: #e3edf7; }
+  .fila-mes-cuenta {
+    float: right;
+    font-weight: 600;
+    color: #667085;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
   /* Columna ITEM */
   .table-form .col-item {
     font-weight: 600;
@@ -325,7 +346,19 @@
                         </tr>
                     </thead>
                     <tbody>
+                        {% set ns = namespace(mes='') %}
                         {% for formula in formulas %}
+                        {% set mes_formula = formula['mes'] if formula['mes'] is defined and formula['mes'] else 'Sin fecha' %}
+                        {% if mes_formula != ns.mes %}
+                        {% set ns.mes = mes_formula %}
+                        <tr class="fila-mes">
+                            <td colspan="6">
+                                <i class="far fa-calendar-alt me-1"></i> Vencimiento: {{ mes_formula }}
+                                {% set cuenta_mes = formulas | selectattr('mes', 'defined') | selectattr('mes', 'equalto', mes_formula) | list | length %}
+                                <span class="fila-mes-cuenta">{{ cuenta_mes }} {{ 'dieta' if cuenta_mes == 1 else 'dietas' }}</span>
+                            </td>
+                        </tr>
+                        {% endif %}
                         <tr class="align-middle">
                             <!-- 1. ITEM -->
                             <td class="col-item px-3">{{ formula['item_id'] }}</td>
@@ -366,15 +399,7 @@
                                             <path fill-rule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5z"/>
                                         </svg>
                                     </a>
-
-                                    <!-- Botón Costos -->
-                                    <a href="{{ url_for('planta_alimentos.consolidado_precios') }}"
-                                        class="btn btn-outline-success btn-sm" title="Ver Costos"
-                                        style="font-weight: 700; font-size: 0.75rem; padding: 0.2rem 0.5rem;">
-                                        $
-                                    </a>
-
-                                    <!-- Botón Borrar -->
+<!-- Botón Borrar -->
                                     <form action="{{ url_for('planta_alimentos.eliminar_formula_lote', item_id=formula['item_id'], lote_id=lote_id) }}" method="POST" class="d-inline"
                                         data-confirm="Vas a eliminar la fórmula <strong>{{ formula['nombre_dieta'] }}</strong> de este lote." data-confirm-title="¿Eliminar fórmula?" data-confirm-ok="Sí, eliminar">
                                         <button type="submit" class="btn btn-outline-danger btn-sm" title="Eliminar Fórmula">

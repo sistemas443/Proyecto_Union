@@ -807,7 +807,8 @@ class FormulaDetalle:
                             fd.version,
                             COUNT(fd.materia_prima_id) AS num_insumos,
                             SUM(fd.cantidad_kg) AS peso_version,
-                            SUM(fd.cantidad_kg * mp.precio_actual_kg) AS costo_version
+                            SUM(fd.cantidad_kg * mp.precio_actual_kg) AS costo_version,
+                            MIN(fd.fecha_vencimiento) AS fecha_vencimiento
                         FROM formula_detalle fd
                         JOIN materias_primas mp ON fd.materia_prima_id = mp.id
                         WHERE fd.lote_id = %s
@@ -830,7 +831,8 @@ class FormulaDetalle:
                         ) AS resumen_insumos_html,
                         
                         MAX(CASE WHEN rv.version = uv.max_version THEN rv.peso_version ELSE 0 END) AS total_peso,
-                        MAX(CASE WHEN rv.version = uv.max_version THEN rv.costo_version ELSE 0 END) AS costo_bache
+                        MAX(CASE WHEN rv.version = uv.max_version THEN rv.costo_version ELSE 0 END) AS costo_bache,
+                        MAX(CASE WHEN rv.version = uv.max_version THEN rv.fecha_vencimiento ELSE NULL END) AS fecha_vencimiento
 
                     FROM ResumenVersiones rv
                     JOIN UltimaVersion uv ON rv.item_id = uv.item_id
@@ -839,7 +841,23 @@ class FormulaDetalle:
                 """
                 cur.execute(consulta, (lote_id,))
                 columnas = [desc[0] for desc in cur.description]
-                return [dict(zip(columnas, fila)) for fila in cur.fetchall()]
+                filas = [dict(zip(columnas, fila)) for fila in cur.fetchall()]
+
+                meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+                         'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+                for fila in filas:
+                    vencimiento = fila.get('fecha_vencimiento')
+                    if vencimiento:
+                        fila['mes'] = f"{meses[vencimiento.month - 1]} {vencimiento.year}"
+                    else:
+                        fila['mes'] = 'Sin fecha'
+
+                # Agrupación por mes de vencimiento: más reciente primero.
+                filas.sort(key=lambda f: (
+                    f.get('fecha_vencimiento') is None,
+                    -(f['fecha_vencimiento'].toordinal()) if f.get('fecha_vencimiento') else 0,
+                ))
+                return filas
         except Exception as e:
             print(f"Error al obtener resumen de fórmulas por lote: {e}")
             return []
