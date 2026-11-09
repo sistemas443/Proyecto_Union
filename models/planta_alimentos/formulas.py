@@ -852,6 +852,12 @@ class FormulaDetalle:
                     else:
                         fila['mes'] = 'Sin fecha'
 
+                    # Las cantidades de la receta estan en gramos por tonelada:
+                    # el peso del bache se muestra en kg (1.000.000 g = 1.000 kg)
+                    # y el costo queda a escala de una tonelada.
+                    fila['total_peso'] = float(fila.get('total_peso') or 0) / 1000.0
+                    fila['costo_bache'] = float(fila.get('costo_bache') or 0) / 1000.0
+
                 # Agrupación por mes de vencimiento: más reciente primero.
                 filas.sort(key=lambda f: (
                     f.get('fecha_vencimiento') is None,
