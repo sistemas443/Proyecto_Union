@@ -293,6 +293,8 @@ def insertar_insumos(item_id, lote_id, version, filas, baches_nucleo=6):
                 insertados += cur.rowcount
 
         conn.commit()
+        if creadas:
+            MateriaPrima.invalidar_cache()
         return {'insertados': insertados, 'creadas': creadas}
     except Exception as e:
         conn.rollback()

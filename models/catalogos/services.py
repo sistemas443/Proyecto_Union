@@ -137,12 +137,14 @@ def url_foto_por_id(tipo: str, id_item) -> str:
     return url_for('catalogos.foto_catalogo', tipo=tipo, id_item=id_item)
 
 
-def foto_por_nombre(tipo: str, nombre):
+def foto_por_nombre(tipo: str, nombre, cur=None):
     """Busca la foto de un valor en su catálogo.
-    Devuelve (nombre_mostrado, foto_url) con fallback al placeholder."""
+    Devuelve (nombre_mostrado, foto_url) con fallback al placeholder.
+    Si recibe un cursor, reutiliza la conexión y no descarga el BYTEA."""
     tabla = schemas.obtener_tabla(tipo)
     nombre_limpio = (nombre or '').strip()
-    item = model.buscar_por_nombre(tabla, nombre_limpio.upper()) if (tabla and nombre_limpio) else None
+    item = (model.buscar_por_nombre(tabla, nombre_limpio.upper(), cur=cur, ligero=True)
+            if (tabla and nombre_limpio) else None)
     if not item:
         return (nombre_limpio or '---'), url_for('static', filename=schemas.FOTO_PLACEHOLDER)
     # Prioridad: bytes en BD. Respaldo: ruta de archivo antigua (migracion).

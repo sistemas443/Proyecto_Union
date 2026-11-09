@@ -222,6 +222,7 @@ def consolidado_precio_editar():
             )
 
         conn.commit()
+        MateriaPrima.invalidar_cache()
         impacto.update({
             'status': 'ok',
             'respaldo': nombre_respaldo,
@@ -302,6 +303,7 @@ def consolidado_precio_deshacer():
             )
 
         conn.commit()
+        MateriaPrima.invalidar_cache()
         return jsonify({'status': 'ok', 'filas': len(filas) + len(ensayos)})
     except Exception as e:
         conn.rollback()
@@ -614,6 +616,7 @@ def toggle_materia_destacada(mp_id):
                 (destacada, mp_id)
             )
             conn.commit()
+        MateriaPrima.invalidar_cache()
         print(f"[DEBUG toggle] OK mp_id={mp_id}")
         return jsonify({'success': True})
     except Exception as e:

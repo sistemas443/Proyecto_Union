@@ -12,9 +12,9 @@ No duplica informacion: los indicadores se leen de:
 """
 import io
 import unicodedata
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
-from psycopg2.extras import Json
+from psycopg2.extras import Json, RealDictCursor, execute_values
 
 from models.base import get_db_connection
 
@@ -42,20 +42,43 @@ NUTRIENTES = [
 
 # Columnas que se muestran por nutriente (las originales del Excel, sin duplicar "Real")
 SUBS_POR_NUTRIENTE = {
-    'calcio': [('tabla', 'Guía'), ('real', 'Real'), ('formu', 'Formu'),
+    'calcio': [('tabla', 'Eco'), ('real', 'Real'), ('formu', 'Formu'),
                ('adicional_alimento', 'Adic. alimento'), ('adicional_biocalcio', 'Adic. biocalcio'),
                ('dif', 'Dif')],
-    'rel_ca_p': [('tabla', 'Guía'), ('real', 'Real'), ('dif', 'Dif')],
-    'fosforo': [('tabla', 'Guía'), ('real', 'Real'), ('formu', 'Formu'), ('dif', 'Dif')],
-    'potasio': [('tabla', 'Guía'), ('formu', 'Formu'), ('real', 'Real'), ('dif', 'Dif')],
+    'rel_ca_p': [('tabla', 'Eco'), ('real', 'Real'), ('dif', 'Dif')],
+    'fosforo': [('tabla', 'Eco'), ('real', 'Real'), ('formu', 'Formu'), ('dif', 'Dif')],
+    'sodio': [('tabla', 'Eco'), ('real', 'Real'), ('formu', 'Formu'), ('dif', 'Dif')],
+    'potasio': [('tabla', 'Eco'), ('formu', 'Formu'), ('real', 'Real'), ('dif', 'Dif')],
+    'cloro': [('tabla', 'Eco'), ('real', 'Real'), ('formu', 'Formu'), ('dif', 'Dif')],
     'energia': [('tabla_min', 'Tabla mín'), ('tabla_sup', 'Tabla máx'), ('real', 'Real'),
                 ('formu', 'Formu'), ('dif', 'Dif')],
     'energia_max': [('tabla', 'Tabla'), ('formu', 'Formu'), ('real', 'Real'), ('dif', 'Dif')],
 }
-SUBS_DEFAULT = [('tabla', 'Guía'), ('pro', 'PRO'), ('real', 'Real'), ('formu', 'Formu'), ('dif', 'Dif')]
+SUBS_DEFAULT = [('tabla', 'Eco'), ('pro', 'PRO'), ('real', 'Real'), ('formu', 'Formu'), ('dif', 'Dif')]
+
+# Consumos base por semana de vida (Eco/Consumo 1 y Consumo 2).
+# Se usan cuando el Excel o el lote no traen el dato.
+CONSUMO_BASE = [
+    (12, 14), (17, 21), (20, 25), (25, 30), (29, 36), (35, 44), (41, 49), (47, 56),
+    (52, 61), (56, 64), (60, 69), (62, 72), (64, 74), (66, 77), (68, 79), (70, 82),
+    (72, 85), (73, 88), (85, 94), (90, 99), (95, 103), (99, 107), (102, 111),
+    (106, 114), (108, 115), (109, 116), (109, 116), (109, 116), (109, 117),
+    (109, 117), (109, 117), (109, 117), (109, 117), (109, 117), (109, 117),
+    (109, 116), (109, 116), (109, 116), (108, 116), (108, 116), (108, 116),
+    (108, 116), (108, 116), (108, 116), (108, 116), (108, 116), (108, 116),
+    (108, 116), (108, 116), (108, 116), (108, 116), (108, 116), (108, 116),
+    (108, 116), (108, 116), (108, 116), (108, 116), (108, 116), (108, 116),
+    (108, 116), (108, 116), (108, 116), (108, 116), (108, 116), (108, 116),
+    (108, 116), (108, 116), (108, 116), (108, 116), (108, 116), (108, 116),
+    (108, 116), (108, 116), (108, 116), (108, 116), (108, 116), (108, 116),
+    (108, 116), (108, 116), (108, 116), (108, 116), (108, 116), (108, 116),
+    (108, 116), (108, 116), (108, 116), (108, 116), (108, 116), (108, 116),
+    (108, 116), (108, 116), (108, 116), (108, 116), (108, 116),
+]
 
 # Columnas que el usuario puede editar (las demas son guia o formulas)
-SUBS_EDITABLES = {'pro', 'formu', 'adicional_alimento', 'adicional_biocalcio'}
+SUBS_EDITABLES = {'tabla', 'tabla_min', 'tabla_sup', 'pro', 'formu',
+                  'adicional_alimento', 'adicional_biocalcio'}
 
 # Campos del bloque de indicadores que se pueden editar
 CORE_EDITABLES = {'gramos', 'conversion', 'peso', 'produccion', 'precio_formula', 'costo_huevo'}
@@ -280,7 +303,7 @@ class TablaNutricional:
             if not nombre:
                 return None
             for tipo in tipos:
-                _, url = catalogos_services.foto_por_nombre(tipo, nombre)
+                _, url = catalogos_services.foto_por_nombre(tipo, nombre, cur=cur)
                 if url and 'placeholder-catalogo' not in url:
                     return url
             return None
@@ -298,37 +321,39 @@ class TablaNutricional:
     def _recalcular(nutrientes):
         """Replica las formulas del Excel: Real y Dif a partir de Formu/Gramos/guia."""
         core = nutrientes.setdefault('_core', {})
-        gramos = _num(core.get('gramos')) or 0.0
-        consumo2 = _num(core.get('consumo2')) or 0.0
+        gramos = _num(core.get('gramos'))
+        consumo2 = _num(core.get('consumo2'))
 
         # Potasio y Cloro: su valor de tabla es una formula del Excel
         proteina = nutrientes.get('proteina') or {}
         potasio = nutrientes.setdefault('potasio', {})
-        if _num(proteina.get('formu')) is not None:
+        if potasio.get('tabla') is None and _num(proteina.get('formu')) is not None:
             potasio['tabla'] = (_num(proteina.get('formu')) or 0.0) * 0.18 * 10
         cloro = nutrientes.setdefault('cloro', {})
-        cloro['tabla'] = consumo2 * 0.18 * 10
+        if cloro.get('tabla') is None and consumo2 is not None:
+            cloro['tabla'] = consumo2 * 0.18 * 10
 
         for code, nodo in nutrientes.items():
             if code in ('_core', 'rel_ca_p') or not isinstance(nodo, dict):
                 continue
 
-            formu = _num(nodo.get('formu')) or 0.0
+            formu = _num(nodo.get('formu'))
             real = None
-            if code == 'proteina':
-                real = formu * gramos
-            elif code in NUTRIENTES_X1000:
-                real = formu * gramos * 1000
-            elif code == 'calcio':
-                ad1 = _num(nodo.get('adicional_alimento')) or 0.0
-                ad2 = _num(nodo.get('adicional_biocalcio')) or 0.0
-                real = (formu * gramos / 100) + (ad1 * 0.37) + (ad2 * 0.0179)
-            elif code == 'fosforo':
-                real = formu * gramos
-            elif code in ('energia', 'energia_max'):
-                real = formu * gramos / 1000
-            else:
-                real = formu * gramos
+            if formu is not None and gramos is not None:
+                if code == 'proteina':
+                    real = formu * gramos
+                elif code in NUTRIENTES_X1000:
+                    real = formu * gramos * 1000
+                elif code == 'calcio':
+                    ad1 = _num(nodo.get('adicional_alimento')) or 0.0
+                    ad2 = _num(nodo.get('adicional_biocalcio')) or 0.0
+                    real = (formu * gramos / 100) + (ad1 * 0.37) + (ad2 * 0.0179)
+                elif code == 'fosforo':
+                    real = formu * gramos
+                elif code in ('energia', 'energia_max'):
+                    real = formu * gramos / 1000
+                else:
+                    real = formu * gramos
 
             nodo['real'] = real
             if code in NUTRIENTES_VS_PRO:
@@ -343,7 +368,7 @@ class TablaNutricional:
         relacion = nutrientes.setdefault('rel_ca_p', {})
         calcio_real = _num((nutrientes.get('calcio') or {}).get('real'))
         fosforo_real = _num((nutrientes.get('fosforo') or {}).get('real'))
-        rel_real = (calcio_real / fosforo_real) if (calcio_real and fosforo_real) else None
+        rel_real = (calcio_real / fosforo_real) if (calcio_real is not None and fosforo_real) else None
         relacion['real'] = rel_real
         rel_tabla = _num(relacion.get('tabla'))
         relacion['dif'] = (rel_real - rel_tabla) if (rel_real is not None and rel_tabla is not None) else None
@@ -380,6 +405,25 @@ class TablaNutricional:
                         encontrada = cur.fetchone()
                         fecha = _fecha(encontrada[0]) if encontrada else None
 
+                # Si el lote no trae Gramos en el Excel, se usa el consumo de Produccion
+                core_actual = nutrientes.setdefault('_core', {})
+                if _num(core_actual.get('gramos')) is None:
+                    cur.execute("""
+                        SELECT consumo_alim_real FROM bd_vargas
+                        WHERE lote = %s AND sem_prod = %s
+                    """, (lote, semana))
+                    fila_consumo = cur.fetchone()
+                    consumo_prod = _num(fila_consumo[0]) if fila_consumo else None
+                    if consumo_prod is None:
+                        cur.execute("""
+                            SELECT cons_real FROM semanal_levante
+                            WHERE lote = %s AND sem = %s
+                        """, (lote, semana))
+                        fila_consumo = cur.fetchone()
+                        consumo_prod = _num(fila_consumo[0]) if fila_consumo else None
+                    if consumo_prod is not None:
+                        core_actual['gramos'] = consumo_prod
+
                 if campo == 'observaciones':
                     observaciones = (str(valor) if valor is not None else '')[:1000]
                 else:
@@ -397,8 +441,30 @@ class TablaNutricional:
                     valor_num = _num(valor)
                     if sub == 'produccion' and valor_num is not None and abs(valor_num) > 1:
                         valor_num = valor_num / 100.0
+                    if (sub == 'formu' and codigo not in ('calcio', 'energia', 'energia_max')
+                            and valor_num is not None and abs(valor_num) > 1):
+                        # El Excel muestra formu como porcentaje; se guarda como fraccion
+                        valor_num = valor_num / 100.0
                     nodo[sub] = valor_num
-                    TablaNutricional._recalcular(nutrientes)
+                    # Al cambiar el precio de la dieta se recalcula el $ Huevo
+                    # con la misma formula del modulo Precio Huevo.
+                    if sub == 'precio_formula' and valor_num is not None:
+                        cur.execute("""
+                            SELECT consumo_alim_kg, prod_huevo_sem
+                            FROM bd_vargas
+                            WHERE lote = %s AND sem_prod = %s
+                        """, (lote, semana))
+                        produccion_sem = cur.fetchone()
+                        if produccion_sem and _num(produccion_sem[1]):
+                            consumo_kg = _num(produccion_sem[0]) or 0.0
+                            huevos_sem = _num(produccion_sem[1]) or 0.0
+                            nutrientes['_core']['costo_huevo'] = (
+                                consumo_kg * valor_num / huevos_sem
+                            )
+                    # Solo recalcular nutrientes cuando cambia una entrada que los afecta.
+                    # Editar conversion, peso, precio u observaciones no debe tocar las formulas.
+                    if campo == 'core.gramos' or (codigo != 'core' and sub in SUBS_EDITABLES):
+                        TablaNutricional._recalcular(nutrientes)
 
                 cur.execute("""
                     INSERT INTO tn_registros
@@ -535,7 +601,7 @@ class TablaNutricional:
             series.append({'nombre': 'Tabla mín', 'y': guia, 'color': '#9aa3b1', 'dash': 'dot'})
             series.append({'nombre': 'Tabla máx', 'y': guia_sup, 'color': '#b6bdc8', 'dash': 'dash'})
         else:
-            series.append({'nombre': 'Guía', 'y': guia, 'color': '#9aa3b1', 'dash': 'dot'})
+            series.append({'nombre': 'Eco', 'y': guia, 'color': '#9aa3b1', 'dash': 'dot'})
         if any(v is not None for v in pro):
             series.append({'nombre': 'PRO', 'y': pro, 'color': '#c9a227', 'dash': 'dash'})
         series.append({'nombre': 'Real', 'y': real, 'color': '#97271C', 'ancho': 2.6})
@@ -547,7 +613,7 @@ class TablaNutricional:
         )
         kpis = [
             {'label': 'Real promedio', 'valor': _promedio(real), 'detalle': definicion['unidad']},
-            {'label': 'Diferencia promedio', 'valor': _promedio(dif), 'detalle': 'vs. guía'},
+            {'label': 'Diferencia promedio', 'valor': _promedio(dif), 'detalle': 'vs. eco'},
             {'label': 'Última semana', 'valor': _ultimo(real),
              'detalle': f'semana {semana_ultima}' if semana_ultima else 'sin dato'},
         ]
@@ -555,6 +621,117 @@ class TablaNutricional:
                 'unidad': definicion['unidad'], 'dual': False, 'x': x, 'series': series,
                 'kpis': kpis, 'semana_actual': serie_actual,
                 'criticas': list(SEMANAS_CRITICAS)}
+
+    # ------------------------------------------------------------------
+    # Datos Precio Huevo (hoja "Datos Precio Huevo" del Excel)
+    # ------------------------------------------------------------------
+    @staticmethod
+    def precios_huevo(lote):
+        """Consumo kg, produccion de huevos y precio de la dieta por semana.
+
+        Precio huevo = (consumo kg semanal * precio dieta) / produccion huevos.
+        Los datos salen de Produccion (bd_vargas) y el precio de la dieta de tn_registros.
+        """
+        if not lote:
+            return []
+        conn = get_db_connection()
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT v.sem_prod AS semana, v.fecha_fin_sem,
+                           v.consumo_alim_kg, v.prod_huevo_sem,
+                           c.fecha_recepcion,
+                           (r.nutrientes->'_core'->>'precio_formula')::numeric AS precio_dieta
+                    FROM bd_vargas v
+                    LEFT JOIN tn_registros r
+                      ON r.lote = v.lote AND r.semana = v.sem_prod
+                    LEFT JOIN cabecera_lotes c ON c.lote = v.lote
+                    WHERE v.lote = %s
+                      AND v.sem_prod >= 18
+                      AND COALESCE(v.prod_huevo_sem, 0) > 0
+                    ORDER BY v.sem_prod
+                """, (lote,))
+                filas = []
+                for f in cur.fetchall():
+                    consumo = _num(f['consumo_alim_kg'])
+                    produccion = _num(f['prod_huevo_sem'])
+                    precio = _num(f['precio_dieta'])
+                    fecha = _fecha(f['fecha_fin_sem'])
+                    if not fecha:
+                        base = _fecha(f['fecha_recepcion'])
+                        if base:
+                            fecha = base + timedelta(days=7 * int(f['semana']) - 1)
+                    costo = None
+                    if consumo is not None and precio is not None and produccion:
+                        costo = consumo * precio / produccion
+                    filas.append({
+                        'semana': f['semana'],
+                        'fecha': fecha,
+                        'consumo_kg': consumo,
+                        'produccion_huevos': produccion,
+                        'precio_dieta': precio,
+                        'precio_huevo': costo,
+                    })
+                return filas
+        finally:
+            conn.close()
+
+    # ------------------------------------------------------------------
+    # Eco / PRO automatico para lotes nuevos
+    # ------------------------------------------------------------------
+    @staticmethod
+    def sembrar_eco_pro(lote, lote_base='69-10'):
+        """Copia Eco/PRO base (por defecto del lote 69-10) a un lote nuevo.
+
+        Solo crea las semanas que no existan; no sobrescribe datos.
+        """
+        if not lote:
+            return 0
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT semana, nutrientes
+                    FROM tn_registros WHERE lote = %s ORDER BY semana
+                """, (lote_base,))
+                base = cur.fetchall()
+                if not base:
+                    return 0
+
+                filas = []
+                for sem, nut in base:
+                    nodos = {}
+                    for code, nodo in (nut or {}).items():
+                        if code == '_core' or not isinstance(nodo, dict):
+                            continue
+                        valores = {
+                            clave: nodo[clave]
+                            for clave in ('tabla', 'tabla_min', 'tabla_sup', 'pro')
+                            if nodo.get(clave) is not None
+                        }
+                        if valores:
+                            nodos[code] = valores
+                    if not nodos:
+                        continue
+                    indice = min(max(int(sem), 1), len(CONSUMO_BASE)) - 1
+                    nodos['_core'] = {
+                        'consumo1': CONSUMO_BASE[indice][0],
+                        'consumo2': CONSUMO_BASE[indice][1],
+                    }
+                    filas.append((lote, int(sem), None, Json(nodos), '', 'Base Eco/PRO', 'Sistema'))
+
+                if not filas:
+                    return 0
+                execute_values(cur, """
+                    INSERT INTO tn_registros
+                        (lote, semana, fecha, nutrientes, observaciones, archivo, actualizado_por)
+                    VALUES %s
+                    ON CONFLICT (lote, semana) DO NOTHING
+                """, filas, page_size=100)
+            conn.commit()
+            return len(filas)
+        finally:
+            conn.close()
 
     # ------------------------------------------------------------------
     # Consulta unificada (Produccion + nutricion)
@@ -699,6 +876,28 @@ class TablaNutricional:
             semanas[sem]['nutrientes'] = datos['nutrientes']
             semanas[sem]['observaciones'] = datos['observaciones']
 
+        # Fecha automatica por lote:
+        #  - Si Produccion (levante/bd_vargas) trae fecha, esa manda.
+        #  - Si no, se calcula desde la fecha de recepcion del lote.
+        fecha_base = _fecha(meta.get('fecha_recepcion')) or _fecha(meta.get('fecha_encasetamiento'))
+        if fecha_base:
+            for sem, datos in semanas.items():
+                if datos.get('origen') == 'nutricion' or not datos.get('fecha'):
+                    datos['fecha'] = fecha_base + timedelta(days=7 * int(sem) - 1)
+
+        # Real y Dif se calculan siempre con las formulas del Excel.
+        # Eco y Pro se conservan tal como se importaron.
+        for datos in semanas.values():
+            if datos.get('nutrientes'):
+                core = datos['nutrientes'].setdefault('_core', {})
+                # En lotes nuevos el Gramos del Excel puede faltar; se usa el de Produccion
+                if _num(core.get('gramos')) is None and datos.get('consumo') is not None:
+                    core['gramos'] = datos.get('consumo')
+                try:
+                    TablaNutricional._recalcular(datos['nutrientes'])
+                except Exception as e:
+                    print(f'[AVISO RECALCULO TN]: {e}')
+
         lista = []
         for sem in sorted(semanas):
             fila = semanas[sem]
@@ -706,6 +905,13 @@ class TablaNutricional:
             fila.setdefault('nutrientes', {})
             fila['extras'] = fila['nutrientes'].get('_core') or {}
             fila.setdefault('observaciones', '')
+
+            # Consumos base: siempre deben quedar diligenciados
+            base = CONSUMO_BASE[min(max(sem, 1), len(CONSUMO_BASE)) - 1]
+            if fila['extras'].get('consumo1') is None:
+                fila['extras']['consumo1'] = base[0]
+            if fila['extras'].get('consumo2') is None:
+                fila['extras']['consumo2'] = base[1]
 
             # El Excel es la fuente de la tabla; Produccion es el respaldo
             for origen, destino in (('gramos', 'consumo'), ('conversion', 'conversion'),
