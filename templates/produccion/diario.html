@@ -62,6 +62,36 @@
     font-size: 0.8rem;
   }
 
+  /* Buscador de observaciones */
+  .ps-buscar-obs {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.55rem;
+    padding: 0.55rem 0.7rem; margin-bottom: 0.6rem;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  }
+  .ps-buscar-obs .ps-buscar-campo { flex: 1 1 320px; max-width: 540px; }
+  .ps-buscar-obs .ps-buscar-campo .input-group-text,
+  .ps-buscar-obs .ps-buscar-campo .form-control { font-size: 0.8rem; }
+  .ps-buscar-obs-info { font-size: 0.76rem; color: var(--text-muted); }
+  .ps-buscar-obs-info b { color: var(--text-primary); }
+  .ps-buscar-nav { display: inline-flex; align-items: center; gap: 0.3rem; }
+  .ps-buscar-nav .btn { padding: 0.15rem 0.45rem; }
+  .ps-buscar-nav .contador {
+    font-size: 0.75rem; color: var(--text-secondary);
+    min-width: 58px; text-align: center;
+  }
+
+  /* Coincidencias resaltadas */
+  .table-fixed tr.fila-coincide > td { background-color: #fff4d6 !important; }
+  .table-fixed tr.fila-coincide > td:first-child { box-shadow: inset 4px 0 0 #97271C; }
+  .table-fixed tr.coincide-actual > td { background-color: #ffe8a3 !important; }
+  .table-fixed input.obs-coincide {
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 3px;
+    color: #97271C;
+    font-weight: 700;
+  }
+
   /* Ficha del lote */
   .ps-info-lote {
     margin-bottom: var(--space-4);
@@ -404,6 +434,35 @@
 {% endif %}
 
 {% if lote_seleccionado %}
+<!-- Buscador dentro de las observaciones -->
+<div class="ps-buscar-obs" role="search">
+  <div class="input-group input-group-sm ps-buscar-campo">
+    <span class="input-group-text"><i class="fas fa-magnifying-glass"></i></span>
+    <input type="search" id="psBuscarObsInput" class="form-control"
+      placeholder="Buscar en Observaciones (una o varias palabras)..." autocomplete="off"
+      aria-label="Buscar en observaciones">
+    <button class="btn btn-primary" type="button" id="psBuscarObsBtn">
+      <i class="fas fa-magnifying-glass me-1"></i>Buscar
+    </button>
+    <button class="btn btn-outline-secondary" type="button" id="psLimpiarObsBtn"
+      title="Limpiar búsqueda" aria-label="Limpiar búsqueda">
+      <i class="fas fa-xmark"></i>
+    </button>
+  </div>
+  <span class="ps-buscar-obs-info" id="psBuscarObsInfo" aria-live="polite"></span>
+  <div class="ps-buscar-nav" id="psBuscarObsNav" style="display: none;">
+    <button class="btn btn-outline-secondary" type="button" id="psObsAnterior"
+      title="Coincidencia anterior" aria-label="Coincidencia anterior">
+      <i class="fas fa-chevron-up"></i>
+    </button>
+    <span class="contador" id="psObsContador"></span>
+    <button class="btn btn-outline-secondary" type="button" id="psObsSiguiente"
+      title="Siguiente coincidencia" aria-label="Siguiente coincidencia">
+      <i class="fas fa-chevron-down"></i>
+    </button>
+  </div>
+</div>
+
 <!-- Contenedor principal de la tabla con scroll integrado -->
 <div class="tabla-scroll shadow-sm border rounded">
   <table class="table table-sm table-fixed mb-0" style="width: 100% !important; min-width: 1900px;">
@@ -1154,5 +1213,124 @@
 
     document.getElementById('btnCerrarSeleccion').addEventListener('click', limpiarSeleccion);
   });
+
+  // ---- Buscador de observaciones ----
+  (function () {
+    const tabla = document.querySelector('.table-fixed');
+    const entrada = document.getElementById('psBuscarObsInput');
+    const boton = document.getElementById('psBuscarObsBtn');
+    if (!tabla || !entrada || !boton) return;
+
+    const btnLimpiar = document.getElementById('psLimpiarObsBtn');
+    const info = document.getElementById('psBuscarObsInfo');
+    const nav = document.getElementById('psBuscarObsNav');
+    const contador = document.getElementById('psObsContador');
+    const anterior = document.getElementById('psObsAnterior');
+    const siguiente = document.getElementById('psObsSiguiente');
+
+    let coincidencias = [];
+    let actual = -1;
+    let temporizador = null;
+
+    function normalizar(texto) {
+      return (texto || '').toString().normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase();
+    }
+
+    function limpiarClases() {
+      tabla.querySelectorAll('tr.fila-coincide, tr.coincide-actual')
+        .forEach(tr => tr.classList.remove('fila-coincide', 'coincide-actual'));
+      tabla.querySelectorAll('input.obs-coincide')
+        .forEach(input => input.classList.remove('obs-coincide'));
+    }
+
+    function reiniciar(mensaje) {
+      limpiarClases();
+      coincidencias = [];
+      actual = -1;
+      if (info) info.textContent = mensaje || '';
+      if (contador) contador.textContent = '';
+      if (nav) nav.style.display = 'none';
+    }
+
+    function irA(indice) {
+      if (!coincidencias.length) return;
+      actual = (indice + coincidencias.length) % coincidencias.length;
+      coincidencias.forEach(tr => tr.classList.remove('coincide-actual'));
+      const fila = coincidencias[actual];
+      fila.classList.add('coincide-actual');
+      if (contador) contador.textContent = (actual + 1) + ' de ' + coincidencias.length;
+      fila.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+
+    function buscar() {
+      const termino = (entrada.value || '').trim();
+      if (!termino) { reiniciar(''); return; }
+
+      limpiarClases();
+      const palabras = normalizar(termino).split(/\s+/).filter(Boolean);
+      coincidencias = [];
+
+      tabla.querySelectorAll('tbody tr').forEach(function (fila) {
+        const input = fila.querySelector('input[data-col="observaciones"]');
+        if (!input) return;
+        const texto = normalizar(input.value);
+        if (palabras.every(palabra => texto.includes(palabra))) {
+          fila.classList.add('fila-coincide');
+          input.classList.add('obs-coincide');
+          coincidencias.push(fila);
+        }
+      });
+
+      if (!coincidencias.length) {
+        if (info) info.textContent = 'Sin coincidencias en Observaciones';
+        if (nav) nav.style.display = 'none';
+        return;
+      }
+
+      if (info) {
+        info.innerHTML = '<b>' + coincidencias.length + '</b> coincidencia'
+          + (coincidencias.length === 1 ? '' : 's');
+      }
+      if (nav) nav.style.display = 'inline-flex';
+      irA(0);
+    }
+
+    boton.addEventListener('click', buscar);
+
+    entrada.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); buscar(); }
+      if (e.key === 'Escape') { e.preventDefault(); entrada.value = ''; reiniciar(''); }
+    });
+
+    entrada.addEventListener('input', function () {
+      clearTimeout(temporizador);
+      temporizador = setTimeout(function () {
+        if ((entrada.value || '').trim()) buscar();
+        else reiniciar('');
+      }, 300);
+    });
+
+    if (btnLimpiar) {
+      btnLimpiar.addEventListener('click', function () {
+        entrada.value = '';
+        reiniciar('');
+        entrada.focus();
+      });
+    }
+
+    if (anterior) anterior.addEventListener('click', function () { if (coincidencias.length) irA(actual - 1); });
+    if (siguiente) siguiente.addEventListener('click', function () { if (coincidencias.length) irA(actual + 1); });
+
+    // Al editar una observación (celda o modal) se refresca el resultado
+    tabla.addEventListener('change', function (e) {
+      if (e.target && e.target.matches('input[data-col="observaciones"]')
+          && (entrada.value || '').trim()) {
+        clearTimeout(temporizador);
+        temporizador = setTimeout(buscar, 180);
+      }
+    });
+  })();
 </script>
 {% endblock %}

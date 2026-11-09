@@ -286,6 +286,16 @@ html[data-bs-theme="dark"] .table-fixed input:focus {
 html[data-bs-theme="dark"] .table-fixed input.saved { background: #1d3a2a !important; color: #c9f3d9; }
 html[data-bs-theme="dark"] .table-fixed input.error { background: #3d1f22 !important; color: #ffc9cd; }
 
+/* Buscador de observaciones del diario */
+html[data-bs-theme="dark"] .ps-buscar-obs {
+  background: #1e242b;
+  border-color: var(--border);
+}
+html[data-bs-theme="dark"] .table-fixed tr.fila-coincide > td { background-color: #3a3320 !important; }
+html[data-bs-theme="dark"] .table-fixed tr.fila-coincide > td:first-child { box-shadow: inset 4px 0 0 #ffb4a8; }
+html[data-bs-theme="dark"] .table-fixed tr.coincide-actual > td { background-color: #4a4022 !important; }
+html[data-bs-theme="dark"] .table-fixed input.obs-coincide { color: #ffd66b; }
+
 /* ==========================================================================
    TABLAS NUTRICIONALES
    ========================================================================== */
