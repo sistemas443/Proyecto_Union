@@ -14,7 +14,7 @@ import io
 import unicodedata
 from datetime import date, datetime, timedelta
 
-from psycopg2.extras import Json, RealDictCursor
+from psycopg2.extras import Json, RealDictCursor, execute_values
 
 from models.base import get_db_connection
 
@@ -654,6 +654,63 @@ class TablaNutricional:
                         'precio_huevo': costo,
                     })
                 return filas
+        finally:
+            conn.close()
+
+    # ------------------------------------------------------------------
+    # Eco / PRO automatico para lotes nuevos
+    # ------------------------------------------------------------------
+    @staticmethod
+    def sembrar_eco_pro(lote, lote_base='69-10'):
+        """Copia Eco/PRO base (por defecto del lote 69-10) a un lote nuevo.
+
+        Solo crea las semanas que no existan; no sobrescribe datos.
+        """
+        if not lote:
+            return 0
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT semana, nutrientes
+                    FROM tn_registros WHERE lote = %s ORDER BY semana
+                """, (lote_base,))
+                base = cur.fetchall()
+                if not base:
+                    return 0
+
+                filas = []
+                for sem, nut in base:
+                    nodos = {}
+                    for code, nodo in (nut or {}).items():
+                        if code == '_core' or not isinstance(nodo, dict):
+                            continue
+                        valores = {
+                            clave: nodo[clave]
+                            for clave in ('tabla', 'tabla_min', 'tabla_sup', 'pro')
+                            if nodo.get(clave) is not None
+                        }
+                        if valores:
+                            nodos[code] = valores
+                    if not nodos:
+                        continue
+                    indice = min(max(int(sem), 1), len(CONSUMO_BASE)) - 1
+                    nodos['_core'] = {
+                        'consumo1': CONSUMO_BASE[indice][0],
+                        'consumo2': CONSUMO_BASE[indice][1],
+                    }
+                    filas.append((lote, int(sem), None, Json(nodos), '', 'Base Eco/PRO', 'Sistema'))
+
+                if not filas:
+                    return 0
+                execute_values(cur, """
+                    INSERT INTO tn_registros
+                        (lote, semana, fecha, nutrientes, observaciones, archivo, actualizado_por)
+                    VALUES %s
+                    ON CONFLICT (lote, semana) DO NOTHING
+                """, filas, page_size=100)
+            conn.commit()
+            return len(filas)
         finally:
             conn.close()
 

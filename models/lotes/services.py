@@ -163,6 +163,13 @@ def guardar_nuevo_lote(datos, usuario_id=None, usuario_nombre=None):
         # Gatillo Nuevo: Estructura exclusiva de Levante
         generar_estructura_semanal_levante(lote_nombre, datos.get('fecha_recepcion'), id_lote)
 
+        # Eco/PRO: todo lote nuevo nace con la tabla base nutricional
+        try:
+            from models.planta_alimentos.tablas_nutricionales import TablaNutricional
+            TablaNutricional.sembrar_eco_pro(lote_nombre)
+        except Exception as e:
+            print(f"[AVISO ECO/PRO {lote_nombre}]: {e}")
+
         return True, "Lote creado exitosamente"
     except Exception as e:
         registrar_error(
