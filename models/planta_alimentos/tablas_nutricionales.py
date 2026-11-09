@@ -86,6 +86,10 @@ CORE_EDITABLES = {'gramos', 'conversion', 'peso', 'produccion', 'precio_formula'
 # Formulas del Excel: nutrientes cuyo "Real" se multiplica por 1000
 NUTRIENTES_X1000 = {'metionina', 'met_cistina', 'lisina', 'triptofano', 'treonina',
                     'arginina', 'isoleucina', 'valina', 'sodio', 'potasio', 'cloro'}
+
+# Formu de aminoacidos y minerales: se captura en porcentaje (0,433 -> 0,433%).
+# Por debajo de este umbral se entiende que ya viene como fraccion (0,00433).
+FORMU_PORCENTAJE_MIN = 0.05
 # Nutrientes cuya diferencia se mide contra PRO (los demas contra la tabla)
 NUTRIENTES_VS_PRO = {'proteina', 'metionina', 'met_cistina', 'lisina', 'triptofano',
                      'treonina', 'arginina', 'isoleucina', 'valina'}
@@ -445,9 +449,14 @@ class TablaNutricional:
                     if sub == 'produccion' and valor_num is not None and abs(valor_num) > 1:
                         valor_num = valor_num / 100.0
                     if (sub == 'formu' and codigo not in ('calcio', 'energia', 'energia_max')
-                            and valor_num is not None and abs(valor_num) > 1):
-                        # El Excel muestra formu como porcentaje; se guarda como fraccion
-                        valor_num = valor_num / 100.0
+                            and valor_num is not None):
+                        # El Excel muestra formu como porcentaje; se guarda como fraccion.
+                        # Un aminoacido o mineral se escribe como 0,433 (0,433%);
+                        # la fraccion equivalente es 0,00433. Si el valor es muy
+                        # pequeno ya viene como fraccion (p. ej. 0,00433).
+                        if abs(valor_num) > 1 or (codigo != 'proteina'
+                                                  and abs(valor_num) >= FORMU_PORCENTAJE_MIN):
+                            valor_num = valor_num / 100.0
                     nodo[sub] = valor_num
                     # Al cambiar el precio de la dieta se recalcula el $ Huevo
                     # con la misma formula del modulo Precio Huevo.
