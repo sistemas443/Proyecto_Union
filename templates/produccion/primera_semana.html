@@ -229,8 +229,8 @@
     </form>
 
     {% if lote_seleccionado %}
-    <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse"
-      data-bs-target="#collapseInfoGeneral" aria-expanded="true" aria-controls="collapseInfoGeneral"
+    <button class="btn btn-outline-secondary btn-sm collapsed" type="button" data-bs-toggle="collapse"
+      data-bs-target="#collapseInfoGeneral" aria-expanded="false" aria-controls="collapseInfoGeneral"
       title="Mostrar/ocultar información del lote">
       <i class='bx bx-chevron-down fs-5 icono-colapso'></i>
     </button>
@@ -243,7 +243,7 @@
   <div class="ps-info-titulo">
     <i class="fas fa-circle-info"></i> Información del lote
   </div>
-  <div class="collapse show" id="collapseInfoGeneral">
+  <div class="collapse" id="collapseInfoGeneral">
     <div class="ps-info-grid">
       <div class="ps-info-item">
         <span class="ps-info-label">Cliente</span>
@@ -634,35 +634,6 @@
     });
   });
 
-  // --- TOGGLE HÍBRIDO CON LOCALSTORAGE ---
-  document.addEventListener("DOMContentLoaded", function () {
-    const headerInfo = document.querySelector('[data-bs-target="#collapseInfoGeneral"]');
-    const collapseInfo = document.getElementById('collapseInfoGeneral');
-    const storageKey = 'infoLote_primera_semana_expandido';
-
-    if (!headerInfo || !collapseInfo) return;
-
-    // Cargar estado desde localStorage al iniciar
-    const estadoGuardado = localStorage.getItem(storageKey);
-    if (estadoGuardado === 'false') {
-      collapseInfo.classList.remove('show');
-      headerInfo.classList.add('collapsed');
-      headerInfo.setAttribute('aria-expanded', 'false');
-    }
-
-    // Guardar estado cuando se muestra
-    headerInfo.addEventListener('shown.bs.collapse', function () {
-      localStorage.setItem(storageKey, 'true');
-      headerInfo.classList.remove('collapsed');
-      headerInfo.setAttribute('aria-expanded', 'true');
-    });
-
-    // Guardar estado cuando se oculta
-    headerInfo.addEventListener('hidden.bs.collapse', function () {
-      localStorage.setItem(storageKey, 'false');
-      headerInfo.classList.add('collapsed');
-      headerInfo.setAttribute('aria-expanded', 'false');
-    });
-  });
+  // La ficha del lote siempre inicia comprimida; el usuario la despliega si la necesita.
 </script>
 {% endblock %}
