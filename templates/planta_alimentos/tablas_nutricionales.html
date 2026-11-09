@@ -69,17 +69,17 @@
     --tn-etapa-ancho: 105px;
   }
   .tn-table thead th {
-    position: sticky; top: 0; z-index: 3;
+    position: sticky; top: 0; z-index: 7;
     background: var(--table-header-bg, #1a202c); color: #fff;
     font-size: .6rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
     padding: .42rem .38rem; text-align: center; white-space: nowrap;
   }
   .tn-table thead tr.grupo th { background: #2c3e50; font-size: .56rem; letter-spacing: .07em; }
-  .tn-table thead tr.grupo th { top: 0; z-index: 4; }
-  .tn-table thead tr:not(.grupo) th { top: var(--tn-head-grupo, 34px); z-index: 3; }
-  .tn-table thead th.tn-sem { z-index: 5; left: var(--tn-etapa-ancho, 105px); }
-  .tn-table thead th.tn-etapa-sticky {
-    position: sticky; left: 0; z-index: 6;
+  .tn-table thead tr.grupo th { top: 0; z-index: 8; }
+  .tn-table thead tr:not(.grupo) th { top: var(--tn-head-grupo, 34px); z-index: 7; }
+  .tn-table thead tr th.tn-sem { z-index: 9; left: var(--tn-etapa-ancho, 105px); }
+  .tn-table thead tr th.tn-etapa-sticky {
+    position: sticky; left: 0; z-index: 10;
     width: var(--tn-etapa-ancho, 105px); min-width: var(--tn-etapa-ancho, 105px);
     max-width: var(--tn-etapa-ancho, 105px);
   }
