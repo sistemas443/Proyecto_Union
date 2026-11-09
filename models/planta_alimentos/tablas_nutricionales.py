@@ -424,6 +424,21 @@ class TablaNutricional:
                         # El Excel muestra formu como porcentaje; se guarda como fraccion
                         valor_num = valor_num / 100.0
                     nodo[sub] = valor_num
+                    # Al cambiar el precio de la dieta se recalcula el $ Huevo
+                    # con la misma formula del modulo Precio Huevo.
+                    if sub == 'precio_formula' and valor_num is not None:
+                        cur.execute("""
+                            SELECT consumo_alim_kg, prod_huevo_sem
+                            FROM bd_vargas
+                            WHERE lote = %s AND sem_prod = %s
+                        """, (lote, semana))
+                        produccion_sem = cur.fetchone()
+                        if produccion_sem and _num(produccion_sem[1]):
+                            consumo_kg = _num(produccion_sem[0]) or 0.0
+                            huevos_sem = _num(produccion_sem[1]) or 0.0
+                            nutrientes['_core']['costo_huevo'] = (
+                                consumo_kg * valor_num / huevos_sem
+                            )
                     # Solo recalcular nutrientes cuando cambia una entrada que los afecta.
                     # Editar conversion, peso, precio u observaciones no debe tocar las formulas.
                     if campo == 'core.gramos' or (codigo != 'core' and sub in SUBS_EDITABLES):
