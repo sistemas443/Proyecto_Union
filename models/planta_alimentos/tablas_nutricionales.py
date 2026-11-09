@@ -321,8 +321,8 @@ class TablaNutricional:
     def _recalcular(nutrientes):
         """Replica las formulas del Excel: Real y Dif a partir de Formu/Gramos/guia."""
         core = nutrientes.setdefault('_core', {})
-        gramos = _num(core.get('gramos')) or 0.0
-        consumo2 = _num(core.get('consumo2')) or 0.0
+        gramos = _num(core.get('gramos'))
+        consumo2 = _num(core.get('consumo2'))
 
         # Potasio y Cloro: su valor de tabla es una formula del Excel
         proteina = nutrientes.get('proteina') or {}
@@ -330,29 +330,30 @@ class TablaNutricional:
         if potasio.get('tabla') is None and _num(proteina.get('formu')) is not None:
             potasio['tabla'] = (_num(proteina.get('formu')) or 0.0) * 0.18 * 10
         cloro = nutrientes.setdefault('cloro', {})
-        if cloro.get('tabla') is None:
+        if cloro.get('tabla') is None and consumo2 is not None:
             cloro['tabla'] = consumo2 * 0.18 * 10
 
         for code, nodo in nutrientes.items():
             if code in ('_core', 'rel_ca_p') or not isinstance(nodo, dict):
                 continue
 
-            formu = _num(nodo.get('formu')) or 0.0
+            formu = _num(nodo.get('formu'))
             real = None
-            if code == 'proteina':
-                real = formu * gramos
-            elif code in NUTRIENTES_X1000:
-                real = formu * gramos * 1000
-            elif code == 'calcio':
-                ad1 = _num(nodo.get('adicional_alimento')) or 0.0
-                ad2 = _num(nodo.get('adicional_biocalcio')) or 0.0
-                real = (formu * gramos / 100) + (ad1 * 0.37) + (ad2 * 0.0179)
-            elif code == 'fosforo':
-                real = formu * gramos
-            elif code in ('energia', 'energia_max'):
-                real = formu * gramos / 1000
-            else:
-                real = formu * gramos
+            if formu is not None and gramos is not None:
+                if code == 'proteina':
+                    real = formu * gramos
+                elif code in NUTRIENTES_X1000:
+                    real = formu * gramos * 1000
+                elif code == 'calcio':
+                    ad1 = _num(nodo.get('adicional_alimento')) or 0.0
+                    ad2 = _num(nodo.get('adicional_biocalcio')) or 0.0
+                    real = (formu * gramos / 100) + (ad1 * 0.37) + (ad2 * 0.0179)
+                elif code == 'fosforo':
+                    real = formu * gramos
+                elif code in ('energia', 'energia_max'):
+                    real = formu * gramos / 1000
+                else:
+                    real = formu * gramos
 
             nodo['real'] = real
             if code in NUTRIENTES_VS_PRO:
@@ -367,7 +368,7 @@ class TablaNutricional:
         relacion = nutrientes.setdefault('rel_ca_p', {})
         calcio_real = _num((nutrientes.get('calcio') or {}).get('real'))
         fosforo_real = _num((nutrientes.get('fosforo') or {}).get('real'))
-        rel_real = (calcio_real / fosforo_real) if (calcio_real and fosforo_real) else None
+        rel_real = (calcio_real / fosforo_real) if (calcio_real is not None and fosforo_real) else None
         relacion['real'] = rel_real
         rel_tabla = _num(relacion.get('tabla'))
         relacion['dif'] = (rel_real - rel_tabla) if (rel_real is not None and rel_tabla is not None) else None
@@ -807,6 +808,15 @@ class TablaNutricional:
             for sem, datos in semanas.items():
                 if datos.get('origen') == 'nutricion' or not datos.get('fecha'):
                     datos['fecha'] = fecha_base + timedelta(days=7 * int(sem) - 1)
+
+        # Real y Dif se calculan siempre con las formulas del Excel.
+        # Eco y Pro se conservan tal como se importaron.
+        for datos in semanas.values():
+            if datos.get('nutrientes'):
+                try:
+                    TablaNutricional._recalcular(datos['nutrientes'])
+                except Exception as e:
+                    print(f'[AVISO RECALCULO TN]: {e}')
 
         lista = []
         for sem in sorted(semanas):
