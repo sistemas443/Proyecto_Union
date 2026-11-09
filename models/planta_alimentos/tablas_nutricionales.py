@@ -207,7 +207,10 @@ def _num(valor):
         return float(valor)
 
     texto = str(valor).strip().replace(' ', '').replace('\xa0', '')
-    if not texto:
+    # Las celdas vacias mostraban una raya; se ignora si llega en el valor.
+    texto = texto.replace('\u2014', '').replace('\u2013', '').replace('%', '')
+    texto = texto.rstrip('-')
+    if not texto or texto in ('-', '.', ','):
         return None
 
     if ',' in texto:
