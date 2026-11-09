@@ -96,8 +96,17 @@
   .tn-table tbody tr:nth-child(even) td { background: #fafbfd; }
   .tn-table tbody tr:nth-child(even) td.tn-sem { background: #fafbfd; }
   .tn-table tbody tr:hover td { background: #f2f6fb; }
-  .tn-dif-neg { color: #b03a2e; font-weight: 600; }
-  .tn-dif-pos { color: #2f6b3a; font-weight: 600; }
+  /* Dif: negativa en rojo y positiva en verde, resaltadas sobre la celda */
+  .tn-dif-neg, .tn-dif-pos { font-weight: 700; }
+  .tn-table tbody tr td.tn-dif-neg {
+    color: #a4161a; background: #fde8e6;
+    box-shadow: inset 0 0 0 1px #f3c4bf;
+  }
+  .tn-table tbody tr td.tn-dif-pos {
+    color: #14722f; background: #e4f6e8;
+    box-shadow: inset 0 0 0 1px #bfe4c8;
+  }
+  .tn-table tbody tr td.tn-dif-cero { color: #5b6675; }
   .tn-etapa {
     display: inline-block; background: rgba(255, 255, 255, .78); color: #3d4a5c;
     border: 1px solid var(--stage-borde, #c7d2df);
@@ -918,7 +927,7 @@
                 {% set n = s.nutrientes.get(codigo) or {} %}
                 {% for clave, etiqueta_sub in subs %}
                 <td data-campo="{{ codigo }}.{{ clave }}"
-                  class="{% if clave in ('tabla', 'tabla_min', 'tabla_sup') %}tn-guia {% endif %}{% if clave == 'pro' %}tn-pro {% endif %}{% if clave in subs_editables and puede_editar %}tn-edit {% endif %}{% if clave == 'dif' and n.get('dif') is not none %}{{ 'tn-dif-neg' if n.get('dif') < 0 else 'tn-dif-pos' }}{% endif %}"
+                  class="{% if clave in ('tabla', 'tabla_min', 'tabla_sup') %}tn-guia {% endif %}{% if clave == 'pro' %}tn-pro {% endif %}{% if clave in subs_editables and puede_editar %}tn-edit {% endif %}{% if clave == 'dif' and n.get('dif') is not none %}{% if n.get('dif') < 0 %}tn-dif-neg{% elif n.get('dif') > 0 %}tn-dif-pos{% else %}tn-dif-cero{% endif %}{% endif %}"
                   {% if clave in subs_editables and puede_editar %}contenteditable="true"{% endif %}>{% if clave == 'formu' %}{% if n.get('formu') is none %}{% elif codigo == 'proteina' %}{{ num(n.get('formu') * 100) }}%{% elif codigo == 'calcio' %}{{ num(n.get('formu')) }}{% elif codigo in ('energia', 'energia_max') %}{{ num0(n.get('formu')) }}{% else %}{{ num3(n.get('formu') * 100) }}%{% endif %}{% else %}{{ num(n.get(clave)) }}{% endif %}</td>
                 {% endfor %}
                 {% endfor %}
@@ -1099,10 +1108,13 @@
               return;
             }
             destino.textContent = formatear(par[1], destino);
-            if (destino.classList.contains('tn-dif-neg') || destino.classList.contains('tn-dif-pos')) {
-              destino.classList.remove('tn-dif-neg', 'tn-dif-pos');
-              if (par[1] !== null && par[1] !== undefined) {
-                destino.classList.add(Number(par[1]) < 0 ? 'tn-dif-neg' : 'tn-dif-pos');
+            // La columna Dif se resalta siempre, aunque la celda estuviera vacia
+            if ((par[0] || '').endsWith('.dif')) {
+              destino.classList.remove('tn-dif-neg', 'tn-dif-pos', 'tn-dif-cero');
+              const dif = par[1];
+              if (dif !== null && dif !== undefined && isFinite(Number(dif))) {
+                const n = Number(dif);
+                destino.classList.add(n < 0 ? 'tn-dif-neg' : (n > 0 ? 'tn-dif-pos' : 'tn-dif-cero'));
               }
             }
           });
