@@ -306,6 +306,7 @@ html[data-bs-theme="dark"] .comparador-panel {
 html[data-bs-theme="dark"] .comparador-lote { background: #232b34; border-color: var(--border); }
 html[data-bs-theme="dark"] .comparador-panel-head { background: #20272e; border-color: var(--border); }
 html[data-bs-theme="dark"] .comparador-panel tbody tr.cmp-fila-hover td { background-color: #3a3320 !important; }
+html[data-bs-theme="dark"] .comparador-aviso { color: #ff9c93; }
 html[data-bs-theme="dark"] #comparadorLotes:fullscreen,
 html[data-bs-theme="dark"] #comparadorLotes.cmp-fs-fallback { background: var(--surface); }
 

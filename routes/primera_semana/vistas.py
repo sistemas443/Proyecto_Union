@@ -51,14 +51,29 @@ def primera_semana():
     ]
 
     paneles = []
+    lote_a = lote_seleccionado
     if comparar:
-        usados = {lote_seleccionado}
+        # El lote A se puede cambiar dentro de la comparación sin alterar
+        # el lote recordado para la vista normal (Salir vuelve a ese lote).
+        candidato_a = (request.args.get('lote_a') or '').strip()
+        if candidato_a and candidato_a != 'VACIO':
+            cab_candidata = get_cabecera_info(candidato_a)
+            if cab_candidata:
+                lote_a = candidato_a
+
+        if lote_a == lote_seleccionado:
+            cab_a, filas_a = cabecera, filas
+        else:
+            cab_a = get_cabecera_info(lote_a)
+            filas_a = get_primera_semana_by_lote(lote_a, cab_a)
+
+        usados = {lote_a}
         paneles.append({
             'letra': LETRAS_COMPARADOR[0],
             'color': COLORES_COMPARADOR[0],
-            'lote': lote_seleccionado,
-            'cabecera': cabecera,
-            'filas': filas,
+            'lote': lote_a,
+            'cabecera': cab_a,
+            'filas': filas_a,
         })
         for indice in range(1, cantidad):
             lote_extra = lotes_extra[indice - 1]
@@ -92,6 +107,7 @@ def primera_semana():
         cantidad=cantidad,
         paneles=paneles,
         lotes_extra=lotes_extra,
+        lote_a=lote_a,
     )
 
 

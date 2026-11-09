@@ -219,7 +219,7 @@
   </div>
 
   <div class="d-flex flex-wrap align-items-center gap-2">
-    {% if lote_seleccionado %}
+    {% if lote_seleccionado and not comparar %}
     <span class="badge-estado badge-neutro">Lote {{ lote_seleccionado }}</span>
     {% endif %}
 
@@ -245,15 +245,15 @@
     {% endif %}
 
     {% if lote_seleccionado and not comparar %}
-    <button class="btn btn-outline-secondary btn-sm collapsed" type="button" data-bs-toggle="collapse"
-      data-bs-target="#collapseInfoGeneral" aria-expanded="false" aria-controls="collapseInfoGeneral"
-      title="Mostrar/ocultar información del lote">
-      <i class='bx bx-chevron-down fs-5 icono-colapso'></i>
-    </button>
-
     <button class="btn btn-outline-secondary btn-sm js-tabla-fs" type="button"
       title="Ver la tabla en pantalla completa">
       <i class="fas fa-expand"></i> <span class="d-none d-sm-inline">Pantalla completa</span>
+    </button>
+
+    <button class="btn btn-outline-secondary btn-sm collapsed ms-auto" type="button" data-bs-toggle="collapse"
+      data-bs-target="#collapseInfoGeneral" aria-expanded="false" aria-controls="collapseInfoGeneral"
+      title="Mostrar/ocultar información del lote">
+      <i class='bx bx-chevron-down fs-5 icono-colapso'></i>
     </button>
     {% endif %}
   </div>
@@ -305,26 +305,30 @@
 
 {% if lote_seleccionado %}
 {% if comparar %}
-<div class="comparador-lotes" id="comparadorLotes">
+<div class="comparador-lotes" id="comparadorLotes" data-lote-a="{{ paneles[0].lote }}">
   <div class="comparador-barra">
     <div class="comparador-lote fijo">
       <span class="comparador-letra" style="background: #97271C">A</span>
-      <span class="comparador-nombre">Lote {{ paneles[0].lote }}</span>
+      <select class="form-select form-select-sm comparador-select" data-pos="0" data-clave="lote_a"
+        aria-label="Lote A">
+        {% for l in lotes %}
+        <option value="{{ l }}" {% if l == paneles[0].lote %}selected{% endif %}>LOTE {{ l }}</option>
+        {% endfor %}
+      </select>
     </div>
     {% for p in paneles[1:] %}
     <div class="comparador-lote">
       <span class="comparador-letra" style="background: {{ p.color }}">{{ p.letra }}</span>
       <select class="form-select form-select-sm comparador-select" data-pos="{{ loop.index }}"
+        data-clave="{{ ['lote_b', 'lote_c', 'lote_d'][loop.index0] }}"
         aria-label="Lote {{ p.letra }}">
         <option value="">-- Seleccione --</option>
         {% for l in lotes %}
         <option value="{{ l }}" {% if l == p.lote %}selected{% endif %}>LOTE {{ l }}</option>
         {% endfor %}
       </select>
-      {% if p.lote %}
       <button type="button" class="comparador-quitar" data-pos="{{ loop.index }}"
-        title="Quitar lote {{ p.letra }}">&#10005;</button>
-      {% endif %}
+        title="Quitar lote {{ p.letra }}" {% if not p.lote %}hidden{% endif %}>&#10005;</button>
     </div>
     {% endfor %}
     <div class="comparador-acciones">

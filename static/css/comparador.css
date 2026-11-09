@@ -153,6 +153,19 @@
 .comparador-lotes input[readonly] { cursor: default; }
 .comparador-lotes input[readonly]:focus { box-shadow: none; }
 
+/* Carga de un panel sin recargar (pantalla completa) */
+.comparador-panel.cmp-cargando { opacity: 0.55; }
+.comparador-panel.cmp-cargando .tabla-scroll { pointer-events: none; }
+
+/* Aviso no bloqueante dentro del comparador */
+.comparador-aviso {
+  flex: 1 1 100%;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #b42318;
+}
+.comparador-aviso[hidden] { display: none; }
+
 /* Fila resaltada en todos los paneles */
 .comparador-panel tbody tr.cmp-fila-hover td { background-color: #fff3cd !important; }
 
