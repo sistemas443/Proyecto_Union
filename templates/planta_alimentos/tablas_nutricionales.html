@@ -290,6 +290,32 @@
   }
   .tn-leyenda { color: #97271C; font-weight: 600; }
 
+  /* Filtro de variables del grafico */
+  .tn-filtro {
+    display: flex; flex-wrap: wrap; align-items: center; gap: .35rem;
+    padding: .45rem .85rem; border-bottom: 1px solid var(--border);
+    background: #fbfcfd;
+  }
+  .tn-filtro-t {
+    font-size: .64rem; font-weight: 700; letter-spacing: .06em;
+    text-transform: uppercase; color: #8a93a1; margin-right: .2rem;
+  }
+  .tn-chip-serie {
+    display: inline-flex; align-items: center; gap: .35rem;
+    border: 1px solid var(--border); border-radius: 14px;
+    background: #fff; color: var(--text-primary);
+    font-size: .7rem; font-weight: 600; padding: .14rem .55rem;
+    cursor: pointer; line-height: 1.35;
+  }
+  .tn-chip-serie .punto { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }
+  .tn-chip-serie:hover { border-color: #b9c6d6; }
+  .tn-chip-serie.oculto { opacity: .45; background: #f1f3f6; text-decoration: line-through; }
+  .tn-filtro-todo {
+    margin-left: auto; border: 0; background: transparent; color: #1f4e79;
+    font-size: .68rem; font-weight: 700; cursor: pointer; padding: .14rem .2rem;
+  }
+  .tn-filtro-todo:hover { text-decoration: underline; }
+
   /* Pantalla completa del grafico */
   .tn-chart-tools {
     display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;
@@ -319,12 +345,15 @@
   .tn-card:fullscreen .tn-kpis,
   .tn-card:-webkit-full-screen .tn-kpis,
   .tn-card.tn-fs-fallback .tn-kpis { flex: 0 0 auto; }
+  .tn-card:fullscreen .tn-filtro,
+  .tn-card:-webkit-full-screen .tn-filtro,
+  .tn-card.tn-fs-fallback .tn-filtro { flex: 0 0 auto; }
   .tn-card:fullscreen #tnChart,
   .tn-card:-webkit-full-screen #tnChart,
   .tn-card.tn-fs-fallback #tnChart {
     flex: 0 0 auto;
-    height: calc(100vh - 250px) !important;
-    min-height: 280px;
+    height: calc(100vh - 300px) !important;
+    min-height: 240px;
   }
   .tn-card:fullscreen .tn-nota,
   .tn-card:-webkit-full-screen .tn-nota,
@@ -553,6 +582,19 @@
           </div>
         </div>
 
+        {% if chart.series and chart.series|length > 1 %}
+        <div class="tn-filtro" id="tnFiltroSeries" role="group" aria-label="Mostrar u ocultar variables del gráfico">
+          <span class="tn-filtro-t">Variables</span>
+          {% for s in chart.series %}
+          <button type="button" class="tn-chip-serie" data-serie="{{ loop.index0 }}"
+            aria-pressed="true" title="Mostrar u ocultar {{ s.nombre }}">
+            <span class="punto" style="background: {{ s.color }}"></span>{{ s.nombre }}
+          </button>
+          {% endfor %}
+          <button type="button" class="tn-filtro-todo" id="tnFiltroTodas">Mostrar todas</button>
+        </div>
+        {% endif %}
+
         <div class="tn-kpis">
           {% for k in chart.kpis %}
           <div class="tn-kpi">
@@ -765,6 +807,51 @@
             });
           }
 
+          function _filtroSeries(gd, D) {
+            var cont = document.getElementById('tnFiltroSeries');
+            if (!cont) return;
+            var botones = Array.prototype.slice.call(cont.querySelectorAll('[data-serie]'));
+
+            function oculto(i) {
+              return !!(gd.data[i] && gd.data[i].visible === 'legendonly');
+            }
+
+            function pintar() {
+              botones.forEach(function (btn) {
+                var i = Number(btn.dataset.serie);
+                btn.classList.toggle('oculto', oculto(i));
+                btn.setAttribute('aria-pressed', oculto(i) ? 'false' : 'true');
+              });
+            }
+
+            function refrescar() {
+              pintar();
+              _etiquetasFin(gd, D);
+            }
+
+            botones.forEach(function (btn) {
+              btn.addEventListener('click', function () {
+                var i = Number(btn.dataset.serie);
+                Plotly.restyle(gd, { visible: oculto(i) ? true : 'legendonly' }, [i]);
+                refrescar();
+              });
+            });
+
+            var todas = document.getElementById('tnFiltroTodas');
+            if (todas) {
+              todas.addEventListener('click', function () {
+                var indices = botones.map(function (b) { return Number(b.dataset.serie); });
+                Plotly.restyle(gd, { visible: true }, indices);
+                refrescar();
+              });
+            }
+
+            // Mantiene los chips sincronizados si se usa la leyenda de Plotly
+            gd.on('plotly_legendclick', function () { setTimeout(pintar, 60); });
+            gd.on('plotly_legenddoubleclick', function () { setTimeout(pintar, 60); });
+            pintar();
+          }
+
           function _pantallaCompleta(gd, D) {
             var tarjeta = document.getElementById('tnChartCard');
             var boton = document.getElementById('tnFsBtn');
@@ -851,6 +938,7 @@
             .then(function (gd) {
               _etiquetasFin(gd, D);
               _observarLeyenda(gd, D);
+              _filtroSeries(gd, D);
               _pantallaCompleta(gd, D);
               window.addEventListener('tn:layout', function () {
                 setTimeout(function () {
