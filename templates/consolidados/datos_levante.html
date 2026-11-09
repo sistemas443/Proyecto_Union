@@ -24,17 +24,17 @@
   .nav-pills .nav-link:hover { background-color: var(--surface-alt); }
   .nav-pills .nav-link.active { background-color: var(--action-primary); color: #ffffff; }
 
-  /* ===== Selector de lotes ===== */
-  .lotes-acciones {
+  /* ===== Selector de variables ===== */
+  .variables-acciones {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: var(--space-2);
     margin-bottom: var(--space-3);
   }
-  .lotes-acciones .btn { font-size: 0.75rem; }
+  .variables-acciones .btn { font-size: 0.75rem; }
 
-  .lotes-lista {
+  .variables-lista {
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-2);
@@ -43,8 +43,8 @@
     padding: 2px;
   }
 
-  /* Cada lote es una ficha que se enciende al marcarla */
-  .lote-chip {
+  /* Cada variable es una ficha que se enciende al marcarla */
+  .variable-chip {
     position: relative;
     display: inline-flex;
     align-items: center;
@@ -60,11 +60,11 @@
     user-select: none;
     transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
   }
-  .lote-chip:hover {
+  .variable-chip:hover {
     border-color: var(--action-primary);
     color: var(--text-primary);
   }
-  .lote-chip input {
+  .variable-chip input {
     position: absolute;
     opacity: 0;
     width: 1px;
@@ -72,23 +72,23 @@
     margin: 0;
     pointer-events: none;
   }
-  .lote-chip .fa-check {
+  .variable-chip .fa-check {
     font-size: 0.62rem;
     opacity: 0;
     transition: opacity 0.15s ease;
   }
-  .lote-chip.activo {
+  .variable-chip.activo {
     background-color: var(--action-primary);
     border-color: var(--action-primary);
     color: #ffffff;
   }
-  .lote-chip.activo .fa-check { opacity: 1; }
-  .lote-chip:focus-within {
+  .variable-chip.activo .fa-check { opacity: 1; }
+  .variable-chip:focus-within {
     outline: 2px solid var(--action-primary);
     outline-offset: 2px;
   }
 
-  .lotes-pie {
+  .variables-pie {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -97,95 +97,13 @@
     padding-top: var(--space-3);
     border-top: 1px solid var(--border);
   }
-  .lotes-aviso {
+  .variables-aviso {
     font-size: 0.75rem;
     color: var(--warning-text);
     background-color: #fff8e1;
     border: 1px solid #ffe9a8;
     border-radius: 0.35rem;
     padding: 0.2rem 0.55rem;
-  }
-
-  /* ===== Serie semanal ===== */
-  .series-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
-    gap: var(--space-4);
-    align-items: start;
-  }
-
-  .serie-card .card-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-2);
-    padding: 0.45rem 0.9rem;
-  }
-
-  .btn-pantalla {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.1rem 0.4rem;
-    font-size: 0.7rem;
-    line-height: 1.4;
-  }
-
-  /* Celdas angostas y números centrados */
-  .serie-tabla {
-    width: 100%;
-    table-layout: fixed;
-    margin-bottom: 0;
-  }
-  .serie-tabla thead th {
-    padding: 0.4rem 0.25rem;
-    white-space: normal;
-    line-height: 1.3;
-  }
-  .serie-tabla tbody td {
-    padding: 0.2rem 0.25rem;
-    font-size: 0.75rem;
-    white-space: nowrap;
-  }
-  .serie-tabla .col-sem {
-    width: 44px;
-    text-align: center;
-    font-weight: 700;
-    color: var(--text-primary);
-  }
-  .serie-tabla .col-num {
-    text-align: center;
-    font-variant-numeric: tabular-nums;
-    color: var(--text-secondary);
-  }
-  .serie-tabla tbody td.hover-fila,
-  .serie-tabla tbody td.hover-columna {
-    background-color: rgba(44, 62, 80, 0.10) !important;
-  }
-
-  /* Pantalla completa de una tarjeta de la serie */
-  .serie-card:fullscreen {
-    background-color: var(--surface);
-    border-radius: 0;
-    display: flex;
-    flex-direction: column;
-  }
-  .serie-card:fullscreen .card-header {
-    background-color: var(--surface-alt);
-    border-bottom: 1px solid var(--border);
-  }
-  .serie-card:fullscreen .card-body {
-    flex: 1 1 auto;
-    overflow: auto;
-  }
-  .serie-card:fullscreen .serie-tabla thead th {
-    position: sticky;
-    top: 0;
-    z-index: 2;
-  }
-  .serie-card:fullscreen .serie-tabla tbody td {
-    font-size: 0.85rem;
-    padding: 0.3rem 0.35rem;
   }
 </style>
 
@@ -197,7 +115,7 @@
       </div>
       <div>
         <h2 class="page-title mb-0">Datos de levante</h2>
-        <p class="page-subtitle mb-0">Serie semanal por lote, con el día 0 de primera semana</p>
+        <p class="page-subtitle mb-0">Serie semanal por variable y lote, con el día 0 de primera semana</p>
       </div>
     </div>
     <a href="{{ url_for('consolidados.vista_consolidados') }}" class="btn btn-outline-secondary btn-sm">
@@ -205,38 +123,38 @@
     </a>
   </div>
 
-  <!-- Selector de lotes -->
+  <!-- Selector de variables -->
   <div class="card card-clean mb-3">
     <div class="card-header d-flex align-items-center justify-content-between gap-2">
-      <span><i class="fas fa-filter me-2"></i>Lotes a consultar</span>
-      <span class="badge-estado badge-neutro" id="contadorLotes">0 seleccionados</span>
+      <span><i class="fas fa-filter me-2"></i>Variables a consultar</span>
+      <span class="badge-estado badge-neutro" id="contadorVariables">0 seleccionadas</span>
     </div>
     <div class="card-body">
-      <div class="lotes-acciones">
-        <button type="button" class="btn btn-outline-secondary" id="btnTodosLotes">
-          <i class="fas fa-check-double me-1"></i>Todos
+      <div class="variables-acciones">
+        <button type="button" class="btn btn-outline-secondary" id="btnTodasVariables">
+          <i class="fas fa-check-double me-1"></i>Todas
         </button>
-        <button type="button" class="btn btn-outline-secondary" id="btnNingunoLotes">
-          <i class="fas fa-eraser me-1"></i>Ninguno
+        <button type="button" class="btn btn-outline-secondary" id="btnNingunaVariables">
+          <i class="fas fa-eraser me-1"></i>Ninguna
         </button>
-        <span class="form-text-muted ms-1">Marca los lotes que quieras comparar.</span>
+        <span class="form-text-muted ms-1">Marca las variables que quieras ver en la serie semanal.</span>
       </div>
 
-      <div class="lotes-lista" id="listaLotes">
-        {% for t in datos.todos %}
-        <label class="lote-chip{% if t.activo %} activo{% endif %}">
-          <input type="checkbox" class="chk-lote-cb" value="{{ t.nombre }}" {% if t.activo %}checked{% endif %}>
+      <div class="variables-lista" id="listaVariables">
+        {% for v in datos.todas_variables %}
+        <label class="variable-chip{% if v.activo %} activo{% endif %}">
+          <input type="checkbox" class="chk-variable-cb" value="{{ v.id }}" {% if v.activo %}checked{% endif %}>
           <i class="fas fa-check"></i>
-          {{ t.nombre }}
+          {{ v.titulo }}
         </label>
         {% endfor %}
       </div>
 
-      <div class="lotes-pie">
-        <span class="lotes-aviso" id="avisoCambios" style="display: none;">
+      <div class="variables-pie">
+        <span class="variables-aviso" id="avisoCambios" style="display: none;">
           <i class="fas fa-circle-exclamation me-1"></i>Hay cambios sin aplicar
         </span>
-        <button type="button" class="btn btn-primary btn-sm ms-auto" id="btnAplicarLotes">
+        <button type="button" class="btn btn-primary btn-sm ms-auto" id="btnAplicarVariables">
           <i class="fas fa-check me-1"></i>Aplicar selección
         </button>
       </div>
@@ -257,69 +175,70 @@
   </ul>
 
   <div class="tab-content">
-    {% if not datos.lotes %}
-    <div class="card card-clean">
-      <div class="card-body text-center py-5">
-        <i class="fas fa-hand-pointer d-block mb-2" style="font-size: 1.7rem; color: var(--border);"></i>
-        <p class="mb-1 fw-semibold" style="color: var(--text-secondary);">Selecciona uno o varios lotes</p>
-        <p class="mb-0" style="font-size: 0.8rem; color: var(--text-muted);">
-          Marca los lotes de arriba y pulsa Aplicar para ver la serie de cada uno.
-        </p>
-      </div>
-    </div>
-    {% endif %}
-
     <div class="tab-pane fade show active" id="tab-serie" role="tabpanel">
-      <div class="series-grid">
-        {% for bloque in datos.series %}
-        <div class="card card-clean serie-card">
-          <div class="card-header">
-            <span>Lote {{ bloque.lote }}</span>
-            <div class="d-flex align-items-center gap-2">
-              <span class="badge-estado badge-neutro">{{ bloque.filas|length }} filas</span>
-              <button type="button" class="btn btn-outline-secondary btn-pantalla" title="Pantalla completa">
-                <i class="fas fa-expand"></i>
-              </button>
-            </div>
-          </div>
-          <div class="card-body p-0">
-            <div class="table-responsive">
-              <table class="table table-sm table-design serie-tabla mb-0">
-                <thead>
-                  <tr>
-                    <th class="col-sem">Sem</th>
-                    <th>Gr.A.D.</th>
-                    <th>Peso</th>
-                    <th>Uniformidad</th>
-                    <th>% Mort. acumulada</th>
-                    <th>Mortalidad semanal</th>
-                    <th>N.° aves</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {% for f in bloque.filas %}
-                  <tr>
-                    <td class="col-sem">{{ f.sem }}</td>
-                    <td class="col-num">{{ num(f.grad_real, 1) }}</td>
-                    <td class="col-num">{{ num(f.peso_real, 1) }}</td>
-                    <td class="col-num">{{ num(f.unif, 2) }}</td>
-                    <td class="col-num">{{ num(f.mort_acum, 2) }}</td>
-                    <td class="col-num">{{ num(f.mort_sem, 2) }}</td>
-                    <td class="col-num">{{ num(f.aves, 0) }}</td>
-                  </tr>
-                  {% endfor %}
-                  {% if not bloque.filas %}
-                  <tr>
-                    <td colspan="7" class="text-center text-muted py-3">Este lote no tiene datos de levante.</td>
-                  </tr>
-                  {% endif %}
-                </tbody>
-              </table>
-            </div>
-          </div>
+      {% if not datos.variables %}
+      <div class="card card-clean">
+        <div class="card-body text-center py-5">
+          <i class="fas fa-hand-pointer d-block mb-2" style="font-size: 1.7rem; color: var(--border);"></i>
+          <p class="mb-1 fw-semibold" style="color: var(--text-secondary);">Selecciona al menos una variable</p>
+          <p class="mb-0" style="font-size: 0.8rem; color: var(--text-muted);">
+            Marca las variables de arriba y pulsa Aplicar para ver la serie semanal.
+          </p>
         </div>
-        {% endfor %}
       </div>
+      {% endif %}
+
+      {% for var in datos.variables %}
+      <h6 class="fw-bold text-secondary text-uppercase mt-3">{{ var.titulo }}</h6>
+      <div class="contenedor-matriz shadow-sm border rounded mt-2 mb-4" id="contenedor-{{ var.id }}">
+        <table class="table table-sm table-bordered mb-0 tabla-compacta tabla-variable"
+               id="tabla-{{ var.id }}" data-variable="{{ var.id }}" data-decimales="{{ var.decimales }}">
+          <thead>
+            <tr>
+              <th class="col-semana">FECHA ENC</th>
+              <th class="col-prom">&nbsp;</th>
+              <th class="col-tabla">&nbsp;</th>
+              {% for l in datos.lotes_meta %}
+              <th class="col-lote">{{ l.fecha_enc if l.fecha_enc else '' }}</th>
+              {% endfor %}
+            </tr>
+            <tr>
+              <th class="col-semana">AVES ENC</th>
+              <th class="col-prom">&nbsp;</th>
+              <th class="col-tabla">&nbsp;</th>
+              {% for l in datos.lotes_meta %}
+              <th class="col-lote">{{ '{:,.0f}'.format(l.aves_enc).replace(',', '.') if l.aves_enc is not none else '' }}</th>
+              {% endfor %}
+            </tr>
+            <tr>
+              <th class="col-semana">SEMANA</th>
+              <th class="col-prom">PROM</th>
+              <th class="col-tabla">TABLA</th>
+              {% for l in datos.lotes_meta %}
+              <th class="col-lote">
+                <input type="checkbox" class="chk-incluir form-check-input me-1"
+                       data-lote="{{ l.nombre }}" data-variable="{{ var.id }}">
+                {{ l.nombre }}
+              </th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in datos.semanas %}
+            <tr data-semana="{{ s }}">
+              <td class="col-semana fw-bold">{{ s }}</td>
+              <td class="col-prom num" data-prom></td>
+              <td class="col-tabla num">{{ num(var.tabla.get(s), var.decimales) }}</td>
+              {% for l in datos.lotes_meta %}
+              {% set v = var.matriz.get(s, {}).get(l.nombre) %}
+              <td class="num" data-lote="{{ l.nombre }}" data-valor="{{ v if v is not none else '' }}">{{ num(v, var.decimales) }}</td>
+              {% endfor %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endfor %}
     </div>
 
     <div class="tab-pane fade" id="tab-consumo" role="tabpanel">
@@ -361,77 +280,103 @@
 
 <script>
   document.addEventListener("DOMContentLoaded", function () {
-    // ===== Selector de lotes =====
-    const chips = Array.from(document.querySelectorAll('.lote-chip'));
-    const contador = document.getElementById('contadorLotes');
+    // ===== Selector de variables =====
+    const chips = Array.from(document.querySelectorAll('.variable-chip'));
+    const contador = document.getElementById('contadorVariables');
     const aviso = document.getElementById('avisoCambios');
-    const aplicados = new Set({{ datos.lotes | tojson }});
+    const aplicadas = new Set({{ datos.activas | tojson }});
 
-    function seleccionados() {
-      return chips.filter(function (chip) { return chip.querySelector('.chk-lote-cb').checked; });
+    function seleccionadas() {
+      return chips.filter(function (chip) { return chip.querySelector('.chk-variable-cb').checked; });
     }
 
     function actualizar() {
       chips.forEach(function (chip) {
-        const marcado = chip.querySelector('.chk-lote-cb').checked;
+        const marcado = chip.querySelector('.chk-variable-cb').checked;
         chip.classList.toggle('activo', marcado);
       });
 
-      const total = seleccionados().length;
-      contador.textContent = total === 1 ? '1 seleccionado' : total + ' seleccionados';
+      const total = seleccionadas().length;
+      contador.textContent = total === 1 ? '1 seleccionada' : total + ' seleccionadas';
 
-      // Aviso cuando la selección no coincide con lo que se está mostrando
-      const actuales = seleccionados().map(function (chip) {
-        return chip.querySelector('.chk-lote-cb').value;
+      const actuales = seleccionadas().map(function (chip) {
+        return chip.querySelector('.chk-variable-cb').value;
       });
-      const hayCambios = actuales.length !== aplicados.size ||
-        actuales.some(function (n) { return !aplicados.has(n); });
+      const hayCambios = actuales.length !== aplicadas.size ||
+        actuales.some(function (id) { return !aplicadas.has(id); });
       aviso.style.display = hayCambios ? '' : 'none';
     }
 
     chips.forEach(function (chip) {
-      chip.querySelector('.chk-lote-cb').addEventListener('change', actualizar);
+      chip.querySelector('.chk-variable-cb').addEventListener('change', actualizar);
     });
 
-    document.getElementById('btnTodosLotes').addEventListener('click', function () {
-      chips.forEach(function (chip) { chip.querySelector('.chk-lote-cb').checked = true; });
+    document.getElementById('btnTodasVariables').addEventListener('click', function () {
+      chips.forEach(function (chip) { chip.querySelector('.chk-variable-cb').checked = true; });
       actualizar();
     });
 
-    document.getElementById('btnNingunoLotes').addEventListener('click', function () {
-      chips.forEach(function (chip) { chip.querySelector('.chk-lote-cb').checked = false; });
+    document.getElementById('btnNingunaVariables').addEventListener('click', function () {
+      chips.forEach(function (chip) { chip.querySelector('.chk-variable-cb').checked = false; });
       actualizar();
     });
 
-    document.getElementById('btnAplicarLotes').addEventListener('click', function () {
-      const sel = seleccionados().map(function (chip) {
-        return chip.querySelector('.chk-lote-cb').value;
+    document.getElementById('btnAplicarVariables').addEventListener('click', function () {
+      const sel = seleccionadas().map(function (chip) {
+        return chip.querySelector('.chk-variable-cb').value;
       });
-      window.location.href = "{{ url_for('consolidados.datos_levante') }}?lotes=" +
+      const params = new URLSearchParams(window.location.search);
+      let destino = "{{ url_for('consolidados.datos_levante') }}?variables=" +
         encodeURIComponent(sel.join(','));
+      const lotesActuales = params.get('lotes');
+      if (lotesActuales) destino += '&lotes=' + encodeURIComponent(lotesActuales);
+      window.location.href = destino;
     });
 
     actualizar();
 
-    // ===== Pantalla completa por tarjeta =====
-    document.querySelectorAll('.btn-pantalla').forEach(function (boton) {
-      boton.addEventListener('click', function () {
-        const tarjeta = boton.closest('.serie-card');
-        if (!document.fullscreenElement) {
-          if (tarjeta.requestFullscreen) tarjeta.requestFullscreen();
-          else if (tarjeta.webkitRequestFullscreen) tarjeta.webkitRequestFullscreen();
-        } else if (document.exitFullscreen) {
-          document.exitFullscreen();
-        }
+    // ===== Matrices por variable =====
+    document.querySelectorAll('table.tabla-variable').forEach(function (tabla) {
+      const dec = parseInt(tabla.dataset.decimales || '2', 10);
+      const fmt = (n) => {
+        const partes = n.toFixed(dec).split('.');
+        partes[0] = partes[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        return partes.join(',');
+      };
+      const recalcular = () => {
+        tabla.querySelectorAll('.chk-incluir').forEach(function (chk) {
+          const th = chk.closest('th');
+          if (th) th.classList.toggle('col-excluida', !chk.checked);
+        });
+        tabla.querySelectorAll('tr[data-semana]').forEach(function (tr) {
+          let suma = 0, n = 0;
+          tr.querySelectorAll('td[data-lote]').forEach(function (td) {
+            const otro = tabla.querySelector('.chk-incluir[data-lote="' + td.dataset.lote + '"]');
+            if (otro && otro.checked) {
+              const crudo = td.dataset.valor;
+              if (crudo !== '' && crudo !== undefined) {
+                const num = parseFloat(crudo);
+                if (num > 0) { suma += num; n += 1; }
+              }
+            }
+          });
+          tr.querySelector('[data-prom]').textContent = n > 0 ? fmt(suma / n) : '';
+        });
+      };
+      tabla.querySelectorAll('.chk-incluir').forEach(function (chk) {
+        chk.addEventListener('change', recalcular);
       });
-    });
+      recalcular();
 
-    document.addEventListener('fullscreenchange', function () {
-      const pantalla = !!document.fullscreenElement;
-      document.querySelectorAll('.btn-pantalla i').forEach(function (icono) {
-        icono.classList.toggle('fa-expand', !pantalla);
-        icono.classList.toggle('fa-compress', pantalla);
-      });
+      const ajustarSticky = () => {
+        let acc = 0;
+        tabla.querySelectorAll('thead tr').forEach(function (tr) {
+          tr.querySelectorAll('th').forEach(function (th) { th.style.top = acc + 'px'; });
+          acc += tr.offsetHeight;
+        });
+      };
+      ajustarSticky();
+      window.addEventListener('resize', ajustarSticky);
     });
 
     // ===== Matriz de consumo =====

@@ -261,28 +261,6 @@ def fetch_porc_produccion() -> list:
         conn.close()
 
 
-def fetch_consumo_agua() -> list:
-    """Devuelve sem_prod, lote, cons_agua_real y metadata de cabecera."""
-    conn = get_db_connection()
-    cur = conn.cursor()
-    try:
-        cur.execute("""
-            SELECT b.sem_prod, b.lote, b.cons_agua_real,
-                   c.fecha_recepcion, c.no_pollitas_recibidas
-            FROM bd_vargas b
-            LEFT JOIN cabecera_lotes c ON c.id = b.id_lote
-            ORDER BY b.sem_prod, b.lote
-        """)
-        return [
-            {'sem_prod': r[0], 'lote': r[1], 'cons_agua_real': r[2],
-             'fecha_recepcion': r[3], 'aves_enc': r[4]}
-            for r in cur.fetchall()
-        ]
-    finally:
-        cur.close()
-        conn.close()
-
-
 def fetch_mort_acumulada() -> list:
     """Devuelve sem_prod, lote, percent_mort_acum y metadata de cabecera."""
     conn = get_db_connection()
@@ -328,20 +306,26 @@ def fetch_mort_semanal() -> list:
 
 
 def fetch_haa() -> list:
-    """Devuelve sem_prod, lote, h_av_aloj_real y metadata."""
+    """Devuelve sem_prod, lote, huevos de la semana y metadata.
+
+    Los huevos son el insumo de H12: la vista calcula los huevos por ave
+    alojada desde ellos, no desde la columna importada h_av_aloj_real.
+    """
     conn = get_db_connection()
     cur = conn.cursor()
     try:
         cur.execute("""
-            SELECT b.sem_prod, b.lote, b.h_av_aloj_real,
-                   c.fecha_recepcion, c.no_pollitas_recibidas
+            SELECT b.sem_prod, b.lote, b.prod_huevo_sem,
+                   c.fecha_recepcion, c.no_pollitas_recibidas,
+                   c.no_aves_encasetadas
             FROM bd_vargas b
             LEFT JOIN cabecera_lotes c ON c.id = b.id_lote
             ORDER BY b.sem_prod, b.lote
         """)
         return [
-            {'sem_prod': r[0], 'lote': r[1], 'h_av_aloj_real': r[2],
-             'fecha_recepcion': r[3], 'aves_enc': r[4]}
+            {'sem_prod': r[0], 'lote': r[1], 'huevos': r[2],
+             'fecha_recepcion': r[3], 'aves_enc': r[4],
+             'aves_enc_lote': r[5]}
             for r in cur.fetchall()
         ]
     finally:
@@ -430,14 +414,16 @@ def fetch_masa_semanal() -> list:
     try:
         cur.execute("""
             SELECT b.sem_prod, b.lote, b.prod_huevo_sem,
-                   c.fecha_recepcion, c.no_pollitas_recibidas
+                   c.fecha_recepcion, c.no_pollitas_recibidas,
+                   c.no_aves_encasetadas
             FROM bd_vargas b
             LEFT JOIN cabecera_lotes c ON c.id = b.id_lote
             ORDER BY b.sem_prod, b.lote
         """)
         return [
             {'sem_prod': r[0], 'lote': r[1], 'huevos': r[2],
-             'fecha_recepcion': r[3], 'aves_enc': r[4]}
+             'fecha_recepcion': r[3], 'aves_enc': r[4],
+             'aves_enc_lote': r[5]}
             for r in cur.fetchall()
         ]
     finally:

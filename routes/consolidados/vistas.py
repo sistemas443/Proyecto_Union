@@ -49,15 +49,18 @@ def vista_consolidados():
 def consolidados_version():
     """Devuelve un hash del estado actual de las tablas que alimentan consolidados.
 
-    El frontend consulta este endpoint cada 15s; si el hash cambia, recarga la vista
-    para reflejar los datos actualizados sin intervencion manual.
+    El frontend lo consulta cada 30s; si el hash cambia, actualiza la matriz
+    en sitio sin recargar la pagina.
     """
     conn = get_db_connection()
     cur = conn.cursor()
     try:
         cur.execute("""
             SELECT
-                (SELECT COALESCE(MAX(fecha)::text, '') FROM auditoria_cambios),
+                (SELECT COALESCE(MAX(fecha)::text, '') FROM auditoria_cambios
+                 WHERE tabla IN ('bd_vargas', 'data_diario', 'semanal_levante',
+                                 'primera_semana', 'cabecera_lotes',
+                                 'clasificacion_produccion')),
                 (SELECT COUNT(*)::text || ':' || COALESCE(MAX(fecha_fin_sem)::text, '') FROM bd_vargas),
                 (SELECT COUNT(*)::text || ':' || COALESCE(MAX(fecha_dia)::text, '') FROM data_diario),
                 (SELECT COUNT(*)::text FROM semanal_levante),
@@ -270,12 +273,22 @@ def primera_semana_levante():
 @consolidados_bp.route('/consolidados/datos-levante')
 @login_requerido
 def datos_levante():
-    """Renderiza Datos de Levante con serie consolidada y consumo.
+    """Renderiza Datos de Levante con matrices por variable y consumo.
 
-    Acepta ?lotes=69-10,70-12 para recalcular solo con incluidos.
+    Acepta ?variables=grad,peso para elegir las secciones de la serie semanal.
+    Acepta ?lotes=69-10,70-12 para la matriz de consumo (por compatibilidad).
     """
     from models.consolidados import services as consolidados_services
-    param = request.args.get('lotes', '')
-    lotes = [l.strip() for l in param.split(',') if l.strip()]
-    datos = consolidados_services.get_datos_levante(lotes)
+    param_variables = request.args.get('variables')
+    if param_variables is None:
+        variables = None
+    else:
+        variables = [v.strip() for v in param_variables.split(',') if v.strip()]
+
+    param_lotes = request.args.get('lotes', '')
+    lotes = [l.strip() for l in param_lotes.split(',') if l.strip()]
+
+    datos = consolidados_services.get_datos_levante(
+        variables_param=variables, lotes_param=lotes or None
+    )
     return render_template('consolidados/datos_levante.html', datos=datos)

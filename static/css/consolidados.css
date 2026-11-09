@@ -73,7 +73,12 @@
 
 /* Resaltado de fila y columna con el mouse (lo activa consolidados_tabla.js) */
 .tabla-compacta tbody td.hover-fila,
-.tabla-compacta tbody td.hover-columna { background-color: rgba(180, 180, 180, 0.5) !important; }
+.tabla-compacta tbody td.hover-columna { background-color: #cfd5dd !important; }
+
+/* Las columnas congeladas deben quedar opacas al resaltar: si el fondo es
+   translúcido, las celdas que pasan por debajo se ven a través de ellas. */
+.tabla-compacta tbody td.col-congelada.hover-fila,
+.tabla-compacta tbody td.col-congelada.hover-columna { background-color: #c3c9d2 !important; }
 
 /* Columnas congeladas: las primeras de cada tabla quedan fijas al hacer scroll horizontal.
    La posición (left) y el ancho los calcula consolidados_tabla.js con el tamaño real. */

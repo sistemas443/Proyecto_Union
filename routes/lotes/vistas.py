@@ -1,7 +1,9 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session
-from routes.routes import login_requerido, editor_requerido
+from routes.routes import login_requerido, editor_requerido, superadmin_requerido
 from models.base import get_db_connection
 from models.catalogos import services as catalogos_services
+from models.lotes import model as lotes_model
+from models.lotes import clasificacion as lotes_clasificacion
 from models.lotes.services import (
     get_todos_los_lotes, get_opciones_dinamicas,
     guardar_nuevo_lote, actualizar_lote, borrar_lote
@@ -56,7 +58,7 @@ def vista_lotes():
         cur.close()
         conn.close()
 
-    # El rol PRODUCCION solo ve y administra los lotes de SAN MARTIN
+    # El rol PRODUCCION ve SAN MARTIN y los externos con Levante externo = SI
     rol = (session.get('user_rol') or '').strip()
     empresa_filtro = None
     if rol == 'PRODUCCION':
@@ -64,8 +66,21 @@ def vista_lotes():
             (e['id'] for e in lista_empresas
              if e['nombre'].strip().upper() == 'SAN MARTIN'), None)
         if empresa_filtro:
-            lotes = [l for l in lotes if l.get('empresa_id') == empresa_filtro]
-            lista_empresas = [e for e in lista_empresas if e['id'] == empresa_filtro]
+            lotes = [
+                l for l in lotes
+                if l.get('empresa_id') == empresa_filtro
+                or (l.get('empresa_id') != empresa_filtro and l.get('levante_externo'))
+            ]
+            ids_empresas = {l.get('empresa_id') for l in lotes if l.get('empresa_id')}
+            lista_empresas = [
+                e for e in lista_empresas
+                if e['id'] == empresa_filtro or e['id'] in ids_empresas
+            ]
+
+    # Clasificación ACTIVO / CONCLUIDO para las pestañas de la lista
+    estados = lotes_clasificacion.fetch_clasificacion_lotes([l['lote'] for l in lotes])
+    for lote in lotes:
+        lote['estado'] = estados.get(lote['lote'], {}).get('estado', 'ACTIVO')
 
     def _fotos(tipo, items):
         return {i['nombre']: catalogos_services.url_foto_por_id(tipo, i['id']) for i in items}
@@ -156,11 +171,23 @@ def guardar_lote():
     datos = request.form.to_dict()
     id_lote = request.form.get('id')
 
-    # Un usuario de PRODUCCION solo puede guardar lotes de SAN MARTIN
-    if (session.get('user_rol') or '').strip() == 'PRODUCCION':
-        empresa_id = _empresa_id_por_nombre('SAN MARTIN')
-        if empresa_id:
-            datos['empresa_id'] = str(empresa_id)
+    # Reglas de empresa:
+    # - PRODUCCION crea solo lotes SAN MARTIN y conserva la empresa al editar.
+    # - SAN MARTIN nunca lleva Levante externo.
+    rol = (session.get('user_rol') or '').strip()
+    san_martin_id = _empresa_id_por_nombre('SAN MARTIN')
+    if rol == 'PRODUCCION':
+        if id_lote:
+            existente = lotes_model.fetch_lote_por_id(id_lote)
+            if existente and existente.get('empresa_id'):
+                datos['empresa_id'] = str(existente['empresa_id'])
+            elif san_martin_id:
+                datos['empresa_id'] = str(san_martin_id)
+        elif san_martin_id:
+            datos['empresa_id'] = str(san_martin_id)
+
+    if san_martin_id and str(datos.get('empresa_id') or '').strip() == str(san_martin_id):
+        datos['levante_externo'] = 'NO'
 
     usuario_id = session.get('user_id')
     usuario_nombre = session.get('user_nombre', 'Desconocido')
@@ -177,7 +204,7 @@ def guardar_lote():
 
 @lotes_bp.route('/api/borrar-lote/<int:id>', methods=['POST'])
 @login_requerido
-@editor_requerido
+@superadmin_requerido
 def api_borrar_lote(id):
     if borrar_lote(id):
         return jsonify({'status': 'ok'}), 200
@@ -191,6 +218,51 @@ def api_borrar_lote(id):
         usuario_nombre=session.get('user_nombre', 'Desconocido'),
     )
     return jsonify({'status': 'error', 'msg': 'Dato protegido o inexistente'}), 500
+
+
+@lotes_bp.route('/api/lotes/<int:id>/estado-manual', methods=['POST'])
+@login_requerido
+@superadmin_requerido
+def cambiar_estado_manual(id):
+    """Cambia manualmente un lote entre ACTIVO y CONCLUIDO (solo Superadmin)."""
+    data = request.get_json(silent=True) or {}
+    estado = (data.get('estado') or '').strip().upper()
+    if estado not in ('ACTIVO', 'CONCLUIDO'):
+        return jsonify({'status': 'error', 'msg': 'Estado no válido.'}), 400
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            "UPDATE cabecera_lotes SET estado_manual = %s WHERE id = %s RETURNING id, lote",
+            (estado, id),
+        )
+        fila = cur.fetchone()
+        if not fila:
+            conn.rollback()
+            return jsonify({'status': 'error', 'msg': 'Lote no encontrado.'}), 404
+
+        from models.auditoria.services import registrar_cambio
+        registrar_cambio(
+            usuario_id=session.get('user_id'),
+            usuario_nombre=session.get('user_nombre', 'Desconocido'),
+            tabla='cabecera_lotes',
+            id_registro=id,
+            campo='estado_manual',
+            valor_anterior=None,
+            valor_nuevo=estado,
+            accion='UPDATE',
+            cursor=cur,
+        )
+        conn.commit()
+        return jsonify({'status': 'ok', 'estado': estado})
+    except Exception as e:
+        conn.rollback()
+        print(f"[ESTADO MANUAL] {e}")
+        return jsonify({'status': 'error', 'msg': 'No se pudo cambiar el estado.'}), 500
+    finally:
+        cur.close()
+        conn.close()
 
 
 @lotes_bp.route('/api/cabecera/actualizar', methods=['POST'])
@@ -209,7 +281,11 @@ def actualizar_cabecera():
             'status': 'error',
             'msg': 'No tiene permisos para cambiar la empresa del lote.'
         }), 403
-    success, msg = update_cabecera_unificada(lote, columna, valor)
+    success, msg = update_cabecera_unificada(
+        lote, columna, valor,
+        usuario_id=session.get('user_id'),
+        usuario_nombre=session.get('user_nombre', 'Desconocido'),
+    )
     if success:
         return jsonify({'status': 'ok'}), 200
 

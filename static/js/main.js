@@ -182,7 +182,6 @@ function llenarFormularioLote(lote) {
     document.getElementById('f_fecha_enc').value = formatFechaParaInput(lote.fecha_encasetamiento);
 
     // Selects Inteligentes
-    setSelectValue('f_cliente', lote.cliente);
     setSelectValue('f_ciudad', lote.ciudad);
     setSelectValue('f_clima', lote.clima);
     setSelectValue('f_responsable', lote.responsable_tecnico);
@@ -393,6 +392,8 @@ function setupBotonesLotes() {
         
         // BOTÓN OJO (Ver Detalles - Solo Lectura)
         let btnVer = e.target.closest('.btn-ver');
+        // En /lotes el formulario moderno ya maneja Ver y Editar.
+        if (document.getElementById('f_lote_nuevo') && (btnVer || e.target.closest('.btn-editar'))) return;
         if (btnVer && btnVer.hasAttribute('data-lote')) {
             e.preventDefault();
             const lote = JSON.parse(btnVer.getAttribute('data-lote'));
