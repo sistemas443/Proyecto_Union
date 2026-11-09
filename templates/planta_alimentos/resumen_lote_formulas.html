@@ -167,6 +167,15 @@
     padding: 0.35rem 0.75rem;
   }
   .table-form tbody tr.fila-mes:hover td { background: #e3edf7; }
+  .table-form tbody tr.fila-mes-toggle { cursor: pointer; user-select: none; }
+  .fila-mes-chev {
+    display: inline-block;
+    font-size: 0.9rem;
+    margin-right: 0.15rem;
+    vertical-align: -2px;
+    transition: transform 0.2s ease;
+  }
+  .table-form tbody tr.fila-mes-toggle.abierto .fila-mes-chev { transform: rotate(90deg); }
   .fila-mes-cuenta {
     float: right;
     font-weight: 600;
@@ -351,15 +360,18 @@
                         {% set mes_formula = formula['mes'] if formula['mes'] is defined and formula['mes'] else 'Sin fecha' %}
                         {% if mes_formula != ns.mes %}
                         {% set ns.mes = mes_formula %}
-                        <tr class="fila-mes">
+                        <tr class="fila-mes fila-mes-toggle" data-mes="{{ mes_formula }}"
+                            role="button" tabindex="0" aria-expanded="false"
+                            title="Mostrar u ocultar las dietas de este mes">
                             <td colspan="6">
+                                <i class='bx bx-chevron-right fila-mes-chev'></i>
                                 <i class="far fa-calendar-alt me-1"></i> Vencimiento: {{ mes_formula }}
                                 {% set cuenta_mes = formulas | selectattr('mes', 'defined') | selectattr('mes', 'equalto', mes_formula) | list | length %}
                                 <span class="fila-mes-cuenta">{{ cuenta_mes }} {{ 'dieta' if cuenta_mes == 1 else 'dietas' }}</span>
                             </td>
                         </tr>
                         {% endif %}
-                        <tr class="align-middle">
+                        <tr class="align-middle fila-dieta" data-mes="{{ mes_formula }}" hidden>
                             <!-- 1. ITEM -->
                             <td class="col-item px-3">{{ formula['item_id'] }}</td>
 
@@ -420,4 +432,29 @@
     {% endif %}
 </div>
 {% include 'planta_alimentos/_modal_replicar.html' %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    document.querySelectorAll('tr.fila-mes-toggle').forEach(function (cabecera) {
+      function alternar() {
+        var mes = cabecera.getAttribute('data-mes') || '';
+        var abrir = cabecera.getAttribute('aria-expanded') !== 'true';
+        cabecera.setAttribute('aria-expanded', abrir ? 'true' : 'false');
+        cabecera.classList.toggle('abierto', abrir);
+        document.querySelectorAll('tr.fila-dieta').forEach(function (fila) {
+          if (fila.getAttribute('data-mes') === mes) fila.hidden = !abrir;
+        });
+      }
+      cabecera.addEventListener('click', alternar);
+      cabecera.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          alternar();
+        }
+      });
+    });
+  })();
+</script>
 {% endblock %}
