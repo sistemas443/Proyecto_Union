@@ -405,6 +405,25 @@ class TablaNutricional:
                         encontrada = cur.fetchone()
                         fecha = _fecha(encontrada[0]) if encontrada else None
 
+                # Si el lote no trae Gramos en el Excel, se usa el consumo de Produccion
+                core_actual = nutrientes.setdefault('_core', {})
+                if _num(core_actual.get('gramos')) is None:
+                    cur.execute("""
+                        SELECT consumo_alim_real FROM bd_vargas
+                        WHERE lote = %s AND sem_prod = %s
+                    """, (lote, semana))
+                    fila_consumo = cur.fetchone()
+                    consumo_prod = _num(fila_consumo[0]) if fila_consumo else None
+                    if consumo_prod is None:
+                        cur.execute("""
+                            SELECT cons_real FROM semanal_levante
+                            WHERE lote = %s AND sem = %s
+                        """, (lote, semana))
+                        fila_consumo = cur.fetchone()
+                        consumo_prod = _num(fila_consumo[0]) if fila_consumo else None
+                    if consumo_prod is not None:
+                        core_actual['gramos'] = consumo_prod
+
                 if campo == 'observaciones':
                     observaciones = (str(valor) if valor is not None else '')[:1000]
                 else:
@@ -870,6 +889,10 @@ class TablaNutricional:
         # Eco y Pro se conservan tal como se importaron.
         for datos in semanas.values():
             if datos.get('nutrientes'):
+                core = datos['nutrientes'].setdefault('_core', {})
+                # En lotes nuevos el Gramos del Excel puede faltar; se usa el de Produccion
+                if _num(core.get('gramos')) is None and datos.get('consumo') is not None:
+                    core['gramos'] = datos.get('consumo')
                 try:
                     TablaNutricional._recalcular(datos['nutrientes'])
                 except Exception as e:
