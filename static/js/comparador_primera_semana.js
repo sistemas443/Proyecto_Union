@@ -248,7 +248,7 @@
         tablasActuales().forEach(function (otra) {
           if (otra !== tabla) otra.scrollTop = tabla.scrollTop;
         });
-        window.requestAnimationFrame(function () { sincronizando = false; });
+        window.setTimeout(function () { sincronizando = false; }, 40);
       });
     });
   }

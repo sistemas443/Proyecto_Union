@@ -169,6 +169,14 @@
           </select>
           <button type="submit" class="btn btn-primary btn-sm">Cargar Datos</button>
         </form>
+
+    {% if lote_seleccionado %}
+    <a class="btn btn-outline-secondary btn-sm"
+      href="{{ url_for(request.endpoint, comparar=1, cantidad=2, lote_a=lote_seleccionado) }}"
+      title="Comparar este lote con otros">
+      <i class="fas fa-columns"></i> <span class="d-none d-sm-inline">Comparar lotes</span>
+    </a>
+    {% endif %}
       </div>
     </div>
 

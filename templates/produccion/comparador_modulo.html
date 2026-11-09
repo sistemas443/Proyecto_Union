@@ -1,0 +1,106 @@
+{% extends 'generales/layout.html' %}
+{% block title %}Comparador · {{ titulo }} · Avícola San Martín{% endblock %}
+
+{% block head %}
+{% include 'planta_alimentos/_design_system.html' %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/comparador.css') }}">
+{% endblock %}
+
+{% block content %}
+<style>
+  body { overflow-y: hidden; }
+  @media (max-width: 900px) { body { overflow-y: auto; } }
+</style>
+
+<div class="page-header">
+  <div class="d-flex align-items-center gap-3">
+    <div class="page-icon"><i class="fas fa-columns"></i></div>
+    <div>
+      <h2 class="page-title mb-0">{{ titulo }}</h2>
+      <p class="page-subtitle mb-0">Comparación de lotes · solo lectura</p>
+    </div>
+  </div>
+</div>
+
+<div class="comparador-lotes" id="comparadorLotes" data-lote-a="{{ paneles[0].lote }}">
+  <div class="comparador-barra">
+    <div class="comparador-lote fijo">
+      <span class="comparador-letra" style="background: #97271C">A</span>
+      <select class="form-select form-select-sm comparador-select" data-pos="0" data-clave="lote_a"
+        aria-label="Lote A">
+        {% for l in lotes %}
+        <option value="{{ l }}" {% if l == paneles[0].lote %}selected{% endif %}>LOTE {{ l }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% for p in paneles[1:] %}
+    <div class="comparador-lote">
+      <span class="comparador-letra" style="background: {{ p.color }}">{{ p.letra }}</span>
+      <select class="form-select form-select-sm comparador-select" data-pos="{{ loop.index }}"
+        data-clave="{{ ['lote_b', 'lote_c', 'lote_d'][loop.index0] }}"
+        aria-label="Lote {{ p.letra }}">
+        <option value="">-- Seleccione --</option>
+        {% for l in lotes %}
+        <option value="{{ l }}" {% if l == p.lote %}selected{% endif %}>LOTE {{ l }}</option>
+        {% endfor %}
+      </select>
+      <button type="button" class="comparador-quitar" data-pos="{{ loop.index }}"
+        title="Quitar lote {{ p.letra }}" {% if not p.lote %}hidden{% endif %}>&#10005;</button>
+    </div>
+    {% endfor %}
+    <div class="comparador-acciones">
+      <label class="comparador-cantidad" for="cmpCantidad">Lotes
+        <select id="cmpCantidad" class="form-select form-select-sm">
+          {% for n in [2, 3, 4] %}
+          <option value="{{ n }}" {% if n == cantidad %}selected{% endif %}>{{ n }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <button type="button" class="btn btn-outline-secondary btn-sm" id="cmpPantalla"
+        title="Ver la comparación en pantalla completa">
+        <i class="fas fa-expand me-1"></i> <span>Pantalla completa</span>
+      </button>
+      <a class="btn btn-outline-danger btn-sm" href="{{ url_for(endpoint, lote=paneles[0].lote) }}"
+        title="Cerrar la comparación y volver al lote actual">
+        <i class="fas fa-xmark me-1"></i> <span>Salir de comparación</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="comparador-grid comparador-grid-{{ cantidad }}" style="--n: {{ cantidad }}">
+    {% for p in paneles %}
+    <article class="comparador-panel comparador-panel-iframe" data-panel="{{ loop.index0 }}"
+      style="--panel-color: {{ p.color }}">
+      <header class="comparador-panel-head">
+        <span class="comparador-letra" style="background: {{ p.color }}">{{ p.letra }}</span>
+        <span class="comparador-lote-nombre">Lote {{ p.lote or '—' }}</span>
+        {% if p.cabecera %}
+        <div class="comparador-panel-meta"
+          title="Aves encasetadas: {% if p.cabecera.no_pollitas_recibidas %}{{ '{:,.0f}'.format(p.cabecera.no_pollitas_recibidas|int).replace(',', '.') }}{% else %}—{% endif %} · Variedad: {{ p.cabecera.variedad or '—' }}">
+          <span class="comparador-aves">
+            Aves: <b>{% if p.cabecera.no_pollitas_recibidas %}{{ '{:,.0f}'.format(p.cabecera.no_pollitas_recibidas|int).replace(',', '.') }}{% else %}—{% endif %}</b>
+          </span>
+          <span class="comparador-variedad">{{ p.cabecera.variedad or '—' }}</span>
+        </div>
+        {% endif %}
+      </header>
+      {% if p.lote %}
+      <iframe class="comparador-iframe" data-pos="{{ loop.index0 }}" title="Lote {{ p.lote }}"
+        src="{{ url_for(endpoint, lote=p.lote, embed=1) }}" loading="eager"></iframe>
+      {% else %}
+      <div class="comparador-vacio">
+        <i class="fas fa-hand-pointer"></i>
+        <p>Seleccione un lote para comparar</p>
+      </div>
+      {% endif %}
+    </article>
+    {% endfor %}
+  </div>
+</div>
+
+<script type="application/json" id="comparadorDatosLotes">{{ datos_lotes | tojson }}</script>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/comparador_iframes.js') }}"></script>
+{% endblock %}

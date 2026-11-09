@@ -4,6 +4,7 @@ from models.primera_semana.services import get_primera_semana_by_lote, get_data_
 from models.cabecera.services import get_cabecera_info
 from models.lotes.services import get_lotes_distintos
 from models.catalogos import services as catalogos_services
+from models.comparador_lotes import construir_paneles, datos_lotes
 
 primera_semana_bp = Blueprint('primera_semana', __name__)
 
@@ -120,7 +121,26 @@ def grafico_primera_semana():
         if lote_seleccionado and lote_seleccionado != 'VACIO':
             session['ultimo_lote'] = lote_seleccionado
     else:
-        lote_seleccionado = session.get('ultimo_lote', '')
+        lote_seleccionado = request.args.get('lote') or session.get('ultimo_lote', '')
+
+    embed = request.args.get('embed') == '1'
+    if embed:
+        lote_embed = (request.args.get('lote') or '').strip()
+        if lote_embed:
+            lote_seleccionado = lote_embed
+
+    paneles, cantidad = construir_paneles(request)
+    if paneles:
+        lotes = get_lotes_distintos()
+        return render_template(
+            'produccion/comparador_modulo.html',
+            paneles=paneles,
+            cantidad=cantidad,
+            lotes=lotes,
+            datos_lotes=datos_lotes(lotes),
+            endpoint=request.endpoint,
+            titulo='Gráfico 1era semana',
+        )
 
     datos_grafico = None
     info_lote = None

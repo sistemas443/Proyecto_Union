@@ -92,6 +92,22 @@
 .comparador-grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .comparador-grid-4 .tabla-scroll { min-height: 0 !important; }
 
+/* Paneles con el módulo embebido (iframe) */
+.comparador-panel-iframe { overflow: hidden; }
+.comparador-iframe {
+  width: 100%;
+  height: 60vh;
+  border: 0;
+  display: block;
+  background: #ffffff;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.comparador-panel-iframe .comparador-vacio { flex: 1 1 auto; }
+@media (max-width: 900px) {
+  .comparador-iframe { height: 55vh !important; }
+}
+
 .comparador-panel {
   background: var(--surface, #ffffff);
   border: 1px solid var(--border, #dee2e6);

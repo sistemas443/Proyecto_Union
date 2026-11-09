@@ -1027,6 +1027,50 @@
   {% endif %}
 
   {% block scripts %}{% endblock %}
+
+{% if request.args.get('embed') == '1' %}
+<!-- Modo embebido: el módulo se muestra dentro de un panel del comparador -->
+<style>
+  nav.navbar,
+  .sidebar-rapido,
+  .sidebar-th,
+  .page-header,
+  .card-filtro,
+  .ps-franja-lote,
+  .ps-info-lote,
+  .ps-buscar-obs,
+  .ps-seleccion,
+  .modal,
+  .alert { display: none !important; }
+
+  main.container-fluid { padding: 0 !important; margin: 0 !important; }
+  body { overflow: hidden !important; background: var(--surface, #ffffff) !important; }
+  .tabla-scroll { border: 0 !important; border-radius: 0 !important; }
+  .card-clean, .card-grafico { margin: 0 !important; }
+</style>
+<script>
+  (function () {
+    function soloLectura() {
+      document.querySelectorAll('input, textarea').forEach(function (el) {
+        if ((el.type || '').toLowerCase() === 'hidden') return;
+        el.readOnly = true;
+        el.setAttribute('readonly', 'readonly');
+      });
+      document.querySelectorAll('select').forEach(function (el) {
+        el.disabled = true;
+      });
+      document.querySelectorAll('.icono-obs, .icono-obs-btn, .tn-obs-btn').forEach(function (el) {
+        el.style.display = 'none';
+      });
+    }
+    soloLectura();
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', soloLectura);
+    }
+  })();
+</script>
+{% endif %}
+
 </body>
 
 </html>
