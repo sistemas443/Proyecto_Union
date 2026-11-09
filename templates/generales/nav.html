@@ -150,6 +150,11 @@
         </div>
         <span class="app-separador" aria-hidden="true"></span>
         {% endif %}
+        <button type="button" class="app-config-btn app-theme-btn" data-theme-toggle
+                title="Cambiar a modo noche" aria-label="Cambiar a modo noche" aria-pressed="false">
+          <i class='bx bx-moon'></i>
+          <i class='bx bx-sun'></i>
+        </button>
         <div class="app-avatar">
           {% if session.get('user_foto') %}
           <img src="{{ url_for('main.foto_usuario', id=session.get('user_id')) }}" alt="Foto de perfil">
