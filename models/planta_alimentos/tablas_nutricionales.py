@@ -12,7 +12,7 @@ No duplica informacion: los indicadores se leen de:
 """
 import io
 import unicodedata
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from psycopg2.extras import Json, RealDictCursor
 
@@ -603,10 +603,12 @@ class TablaNutricional:
                 cur.execute("""
                     SELECT v.sem_prod AS semana, v.fecha_fin_sem,
                            v.consumo_alim_kg, v.prod_huevo_sem,
+                           c.fecha_recepcion,
                            (r.nutrientes->'_core'->>'precio_formula')::numeric AS precio_dieta
                     FROM bd_vargas v
                     LEFT JOIN tn_registros r
                       ON r.lote = v.lote AND r.semana = v.sem_prod
+                    LEFT JOIN cabecera_lotes c ON c.lote = v.lote
                     WHERE v.lote = %s
                       AND v.sem_prod >= 18
                       AND COALESCE(v.prod_huevo_sem, 0) > 0
@@ -617,12 +619,17 @@ class TablaNutricional:
                     consumo = _num(f['consumo_alim_kg'])
                     produccion = _num(f['prod_huevo_sem'])
                     precio = _num(f['precio_dieta'])
+                    fecha = _fecha(f['fecha_fin_sem'])
+                    if not fecha:
+                        base = _fecha(f['fecha_recepcion'])
+                        if base:
+                            fecha = base + timedelta(days=7 * int(f['semana']) - 1)
                     costo = None
                     if consumo is not None and precio is not None and produccion:
                         costo = consumo * precio / produccion
                     filas.append({
                         'semana': f['semana'],
-                        'fecha': _fecha(f['fecha_fin_sem']),
+                        'fecha': fecha,
                         'consumo_kg': consumo,
                         'produccion_huevos': produccion,
                         'precio_dieta': precio,
@@ -774,6 +781,15 @@ class TablaNutricional:
                 semanas[sem]['fecha'] = datos['fecha']
             semanas[sem]['nutrientes'] = datos['nutrientes']
             semanas[sem]['observaciones'] = datos['observaciones']
+
+        # Fecha automatica por lote:
+        #  - Si Produccion (levante/bd_vargas) trae fecha, esa manda.
+        #  - Si no, se calcula desde la fecha de recepcion del lote.
+        fecha_base = _fecha(meta.get('fecha_recepcion')) or _fecha(meta.get('fecha_encasetamiento'))
+        if fecha_base:
+            for sem, datos in semanas.items():
+                if datos.get('origen') == 'nutricion' or not datos.get('fecha'):
+                    datos['fecha'] = fecha_base + timedelta(days=7 * int(sem) - 1)
 
         lista = []
         for sem in sorted(semanas):
