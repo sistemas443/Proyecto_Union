@@ -286,6 +286,14 @@ html[data-bs-theme="dark"] .table-fixed input:focus {
 html[data-bs-theme="dark"] .table-fixed input.saved { background: #1d3a2a !important; color: #c9f3d9; }
 html[data-bs-theme="dark"] .table-fixed input.error { background: #3d1f22 !important; color: #ffc9cd; }
 
+/* Botón para mostrar/ocultar la ficha del lote en los gráficos */
+html[data-bs-theme="dark"] .ps-toggle-franja {
+  background: #232b34;
+  border-color: var(--border);
+  color: var(--text-secondary);
+}
+html[data-bs-theme="dark"] .ps-toggle-franja:hover { background: #2b343d; }
+
 /* Buscador de observaciones del diario */
 html[data-bs-theme="dark"] .ps-buscar-obs {
   background: #1e242b;
