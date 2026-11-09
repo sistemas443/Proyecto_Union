@@ -3,7 +3,7 @@
 
 {% macro num(v) %}{% if v is none or v == '' %}{% else %}{{ "{:,.2f}".format(v|float).replace(',', 'X').replace('.', ',').replace('X', '.') }}{% endif %}{% endmacro %}
 {% macro num0(v) %}{% if v is none or v == '' %}{% else %}{{ "{:,.0f}".format(v|float).replace(',', 'X').replace('.', ',').replace('X', '.') }}{% endif %}{% endmacro %}
-{% macro num1(v) %}{% if v is none or v == '' %}{% else %}{{ "{:,.1f}".format(v|float).replace(',', 'X').replace('.', ',').replace('X', '.') }}{% endif %}{% endmacro %}
+{% macro num1(v) %}{% if v is none or v == '' %}{% else %}{% set x = v|float %}{{ "{:,.1f}".format((((x * 10) + (0.5000000001 if x >= 0 else -0.5000000001))|int) / 10).replace(',', 'X').replace('.', ',').replace('X', '.') }}{% endif %}{% endmacro %}
 {% macro num3(v) %}{% if v is none or v == '' %}{% else %}{{ "{:,.3f}".format(v|float).replace(',', 'X').replace('.', ',').replace('X', '.') }}{% endif %}{% endmacro %}
 {% macro num5(v) %}{% if v is none or v == '' %}{% else %}{{ "{:,.5f}".format(v|float).replace(',', 'X').replace('.', ',').replace('X', '.') }}{% endif %}{% endmacro %}
 
@@ -928,7 +928,7 @@
                 {% for clave, etiqueta_sub in subs %}
                 <td data-campo="{{ codigo }}.{{ clave }}"
                   class="{% if clave in ('tabla', 'tabla_min', 'tabla_sup') %}tn-guia {% endif %}{% if clave == 'pro' %}tn-pro {% endif %}{% if clave in subs_editables and puede_editar %}tn-edit {% endif %}{% if clave == 'dif' and n.get('dif') is not none %}{% if n.get('dif') < 0 %}tn-dif-neg{% elif n.get('dif') > 0 %}tn-dif-pos{% else %}tn-dif-cero{% endif %}{% endif %}"
-                  {% if clave in subs_editables and puede_editar %}contenteditable="true"{% endif %}>{% if clave == 'formu' %}{% if n.get('formu') is none %}{% elif codigo == 'proteina' %}{{ num(n.get('formu') * 100) }}%{% elif codigo == 'calcio' %}{{ num(n.get('formu')) }}{% elif codigo in ('energia', 'energia_max') %}{{ num0(n.get('formu')) }}{% else %}{{ num3(n.get('formu') * 100) }}%{% endif %}{% else %}{{ num(n.get(clave)) }}{% endif %}</td>
+                  {% if clave in subs_editables and puede_editar %}contenteditable="true"{% endif %}>{% if clave == 'formu' %}{% if n.get('formu') is none %}{% elif codigo == 'proteina' %}{{ num(n.get('formu') * 100) }}%{% elif codigo == 'calcio' %}{{ num(n.get('formu')) }}{% elif codigo in ('energia', 'energia_max') %}{{ num0(n.get('formu')) }}{% else %}{{ num3(n.get('formu') * 100) }}%{% endif %}{% else %}{% if clave in ('tabla', 'tabla_min', 'tabla_sup', 'pro', 'dif') %}{{ num1(n.get(clave)) }}{% else %}{{ num(n.get(clave)) }}{% endif %}{% endif %}</td>
                 {% endfor %}
                 {% endfor %}
                 <td class="tn-txt tn-col-obs {% if puede_editar %}tn-edit{% endif %}" data-campo="observaciones"
@@ -1019,6 +1019,11 @@
             decimales = code === 'proteina' ? 2 : 3;
             sufijo = '%';
           }
+        } else if (campo && (campo.endsWith('.tabla') || campo.endsWith('.tabla_min')
+                   || campo.endsWith('.tabla_sup') || campo.endsWith('.pro')
+                   || campo.endsWith('.dif'))) {
+          // Eco, PRO y Dif se muestran con un decimal
+          decimales = 1;
         } else if (esPorcentaje) {
           if (Math.abs(n) <= 1) n *= 100;
           decimales = 1;
