@@ -1,11 +1,11 @@
 {% extends 'generales/layout.html' %}
 {% block title %}Tablas Nutricionales – Avícola San Martín{% endblock %}
 
-{% macro num(v) %}{% if v is none or v == '' %}—{% else %}{{ "{:,.2f}".format(v|float).replace(',', 'X').replace('.', ',').replace('X', '.') }}{% endif %}{% endmacro %}
-{% macro num0(v) %}{% if v is none or v == '' %}—{% else %}{{ "{:,.0f}".format(v|float).replace(',', 'X').replace('.', ',').replace('X', '.') }}{% endif %}{% endmacro %}
-{% macro num1(v) %}{% if v is none or v == '' %}—{% else %}{{ "{:,.1f}".format(v|float).replace(',', 'X').replace('.', ',').replace('X', '.') }}{% endif %}{% endmacro %}
-{% macro num3(v) %}{% if v is none or v == '' %}—{% else %}{{ "{:,.3f}".format(v|float).replace(',', 'X').replace('.', ',').replace('X', '.') }}{% endif %}{% endmacro %}
-{% macro num5(v) %}{% if v is none or v == '' %}—{% else %}{{ "{:,.5f}".format(v|float).replace(',', 'X').replace('.', ',').replace('X', '.') }}{% endif %}{% endmacro %}
+{% macro num(v) %}{% if v is none or v == '' %}{% else %}{{ "{:,.2f}".format(v|float).replace(',', 'X').replace('.', ',').replace('X', '.') }}{% endif %}{% endmacro %}
+{% macro num0(v) %}{% if v is none or v == '' %}{% else %}{{ "{:,.0f}".format(v|float).replace(',', 'X').replace('.', ',').replace('X', '.') }}{% endif %}{% endmacro %}
+{% macro num1(v) %}{% if v is none or v == '' %}{% else %}{{ "{:,.1f}".format(v|float).replace(',', 'X').replace('.', ',').replace('X', '.') }}{% endif %}{% endmacro %}
+{% macro num3(v) %}{% if v is none or v == '' %}{% else %}{{ "{:,.3f}".format(v|float).replace(',', 'X').replace('.', ',').replace('X', '.') }}{% endif %}{% endmacro %}
+{% macro num5(v) %}{% if v is none or v == '' %}{% else %}{{ "{:,.5f}".format(v|float).replace(',', 'X').replace('.', ',').replace('X', '.') }}{% endif %}{% endmacro %}
 
 {% block head %}
 {% include 'planta_alimentos/_design_system.html' %}
@@ -408,22 +408,22 @@
   {% if datos %}
   {% set m = datos.meta %}
   <div class="tn-chips">
-    <span class="tn-chip">Granja <b>{{ m.granja_lev or m.granja_prod or '—' }}</b></span>
+    <span class="tn-chip">Granja <b>{{ m.granja_lev or m.granja_prod or '' }}</b></span>
     <span class="tn-chip">Lote <b>{{ m.lote }}</b></span>
     <span class="tn-chip tn-chip-persona">
       <img src="{{ m.foto_nutricionista or url_for('static', filename='img/placeholder-catalogo.png') }}"
         alt="Nutricionista">
-      Nutricionista <b>{{ m.nutricionista_visible or '—' }}</b>
+      Nutricionista <b>{{ m.nutricionista_visible or '' }}</b>
     </span>
     <span class="tn-chip tn-chip-persona">
       <img src="{{ m.foto_variedad or url_for('static', filename='img/placeholder-catalogo.png') }}"
         alt="Variedad">
-      Variedad <b>{{ m.variedad or '—' }}</b>
+      Variedad <b>{{ m.variedad or '' }}</b>
     </span>
     <span class="tn-chip tn-chip-persona">
       <img src="{{ m.foto_marca or url_for('static', filename='img/placeholder-catalogo.png') }}"
         alt="Marca">
-      Marca <b>{{ m.marca_galpon or '—' }}</b>
+      Marca <b>{{ m.marca_galpon or '' }}</b>
     </span>
   </div>
 
@@ -489,7 +489,7 @@
               {% for p in precios_huevo or [] %}
               <tr>
                 <td>{{ p.semana }}</td>
-                <td class="tn-txt">{{ p.fecha.strftime('%d/%m/%Y') if p.fecha else '—' }}</td>
+                <td class="tn-txt">{{ p.fecha.strftime('%d/%m/%Y') if p.fecha else '' }}</td>
                 <td>{{ num0(p.consumo_kg) }}</td>
                 <td>{{ num0(p.produccion_huevos) }}</td>
                 <td>{{ num0(p.precio_dieta) }}</td>
@@ -535,7 +535,7 @@
           {% endfor %}
           <div class="tn-kpi">
             <div class="l">Precio dieta actual</div>
-            <div class="v">{% if datos.precio_dieta_actual is not none %}$ {{ num0(datos.precio_dieta_actual) }}{% else %}—{% endif %}</div>
+            <div class="v">{% if datos.precio_dieta_actual is not none %}$ {{ num0(datos.precio_dieta_actual) }}{% else %}{% endif %}</div>
             <div class="d">{% if datos.semana_precio %}semana {{ datos.semana_precio }}{% else %}sin dato{% endif %}</div>
           </div>
         </div>
@@ -896,7 +896,7 @@
                   <span class="tn-etapa">{{ s.etapa }}</span>
                 </td>
                 {% endif %}
-                <td class="tn-txt">{{ s.fecha.strftime('%d/%m/%Y') if s.fecha else '—' }}</td>
+                <td class="tn-txt">{{ s.fecha.strftime('%d/%m/%Y') if s.fecha else '' }}</td>
                 <td class="tn-sem">{{ s.semana }}{% if s.es_actual %}<span class="tn-actual-dot" title="Semana vigente"></span>{% endif %}</td>
                 <td>{{ num0(s.extras.get('consumo1')) }}</td>
                 <td>{{ num0(s.extras.get('consumo2')) }}</td>
@@ -912,14 +912,14 @@
                   {% if puede_editar %}contenteditable="true"{% endif %}>{{ num0(s.peso) }}</td>
                 <td class="{% if puede_editar %}tn-edit{% endif %}" data-campo="core.produccion"
                   data-porcentaje="1" {% if puede_editar %}contenteditable="true"{% endif %}>
-                  {% if s.produccion is not none %}{{ num1(s.produccion) }}%{% else %}—{% endif %}
+                  {% if s.produccion is not none %}{{ num1(s.produccion) }}%{% else %}{% endif %}
                 </td>
                 {% for codigo, etiqueta, unidad, subs in columnas %}
                 {% set n = s.nutrientes.get(codigo) or {} %}
                 {% for clave, etiqueta_sub in subs %}
                 <td data-campo="{{ codigo }}.{{ clave }}"
                   class="{% if clave in ('tabla', 'tabla_min', 'tabla_sup') %}tn-guia {% endif %}{% if clave == 'pro' %}tn-pro {% endif %}{% if clave in subs_editables and puede_editar %}tn-edit {% endif %}{% if clave == 'dif' and n.get('dif') is not none %}{{ 'tn-dif-neg' if n.get('dif') < 0 else 'tn-dif-pos' }}{% endif %}"
-                  {% if clave in subs_editables and puede_editar %}contenteditable="true"{% endif %}>{% if clave == 'formu' %}{% if n.get('formu') is none %}—{% elif codigo == 'proteina' %}{{ num(n.get('formu') * 100) }}%{% elif codigo == 'calcio' %}{{ num(n.get('formu')) }}{% elif codigo in ('energia', 'energia_max') %}{{ num0(n.get('formu')) }}{% else %}{{ num3(n.get('formu') * 100) }}%{% endif %}{% else %}{{ num(n.get(clave)) }}{% endif %}</td>
+                  {% if clave in subs_editables and puede_editar %}contenteditable="true"{% endif %}>{% if clave == 'formu' %}{% if n.get('formu') is none %}{% elif codigo == 'proteina' %}{{ num(n.get('formu') * 100) }}%{% elif codigo == 'calcio' %}{{ num(n.get('formu')) }}{% elif codigo in ('energia', 'energia_max') %}{{ num0(n.get('formu')) }}{% else %}{{ num3(n.get('formu') * 100) }}%{% endif %}{% else %}{{ num(n.get(clave)) }}{% endif %}</td>
                 {% endfor %}
                 {% endfor %}
                 <td class="tn-txt tn-col-obs {% if puede_editar %}tn-edit{% endif %}" data-campo="observaciones"
@@ -990,9 +990,9 @@
       const url = "{{ url_for('tablas_nutricionales.guardar_celda') }}";
 
       function formatear(valor, celda) {
-        if (valor === null || valor === undefined || valor === '') return '—';
+        if (valor === null || valor === undefined || valor === '') return '';
         let n = Number(valor);
-        if (!isFinite(n)) return '—';
+        if (!isFinite(n)) return '';
         const campo = celda ? celda.dataset.campo : '';
         const esPorcentaje = celda && celda.dataset.porcentaje;
         let sufijo = '';
@@ -1044,9 +1044,25 @@
       }
 
       function leerNumero(texto) {
-        let t = (texto || '').trim().replace('%', '').replace(/\s/g, '');
-        if (!t || t === '—' || t === '-') return null;
-        t = t.replace(/\./g, '').replace(',', '.');
+        // Las celdas vacias ya no llevan raya, pero si el usuario deja una
+        // (o pega un valor con ella) se ignora para que el dato se guarde.
+        let t = (texto || '').trim();
+        if (!t) return null;
+        t = t.replace(/[—–]/g, '').replace('%', '').replace(/\s/g, '');
+        const negativo = t.charAt(0) === '-';
+        t = t.replace(/-/g, '');
+        if (!t || t === '.' || t === ',') return null;
+        if (negativo) t = '-' + t;
+        if (t.indexOf(',') !== -1) {
+          t = t.replace(/\./g, '').replace(',', '.');
+        } else {
+          const partes = t.split('.');
+          if (partes.length > 2) t = partes.join('');
+          else if (partes.length === 2 && partes[1].length === 3
+                   && partes[0] && partes[0].charAt(0) !== '0' && partes[0].length <= 3) {
+            t = partes.join('');
+          }
+        }
         const n = Number(t);
         return isFinite(n) ? n : null;
       }
@@ -1072,7 +1088,7 @@
           const data = await res.json();
           if (data.status !== 'ok') {
             alert(data.msg || 'No se pudo guardar.');
-            celda.textContent = celda.dataset.original || '—';
+            celda.textContent = celda.dataset.original || '';
             return;
           }
           Object.entries(data.valores).forEach(function (par) {
@@ -1092,7 +1108,7 @@
           });
         } catch (e) {
           alert('Error de conexión al guardar.');
-          celda.textContent = celda.dataset.original || '—';
+          celda.textContent = celda.dataset.original || '';
         } finally {
           celda.classList.remove('tn-guardando');
         }
@@ -1110,7 +1126,7 @@
         celda.addEventListener('keydown', function (e) {
           if (e.key === 'Enter') { e.preventDefault(); this.blur(); }
           if (e.key === 'Escape') {
-            this.textContent = this.dataset.original || '—';
+            this.textContent = this.dataset.original || '';
             this.blur();
           }
         });
