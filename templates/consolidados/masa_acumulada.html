@@ -28,7 +28,7 @@
           <th class="col-prom">&nbsp;</th>
           <th class="col-tabla">&nbsp;</th>
           {% for l in datos.lotes %}
-          <th class="col-lote">{{ '{:,.0f}'.format(l.aves_enc).replace(',', '.') if l.aves_enc is not none else '' }}</th>
+          <th class="col-lote">{{ l.aves_enc|numero_lat(0) }}</th>
           {% endfor %}
         </tr>
         <tr>
@@ -48,10 +48,10 @@
         <tr data-semana="{{ s }}">
           <td class="col-semana fw-bold">{{ s }}</td>
           <td class="col-prom num" data-prom></td>
-          <td class="col-tabla num">{{ '{:,.0f}'.format(datos.tabla.get(s)).replace(',', '.') if datos.tabla.get(s) is not none else '' }}</td>
+          <td class="col-tabla num">{{ datos.tabla.get(s)|numero_lat(0) }}</td>
           {% for l in datos.lotes %}
           {% set v = datos.matriz.get(s, {}).get(l.nombre) %}
-          <td class="num" data-lote="{{ l.nombre }}" data-valor="{{ v if v is not none else '' }}">{{ '{:,.0f}'.format(v).replace(',', '.') if v is not none else '' }}</td>
+          <td class="num" data-lote="{{ l.nombre }}" data-valor="{{ v if v is not none else '' }}">{{ v|numero_lat(2) }}</td>
           {% endfor %}
         </tr>
         {% endfor %}
@@ -63,7 +63,10 @@
   document.addEventListener("DOMContentLoaded", function () {
     const tabla = document.getElementById('tablaMasaAc');
     if (!tabla) return;
-    const fmt = (n) => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    const fmt = (n) => {
+      const [ent, dec] = n.toFixed(2).split('.');
+      return ent.replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ',' + dec;
+    };
     const recalcular = () => {
       tabla.querySelectorAll('.chk-incluir').forEach(function (chk) {
         const th = chk.closest('th');

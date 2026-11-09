@@ -1,5 +1,5 @@
 # models/lotes/services.py
-from models.base import parse_empty, traducir_error
+from models.base import parse_empty, traducir_error, get_db_connection, to_float_safe
 from models.lotes import model
 
 # Importamos los gatillos de las otras tablas
@@ -7,13 +7,98 @@ from models.diario.services import generar_estructura_diario
 from models.clasificacion.services import generar_estructura_clasificacion
 
 # 1. Producción (Carpeta antigua)
-from models.semanal.services import generar_estructura_semanal_unificada
+from models.semanal.services import (
+    generar_estructura_semanal_unificada,
+    recalcular_lote_semanal_completo_directo,
+)
 
 # 2. Levante (Nuevas carpetas independientes)
-from models.semanal_levante.services import generar_estructura_semanal_levante
+from models.semanal_levante.services import (
+    generar_estructura_semanal_levante,
+    recalcular_lote_semanal_levante_directo,
+)
 
 # 3. ¡LA NUEVA DIRECCIÓN DE PRIMERA SEMANA!
-from models.primera_semana.services import generar_estructura_primera_semana, update_dia_0_desde_formulario
+from models.primera_semana.services import (
+    generar_estructura_primera_semana,
+    update_dia_0_desde_formulario,
+    recalcular_primera_semana_cascada_interna,
+)
+
+
+def _auditar_cabecera(id_lote, campo, accion, usuario_id=None, usuario_nombre=None):
+    """Registra en auditoría un cambio de cabecera para refrescar consolidados."""
+    try:
+        from models.auditoria.services import registrar_cambio
+        conn = get_db_connection()
+        cur = conn.cursor()
+        try:
+            registrar_cambio(
+                usuario_id=usuario_id,
+                usuario_nombre=usuario_nombre or 'Sistema',
+                tabla='cabecera_lotes',
+                id_registro=id_lote,
+                campo=campo,
+                valor_anterior=None,
+                valor_nuevo='Formulario de lote',
+                accion=accion,
+                cursor=cur,
+            )
+            conn.commit()
+        finally:
+            cur.close()
+            conn.close()
+    except Exception as e:
+        print(f"[AUDITORIA CABECERA] {e}")
+
+
+def recalcular_lote_completo(id_lote):
+    """Recalcula producción, levante y primera semana de un lote.
+
+    Se usa después de editar la cabecera para que los consolidados no queden
+    con datos derivados viejos.
+    """
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            "SELECT lote, no_pollitas_recibidas FROM cabecera_lotes WHERE id = %s",
+            (id_lote,),
+        )
+        fila = cur.fetchone()
+        if not fila:
+            return False, "Lote no encontrado."
+
+        lote, pollitas = fila
+        aves_iniciales = to_float_safe(pollitas) or 0.0
+
+        recalcular_lote_semanal_completo_directo(id_lote, cur)
+        recalcular_lote_semanal_levante_directo(id_lote, cur)
+        recalcular_primera_semana_cascada_interna(lote, aves_iniciales, cur)
+
+        conn.commit()
+        return True, "Recalculado."
+    except Exception as e:
+        conn.rollback()
+        return False, str(e)
+    finally:
+        cur.close()
+        conn.close()
+
+
+def recalcular_lote_por_nombre(lote):
+    """Resuelve el id del lote y ejecuta recalcular_lote_completo."""
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT id FROM cabecera_lotes WHERE lote = %s", (lote,))
+        fila = cur.fetchone()
+    finally:
+        cur.close()
+        conn.close()
+    if not fila:
+        return False, "Lote no encontrado."
+    return recalcular_lote_completo(fila[0])
 
 def get_lotes_distintos():
     """
@@ -163,6 +248,8 @@ def guardar_nuevo_lote(datos, usuario_id=None, usuario_nombre=None):
         # Gatillo Nuevo: Estructura exclusiva de Levante
         generar_estructura_semanal_levante(lote_nombre, datos.get('fecha_recepcion'), id_lote)
 
+        _auditar_cabecera(id_lote, 'formulario', 'INSERT', usuario_id, usuario_nombre)
+
         return True, "Lote creado exitosamente"
     except Exception as e:
         registrar_error(
@@ -236,7 +323,23 @@ def actualizar_lote(id_lote, datos, usuario_id=None, usuario_nombre=None):
         # PASO 4: MAGIA FINAL - Mandamos los datos nuevos a la tabla Primera Semana (Día 0)
         if lote_nuevo:
             update_dia_0_desde_formulario(lote_nuevo, datos, usuario_id=usuario_id, usuario_nombre=usuario_nombre)
-            
+
+        # PASO 5: Recalcular las tablas derivadas para que consolidados vea los cambios
+        rec_ok, rec_msg = recalcular_lote_completo(id_lote)
+        _auditar_cabecera(id_lote, 'formulario', 'UPDATE', usuario_id, usuario_nombre)
+
+        if not rec_ok:
+            from models.auditoria.services import registrar_error
+            registrar_error(
+                tabla='cabecera_lotes',
+                contexto='Recalcular lote',
+                mensaje=rec_msg,
+                id_lote=id_lote,
+                usuario_id=usuario_id,
+                usuario_nombre=usuario_nombre,
+            )
+            return True, "Lote actualizado, pero no se pudo recalcular: " + rec_msg
+
         return True, "Lote actualizado exitosamente"
         
     except Exception as e:

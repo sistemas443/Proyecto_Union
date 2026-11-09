@@ -160,6 +160,18 @@ def create_app():
         return " ".join(partes)
 
     app.jinja_env.filters['tiempo_transcurrido'] = tiempo_transcurrido
+
+    def numero_lat(valor, decimales=0):
+        """Formatea un número como 1.019,67: miles con punto y decimales con coma."""
+        if valor is None:
+            return ''
+        try:
+            texto = f'{float(valor):,.{int(decimales)}f}'
+        except (TypeError, ValueError):
+            return ''
+        return texto.replace(',', 'X').replace('.', ',').replace('X', '.')
+
+    app.jinja_env.filters['numero_lat'] = numero_lat
     # ---------------------------------------
 
     app.config.from_object(Config)

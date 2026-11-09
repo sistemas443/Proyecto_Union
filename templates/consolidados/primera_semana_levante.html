@@ -2,14 +2,469 @@
 {% block title %}Primera Semana Levante – Avícola San Martín{% endblock %}
 {% block content %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/consolidados.css') }}">
-<div class="container-fluid px-4 py-3 h-100 d-flex flex-column">
-  <div class="d-flex flex-wrap align-items-center mb-3 px-3 py-2 rounded shadow-sm" style="background-color: #212529;">
-    <a href="{{ url_for('consolidados.vista_consolidados') }}" class="btn btn-sm btn-outline-light fw-bold me-3">
-      <i class='bx bx-arrow-back me-1'></i>VOLVER
-    </a>
-    <h5 class="mb-0 fw-bold text-uppercase text-white" style="letter-spacing: 0.5px;">
-      <i class='bx bx-child me-2'></i>PRIMERA SEMANA LEVANTE
-    </h5>
+<style>
+  .psl-topbar {
+    position: sticky;
+    top: var(--nav-h, 60px);
+    z-index: 1030;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 14px;
+    border-radius: 6px;
+    background-color: #212529;
+    color: #fff;
+    box-shadow: 0 6px 14px rgba(20, 30, 45, .16);
+  }
+  .psl-topbar .psl-volver {
+    border: 1px solid rgba(255, 255, 255, .6);
+    color: #fff;
+    text-decoration: none;
+    font-size: .75rem;
+    font-weight: 700;
+    letter-spacing: .4px;
+    padding: 5px 10px;
+    border-radius: 5px;
+    white-space: nowrap;
+  }
+  .psl-topbar .psl-volver:hover { background: rgba(255, 255, 255, .12); color: #fff; }
+  .psl-topbar h5 {
+    margin: 0;
+    font-size: .86rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+  }
+
+  .psl-lote-bar {
+    position: sticky;
+    top: calc(var(--nav-h, 60px) + 52px);
+    z-index: 1025;
+    margin: 10px 0 12px;
+    padding: 8px 10px;
+    border: 1px solid #d7dee8;
+    border-radius: 8px;
+    background: #f4f6f9;
+    box-shadow: 0 4px 10px rgba(30, 45, 65, .07);
+  }
+  .psl-lote-inner {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    background: #fff;
+    border: 1px solid #dde3eb;
+    border-radius: 7px;
+    padding: 7px 9px;
+  }
+  .psl-resumen { display: flex; align-items: center; gap: 7px; min-width: 0; }
+  .psl-resumen strong {
+    font-size: .75rem;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    color: #41505f;
+    white-space: nowrap;
+  }
+  .psl-contador {
+    font-size: .75rem;
+    font-weight: 800;
+    color: #1d4ed8;
+    background: #e3ecff;
+    border-radius: 999px;
+    padding: 3px 8px;
+    white-space: nowrap;
+  }
+  .psl-resumen-texto {
+    font-size: .75rem;
+    color: #6b7a8a;
+    max-width: 460px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .psl-acciones {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px;
+    margin-left: auto;
+  }
+  .psl-acciones button {
+    border: 1px solid #ccd5df;
+    background: #fff;
+    color: #37475a;
+    border-radius: 6px;
+    font-size: .75rem;
+    font-weight: 700;
+    padding: 5px 9px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .psl-acciones button:hover { border-color: #2f6fed; color: #1d4ed8; }
+  .psl-acciones button.psl-filtro.activo {
+    background: #2f6fed;
+    border-color: #2f6fed;
+    color: #fff;
+  }
+  .psl-btn-ver {
+    background: #2f6fed !important;
+    border-color: #2f6fed !important;
+    color: #fff !important;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .psl-btn-ver:hover { background: #1d4ed8 !important; }
+  .psl-btn-ver .psl-flecha { font-size: .55rem; transition: transform .15s; }
+  .psl-btn-ver.abierto .psl-flecha { transform: rotate(180deg); }
+
+  .psl-panel {
+    display: none;
+    position: absolute;
+    left: 10px;
+    top: calc(100% - 2px);
+    z-index: 50;
+    width: 360px;
+    max-width: calc(100vw - 40px);
+    background: #fff;
+    border: 1px solid #cfd7e2;
+    border-radius: 10px;
+    box-shadow: 0 16px 34px rgba(22, 38, 58, .22);
+    overflow: hidden;
+  }
+  .psl-panel.abierto { display: block; }
+  .psl-panel-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 11px;
+    border-bottom: 1px solid #e4e9f0;
+    background: #f8fafc;
+  }
+  .psl-panel-head strong {
+    font-size: .75rem;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    color: #41505f;
+  }
+  .psl-panel-head .psl-contador { margin-left: auto; }
+  .psl-panel-tools {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 11px;
+    border-bottom: 1px solid #eef2f7;
+  }
+  .psl-panel-tools input {
+    flex: 1 1 auto;
+    min-width: 110px;
+    border: 1px solid #ccd5df;
+    border-radius: 6px;
+    padding: 5px 9px;
+    font-size: .75rem;
+    outline: none;
+    color: #37475a;
+  }
+  .psl-panel-tools input:focus {
+    border-color: #2f6fed;
+    box-shadow: 0 0 0 2px rgba(47, 111, 237, .12);
+  }
+  .psl-panel-tools button {
+    border: 1px solid #ccd5df;
+    background: #fff;
+    color: #37475a;
+    border-radius: 6px;
+    font-size: .75rem;
+    font-weight: 700;
+    padding: 5px 8px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .psl-panel-tools button:hover { border-color: #2f6fed; color: #1d4ed8; }
+  .psl-lista {
+    max-height: 300px;
+    overflow-y: auto;
+    padding: 4px 0;
+  }
+  .psl-lote-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 12px;
+    font-size: .75rem;
+    font-weight: 600;
+    color: #3f4e5e;
+    cursor: pointer;
+    border-bottom: 1px solid #f1f4f8;
+    margin: 0;
+  }
+  .psl-lote-item:hover { background: #f5f8fd; }
+  .psl-lote-item input {
+    width: 14px;
+    height: 14px;
+    accent-color: #2f6fed;
+    margin: 0;
+    flex: 0 0 auto;
+  }
+  .psl-lote-item.oculto { display: none; }
+
+  /* Grupos por prefijo de lote */
+  .psl-grupo { border-bottom: 1px solid #eef2f7; }
+  .psl-grupo.oculto { display: none; }
+  .psl-grupo-head {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 10px;
+    background: #f8fafc;
+    border-bottom: 1px solid #eef2f7;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
+  .psl-grupo-head input {
+    width: 14px;
+    height: 14px;
+    accent-color: #2f6fed;
+    margin: 0;
+    flex: 0 0 auto;
+  }
+  .psl-grupo-toggle {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: #41505f;
+    font-size: .75rem;
+    font-weight: 800;
+    text-align: left;
+    cursor: pointer;
+  }
+  .psl-grupo-cuenta {
+    font-size: .75rem;
+    font-weight: 800;
+    color: #1d4ed8;
+    background: #e3ecff;
+    border-radius: 999px;
+    padding: 2px 7px;
+  }
+  .psl-grupo-flecha {
+    margin-left: auto;
+    font-size: .6rem;
+    color: #5b6a7a;
+    transition: transform .15s;
+  }
+  .psl-grupo.abierto .psl-grupo-flecha { transform: rotate(180deg); }
+  .psl-grupo-body { display: none; }
+  .psl-grupo.abierto .psl-grupo-body { display: block; }
+  .psl-grupo-body .psl-lote-item { padding-left: 31px; }
+  .psl-grupo-body .psl-lote-item:last-child { border-bottom: 0; }
+
+  /* Categorías CONCLUIDOS / ACTIVOS */
+  .psl-categoria { border-bottom: 1px solid #dde3eb; }
+  .psl-categoria.oculto { display: none; }
+  .psl-categoria-head {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 10px;
+    background: #eef2f7;
+    border-bottom: 1px solid #dde3eb;
+  }
+  .psl-categoria-head input {
+    width: 14px;
+    height: 14px;
+    accent-color: #2f6fed;
+    margin: 0;
+    flex: 0 0 auto;
+  }
+  .psl-categoria-toggle {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: #334255;
+    font-size: .75rem;
+    font-weight: 800;
+    text-align: left;
+    cursor: pointer;
+  }
+  .psl-categoria-cuenta {
+    font-size: .75rem;
+    font-weight: 800;
+    color: #146c43;
+    background: #d7f5e3;
+    border-radius: 999px;
+    padding: 2px 7px;
+  }
+  .psl-categoria-flecha {
+    margin-left: auto;
+    font-size: .6rem;
+    color: #5b6a7a;
+    transition: transform .15s;
+  }
+  .psl-categoria.cerrada .psl-categoria-flecha { transform: rotate(-90deg); }
+  .psl-categoria-body { display: block; }
+  .psl-categoria.cerrada .psl-categoria-body { display: none; }
+  .psl-categoria.inactiva { display: none; }
+
+  /* Botones CONCLUIDOS / ACTIVOS */
+  .psl-categoria-tabs {
+    display: flex;
+    gap: 6px;
+    padding: 8px 11px 0;
+  }
+  .psl-tab-categoria {
+    flex: 1 1 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 6px 8px;
+    border: 1px solid #ccd5df;
+    border-radius: 6px;
+    background: #fff;
+    color: #41505f;
+    font-size: .75rem;
+    font-weight: 800;
+    letter-spacing: .3px;
+    cursor: pointer;
+  }
+  .psl-tab-categoria:hover { border-color: #2f6fed; color: #1d4ed8; }
+  .psl-tab-categoria.activo {
+    background: #2f6fed;
+    border-color: #2f6fed;
+    color: #fff;
+  }
+  .psl-tab-cuenta {
+    font-size: .75rem;
+    font-weight: 800;
+    color: #1d4ed8;
+    background: #e3ecff;
+    border-radius: 999px;
+    padding: 2px 6px;
+  }
+  .psl-tab-categoria.activo .psl-tab-cuenta {
+    background: rgba(255, 255, 255, .25);
+    color: #fff;
+  }
+
+  /* Pantalla completa por sección */
+  .psl-seccion-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .psl-btn-pantalla {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 27px;
+    border: 1px solid #d7dee8;
+    border-radius: 6px;
+    background: #fff;
+    color: #5b6a7a;
+    font-size: .75rem;
+    cursor: pointer;
+  }
+  .psl-btn-pantalla:hover {
+    border-color: #2f6fed;
+    color: #1d4ed8;
+  }
+  .contenedor-matriz:fullscreen,
+  .contenedor-matriz:-webkit-full-screen {
+    max-height: none;
+    height: 100vh;
+    background: #fff;
+    padding: 6px;
+  }
+  .contenedor-matriz:fullscreen .tabla-compacta thead th,
+  .contenedor-matriz:-webkit-full-screen .tabla-compacta thead th {
+    position: sticky;
+    z-index: 14;
+  }
+
+  .psl-panel-pie {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 11px;
+    border-top: 1px solid #e4e9f0;
+    background: #f8fafc;
+  }
+  .psl-panel-pie span { font-size: .75rem; color: #5b6a7a; line-height: 1.3; }
+  .psl-panel-pie button {
+    border: 0;
+    background: #2f6fed;
+    color: #fff;
+    border-radius: 6px;
+    font-size: .75rem;
+    font-weight: 800;
+    padding: 6px 12px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+</style>
+
+<div class="container-fluid px-4 py-3">
+  <div class="psl-topbar">
+    <a href="{{ url_for('consolidados.vista_consolidados') }}" class="psl-volver">VOLVER</a>
+    <h5><i class='bx bx-child me-2'></i>PRIMERA SEMANA LEVANTE</h5>
+  </div>
+
+  <div class="psl-lote-bar" id="pslLoteBar">
+    <div class="psl-lote-inner">
+      <div class="psl-resumen">
+        <strong>Lotes incluidos</strong>
+        <span class="psl-contador" id="pslContador">0 de 0</span>
+        <span class="psl-resumen-texto" id="pslResumen"></span>
+      </div>
+      <div class="psl-acciones">
+        <button type="button" id="pslTodasBar" class="psl-filtro activo">TODAS</button>
+        <button type="button" id="pslHyLineBar" class="psl-filtro">HY LINE</button>
+        <button type="button" id="pslLohmannBar" class="psl-filtro">LOHMANN</button>
+        <button type="button" id="pslNingunoBar">Ninguno</button>
+        <button type="button" class="psl-btn-ver" id="pslVer">
+          Ver lotes <span class="psl-flecha">▼</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="psl-panel" id="pslPanel">
+      <div class="psl-panel-head">
+        <strong>Selecciona los lotes</strong>
+        <span class="psl-contador" id="pslContadorPanel">0 de 0</span>
+      </div>
+      <div class="psl-categoria-tabs">
+        <button type="button" class="psl-tab-categoria activo" data-categoria="ACTIVO">
+          ACTIVOS <span class="psl-tab-cuenta" id="pslCuentaActivo">0</span>
+        </button>
+        <button type="button" class="psl-tab-categoria" data-categoria="CONCLUIDO">
+          CONCLUIDOS <span class="psl-tab-cuenta" id="pslCuentaConcluido">0</span>
+        </button>
+      </div>
+      <div class="psl-panel-tools">
+        <input type="search" id="pslBuscar" placeholder="Buscar lote…">
+        <button type="button" id="pslTodosPanel">Todos</button>
+        <button type="button" id="pslNingunoPanel">Ninguno</button>
+      </div>
+      <div class="psl-lista" id="pslLista"></div>
+      <div class="psl-panel-pie">
+        <span>La selección solo se usa para calcular el PROM.</span>
+        <button type="button" id="pslListo">Listo</button>
+      </div>
+    </div>
   </div>
 
   {% set secciones = [
@@ -20,8 +475,14 @@
   ] %}
   {% for sec in secciones %}
   {% set dec = 0 if sec.id == 'mort' else 2 %}
-  <h6 class="fw-bold text-secondary text-uppercase">{{ sec.titulo }}</h6>
-  <div class="contenedor-matriz shadow-sm border rounded mt-3 mb-4" id="contenedor-{{ sec.id }}">
+  <div class="psl-seccion-head mt-3">
+    <h6 class="fw-bold text-secondary text-uppercase mb-0">{{ sec.titulo }}</h6>
+    <button type="button" class="psl-btn-pantalla" data-target="contenedor-{{ sec.id }}"
+            title="Pantalla completa" aria-label="Pantalla completa">
+      <i class="fas fa-expand"></i>
+    </button>
+  </div>
+  <div class="contenedor-matriz shadow-sm border rounded mt-2 mb-4" id="contenedor-{{ sec.id }}">
     <table class="table table-sm table-bordered mb-0 tabla-compacta tabla-seccion" id="tabla-{{ sec.id }}" data-decimales="{{ dec }}">
       <thead>
         <tr>
@@ -45,10 +506,7 @@
           <th class="col-prom">PROM</th>
           <th class="col-tabla">TABLA</th>
           {% for l in datos.lotes %}
-          <th class="col-lote">
-            <input type="checkbox" class="chk-incluir form-check-input me-1" data-lote="{{ l.nombre }}" data-seccion="{{ sec.id }}">
-            {{ l.nombre }}
-          </th>
+          <th class="col-lote">{{ l.nombre }}</th>
           {% endfor %}
         </tr>
       </thead>
@@ -69,49 +527,390 @@
   </div>
   {% endfor %}
 </div>
+
 <script>
   document.addEventListener("DOMContentLoaded", function () {
-    document.querySelectorAll('table.tabla-seccion').forEach(function (tabla) {
-      const dec = parseInt(tabla.dataset.decimales || '2', 10);
-      const fmt = (n) => {
-        const partes = n.toFixed(dec).split('.');
-        partes[0] = partes[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-        return partes.join(',');
-      };
-      const recalcular = () => {
-        tabla.querySelectorAll('.chk-incluir').forEach(function (chk) {
-          const th = chk.closest('th');
-          if (th) th.classList.toggle('col-excluida', !chk.checked);
-        });
+    const LOTES_INFO = {{ datos.lotes | tojson }};
+    const LOTES = LOTES_INFO.map(function (l) { return l.nombre; });
+    const ESTADO = {};
+    LOTES_INFO.forEach(function (l) {
+      ESTADO[l.nombre] = l.estado === 'CONCLUIDO' ? 'CONCLUIDO' : 'ACTIVO';
+    });
+    const FECHAS = {};
+    LOTES_INFO.forEach(function (l) {
+      FECHAS[l.nombre] = l.fecha_enc || '';
+    });
+    const incluidos = new Set(LOTES);
+    const CATEGORIAS = [
+      { id: 'ACTIVO', titulo: 'ACTIVOS' },
+      { id: 'CONCLUIDO', titulo: 'CONCLUIDOS' }
+    ];
+    let categoriaActiva = 'ACTIVO';
+
+    const contador = document.getElementById('pslContador');
+    const contadorPanel = document.getElementById('pslContadorPanel');
+    const resumen = document.getElementById('pslResumen');
+    const panel = document.getElementById('pslPanel');
+    const botonVer = document.getElementById('pslVer');
+    const buscar = document.getElementById('pslBuscar');
+    const panelLista = document.getElementById('pslLista');
+
+    function grupoDe(lote) {
+      const guion = lote.indexOf('-');
+      return guion > 0 ? lote.slice(0, guion) : 'Otros';
+    }
+
+    function fmt(n, dec) {
+      const partes = n.toFixed(dec).split('.');
+      partes[0] = partes[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+      return partes.join(',');
+    }
+
+    function recalcularProms() {
+      document.querySelectorAll('table.tabla-seccion').forEach(function (tabla) {
+        const dec = parseInt(tabla.dataset.decimales || '2', 10);
         tabla.querySelectorAll('tr[data-dia]').forEach(function (tr) {
           let suma = 0, n = 0;
           tr.querySelectorAll('td[data-lote]').forEach(function (td) {
-            const otro = tabla.querySelector('.chk-incluir[data-lote="' + td.dataset.lote + '"]');
-            if (otro && otro.checked) {
-              const crudo = td.dataset.valor;
-              if (crudo !== '' && crudo !== undefined) {
-                const num = parseFloat(crudo);
-                if (num > 0) { suma += num; n += 1; }
-              }
-            }
+            if (!incluidos.has(td.dataset.lote)) return;
+            const crudo = td.dataset.valor;
+            if (crudo === '' || crudo === undefined) return;
+            const num = parseFloat(crudo);
+            if (!isNaN(num) && num > 0) { suma += num; n += 1; }
           });
-          tr.querySelector('[data-prom]').textContent = n > 0 ? fmt(suma / n) : '';
+          tr.querySelector('[data-prom]').textContent = n > 0 ? fmt(suma / n, dec) : '';
         });
-      };
-      tabla.querySelectorAll('.chk-incluir').forEach(function (chk) {
-        chk.addEventListener('change', recalcular);
       });
-      recalcular();
-      const ajustarSticky = () => {
-        let acc = 0;
-        tabla.querySelectorAll('thead tr').forEach(function (tr) {
-          tr.querySelectorAll('th').forEach(function (th) { th.style.top = acc + 'px'; });
-          acc += tr.offsetHeight;
+    }
+
+    function actualizarResumen() {
+      const textos = LOTES.filter(function (l) { return incluidos.has(l); });
+      const total = textos.length;
+      const etiqueta = total + ' de ' + LOTES.length;
+      contador.textContent = etiqueta;
+      contadorPanel.textContent = etiqueta;
+
+      if (total === 0) {
+        resumen.textContent = 'Sin lotes incluidos';
+        return;
+      }
+
+      const conFecha = textos
+        .map(function (l) { return { nombre: l, fecha: FECHAS[l] }; })
+        .filter(function (item) { return item.fecha; })
+        .sort(function (a, b) { return a.fecha.localeCompare(b.fecha); });
+
+      if (!conFecha.length) {
+        resumen.textContent = 'Sin fechas de encasetamiento';
+        return;
+      }
+
+      const viejo = conFecha[0].nombre;
+      const nuevo = conFecha[conFecha.length - 1].nombre;
+      resumen.textContent = 'Lote más antiguo: ' + viejo + ' | Lote más nuevo: ' + nuevo;
+    }
+
+    function limpiarFiltroActivo() {
+      document.querySelectorAll('.psl-filtro').forEach(function (boton) {
+        boton.classList.remove('activo');
+      });
+    }
+
+    function marcarFiltroActivo(boton) {
+      limpiarFiltroActivo();
+      boton.classList.add('activo');
+    }
+
+    function filtrarVariedad(termino) {
+      const buscado = termino.toUpperCase();
+      LOTES_INFO.forEach(function (l) {
+        if ((l.variedad || '').toUpperCase().indexOf(buscado) !== -1) {
+          incluidos.add(l.nombre);
+        } else {
+          incluidos.delete(l.nombre);
+        }
+      });
+      panelLista.querySelectorAll('.psl-chk-lote').forEach(function (chk) {
+        chk.checked = incluidos.has(chk.value);
+      });
+      actualizar();
+    }
+
+    function actualizarGrupos() {
+      panelLista.querySelectorAll('.psl-grupo').forEach(function (grupo) {
+        const checkboxes = grupo.querySelectorAll('.psl-chk-lote');
+        const marcados = Array.prototype.filter.call(checkboxes, function (chk) { return chk.checked; }).length;
+        const cabecera = grupo.querySelector('.psl-chk-grupo');
+        if (!cabecera) return;
+        cabecera.checked = checkboxes.length > 0 && marcados === checkboxes.length;
+        cabecera.indeterminate = marcados > 0 && marcados < checkboxes.length;
+      });
+    }
+
+    function actualizarCategorias() {
+      panelLista.querySelectorAll('.psl-categoria').forEach(function (categoria) {
+        const checkboxes = categoria.querySelectorAll('.psl-chk-lote');
+        const marcados = Array.prototype.filter.call(checkboxes, function (chk) { return chk.checked; }).length;
+        const cabecera = categoria.querySelector('.psl-chk-categoria');
+        if (!cabecera) return;
+        cabecera.checked = checkboxes.length > 0 && marcados === checkboxes.length;
+        cabecera.indeterminate = marcados > 0 && marcados < checkboxes.length;
+      });
+    }
+
+    function actualizar() {
+      actualizarResumen();
+      actualizarGrupos();
+      actualizarCategorias();
+      recalcularProms();
+    }
+
+    function actualizarTabs() {
+      const concluidos = LOTES.filter(function (l) { return ESTADO[l] === 'CONCLUIDO'; }).length;
+      document.getElementById('pslCuentaConcluido').textContent = concluidos;
+      document.getElementById('pslCuentaActivo').textContent = LOTES.length - concluidos;
+    }
+
+    function activarCategoria(categoria) {
+      categoriaActiva = categoria;
+      document.querySelectorAll('.psl-tab-categoria').forEach(function (boton) {
+        boton.classList.toggle('activo', boton.dataset.categoria === categoria);
+      });
+      panelLista.querySelectorAll('.psl-categoria').forEach(function (cat) {
+        cat.classList.toggle('inactiva', cat.dataset.categoria !== categoria);
+      });
+    }
+
+    function marcarTodos(valor) {
+      limpiarFiltroActivo();
+      LOTES.forEach(function (lote) {
+        if (valor) incluidos.add(lote);
+        else incluidos.delete(lote);
+      });
+      panelLista.querySelectorAll('.psl-chk-lote').forEach(function (chk) {
+        chk.checked = valor;
+      });
+      if (valor) {
+        marcarFiltroActivo(document.getElementById('pslTodasBar'));
+      }
+      actualizar();
+    }
+
+    function pintarLista() {
+      panelLista.innerHTML = CATEGORIAS.map(function (categoria) {
+        const lotesCategoria = LOTES.filter(function (lote) { return ESTADO[lote] === categoria.id; });
+        if (!lotesCategoria.length) return '';
+
+        const grupos = [];
+        lotesCategoria.forEach(function (lote) {
+          const grupo = grupoDe(lote);
+          if (grupos.indexOf(grupo) === -1) grupos.push(grupo);
         });
-      };
-      ajustarSticky();
-      window.addEventListener('resize', ajustarSticky);
+
+        const gruposHtml = grupos.map(function (grupo) {
+          const lotes = lotesCategoria.filter(function (lote) { return grupoDe(lote) === grupo; });
+          const items = lotes.map(function (lote) {
+            return '<label class="psl-lote-item" data-lote="' + lote + '">' +
+              '<input type="checkbox" class="psl-chk-lote" value="' + lote + '"' +
+              (incluidos.has(lote) ? ' checked' : '') + '>' +
+              '<span>' + lote + '</span></label>';
+          }).join('');
+
+          return '<div class="psl-grupo" data-grupo="' + grupo + '">' +
+            '<div class="psl-grupo-head">' +
+              '<input type="checkbox" class="psl-chk-grupo" data-grupo="' + grupo + '">' +
+              '<button type="button" class="psl-grupo-toggle">' +
+                '<span>' + grupo + '</span>' +
+                '<span class="psl-grupo-cuenta">' + lotes.length + '</span>' +
+                '<span class="psl-grupo-flecha">▾</span>' +
+              '</button>' +
+            '</div>' +
+            '<div class="psl-grupo-body">' + items + '</div>' +
+          '</div>';
+        }).join('');
+
+        return '<div class="psl-categoria" data-categoria="' + categoria.id + '">' +
+          '<div class="psl-categoria-head">' +
+            '<input type="checkbox" class="psl-chk-categoria" data-categoria="' + categoria.id + '">' +
+            '<button type="button" class="psl-categoria-toggle">' +
+              '<span>' + categoria.titulo + '</span>' +
+              '<span class="psl-categoria-cuenta">' + lotesCategoria.length + '</span>' +
+              '<span class="psl-categoria-flecha">▾</span>' +
+            '</button>' +
+          '</div>' +
+          '<div class="psl-categoria-body">' + gruposHtml + '</div>' +
+        '</div>';
+      }).join('');
+
+      panelLista.querySelectorAll('.psl-chk-lote').forEach(function (chk) {
+        chk.addEventListener('change', function () {
+          if (chk.checked) incluidos.add(chk.value);
+          else incluidos.delete(chk.value);
+          limpiarFiltroActivo();
+          actualizar();
+        });
+      });
+
+      panelLista.querySelectorAll('.psl-grupo-toggle').forEach(function (boton) {
+        boton.addEventListener('click', function (e) {
+          e.stopPropagation();
+          boton.closest('.psl-grupo').classList.toggle('abierto');
+        });
+      });
+
+      panelLista.querySelectorAll('.psl-chk-grupo').forEach(function (cabecera) {
+        cabecera.addEventListener('change', function (e) {
+          e.stopPropagation();
+          const grupo = cabecera.closest('.psl-grupo');
+          const valor = cabecera.checked;
+          grupo.querySelectorAll('.psl-chk-lote').forEach(function (chk) {
+            chk.checked = valor;
+            if (valor) incluidos.add(chk.value);
+            else incluidos.delete(chk.value);
+          });
+          limpiarFiltroActivo();
+          actualizar();
+        });
+      });
+
+      panelLista.querySelectorAll('.psl-categoria-toggle').forEach(function (boton) {
+        boton.addEventListener('click', function (e) {
+          e.stopPropagation();
+          boton.closest('.psl-categoria').classList.toggle('cerrada');
+        });
+      });
+
+      panelLista.querySelectorAll('.psl-chk-categoria').forEach(function (cabecera) {
+        cabecera.addEventListener('change', function (e) {
+          e.stopPropagation();
+          const categoria = cabecera.closest('.psl-categoria');
+          const valor = cabecera.checked;
+          categoria.querySelectorAll('.psl-chk-lote').forEach(function (chk) {
+            chk.checked = valor;
+            if (valor) incluidos.add(chk.value);
+            else incluidos.delete(chk.value);
+          });
+          limpiarFiltroActivo();
+          actualizar();
+        });
+      });
+    }
+
+    function abrirPanel(abrir) {
+      panel.classList.toggle('abierto', abrir);
+      botonVer.classList.toggle('abierto', abrir);
+      if (abrir) {
+        buscar.focus();
+        buscar.select();
+      }
+    }
+
+    document.getElementById('pslTodasBar').addEventListener('click', function (e) {
+      e.stopPropagation();
+      marcarTodos(true);
+      marcarFiltroActivo(this);
     });
+    document.getElementById('pslHyLineBar').addEventListener('click', function (e) {
+      e.stopPropagation();
+      filtrarVariedad('HY LINE');
+      marcarFiltroActivo(this);
+    });
+    document.getElementById('pslLohmannBar').addEventListener('click', function (e) {
+      e.stopPropagation();
+      filtrarVariedad('LOHMANN');
+      marcarFiltroActivo(this);
+    });
+    document.getElementById('pslNingunoBar').addEventListener('click', function (e) {
+      e.stopPropagation();
+      marcarTodos(false);
+    });
+    document.getElementById('pslTodosPanel').addEventListener('click', function (e) {
+      e.stopPropagation();
+      marcarTodos(true);
+    });
+    document.getElementById('pslNingunoPanel').addEventListener('click', function (e) {
+      e.stopPropagation();
+      marcarTodos(false);
+    });
+
+    document.querySelectorAll('.psl-tab-categoria').forEach(function (boton) {
+      boton.addEventListener('click', function (e) {
+        e.stopPropagation();
+        activarCategoria(boton.dataset.categoria);
+      });
+    });
+
+    botonVer.addEventListener('click', function (e) {
+      e.stopPropagation();
+      abrirPanel(!panel.classList.contains('abierto'));
+    });
+    document.getElementById('pslListo').addEventListener('click', function () {
+      abrirPanel(false);
+    });
+    panel.addEventListener('click', function (e) { e.stopPropagation(); });
+    document.addEventListener('click', function () { abrirPanel(false); });
+
+    buscar.addEventListener('input', function () {
+      const q = this.value.trim().toLowerCase();
+      const visibles = {};
+
+      panelLista.querySelectorAll('.psl-categoria').forEach(function (categoria) {
+        let gruposVisibles = 0;
+        categoria.querySelectorAll('.psl-grupo').forEach(function (grupo) {
+          let visiblesGrupo = 0;
+          grupo.querySelectorAll('.psl-lote-item').forEach(function (item) {
+            const coincide = q === '' || item.dataset.lote.toLowerCase().indexOf(q) !== -1;
+            item.classList.toggle('oculto', !coincide);
+            if (coincide) visiblesGrupo += 1;
+          });
+          grupo.classList.toggle('oculto', visiblesGrupo === 0);
+          if (q !== '') grupo.classList.toggle('abierto', visiblesGrupo > 0);
+          else grupo.classList.remove('abierto');
+          if (visiblesGrupo > 0) gruposVisibles += 1;
+        });
+        visibles[categoria.dataset.categoria] = gruposVisibles;
+        categoria.classList.toggle('oculto', gruposVisibles === 0);
+        if (q !== '') categoria.classList.remove('cerrada');
+      });
+
+      // Si la búsqueda no tiene coincidencias en la categoría activa,
+      // se cambia automáticamente a la otra categoría.
+      if (q !== '' && !visibles[categoriaActiva]) {
+        const otra = categoriaActiva === 'CONCLUIDO' ? 'ACTIVO' : 'CONCLUIDO';
+        if (visibles[otra]) activarCategoria(otra);
+      }
+    });
+
+    // Pantalla completa por cada tabla de la serie
+    document.querySelectorAll('.psl-btn-pantalla').forEach(function (boton) {
+      boton.addEventListener('click', function () {
+        const contenedor = document.getElementById(boton.dataset.target);
+        if (!contenedor) return;
+        if (!document.fullscreenElement) {
+          if (contenedor.requestFullscreen) contenedor.requestFullscreen();
+          else if (contenedor.webkitRequestFullscreen) contenedor.webkitRequestFullscreen();
+        } else if (document.exitFullscreen) {
+          document.exitFullscreen();
+        }
+      });
+    });
+
+    function actualizarIconosPantalla() {
+      const pantalla = !!document.fullscreenElement;
+      document.querySelectorAll('.psl-btn-pantalla i').forEach(function (icono) {
+        icono.classList.toggle('fa-expand', !pantalla);
+        icono.classList.toggle('fa-compress', pantalla);
+      });
+      window.dispatchEvent(new Event('resize'));
+    }
+
+    document.addEventListener('fullscreenchange', actualizarIconosPantalla);
+    document.addEventListener('webkitfullscreenchange', actualizarIconosPantalla);
+
+    pintarLista();
+    actualizarTabs();
+    activarCategoria(categoriaActiva);
+    actualizar();
   });
 </script>
 <script src="{{ url_for('static', filename='js/consolidados_tabla.js') }}"></script>

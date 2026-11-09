@@ -67,6 +67,52 @@
         border-color: #ffe9a8;
     }
 
+    /* Clasificación de la lista por estado del lote */
+    .lotes-tabs {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 12px;
+        flex-shrink: 0;
+    }
+    .lote-tab {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 14px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--surface);
+        color: var(--text-secondary);
+        font-size: .78rem;
+        font-weight: 700;
+        letter-spacing: .2px;
+        cursor: pointer;
+        transition: background-color .15s ease, border-color .15s ease, color .15s ease;
+    }
+    .lote-tab:hover {
+        border-color: var(--action-primary);
+        color: var(--action-primary);
+    }
+    .lote-tab.activo {
+        background: var(--action-primary);
+        border-color: var(--action-primary);
+        color: #ffffff;
+    }
+    .lote-tab-cuenta {
+        font-size: .7rem;
+        font-weight: 800;
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: var(--surface-alt);
+        color: var(--text-secondary);
+    }
+    .lote-tab.activo .lote-tab-cuenta {
+        background: rgba(255, 255, 255, .22);
+        color: #ffffff;
+    }
+
     /* 5. Los modales y el fondo borroso cubren el 100% de la pantalla */
 
     /* ============================================================
@@ -93,6 +139,7 @@
         transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
     }
     .btn-icono-accion i { font-size: 1.02rem; vertical-align: middle; }
+    .btn-icono-accion.btn-estado { color: #8a5a00; }
     .btn-icono-accion:hover,
     .btn-icono-accion:focus-visible {
         color: var(--action-primary);
@@ -168,19 +215,19 @@
             </div>
             <div>
                 <h2 class="page-title mb-0">Gestión de lotes</h2>
-                <p class="page-subtitle mb-0">Empresa, cliente, granjas y datos de encasetamiento</p>
+                <p class="page-subtitle mb-0">Empresa, granjas y datos de encasetamiento</p>
             </div>
         </div>
         <div class="d-flex align-items-center gap-2">
             <span class="badge-estado badge-neutro">{{ lotes|length }} lotes</span>
             {% if empresa_filtro %}
-            <span class="badge-estado badge-ok" title="Su rol solo puede ver los lotes de esta empresa">
+            <span class="badge-estado badge-ok" title="Su rol ve SAN MARTIN y los externos con Levante externo = SI">
                 <i class="fas fa-building me-1"></i> SAN MARTIN
             </span>
             {% endif %}
             {% if session.get('user_rol') != 'Lector' %}
             <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal"
-                data-bs-target="#modalLote" onclick="configurarModal('crear')">
+                data-bs-target="#modalLote" onclick="configurarModalLote('crear')">
                 <i class="fas fa-plus me-1"></i> Nuevo lote
             </button>
             {% endif %}
@@ -190,9 +237,20 @@
     {% if empresa_filtro %}
     <div class="alert py-2 mb-3" style="background:#eef3fb; border:1px solid #cfdcee; color:#2c3e50; font-size:.8rem;">
         <i class="fas fa-circle-info me-1"></i>
-        Con el rol <b>PRODUCCION</b> solo se muestran los lotes de la empresa <b>SAN MARTIN</b>.
+        Con el rol <b>PRODUCCION</b> se muestran los lotes de <b>SAN MARTIN</b> y los lotes externos con <b>Levante externo = SI</b>.
     </div>
     {% endif %}
+
+    {% set lotes_activos = lotes | selectattr('estado', 'equalto', 'ACTIVO') | list %}
+    {% set lotes_concluidos = lotes | selectattr('estado', 'equalto', 'CONCLUIDO') | list %}
+    <div class="lotes-tabs" id="lotesTabs">
+        <button type="button" class="lote-tab activo" data-estado="ACTIVO" aria-pressed="true">
+            ACTIVOS <span class="lote-tab-cuenta">{{ lotes_activos|length }}</span>
+        </button>
+        <button type="button" class="lote-tab" data-estado="CONCLUIDO" aria-pressed="false">
+            CONCLUIDOS <span class="lote-tab-cuenta">{{ lotes_concluidos|length }}</span>
+        </button>
+    </div>
 
     <!-- Tabla que muestra la lista de lotes existentes -->
     <div class="card card-clean card-tabla-lotes" id="contenedorTablaLotes">
@@ -202,7 +260,6 @@
                     <tr>
                         <th class="ps-3">LOTE</th>
                         <th>EMPRESA</th>
-                        <th>CLIENTE</th>
                         <th>GRANJA LEVANTE</th>
                         <th>GRANJA PROD.</th>
                         <th class="text-center">NO. AVES ENCAS.</th>
@@ -212,7 +269,8 @@
                 <tbody>
                     <!-- Bucle que recorre todos los lotes de la base de datos -->
                     {% for lote in lotes %}
-                    <tr>
+                    {% set estado_lote = lote.estado or 'ACTIVO' %}
+                    <tr data-estado="{{ estado_lote }}" class="{% if estado_lote != 'ACTIVO' %}d-none{% endif %}">
                         <td class="fw-semibold ps-3">{{ lote.lote }}</td>
                         <td>
                             {% if lote.empresa_id and empresas_map.get(lote.empresa_id) %}
@@ -221,7 +279,6 @@
                                 <span class="badge-estado badge-pendiente">Sin asignar</span>
                             {% endif %}
                         </td>
-                        <td>{{ lote.cliente or '-' }}</td>
                         <td>{{ lote.granja_lev or '-' }}</td>
                         <td>{{ lote.granja_prod or '-' }}</td>
                         <td class="text-center">{{ lote.no_aves_encasetadas or '-' }}</td>
@@ -232,11 +289,18 @@
                                 <i class='bx bx-show'></i>
                             </button>
 
-                            <!-- Editar y Borrar solo para Editores y Superadmins -->
+                            <!-- Editar para todos excepto Lector; borrar solo Superadmin -->
                             {% if session.get('user_rol') != 'Lector' %}
                             <button type="button" class="btn-icono-accion btn-editar"
                                 data-lote="{{ lote | tojson | forceescape }}" title="Editar lote">
                                 <i class='bx bx-edit'></i>
+                            </button>
+                            {% endif %}
+                            {% if session.get('user_rol') == 'Superadmin' %}
+                            <button type="button" class="btn-icono-accion btn-estado"
+                                data-id="{{ lote.id }}" data-estado="{{ lote.estado }}"
+                                title="{{ 'Concluir lote' if lote.estado == 'ACTIVO' else 'Activar lote' }}">
+                                <i class='bx {{ "bx-check-circle" if lote.estado == "ACTIVO" else "bx-play-circle" }}'></i>
                             </button>
                             <button type="button" class="btn-icono-accion btn-icono-eliminar btn-borrar"
                                 data-id="{{ lote.id }}" data-nombre="{{ lote.lote }}" title="Borrar lote">
@@ -246,6 +310,12 @@
                         </td>
                     </tr>
                     {% endfor %}
+                    <tr id="lotesVacioActivo" class="d-none">
+                        <td colspan="6" class="text-center text-muted py-4">No hay lotes activos.</td>
+                    </tr>
+                    <tr id="lotesVacioConcluido" class="d-none">
+                        <td colspan="6" class="text-center text-muted py-4">No hay lotes concluidos.</td>
+                    </tr>
                 </tbody>
             </table>
         </div>
@@ -302,16 +372,15 @@
                                 <i class="fas fa-circle-info me-1"></i>Define su tabla en el consolidado
                             </div>
                         </div>
-                        <div class="col-md-3 mb-2">
-                            <label class="form-label-design">Cliente</label>
-                            <select name="cliente" id="f_cliente" class="form-select creatable-select"
-                                placeholder="Seleccione o escriba...">
-                                <option value="">Seleccione o escriba...</option>
-                                <option value="Avicola San Martin">Avicola San Martin</option>
-                                {% for item in opciones.cliente %}
-                                <option value="{{ item }}">{{ item }}</option>
-                                {% endfor %}
+                        <div class="col-md-3 mb-2" id="contenedor_levante_externo" style="display: none;">
+                            <label class="form-label-design">Levante externo</label>
+                            <select name="levante_externo" id="f_levante_externo" class="form-select">
+                                <option value="NO">NO</option>
+                                <option value="SI">SI</option>
                             </select>
+                            <div class="form-text-muted">
+                                <i class="fas fa-circle-info me-1"></i>Para empresas distintas a SAN MARTIN
+                            </div>
                         </div>
                         <div class="col-md-3 mb-2">
                             <label class="form-label-design">Ciudad</label>
@@ -610,7 +679,7 @@
                     </div>
                     <h6 class="fw-bold text-center mb-2">¿Eliminar este valor?</h6>
                     <div class="d-flex align-items-center justify-content-center gap-2 mb-2">
-                        <img id="confirmar_foto" src="" alt=""
+                        <img id="confirmar_foto" src="{{ url_for('static', filename='img/placeholder-catalogo.png') }}" alt=""
                             class="rounded-circle border" style="width: 40px; height: 40px; object-fit: cover;">
                         <span id="confirmar_nombre" class="fw-bold"></span>
                     </div>
@@ -641,6 +710,45 @@
 </script>
 
 <script>
+    const ROL_ACTUAL = '{{ session.get("user_rol") or "" }}';
+
+    function actualizarLevanteExterno() {
+        const sel = document.getElementById('f_empresa');
+        const cont = document.getElementById('contenedor_levante_externo');
+        if (!sel || !cont) return;
+
+        const opt = sel.options[sel.selectedIndex];
+        const nombre = opt ? opt.text.trim().toUpperCase() : '';
+        const ocultar = !opt || opt.value === '' || nombre === 'SAN MARTIN';
+        cont.style.display = ocultar ? 'none' : '';
+        if (ocultar) {
+            const campo = document.getElementById('f_levante_externo');
+            if (campo) campo.value = 'NO';
+        }
+    }
+
+    function prepararEmpresaNueva() {
+        const sel = document.getElementById('f_empresa');
+        if (!sel) return;
+
+        if (ROL_ACTUAL !== 'PRODUCCION') {
+            actualizarLevanteExterno();
+            return;
+        }
+
+        Array.from(sel.options).forEach(function (opt) {
+            if (opt.value && opt.text.trim().toUpperCase() !== 'SAN MARTIN') {
+                opt.disabled = true;
+            }
+        });
+        const san = Array.from(sel.options).find(function (opt) {
+            return opt.text.trim().toUpperCase() === 'SAN MARTIN';
+        });
+        if (san) sel.value = san.value;
+        sel.disabled = false;
+        actualizarLevanteExterno();
+    }
+
     // --- SISTEMA INTELIGENTE DE ALTURA PERFECTA PARA LA TABLA DE LOTES ---
     document.addEventListener("DOMContentLoaded", function () {
         const divCard = document.getElementById('contenedorTablaLotes');
@@ -691,7 +799,7 @@
         });
     }
 
-    function configurarModal(accion) {
+    function configurarModalLote(accion) {
         const form = document.getElementById('formLote');
         const titulo = document.getElementById('modalLoteLabel');
         const btnGuardar = document.getElementById('btnGuardar');
@@ -717,7 +825,14 @@
                 inputLote.removeAttribute('readonly');
                 inputLote.removeAttribute('disabled');
             }
+
+            prepararEmpresaNueva();
         }
+    }
+
+    const selectEmpresaForm = document.getElementById('f_empresa');
+    if (selectEmpresaForm) {
+        selectEmpresaForm.addEventListener('change', actualizarLevanteExterno);
     }
 
     // 3. Capturador de clics en Editar y Ver
@@ -770,7 +885,7 @@
 
             setFormValue('f_lote_nuevo', loteData.lote);
             setFormValue('f_empresa', (loteData.empresa_id !== null && loteData.empresa_id !== undefined) ? String(loteData.empresa_id) : '');
-            setFormValue('f_cliente', loteData.cliente);
+            setFormValue('f_levante_externo', loteData.levante_externo ? 'SI' : 'NO');
             setFormValue('f_ciudad', loteData.ciudad);
             setFormValue('f_clima', loteData.clima);
             setFormValue('f_responsable', loteData.responsable_tecnico);
@@ -819,6 +934,13 @@
                 marcarCamposObligatorios(false);
 
                 cargarDatosModal(loteData);
+
+                if (ROL_ACTUAL === 'PRODUCCION') {
+                    const selEmpresa = document.getElementById('f_empresa');
+                    Array.from(selEmpresa.options).forEach(function (opt) { opt.disabled = false; });
+                    selEmpresa.disabled = true;
+                }
+                actualizarLevanteExterno();
 
                 var modal = new bootstrap.Modal(document.getElementById('modalLote'));
                 modal.show();
@@ -1198,4 +1320,68 @@
         </div>
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const tabs = Array.from(document.querySelectorAll('.lote-tab'));
+        const filas = Array.from(document.querySelectorAll('#tablaLotes tbody tr[data-estado]'));
+        const vacios = {
+            ACTIVO: document.getElementById('lotesVacioActivo'),
+            CONCLUIDO: document.getElementById('lotesVacioConcluido')
+        };
+
+        function aplicar(estado) {
+            tabs.forEach(function (tab) {
+                const activo = tab.dataset.estado === estado;
+                tab.classList.toggle('activo', activo);
+                tab.setAttribute('aria-pressed', activo ? 'true' : 'false');
+            });
+
+            let visibles = 0;
+            filas.forEach(function (fila) {
+                const mostrar = fila.dataset.estado === estado;
+                fila.classList.toggle('d-none', !mostrar);
+                if (mostrar) visibles += 1;
+            });
+
+            Object.keys(vacios).forEach(function (clave) {
+                const vacio = vacios[clave];
+                if (vacio) vacio.classList.toggle('d-none', !(clave === estado && visibles === 0));
+            });
+
+            window.dispatchEvent(new Event('resize'));
+        }
+
+        tabs.forEach(function (tab) {
+            tab.addEventListener('click', function () { aplicar(tab.dataset.estado); });
+        });
+
+        document.querySelectorAll('.btn-estado').forEach(function (boton) {
+            boton.addEventListener('click', function () {
+                const nuevo = boton.dataset.estado === 'ACTIVO' ? 'CONCLUIDO' : 'ACTIVO';
+                const pregunta = nuevo === 'CONCLUIDO'
+                    ? '¿Marcar este lote como CONCLUIDO manualmente?'
+                    : '¿Activar este lote de nuevo?';
+                if (!window.confirm(pregunta)) return;
+
+                fetch('/api/lotes/' + boton.dataset.id + '/estado-manual', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ estado: nuevo })
+                })
+                    .then(function (resp) { return resp.json(); })
+                    .then(function (data) {
+                        if (data.status === 'ok') {
+                            window.location.reload();
+                        } else {
+                            alert(data.msg || 'No se pudo cambiar el estado.');
+                        }
+                    })
+                    .catch(function () { alert('Error de conexión.'); });
+            });
+        });
+
+        aplicar('ACTIVO');
+    });
+</script>
 {% endblock %}

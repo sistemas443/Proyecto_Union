@@ -13,6 +13,11 @@ def parse_empresa_id(valor):
         return None
 
 
+def parse_levante_externo(valor):
+    """Convierte SI/NO en booleano. Solo SI (o variantes) es True."""
+    return str(valor or '').strip().upper() in ('SI', 'SÍ', 'TRUE', '1')
+
+
 def fetch_lotes_distintos():
     """
     Obtiene una lista limpia y única con los nombres de todos los lotes registrados.
@@ -66,6 +71,22 @@ def check_lote_exists(lote_nombre):
         conn.close()
 
 
+def fetch_lote_por_id(id_lote):
+    """Devuelve la cabecera de un lote por id (para conservar la empresa)."""
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cur.execute(
+            "SELECT id, lote, empresa_id, levante_externo FROM cabecera_lotes WHERE id = %s",
+            (id_lote,)
+        )
+        fila = cur.fetchone()
+        return dict(fila) if fila else None
+    finally:
+        cur.close()
+        conn.close()
+
+
 def insert_lote(datos, lote_nombre, parse_empty):
     """
     Guarda un lote completamente nuevo en la base de datos.
@@ -78,12 +99,12 @@ def insert_lote(datos, lote_nombre, parse_empty):
         # Usamos RETURNING id para obtener inmediatamente el número de registro creado
         cur.execute("""
             INSERT INTO cabecera_lotes (
-                lote, empresa_id, cliente, ciudad, clima, responsable_tecnico, nutricionista, granja_lev, fecha_recepcion, no_pollitas_recibidas, variedad, peso, 
+                lote, empresa_id, levante_externo, ciudad, clima, responsable_tecnico, nutricionista, granja_lev, fecha_recepcion, no_pollitas_recibidas, variedad, peso,
                 unidad_peso, uniformidad, coeficiente_variacion, granja_prod, fecha_encasetamiento, no_aves_encasetadas, tipo_galpon, marca_galpon, unidad_medida, nutricionista_prod, validacion
             ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, True) RETURNING id
         """, (
-            lote_nombre, empresa_id,
-            parse_empty(datos.get('cliente')), parse_empty(datos.get('ciudad')), parse_empty(datos.get('clima')), parse_empty(datos.get('responsable_tecnico')), parse_empty(datos.get('nutricionista')),
+            lote_nombre, empresa_id, parse_levante_externo(datos.get('levante_externo')),
+            parse_empty(datos.get('ciudad')), parse_empty(datos.get('clima')), parse_empty(datos.get('responsable_tecnico')), parse_empty(datos.get('nutricionista')),
             parse_empty(datos.get('granja_lev')), parse_empty(datos.get('fecha_recepcion')), parse_empty(datos.get('no_pollitas_recibidas')), parse_empty(datos.get('variedad')), parse_empty(datos.get('peso')), parse_empty(datos.get('unidad_peso')),
             parse_empty(datos.get('uniformidad')), parse_empty(datos.get('coeficiente_variacion')), parse_empty(datos.get('granja_prod')), parse_empty(datos.get('fecha_encasetamiento')), parse_empty(datos.get('no_aves_encasetadas')), parse_empty(datos.get('tipo_galpon')),
             parse_empty(datos.get('marca_galpon')), parse_empty(datos.get('unidad_medida')), parse_empty(datos.get('nutricionista_prod'))
@@ -109,13 +130,13 @@ def update_lote(id_lote, datos, parse_empty):
     try:
         cur.execute("""
             UPDATE cabecera_lotes SET 
-                lote = %s, empresa_id = %s, cliente = %s, ciudad = %s, clima = %s, responsable_tecnico = %s, nutricionista = %s, granja_lev = %s, 
+                lote = %s, empresa_id = %s, levante_externo = %s, ciudad = %s, clima = %s, responsable_tecnico = %s, nutricionista = %s, granja_lev = %s,
                 fecha_recepcion = %s, no_pollitas_recibidas = %s, variedad = %s, peso = %s, unidad_peso = %s, uniformidad = %s, 
                 coeficiente_variacion = %s, granja_prod = %s, fecha_encasetamiento = %s, no_aves_encasetadas = %s, tipo_galpon = %s, marca_galpon = %s, 
                 unidad_medida = %s, nutricionista_prod = %s, validacion = True
             WHERE id = %s
         """, (
-            parse_empty(datos.get('lote')), parse_empresa_id(datos.get('empresa_id')), parse_empty(datos.get('cliente')), parse_empty(datos.get('ciudad')), parse_empty(datos.get('clima')), parse_empty(datos.get('responsable_tecnico')), parse_empty(datos.get('nutricionista')),
+            parse_empty(datos.get('lote')), parse_empresa_id(datos.get('empresa_id')), parse_levante_externo(datos.get('levante_externo')), parse_empty(datos.get('ciudad')), parse_empty(datos.get('clima')), parse_empty(datos.get('responsable_tecnico')), parse_empty(datos.get('nutricionista')),
             parse_empty(datos.get('granja_lev')), parse_empty(datos.get('fecha_recepcion')), parse_empty(datos.get('no_pollitas_recibidas')), parse_empty(datos.get('variedad')), parse_empty(datos.get('peso')), parse_empty(datos.get('unidad_peso')),
             parse_empty(datos.get('uniformidad')), parse_empty(datos.get('coeficiente_variacion')), parse_empty(datos.get('granja_prod')), parse_empty(datos.get('fecha_encasetamiento')), parse_empty(datos.get('no_aves_encasetadas')), parse_empty(datos.get('tipo_galpon')),
             parse_empty(datos.get('marca_galpon')), parse_empty(datos.get('unidad_medida')), parse_empty(datos.get('nutricionista_prod')), id_lote
@@ -182,7 +203,7 @@ def fetch_opciones_dinamicas(cur=None):
 
     Hace las 8 columnas en una sola consulta (mismo resultado y mismo orden que antes).
     """
-    columnas = ['cliente', 'ciudad', 'clima', 'responsable_tecnico', 'nutricionista', 'granja_lev', 'granja_prod', 'tipo_galpon']
+    columnas = ['ciudad', 'clima', 'responsable_tecnico', 'nutricionista', 'granja_lev', 'granja_prod', 'tipo_galpon']
 
     propio = cur is None
     conn = get_db_connection() if propio else None
