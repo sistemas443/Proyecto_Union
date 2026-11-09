@@ -167,6 +167,9 @@
   .tn-table thead th.tn-th-guia {
     color: #f0d9a8;
   }
+  .tn-table thead th.tn-th-pro {
+    color: #a9d1f0;
+  }
   .tn-table td.tn-guia {
     background: #faf5e6 !important;
     color: #5f5335;
@@ -177,6 +180,17 @@
   }
   .tn-table tbody tr:hover td.tn-guia {
     background: #f1e8cf !important;
+  }
+  .tn-table td.tn-pro {
+    background: #eef5fc !important;
+    color: #1f4e79;
+    font-weight: 600;
+  }
+  .tn-table tbody tr:nth-child(even) td.tn-pro {
+    background: #e8f1fa !important;
+  }
+  .tn-table tbody tr:hover td.tn-pro {
+    background: #e1edf8 !important;
   }
 
   /* Division entre etapas */
@@ -205,6 +219,7 @@
   .tn-table tbody tr.tn-stage td { background: var(--stage-fondo) !important; }
   .tn-table tbody tr.tn-stage td.tn-sem { background: var(--stage-fuerte) !important; }
   .tn-table tbody tr.tn-stage td.tn-guia { background: var(--stage-guia) !important; }
+  .tn-table tbody tr.tn-stage td.tn-pro { background: #e8f0fb !important; }
   .tn-table tbody tr.tn-stage td.tn-etapa-cell {
     background: var(--stage-fuerte) !important;
     vertical-align: middle !important;
@@ -221,6 +236,7 @@
   .tn-table tbody tr.tn-stage:hover td { background: var(--stage-hover) !important; }
   .tn-table tbody tr.tn-stage:hover td.tn-sem { background: var(--stage-fuerte) !important; }
   .tn-table tbody tr.tn-stage:hover td.tn-guia { background: var(--stage-guia) !important; }
+  .tn-table tbody tr.tn-stage:hover td.tn-pro { background: #dce8f7 !important; }
   .tn-table td.tn-col-core { border-right: 1px solid #e6eaf0; }
 
   /* Tabla de precio huevo */
@@ -865,7 +881,7 @@
                 <th>% Prod.</th>
                 {% for codigo, etiqueta, unidad, subs in columnas %}
                 {% for clave, etiqueta_sub in subs %}
-                <th class="{% if clave in ('tabla', 'tabla_min', 'tabla_sup') %}tn-th-guia{% endif %}">{{ etiqueta_sub }}</th>
+                <th class="{% if clave in ('tabla', 'tabla_min', 'tabla_sup') %}tn-th-guia{% endif %}{% if clave == 'pro' %} tn-th-pro{% endif %}">{{ etiqueta_sub }}</th>
                 {% endfor %}
                 {% endfor %}
                 <th>Observaciones</th>
@@ -902,7 +918,7 @@
                 {% set n = s.nutrientes.get(codigo) or {} %}
                 {% for clave, etiqueta_sub in subs %}
                 <td data-campo="{{ codigo }}.{{ clave }}"
-                  class="{% if clave in ('tabla', 'tabla_min', 'tabla_sup') %}tn-guia {% endif %}{% if clave in subs_editables and puede_editar %}tn-edit {% endif %}{% if clave == 'dif' and n.get('dif') is not none %}{{ 'tn-dif-neg' if n.get('dif') < 0 else 'tn-dif-pos' }}{% endif %}"
+                  class="{% if clave in ('tabla', 'tabla_min', 'tabla_sup') %}tn-guia {% endif %}{% if clave == 'pro' %}tn-pro {% endif %}{% if clave in subs_editables and puede_editar %}tn-edit {% endif %}{% if clave == 'dif' and n.get('dif') is not none %}{{ 'tn-dif-neg' if n.get('dif') < 0 else 'tn-dif-pos' }}{% endif %}"
                   {% if clave in subs_editables and puede_editar %}contenteditable="true"{% endif %}>{% if clave == 'formu' %}{% if n.get('formu') is none %}—{% elif codigo == 'proteina' %}{{ num(n.get('formu') * 100) }}%{% elif codigo == 'calcio' %}{{ num(n.get('formu')) }}{% elif codigo in ('energia', 'energia_max') %}{{ num0(n.get('formu')) }}{% else %}{{ num3(n.get('formu') * 100) }}%{% endif %}{% else %}{{ num(n.get(clave)) }}{% endif %}</td>
                 {% endfor %}
                 {% endfor %}

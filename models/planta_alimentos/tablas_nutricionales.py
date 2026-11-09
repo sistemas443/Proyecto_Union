@@ -77,7 +77,8 @@ CONSUMO_BASE = [
 ]
 
 # Columnas que el usuario puede editar (las demas son guia o formulas)
-SUBS_EDITABLES = {'pro', 'formu', 'adicional_alimento', 'adicional_biocalcio'}
+SUBS_EDITABLES = {'tabla', 'tabla_min', 'tabla_sup', 'pro', 'formu',
+                  'adicional_alimento', 'adicional_biocalcio'}
 
 # Campos del bloque de indicadores que se pueden editar
 CORE_EDITABLES = {'gramos', 'conversion', 'peso', 'produccion', 'precio_formula', 'costo_huevo'}
@@ -329,7 +330,8 @@ class TablaNutricional:
         if potasio.get('tabla') is None and _num(proteina.get('formu')) is not None:
             potasio['tabla'] = (_num(proteina.get('formu')) or 0.0) * 0.18 * 10
         cloro = nutrientes.setdefault('cloro', {})
-        cloro['tabla'] = consumo2 * 0.18 * 10
+        if cloro.get('tabla') is None:
+            cloro['tabla'] = consumo2 * 0.18 * 10
 
         for code, nodo in nutrientes.items():
             if code in ('_core', 'rel_ca_p') or not isinstance(nodo, dict):
