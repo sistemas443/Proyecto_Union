@@ -466,6 +466,56 @@
 
     .sidebar-rapido .rail-parent .rail-chev,
     .sidebar-th .rail-parent .rail-chev { color: #667085; }
+
+    /* Botón para ocultar el menú de producción desde su parte superior */
+    .sidebar-rapido .sidebar-ocultar {
+      position: sticky;
+      top: 0;
+      z-index: 3;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      flex: 0 0 auto;
+      height: 34px;
+      margin: 0 8px 4px;
+      padding: 0 8px;
+      border: 1px solid #e2e6eb;
+      border-radius: 8px;
+      background: #ffffff;
+      color: #667085;
+      font-size: 0.72rem;
+      font-weight: 600;
+      cursor: pointer;
+      overflow: hidden;
+      white-space: nowrap;
+      transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+    .sidebar-rapido .sidebar-ocultar i { font-size: 1.05rem; flex: 0 0 auto; }
+    .sidebar-rapido .sidebar-ocultar span {
+      opacity: 0;
+      transform: translateX(-4px);
+      transition: opacity 0.16s ease, transform 0.16s ease;
+    }
+    .sidebar-rapido:hover .sidebar-ocultar span,
+    .sidebar-rapido:focus-within .sidebar-ocultar span {
+      opacity: 1;
+      transform: none;
+    }
+    .sidebar-rapido .sidebar-ocultar:hover,
+    .sidebar-rapido .sidebar-ocultar:focus-visible {
+      background: #fbeae7;
+      border-color: #f3c5bd;
+      color: #97271C;
+      outline: none;
+    }
+
+    @media (hover: none) {
+      body.sidebar-activa .sidebar-rapido .sidebar-ocultar span {
+        opacity: 1;
+        transform: none;
+      }
+    }
   </style>
 
   {% block head %}{% endblock %}
@@ -506,6 +556,11 @@
   {% if session.get('user_id') and session.get('user_rol') != 'Talento humano' %}
   {% set ep = request.endpoint or '' %}
   <div class="sidebar-rapido" role="navigation" aria-label="Menú de producción">
+    <button type="button" class="sidebar-ocultar" onclick="toggleSidebarLotes(event)"
+      title="Ocultar menú de producción" aria-label="Ocultar menú de producción">
+      <i class='bx bx-chevron-left'></i>
+      <span>Ocultar</span>
+    </button>
     <div class="sidebar-header">Registro</div>
     {{ rail_link(url_for('lotes.vista_lotes'), 'bx-list-ul', 'Gestión de lotes', ep == 'lotes.vista_lotes') }}
     {{ rail_link(url_for('primera_semana.primera_semana'), 'bx-calendar-event', '1era semana', ep == 'primera_semana.primera_semana') }}

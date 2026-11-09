@@ -247,6 +247,17 @@ html[data-bs-theme="dark"] .sidebar-rapido a.is-disabled i,
 html[data-bs-theme="dark"] .sidebar-th a.is-disabled i { color: #6f7b88; }
 html[data-bs-theme="dark"] .sidebar-divider { background-color: #2f3943; }
 html[data-bs-theme="dark"] .sidebar-header { color: #8b97a5; }
+html[data-bs-theme="dark"] .sidebar-rapido .sidebar-ocultar {
+  background: #232b34;
+  border-color: #3a4450;
+  color: #b9c3ce;
+}
+html[data-bs-theme="dark"] .sidebar-rapido .sidebar-ocultar:hover,
+html[data-bs-theme="dark"] .sidebar-rapido .sidebar-ocultar:focus-visible {
+  background: rgba(151, 39, 28, .30);
+  border-color: rgba(255, 180, 168, .5);
+  color: #ffb4a8;
+}
 html[data-bs-theme="dark"] .sidebar-rapido .badge-soon,
 html[data-bs-theme="dark"] .sidebar-th .badge-soon {
   border-color: #3a4450;
