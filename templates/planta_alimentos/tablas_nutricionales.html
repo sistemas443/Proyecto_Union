@@ -428,6 +428,78 @@
     font-variant-numeric: tabular-nums; margin-top: 0.1rem;
   }
   .tn-kpi .d { font-size: 0.68rem; color: var(--text-muted); }
+
+  /* Referencia compacta de proteína por etapa (arriba de la tabla) */
+  .tn-referencia {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: .55rem;
+    overflow: hidden;
+  }
+  .tn-ref-toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+    background: var(--surface-alt);
+    border: 0;
+    padding: .3rem .6rem;
+    font-size: .63rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--text-secondary);
+    cursor: pointer;
+  }
+  .tn-ref-toggle:hover { color: var(--text-primary); }
+  .tn-ref-toggle .bx { font-size: .95rem; transition: transform .2s ease; }
+  .tn-ref-toggle.collapsed .bx { transform: rotate(-90deg); }
+  .tn-ref-body {
+    display: flex;
+    gap: .7rem;
+    flex-wrap: wrap;
+    padding: .25rem .55rem .4rem;
+  }
+  .tn-ref-tabla {
+    border-collapse: collapse;
+    flex: 1 1 0;
+    min-width: 0;
+    font-size: .62rem;
+  }
+  @media (max-width: 767.98px) {
+    .tn-ref-tabla { flex: 1 1 100%; }
+  }
+  .tn-ref-tabla th,
+  .tn-ref-tabla td {
+    padding: 1px 6px;
+    border-bottom: 1px solid #eef1f5;
+    white-space: nowrap;
+  }
+  .tn-ref-tabla tr:last-child th,
+  .tn-ref-tabla tr:last-child td { border-bottom: 0; }
+  .tn-ref-tabla th {
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-secondary);
+    border-left: 3px solid transparent;
+  }
+  .tn-ref-tabla td {
+    text-align: right;
+    font-weight: 700;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+  }
+  .tn-ref-pre th { border-left-color: #7dae5d; }
+  .tn-ref-ini th { border-left-color: #6f9c63; }
+  .tn-ref-cre th { border-left-color: #c9a63f; }
+  .tn-ref-des th { border-left-color: #9a76bd; }
+  .tn-ref-prepo th { border-left-color: #b08a5f; }
+  .tn-ref-pico th { border-left-color: #c9a63f; }
+  .tn-ref-po2 th { border-left-color: #7dae5d; }
+  .tn-ref-po3 th { border-left-color: #6f9fcc; }
+  .tn-ref-po4 th { border-left-color: #b08a5f; }
+  .tn-ref-po5 th { border-left-color: #9aa4b0; }
 </style>
 {% endblock %}
 
@@ -951,6 +1023,37 @@
       </script>
 
       {% else %}
+      <div class="tn-referencia" id="tnReferenciaProteina">
+        <button type="button" class="tn-ref-toggle" data-bs-toggle="collapse"
+          data-bs-target="#tnRefBody" aria-expanded="true" aria-controls="tnRefBody"
+          title="Ocultar o mostrar la referencia de proteína por etapa">
+          <i class='bx bx-chevron-down'></i>
+          <span>Referencia de proteína por etapa</span>
+        </button>
+        <div class="collapse show" id="tnRefBody">
+          <div class="tn-ref-body">
+            <table class="tn-ref-tabla">
+              <tbody>
+                <tr class="tn-ref-pre"><th>Pre iniciación 0-3 semanas</th><td>20,00%</td></tr>
+                <tr class="tn-ref-ini"><th>Iniciación 4-6 semanas</th><td>18,25%</td></tr>
+                <tr class="tn-ref-cre"><th>Crecimiento 7-12 semanas</th><td>17,50%</td></tr>
+                <tr class="tn-ref-des"><th>Desarrollo 13-15 semanas</th><td>15,00%</td></tr>
+                <tr class="tn-ref-prepo"><th>Prepostura 16-17 semanas</th><td>16,50%</td></tr>
+              </tbody>
+            </table>
+            <table class="tn-ref-tabla">
+              <tbody>
+                <tr class="tn-ref-pico"><th>Pico 18-36 semanas</th><td>18,25%</td></tr>
+                <tr class="tn-ref-po2"><th>Postura 2 37-45 semanas</th><td>17,85%</td></tr>
+                <tr class="tn-ref-po3"><th>Postura 3 46-60 semanas</th><td>17,42%</td></tr>
+                <tr class="tn-ref-po4"><th>Postura 4 61-71 semanas</th><td>16,30%</td></tr>
+                <tr class="tn-ref-po5"><th>Postura 5 72-100 semanas</th><td>15,50%</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <div class="tn-card tn-card-tabla" id="tnTablaCard">
         <div class="tn-card-head">
           <div>

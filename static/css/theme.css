@@ -307,6 +307,10 @@ html[data-bs-theme="dark"] .comparador-lote { background: #232b34; border-color:
 html[data-bs-theme="dark"] .comparador-panel-head { background: #20272e; border-color: var(--border); }
 html[data-bs-theme="dark"] .comparador-panel tbody tr.cmp-fila-hover td { background-color: #3a3320 !important; }
 html[data-bs-theme="dark"] .comparador-aviso { color: #ff9c93; }
+
+/* Referencia de proteína por etapa en Tablas Nutricionales */
+html[data-bs-theme="dark"] .tn-ref-tabla th,
+html[data-bs-theme="dark"] .tn-ref-tabla td { border-bottom-color: #2c343d; }
 html[data-bs-theme="dark"] #comparadorLotes:fullscreen,
 html[data-bs-theme="dark"] #comparadorLotes.cmp-fs-fallback { background: var(--surface); }
 
