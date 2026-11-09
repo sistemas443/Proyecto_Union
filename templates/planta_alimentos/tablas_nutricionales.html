@@ -3,7 +3,7 @@
 
 {% macro num(v) %}{% if v is none or v == '' %}{% else %}{{ "{:,.2f}".format(v|float).replace(',', 'X').replace('.', ',').replace('X', '.') }}{% endif %}{% endmacro %}
 {% macro num0(v) %}{% if v is none or v == '' %}{% else %}{{ "{:,.0f}".format(v|float).replace(',', 'X').replace('.', ',').replace('X', '.') }}{% endif %}{% endmacro %}
-{% macro num1(v) %}{% if v is none or v == '' %}{% else %}{{ "{:,.1f}".format(v|float).replace(',', 'X').replace('.', ',').replace('X', '.') }}{% endif %}{% endmacro %}
+{% macro num1(v) %}{% if v is none or v == '' %}{% else %}{% set x = v|float %}{{ "{:,.1f}".format((((x * 10) + (0.5000000001 if x >= 0 else -0.5000000001))|int) / 10).replace(',', 'X').replace('.', ',').replace('X', '.') }}{% endif %}{% endmacro %}
 {% macro num3(v) %}{% if v is none or v == '' %}{% else %}{{ "{:,.3f}".format(v|float).replace(',', 'X').replace('.', ',').replace('X', '.') }}{% endif %}{% endmacro %}
 {% macro num5(v) %}{% if v is none or v == '' %}{% else %}{{ "{:,.5f}".format(v|float).replace(',', 'X').replace('.', ',').replace('X', '.') }}{% endif %}{% endmacro %}
 
@@ -69,17 +69,17 @@
     --tn-etapa-ancho: 105px;
   }
   .tn-table thead th {
-    position: sticky; top: 0; z-index: 3;
+    position: sticky; top: 0; z-index: 7;
     background: var(--table-header-bg, #1a202c); color: #fff;
     font-size: .6rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
     padding: .42rem .38rem; text-align: center; white-space: nowrap;
   }
   .tn-table thead tr.grupo th { background: #2c3e50; font-size: .56rem; letter-spacing: .07em; }
-  .tn-table thead tr.grupo th { top: 0; z-index: 4; }
-  .tn-table thead tr:not(.grupo) th { top: var(--tn-head-grupo, 34px); z-index: 3; }
-  .tn-table thead th.tn-sem { z-index: 5; left: var(--tn-etapa-ancho, 105px); }
-  .tn-table thead th.tn-etapa-sticky {
-    position: sticky; left: 0; z-index: 6;
+  .tn-table thead tr.grupo th { top: 0; z-index: 8; }
+  .tn-table thead tr:not(.grupo) th { top: var(--tn-head-grupo, 34px); z-index: 7; }
+  .tn-table thead tr th.tn-sem { z-index: 9; left: var(--tn-etapa-ancho, 105px); }
+  .tn-table thead tr th.tn-etapa-sticky {
+    position: sticky; left: 0; z-index: 10;
     width: var(--tn-etapa-ancho, 105px); min-width: var(--tn-etapa-ancho, 105px);
     max-width: var(--tn-etapa-ancho, 105px);
   }
@@ -96,8 +96,17 @@
   .tn-table tbody tr:nth-child(even) td { background: #fafbfd; }
   .tn-table tbody tr:nth-child(even) td.tn-sem { background: #fafbfd; }
   .tn-table tbody tr:hover td { background: #f2f6fb; }
-  .tn-dif-neg { color: #b03a2e; font-weight: 600; }
-  .tn-dif-pos { color: #2f6b3a; font-weight: 600; }
+  /* Dif: negativa en rojo y positiva en verde, resaltadas sobre la celda */
+  .tn-dif-neg, .tn-dif-pos { font-weight: 700; }
+  .tn-table tbody tr td.tn-dif-neg {
+    color: #a4161a; background: #fde8e6;
+    box-shadow: inset 0 0 0 1px #f3c4bf;
+  }
+  .tn-table tbody tr td.tn-dif-pos {
+    color: #14722f; background: #e4f6e8;
+    box-shadow: inset 0 0 0 1px #bfe4c8;
+  }
+  .tn-table tbody tr td.tn-dif-cero { color: #5b6675; }
   .tn-etapa {
     display: inline-block; background: rgba(255, 255, 255, .78); color: #3d4a5c;
     border: 1px solid var(--stage-borde, #c7d2df);
@@ -110,8 +119,11 @@
   }
   .tn-nota-critica { color: #1f4e79; font-weight: 700; margin-left: .35rem; }
   .tn-vacio { padding: 3rem 1rem; text-align: center; color: var(--text-muted); }
+  .tn-th-obs, .tn-col-obs {
+    width: 380px; min-width: 380px; max-width: 380px;
+  }
   .tn-col-obs {
-    max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     position: relative; padding-right: 1.55rem !important;
   }
   .tn-obs-btn {
@@ -123,6 +135,15 @@
   }
   .tn-obs-btn:hover { background: #eef3fa; color: #1f4e79; }
   .tn-obs-full { white-space: pre-wrap; font-size: .85rem; line-height: 1.5; color: var(--text-primary); }
+  textarea.tn-obs-full {
+    display: block; width: 100%; min-height: 170px; resize: vertical;
+    border: 1px solid var(--border); border-radius: 8px; padding: .6rem .75rem;
+    background: #fff; outline: none;
+  }
+  textarea.tn-obs-full:focus {
+    border-color: #97271C; box-shadow: 0 0 0 3px rgba(151, 39, 28, .12);
+  }
+  .tn-obs-ayuda { font-size: .7rem; color: var(--text-muted); margin-right: auto; }
   .tn-card:fullscreen .modal,
   .tn-card:-webkit-full-screen .modal,
   .tn-card.tn-fs-fallback .modal { background: rgba(15, 23, 42, .45); }
@@ -241,6 +262,13 @@
 
   /* Tabla de precio huevo */
   .tn-precio th, .tn-precio td { white-space: nowrap; }
+  .tn-precio th, .tn-precio td, .tn-precio td.tn-txt { text-align: center; }
+  /* Precio huevo: es el dato principal de la vista, se resalta en vino */
+  .tn-table.tn-precio th.tn-col-precio { background: #1f4e79; color: #fff; }
+  .tn-table.tn-precio td.tn-col-precio {
+    background: #e8f2fb; color: #123f63; font-weight: 700;
+    border-left: 2px solid #b9d5ec;
+  }
   .tn-precio thead th { top: 0 !important; }
   .tn-precio th:first-child, .tn-precio td:first-child { width: 55px; text-align: center; }
   .tn-precio th:nth-child(2), .tn-precio td:nth-child(2) { width: 105px; }
@@ -261,6 +289,32 @@
     vertical-align: middle;
   }
   .tn-leyenda { color: #97271C; font-weight: 600; }
+
+  /* Filtro de variables del grafico */
+  .tn-filtro {
+    display: flex; flex-wrap: wrap; align-items: center; gap: .35rem;
+    padding: .45rem .85rem; border-bottom: 1px solid var(--border);
+    background: #fbfcfd;
+  }
+  .tn-filtro-t {
+    font-size: .64rem; font-weight: 700; letter-spacing: .06em;
+    text-transform: uppercase; color: #8a93a1; margin-right: .2rem;
+  }
+  .tn-chip-serie {
+    display: inline-flex; align-items: center; gap: .35rem;
+    border: 1px solid var(--border); border-radius: 14px;
+    background: #fff; color: var(--text-primary);
+    font-size: .7rem; font-weight: 600; padding: .14rem .55rem;
+    cursor: pointer; line-height: 1.35;
+  }
+  .tn-chip-serie .punto { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }
+  .tn-chip-serie:hover { border-color: #b9c6d6; }
+  .tn-chip-serie.oculto { opacity: .45; background: #f1f3f6; text-decoration: line-through; }
+  .tn-filtro-todo {
+    margin-left: auto; border: 0; background: transparent; color: #1f4e79;
+    font-size: .68rem; font-weight: 700; cursor: pointer; padding: .14rem .2rem;
+  }
+  .tn-filtro-todo:hover { text-decoration: underline; }
 
   /* Pantalla completa del grafico */
   .tn-chart-tools {
@@ -291,12 +345,15 @@
   .tn-card:fullscreen .tn-kpis,
   .tn-card:-webkit-full-screen .tn-kpis,
   .tn-card.tn-fs-fallback .tn-kpis { flex: 0 0 auto; }
+  .tn-card:fullscreen .tn-filtro,
+  .tn-card:-webkit-full-screen .tn-filtro,
+  .tn-card.tn-fs-fallback .tn-filtro { flex: 0 0 auto; }
   .tn-card:fullscreen #tnChart,
   .tn-card:-webkit-full-screen #tnChart,
   .tn-card.tn-fs-fallback #tnChart {
     flex: 0 0 auto;
-    height: calc(100vh - 250px) !important;
-    min-height: 280px;
+    height: calc(100vh - 300px) !important;
+    min-height: 240px;
   }
   .tn-card:fullscreen .tn-nota,
   .tn-card:-webkit-full-screen .tn-nota,
@@ -482,7 +539,7 @@
                 <th>Consumo kg semanal</th>
                 <th>Producción huevos semanal</th>
                 <th>Precio dieta</th>
-                <th>Precio huevo</th>
+                <th class="tn-col-precio">Precio huevo</th>
               </tr>
             </thead>
             <tbody>
@@ -492,8 +549,8 @@
                 <td class="tn-txt">{{ p.fecha.strftime('%d/%m/%Y') if p.fecha else '' }}</td>
                 <td>{{ num0(p.consumo_kg) }}</td>
                 <td>{{ num0(p.produccion_huevos) }}</td>
-                <td>{{ num0(p.precio_dieta) }}</td>
-                <td>{{ num0(p.precio_huevo) }}</td>
+                <td>{% if p.precio_dieta is not none %}$ {{ num0(p.precio_dieta) }}{% endif %}</td>
+                <td class="tn-col-precio">{% if p.precio_huevo is not none %}$ {{ num0(p.precio_huevo) }}{% endif %}</td>
               </tr>
               {% else %}
               <tr>
@@ -524,6 +581,19 @@
             </button>
           </div>
         </div>
+
+        {% if chart.series and chart.series|length > 1 %}
+        <div class="tn-filtro" id="tnFiltroSeries" role="group" aria-label="Mostrar u ocultar variables del gráfico">
+          <span class="tn-filtro-t">Variables</span>
+          {% for s in chart.series %}
+          <button type="button" class="tn-chip-serie" data-serie="{{ loop.index0 }}"
+            aria-pressed="true" title="Mostrar u ocultar {{ s.nombre }}">
+            <span class="punto" style="background: {{ s.color }}"></span>{{ s.nombre }}
+          </button>
+          {% endfor %}
+          <button type="button" class="tn-filtro-todo" id="tnFiltroTodas">Mostrar todas</button>
+        </div>
+        {% endif %}
 
         <div class="tn-kpis">
           {% for k in chart.kpis %}
@@ -737,6 +807,51 @@
             });
           }
 
+          function _filtroSeries(gd, D) {
+            var cont = document.getElementById('tnFiltroSeries');
+            if (!cont) return;
+            var botones = Array.prototype.slice.call(cont.querySelectorAll('[data-serie]'));
+
+            function oculto(i) {
+              return !!(gd.data[i] && gd.data[i].visible === 'legendonly');
+            }
+
+            function pintar() {
+              botones.forEach(function (btn) {
+                var i = Number(btn.dataset.serie);
+                btn.classList.toggle('oculto', oculto(i));
+                btn.setAttribute('aria-pressed', oculto(i) ? 'false' : 'true');
+              });
+            }
+
+            function refrescar() {
+              pintar();
+              _etiquetasFin(gd, D);
+            }
+
+            botones.forEach(function (btn) {
+              btn.addEventListener('click', function () {
+                var i = Number(btn.dataset.serie);
+                Plotly.restyle(gd, { visible: oculto(i) ? true : 'legendonly' }, [i]);
+                refrescar();
+              });
+            });
+
+            var todas = document.getElementById('tnFiltroTodas');
+            if (todas) {
+              todas.addEventListener('click', function () {
+                var indices = botones.map(function (b) { return Number(b.dataset.serie); });
+                Plotly.restyle(gd, { visible: true }, indices);
+                refrescar();
+              });
+            }
+
+            // Mantiene los chips sincronizados si se usa la leyenda de Plotly
+            gd.on('plotly_legendclick', function () { setTimeout(pintar, 60); });
+            gd.on('plotly_legenddoubleclick', function () { setTimeout(pintar, 60); });
+            pintar();
+          }
+
           function _pantallaCompleta(gd, D) {
             var tarjeta = document.getElementById('tnChartCard');
             var boton = document.getElementById('tnFsBtn');
@@ -823,6 +938,7 @@
             .then(function (gd) {
               _etiquetasFin(gd, D);
               _observarLeyenda(gd, D);
+              _filtroSeries(gd, D);
               _pantallaCompleta(gd, D);
               window.addEventListener('tn:layout', function () {
                 setTimeout(function () {
@@ -884,7 +1000,7 @@
                 <th class="{% if clave in ('tabla', 'tabla_min', 'tabla_sup') %}tn-th-guia{% endif %}{% if clave == 'pro' %} tn-th-pro{% endif %}">{{ etiqueta_sub }}</th>
                 {% endfor %}
                 {% endfor %}
-                <th>Observaciones</th>
+                <th class="tn-th-obs">Observaciones</th>
               </tr>
             </thead>
             <tbody>
@@ -918,8 +1034,8 @@
                 {% set n = s.nutrientes.get(codigo) or {} %}
                 {% for clave, etiqueta_sub in subs %}
                 <td data-campo="{{ codigo }}.{{ clave }}"
-                  class="{% if clave in ('tabla', 'tabla_min', 'tabla_sup') %}tn-guia {% endif %}{% if clave == 'pro' %}tn-pro {% endif %}{% if clave in subs_editables and puede_editar %}tn-edit {% endif %}{% if clave == 'dif' and n.get('dif') is not none %}{{ 'tn-dif-neg' if n.get('dif') < 0 else 'tn-dif-pos' }}{% endif %}"
-                  {% if clave in subs_editables and puede_editar %}contenteditable="true"{% endif %}>{% if clave == 'formu' %}{% if n.get('formu') is none %}{% elif codigo == 'proteina' %}{{ num(n.get('formu') * 100) }}%{% elif codigo == 'calcio' %}{{ num(n.get('formu')) }}{% elif codigo in ('energia', 'energia_max') %}{{ num0(n.get('formu')) }}{% else %}{{ num3(n.get('formu') * 100) }}%{% endif %}{% else %}{{ num(n.get(clave)) }}{% endif %}</td>
+                  class="{% if clave in ('tabla', 'tabla_min', 'tabla_sup') %}tn-guia {% endif %}{% if clave == 'pro' %}tn-pro {% endif %}{% if clave in subs_editables and puede_editar %}tn-edit {% endif %}{% if clave == 'dif' and n.get('dif') is not none %}{% if n.get('dif') < 0 %}tn-dif-neg{% elif n.get('dif') > 0 %}tn-dif-pos{% else %}tn-dif-cero{% endif %}{% endif %}"
+                  {% if clave in subs_editables and puede_editar %}contenteditable="true"{% endif %}>{% if clave == 'formu' %}{% if n.get('formu') is none %}{% elif codigo == 'proteina' %}{{ num(n.get('formu') * 100) }}%{% elif codigo == 'calcio' %}{{ num(n.get('formu')) }}{% elif codigo in ('energia', 'energia_max') %}{{ num0(n.get('formu')) }}{% else %}{{ num3(n.get('formu') * 100) }}%{% endif %}{% else %}{% if clave in ('tabla', 'tabla_min', 'tabla_sup', 'pro', 'dif') %}{{ num1(n.get(clave)) }}{% else %}{{ num(n.get(clave)) }}{% endif %}{% endif %}</td>
                 {% endfor %}
                 {% endfor %}
                 <td class="tn-txt tn-col-obs {% if puede_editar %}tn-edit{% endif %}" data-campo="observaciones"
@@ -957,9 +1073,19 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
               </div>
               <div class="modal-body">
-                <div id="tnObsTexto" class="tn-obs-full"></div>
+                <textarea id="tnObsTexto" class="tn-obs-full" rows="8" maxlength="1000"
+                  aria-label="Texto de la observación"
+                  {% if not puede_editar %}readonly{% endif %}></textarea>
               </div>
               <div class="modal-footer">
+                <span class="tn-obs-ayuda">
+                  {% if puede_editar %}Ctrl+Enter guarda · máximo 1.000 caracteres{% else %}Modo lectura{% endif %}
+                </span>
+                {% if puede_editar %}
+                <button type="button" class="btn btn-primary btn-sm" id="tnObsGuardar">
+                  <i class="fas fa-floppy-disk me-1"></i> Guardar
+                </button>
+                {% endif %}
                 <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
               </div>
             </div>
@@ -1010,6 +1136,11 @@
             decimales = code === 'proteina' ? 2 : 3;
             sufijo = '%';
           }
+        } else if (campo && (campo.endsWith('.tabla') || campo.endsWith('.tabla_min')
+                   || campo.endsWith('.tabla_sup') || campo.endsWith('.pro')
+                   || campo.endsWith('.dif'))) {
+          // Eco, PRO y Dif se muestran con un decimal
+          decimales = 1;
         } else if (esPorcentaje) {
           if (Math.abs(n) <= 1) n *= 100;
           decimales = 1;
@@ -1099,10 +1230,13 @@
               return;
             }
             destino.textContent = formatear(par[1], destino);
-            if (destino.classList.contains('tn-dif-neg') || destino.classList.contains('tn-dif-pos')) {
-              destino.classList.remove('tn-dif-neg', 'tn-dif-pos');
-              if (par[1] !== null && par[1] !== undefined) {
-                destino.classList.add(Number(par[1]) < 0 ? 'tn-dif-neg' : 'tn-dif-pos');
+            // La columna Dif se resalta siempre, aunque la celda estuviera vacia
+            if ((par[0] || '').endsWith('.dif')) {
+              destino.classList.remove('tn-dif-neg', 'tn-dif-pos', 'tn-dif-cero');
+              const dif = par[1];
+              if (dif !== null && dif !== undefined && isFinite(Number(dif))) {
+                const n = Number(dif);
+                destino.classList.add(n < 0 ? 'tn-dif-neg' : (n > 0 ? 'tn-dif-pos' : 'tn-dif-cero'));
               }
             }
           });
@@ -1152,6 +1286,8 @@
         if (e.target.closest && e.target.closest('.tn-obs-btn')) e.preventDefault();
       });
 
+      let celdaObsActual = null;
+
       document.addEventListener('click', function (e) {
         const boton = e.target.closest ? e.target.closest('.tn-obs-btn') : null;
         if (!boton) return;
@@ -1159,10 +1295,62 @@
         e.stopPropagation();
         const modalEl = document.getElementById('modalObsTN');
         if (!modalEl || !window.bootstrap) return;
-        document.getElementById('tnObsTexto').textContent = boton.dataset.obs || '';
+        celdaObsActual = boton.closest('td');
+        const editor = document.getElementById('tnObsTexto');
+        editor.value = boton.dataset.obs || '';
         document.getElementById('tnObsSemana').textContent = boton.dataset.semana || '';
+        modalEl.addEventListener('shown.bs.modal', function () {
+          editor.focus();
+          editor.setSelectionRange(editor.value.length, editor.value.length);
+        }, { once: true });
         bootstrap.Modal.getOrCreateInstance(modalEl).show();
       });
+
+      async function guardarObservacionModal() {
+        if (!celdaObsActual) return;
+        const modalEl = document.getElementById('modalObsTN');
+        const editor = document.getElementById('tnObsTexto');
+        const botonGuardar = document.getElementById('tnObsGuardar');
+        const fila = celdaObsActual.closest('tr');
+        const texto = editor.value.trim();
+        if (botonGuardar) botonGuardar.disabled = true;
+        try {
+          const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              lote: lote,
+              semana: Number(fila.dataset.semana),
+              campo: 'observaciones',
+              valor: texto
+            })
+          });
+          const data = await res.json();
+          if (data.status !== 'ok') {
+            alert(data.msg || 'No se pudo guardar la observación.');
+            return;
+          }
+          pintarObs(celdaObsActual, data.valores.observaciones || '');
+          if (modalEl) bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+        } catch (e) {
+          alert('Error de conexión al guardar la observación.');
+        } finally {
+          if (botonGuardar) botonGuardar.disabled = false;
+        }
+      }
+
+      (function () {
+        const botonGuardar = document.getElementById('tnObsGuardar');
+        const editor = document.getElementById('tnObsTexto');
+        if (!botonGuardar || !editor) return;
+        botonGuardar.addEventListener('click', guardarObservacionModal);
+        editor.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+            e.preventDefault();
+            guardarObservacionModal();
+          }
+        });
+      })();
     })();
   </script>
 
