@@ -1114,10 +1114,26 @@
         }
       }
 
+      function seleccionarTodo(celda) {
+        try {
+          const rango = document.createRange();
+          rango.selectNodeContents(celda);
+          const seleccion = window.getSelection();
+          seleccion.removeAllRanges();
+          seleccion.addRange(rango);
+        } catch (e) {}
+      }
+
       document.querySelectorAll('.tn-edit').forEach(function (celda) {
         celda.addEventListener('focus', function () {
           this.dataset.original = this.textContent.trim();
           this.classList.add('tn-editando');
+          // En celdas numericas se selecciona el valor completo para que al
+          // escribir se reemplace y no quede pegado al dato anterior.
+          if (this.dataset.campo !== 'observaciones') {
+            const actual = this;
+            setTimeout(function () { seleccionarTodo(actual); }, 0);
+          }
         });
         celda.addEventListener('blur', function () {
           this.classList.remove('tn-editando');
