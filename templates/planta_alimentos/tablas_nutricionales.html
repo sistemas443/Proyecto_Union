@@ -514,7 +514,7 @@
                 <td>{{ num0(p.consumo_kg) }}</td>
                 <td>{{ num0(p.produccion_huevos) }}</td>
                 <td>{{ num0(p.precio_dieta) }}</td>
-                <td>{{ num0(p.precio_huevo) }}</td>
+                <td>{% if p.precio_huevo is not none %}$ {{ num0(p.precio_huevo) }}{% endif %}</td>
               </tr>
               {% else %}
               <tr>
