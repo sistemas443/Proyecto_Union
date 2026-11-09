@@ -5,6 +5,7 @@
 {% macro num0(v) %}{% if v is none or v == '' %}—{% else %}{{ "{:,.0f}".format(v|float).replace(',', 'X').replace('.', ',').replace('X', '.') }}{% endif %}{% endmacro %}
 {% macro num1(v) %}{% if v is none or v == '' %}—{% else %}{{ "{:,.1f}".format(v|float).replace(',', 'X').replace('.', ',').replace('X', '.') }}{% endif %}{% endmacro %}
 {% macro num3(v) %}{% if v is none or v == '' %}—{% else %}{{ "{:,.3f}".format(v|float).replace(',', 'X').replace('.', ',').replace('X', '.') }}{% endif %}{% endmacro %}
+{% macro num5(v) %}{% if v is none or v == '' %}—{% else %}{{ "{:,.5f}".format(v|float).replace(',', 'X').replace('.', ',').replace('X', '.') }}{% endif %}{% endmacro %}
 
 {% block head %}
 {% include 'planta_alimentos/_design_system.html' %}
@@ -65,6 +66,7 @@
   .tn-table {
     border-collapse: separate; border-spacing: 0; width: 100%;
     font-size: .72rem; font-variant-numeric: tabular-nums;
+    --tn-etapa-ancho: 105px;
   }
   .tn-table thead th {
     position: sticky; top: 0; z-index: 3;
@@ -75,14 +77,20 @@
   .tn-table thead tr.grupo th { background: #2c3e50; font-size: .56rem; letter-spacing: .07em; }
   .tn-table thead tr.grupo th { top: 0; z-index: 4; }
   .tn-table thead tr:not(.grupo) th { top: var(--tn-head-grupo, 34px); z-index: 3; }
-  .tn-table thead th.tn-sem { z-index: 5; left: 0; }
+  .tn-table thead th.tn-sem { z-index: 5; left: var(--tn-etapa-ancho, 105px); }
+  .tn-table thead th.tn-etapa-sticky {
+    position: sticky; left: 0; z-index: 6;
+    width: var(--tn-etapa-ancho, 105px); min-width: var(--tn-etapa-ancho, 105px);
+    max-width: var(--tn-etapa-ancho, 105px);
+  }
+  .tn-table thead tr.grupo th.tn-etapa-sticky { background: #2c3e50; }
   .tn-table td {
     padding: .3rem .38rem; border-bottom: 1px solid #edf0f4;
     text-align: right; white-space: nowrap;
   }
   .tn-table td.tn-txt { text-align: left; }
   .tn-table td.tn-sem {
-    position: sticky; left: 0; z-index: 2; background: #fff;
+    position: sticky; left: var(--tn-etapa-ancho, 105px); z-index: 3; background: #fff;
     text-align: center; font-weight: 700; color: var(--text-primary);
   }
   .tn-table tbody tr:nth-child(even) td { background: #fafbfd; }
@@ -201,6 +209,10 @@
     background: var(--stage-fuerte) !important;
     vertical-align: middle !important;
     text-align: center;
+    position: sticky; left: 0; z-index: 2;
+    width: var(--tn-etapa-ancho, 105px);
+    min-width: var(--tn-etapa-ancho, 105px);
+    max-width: var(--tn-etapa-ancho, 105px);
     border-right: 1px solid rgba(0, 0, 0, .06);
     border-left: 3px solid var(--stage-borde);
     font-weight: 700;
@@ -210,6 +222,12 @@
   .tn-table tbody tr.tn-stage:hover td.tn-sem { background: var(--stage-fuerte) !important; }
   .tn-table tbody tr.tn-stage:hover td.tn-guia { background: var(--stage-guia) !important; }
   .tn-table td.tn-col-core { border-right: 1px solid #e6eaf0; }
+
+  /* Tabla de precio huevo */
+  .tn-precio th, .tn-precio td { white-space: nowrap; }
+  .tn-precio thead th { top: 0 !important; }
+  .tn-precio th:first-child, .tn-precio td:first-child { width: 55px; text-align: center; }
+  .tn-precio th:nth-child(2), .tn-precio td:nth-child(2) { width: 105px; }
 
   /* Semana vigente: conserva el color de su etapa y se marca con linea vino */
   .tn-table tbody tr.tn-fila-actual td.tn-sem {
@@ -414,6 +432,10 @@
         href="{{ url_for('tablas_nutricionales.vista', lote=lote, vista='datos') }}">
         <i class="fas fa-table-cells"></i> <span class="tn-rail-txt">Tabla nutricional</span>
       </a>
+      <a class="{% if vista == 'precio_huevo' %}act{% endif %}" title="Precio huevo"
+        href="{{ url_for('tablas_nutricionales.vista', lote=lote, vista='precio_huevo') }}">
+        <i class="fas fa-egg"></i> <span class="tn-rail-txt">Precio huevo</span>
+      </a>
       <div class="tn-h">ANÁLISIS</div>
       {% for g in graficos %}
       <a class="{% if vista == 'analisis' and grafico == g.codigo %}act{% endif %}" title="{{ g.titulo }}"
@@ -424,12 +446,58 @@
     </aside>
 
     <div class="tn-main">
-      {% if vista == 'analisis' and chart %}
+      {% if vista == 'precio_huevo' %}
+      <div class="tn-card">
+        <div class="tn-card-head">
+          <div>
+            <div class="t">Datos Precio Huevo · Lote {{ lote }}</div>
+            <div class="s">Consumo, producción y precio de la dieta por semana</div>
+          </div>
+          <div class="tn-chart-tools">
+            <span class="tn-leyenda-edicion">Precio huevo = (consumo kg × precio dieta) / producción huevos</span>
+          </div>
+        </div>
+        <div class="tn-scroll">
+          <table class="tn-table tn-precio">
+            <thead>
+              <tr>
+                <th>Sem</th>
+                <th>Fecha</th>
+                <th>Consumo kg semanal</th>
+                <th>Producción huevos semanal</th>
+                <th>Precio dieta</th>
+                <th>Precio huevo</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for p in precios_huevo or [] %}
+              <tr>
+                <td>{{ p.semana }}</td>
+                <td class="tn-txt">{{ p.fecha.strftime('%d/%m/%Y') if p.fecha else '—' }}</td>
+                <td>{{ num0(p.consumo_kg) }}</td>
+                <td>{{ num0(p.produccion_huevos) }}</td>
+                <td>{{ num(p.precio_dieta) }}</td>
+                <td>{{ num(p.precio_huevo) }}</td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="6" class="tn-vacio">No hay datos de producción para este lote.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="tn-nota">
+          El consumo y la producción salen del módulo de Producción. El precio de la dieta sale de Tablas Nutricionales.
+          El precio por huevo se calcula con la fórmula del Excel <b>Datos Precio Huevo</b>.
+        </div>
+      </div>
+      {% elif vista == 'analisis' and chart %}
       <div class="tn-card" id="tnChartCard">
         <div class="tn-card-head">
           <div>
             <div class="t">{{ chart.titulo }} · Lote {{ lote }}</div>
-            <div class="s">Guía vs. real por semana de vida</div>
+            <div class="s">Eco vs. real por semana de vida</div>
           </div>
           <div class="tn-chart-tools">
             {% if datos.semana_actual %}
@@ -755,7 +823,7 @@
         <div class="tn-card-head">
           <div>
             <div class="t">Hy-Line Brown · Lote {{ lote }}</div>
-            <div class="s">Consumo, peso, conversión y aportes por nutriente (tabla vs. real)</div>
+            <div class="s">Consumo, peso, conversión y aportes por nutriente (eco vs. real)</div>
           </div>
           <div class="tn-chart-tools">
             {% if puede_editar %}<span class="tn-leyenda-edicion">Haga clic en un valor para editarlo</span>{% endif %}
@@ -772,8 +840,8 @@
           <table class="tn-table" data-lote="{{ lote }}">
             <thead>
               <tr class="grupo">
-                <th class="tn-sem"></th>
-                <th colspan="10">Indicadores (Producción + guía)</th>
+                <th class="tn-etapa-sticky"></th>
+                <th colspan="10">Indicadores (Producción + eco)</th>
                 {% for codigo, etiqueta, unidad, subs in columnas %}
                 <th colspan="{{ subs|length }}" class="tn-grupo tn-a{{ loop.index0 % 6 }}{{ ' tn-par' if loop.index0 % 2 }}">
                   <span class="tn-barra"></span>
@@ -784,17 +852,17 @@
                 <th>Obs.</th>
               </tr>
               <tr>
-                <th class="tn-sem">Sem</th>
+                <th class="tn-etapa-sticky">Etapa</th>
                 <th>Fecha</th>
-                <th>Etapa</th>
+                <th class="tn-sem">Sem</th>
                 <th>Cons. 1</th>
                 <th>Cons. 2</th>
                 <th>Gramos</th>
+                <th>$ Fórmula</th>
+                <th>$ Huevo</th>
                 <th>Conv.</th>
                 <th>Peso</th>
                 <th>% Prod.</th>
-                <th>$ Fórmula</th>
-                <th>$ Huevo</th>
                 {% for codigo, etiqueta, unidad, subs in columnas %}
                 {% for clave, etiqueta_sub in subs %}
                 <th class="{% if clave in ('tabla', 'tabla_min', 'tabla_sup') %}tn-th-guia{% endif %}">{{ etiqueta_sub }}</th>
@@ -807,17 +875,21 @@
               {% for s in datos.semanas %}
               <tr data-semana="{{ s.semana }}"
                 class="tn-stage tn-stage-{{ s.etapa_clase }} {% if s.fin_etapa %}tn-etapa-fin {% endif %}{% if s.es_actual %}tn-fila-actual{% endif %}">
-                <td class="tn-sem">{{ s.semana }}{% if s.es_actual %}<span class="tn-actual-dot" title="Semana vigente"></span>{% endif %}</td>
-                <td class="tn-txt">{{ s.fecha.strftime('%d/%m/%Y') if s.fecha else '—' }}</td>
                 {% if s.etapa_rowspan %}
                 <td class="tn-txt tn-etapa-cell{% if s.etapa_cierra %} tn-etapa-cell-fin{% endif %}" rowspan="{{ s.etapa_rowspan }}">
                   <span class="tn-etapa">{{ s.etapa }}</span>
                 </td>
                 {% endif %}
+                <td class="tn-txt">{{ s.fecha.strftime('%d/%m/%Y') if s.fecha else '—' }}</td>
+                <td class="tn-sem">{{ s.semana }}{% if s.es_actual %}<span class="tn-actual-dot" title="Semana vigente"></span>{% endif %}</td>
                 <td>{{ num(s.extras.get('consumo1')) }}</td>
                 <td>{{ num(s.extras.get('consumo2')) }}</td>
                 <td class="{% if puede_editar %}tn-edit{% endif %}" data-campo="core.gramos"
                   {% if puede_editar %}contenteditable="true"{% endif %}>{{ num(s.consumo) }}</td>
+                <td class="{% if puede_editar %}tn-edit{% endif %}" data-campo="core.precio_formula"
+                  {% if puede_editar %}contenteditable="true"{% endif %}>{{ num(s.precio_formula) }}</td>
+                <td class="{% if puede_editar %}tn-edit{% endif %}" data-campo="core.costo_huevo"
+                  {% if puede_editar %}contenteditable="true"{% endif %}>{{ num(s.costo_huevo_mostrar) }}</td>
                 <td class="{% if puede_editar %}tn-edit{% endif %}" data-campo="core.conversion"
                   {% if puede_editar %}contenteditable="true"{% endif %}>{{ num3(s.conversion) }}</td>
                 <td class="{% if puede_editar %}tn-edit{% endif %}" data-campo="core.peso"
@@ -826,16 +898,12 @@
                   data-porcentaje="1" {% if puede_editar %}contenteditable="true"{% endif %}>
                   {% if s.produccion is not none %}{{ num1(s.produccion) }}%{% else %}—{% endif %}
                 </td>
-                <td class="{% if puede_editar %}tn-edit{% endif %}" data-campo="core.precio_formula"
-                  {% if puede_editar %}contenteditable="true"{% endif %}>{{ num(s.precio_formula) }}</td>
-                <td class="{% if puede_editar %}tn-edit{% endif %}" data-campo="core.costo_huevo"
-                  {% if puede_editar %}contenteditable="true"{% endif %}>{{ num(s.costo_huevo_mostrar) }}</td>
                 {% for codigo, etiqueta, unidad, subs in columnas %}
                 {% set n = s.nutrientes.get(codigo) or {} %}
                 {% for clave, etiqueta_sub in subs %}
                 <td data-campo="{{ codigo }}.{{ clave }}"
                   class="{% if clave in ('tabla', 'tabla_min', 'tabla_sup') %}tn-guia {% endif %}{% if clave in subs_editables and puede_editar %}tn-edit {% endif %}{% if clave == 'dif' and n.get('dif') is not none %}{{ 'tn-dif-neg' if n.get('dif') < 0 else 'tn-dif-pos' }}{% endif %}"
-                  {% if clave in subs_editables and puede_editar %}contenteditable="true"{% endif %}>{{ num(n.get(clave)) }}</td>
+                  {% if clave in subs_editables and puede_editar %}contenteditable="true"{% endif %}>{% if clave == 'formu' %}{% if n.get('formu') is none %}—{% elif codigo == 'proteina' %}{{ num(n.get('formu') * 100) }}%{% elif codigo == 'calcio' %}{{ num(n.get('formu')) }}{% elif codigo in ('energia', 'energia_max') %}{{ num0(n.get('formu')) }}{% else %}{{ num3(n.get('formu') * 100) }}%{% endif %}{% else %}{{ num(n.get(clave)) }}{% endif %}</td>
                 {% endfor %}
                 {% endfor %}
                 <td class="tn-txt tn-col-obs {% if puede_editar %}tn-edit{% endif %}" data-campo="observaciones"
@@ -911,16 +979,29 @@
         if (!isFinite(n)) return '—';
         const campo = celda ? celda.dataset.campo : '';
         const esPorcentaje = celda && celda.dataset.porcentaje;
-        if (esPorcentaje && Math.abs(n) <= 1) n *= 100;
+        let sufijo = '';
         let decimales = 2;
         if (campo === 'core.peso') decimales = 0;
         else if (campo === 'core.conversion') decimales = 3;
-        else if (esPorcentaje) decimales = 1;
+        else if (campo && campo.endsWith('.formu')) {
+          const code = campo.split('.')[0];
+          if (code === 'calcio') decimales = 2;
+          else if (code === 'energia' || code === 'energia_max') decimales = 0;
+          else {
+            n *= 100;
+            decimales = code === 'proteina' ? 2 : 3;
+            sufijo = '%';
+          }
+        } else if (esPorcentaje) {
+          if (Math.abs(n) <= 1) n *= 100;
+          decimales = 1;
+          sufijo = '%';
+        }
         const texto = n.toLocaleString('es-CO', {
           minimumFractionDigits: decimales,
           maximumFractionDigits: decimales
         });
-        return esPorcentaje ? texto + '%' : texto;
+        return texto + sufijo;
       }
 
       function pintarObs(celda, texto) {

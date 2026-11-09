@@ -26,13 +26,14 @@ def vista():
     datos = TablaNutricional.obtener_datos_lote(lote) if lote else None
 
     vista = (request.args.get('vista') or 'datos').strip()
-    if vista not in ('datos', 'analisis'):
+    if vista not in ('datos', 'analisis', 'precio_huevo'):
         vista = 'datos'
     grafico = (request.args.get('grafico') or 'peso_consumo').strip()
     if grafico not in [g['codigo'] for g in GRAFICOS]:
         grafico = GRAFICOS[0]['codigo']
 
     chart = TablaNutricional.datos_grafico(datos, grafico) if (datos and vista == 'analisis') else None
+    precios_huevo = TablaNutricional.precios_huevo(lote) if (lote and vista == 'precio_huevo') else None
 
     return render_template(
         'planta_alimentos/tablas_nutricionales.html',
@@ -47,6 +48,7 @@ def vista():
         grafico=grafico,
         graficos=GRAFICOS,
         chart=chart,
+        precios_huevo=precios_huevo,
     )
 
 
