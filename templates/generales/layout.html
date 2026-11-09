@@ -492,16 +492,11 @@
       transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
     }
     .sidebar-rapido .sidebar-ocultar i { font-size: 1.05rem; flex: 0 0 auto; }
-    .sidebar-rapido .sidebar-ocultar span {
-      opacity: 0;
-      transform: translateX(-4px);
-      transition: opacity 0.16s ease, transform 0.16s ease;
-    }
+    /* El texto se oculta por completo cuando el menú está compacto para que
+       el ícono quede centrado y visible. */
+    .sidebar-rapido .sidebar-ocultar span { display: none; }
     .sidebar-rapido:hover .sidebar-ocultar span,
-    .sidebar-rapido:focus-within .sidebar-ocultar span {
-      opacity: 1;
-      transform: none;
-    }
+    .sidebar-rapido:focus-within .sidebar-ocultar span { display: inline; }
     .sidebar-rapido .sidebar-ocultar:hover,
     .sidebar-rapido .sidebar-ocultar:focus-visible {
       background: #fbeae7;
@@ -511,10 +506,7 @@
     }
 
     @media (hover: none) {
-      body.sidebar-activa .sidebar-rapido .sidebar-ocultar span {
-        opacity: 1;
-        transform: none;
-      }
+      body.sidebar-activa .sidebar-rapido .sidebar-ocultar span { display: inline; }
     }
   </style>
 
