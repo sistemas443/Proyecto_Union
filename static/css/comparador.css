@@ -115,13 +115,28 @@
 }
 
 .comparador-lote-nombre { font-weight: 800; font-size: 0.8rem; }
-.comparador-meta {
+.comparador-panel-meta {
   margin-left: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  min-width: 0;
+}
+.comparador-aves {
   font-size: 0.68rem;
   color: var(--text-muted, #6c757d);
   white-space: nowrap;
+}
+.comparador-aves b { color: var(--text-primary, #212529); }
+.comparador-variedad {
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: var(--text-secondary, #495057);
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .comparador-panel .tabla-scroll {
@@ -201,7 +216,7 @@
   /* Los paneles se apilan y la página puede desplazarse */
   .comparador-grid { grid-template-columns: 1fr; }
   .comparador-acciones { margin-left: 0; }
-  .comparador-meta { display: none; }
+  .comparador-panel-meta { max-width: 55%; }
   .comparador-panel .tabla-scroll {
     height: 55vh !important;
     max-height: 55vh !important;

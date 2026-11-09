@@ -358,9 +358,13 @@
         <span class="comparador-letra" style="background: {{ p.color }}">{{ p.letra }}</span>
         <span class="comparador-lote-nombre">Lote {{ p.lote or '&mdash;' }}</span>
         {% if p.cabecera %}
-        <span class="comparador-meta" title="Aves encasetadas">
-          Aves: <b>{% if p.cabecera.no_pollitas_recibidas %}{{ '{:,.0f}'.format(p.cabecera.no_pollitas_recibidas|int).replace(',', '.') }}{% else %}—{% endif %}</b>
-        </span>
+        <div class="comparador-panel-meta"
+          title="Aves encasetadas: {% if p.cabecera.no_pollitas_recibidas %}{{ '{:,.0f}'.format(p.cabecera.no_pollitas_recibidas|int).replace(',', '.') }}{% else %}—{% endif %} · Variedad: {{ p.cabecera.variedad or '—' }}">
+          <span class="comparador-aves">
+            Aves: <b>{% if p.cabecera.no_pollitas_recibidas %}{{ '{:,.0f}'.format(p.cabecera.no_pollitas_recibidas|int).replace(',', '.') }}{% else %}—{% endif %}</b>
+          </span>
+          <span class="comparador-variedad">{{ p.cabecera.variedad or '—' }}</span>
+        </div>
         {% endif %}
       </header>
       {% if p.lote %}
