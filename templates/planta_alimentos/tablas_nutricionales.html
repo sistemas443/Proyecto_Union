@@ -263,6 +263,12 @@
   /* Tabla de precio huevo */
   .tn-precio th, .tn-precio td { white-space: nowrap; }
   .tn-precio th, .tn-precio td, .tn-precio td.tn-txt { text-align: center; }
+  /* Precio huevo: es el dato principal de la vista, se resalta en vino */
+  .tn-table.tn-precio th.tn-col-precio { background: #7f1d17; color: #fff; }
+  .tn-table.tn-precio td.tn-col-precio {
+    background: #fdf0ec; color: #8c2118; font-weight: 700;
+    border-left: 2px solid #efc9c0;
+  }
   .tn-precio thead th { top: 0 !important; }
   .tn-precio th:first-child, .tn-precio td:first-child { width: 55px; text-align: center; }
   .tn-precio th:nth-child(2), .tn-precio td:nth-child(2) { width: 105px; }
@@ -504,7 +510,7 @@
                 <th>Consumo kg semanal</th>
                 <th>Producción huevos semanal</th>
                 <th>Precio dieta</th>
-                <th>Precio huevo</th>
+                <th class="tn-col-precio">Precio huevo</th>
               </tr>
             </thead>
             <tbody>
@@ -515,7 +521,7 @@
                 <td>{{ num0(p.consumo_kg) }}</td>
                 <td>{{ num0(p.produccion_huevos) }}</td>
                 <td>{{ num0(p.precio_dieta) }}</td>
-                <td>{% if p.precio_huevo is not none %}$ {{ num0(p.precio_huevo) }}{% endif %}</td>
+                <td class="tn-col-precio">{% if p.precio_huevo is not none %}$ {{ num0(p.precio_huevo) }}{% endif %}</td>
               </tr>
               {% else %}
               <tr>
