@@ -1,0 +1,192 @@
+/* ==========================================================================
+   COMPARADOR DE LOTES — piloto en Primera semana
+   ========================================================================== */
+
+.comparador-lotes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.comparador-barra {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--border, #dee2e6);
+  border-radius: 10px;
+  padding: 0.45rem 0.55rem;
+  flex: 0 0 auto;
+}
+
+.comparador-lote {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: #fbfcfd;
+  border: 1px solid var(--border, #dee2e6);
+  border-radius: 9px;
+  padding: 0.18rem 0.35rem;
+}
+
+.comparador-letra {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.66rem;
+  font-weight: 800;
+  flex: 0 0 auto;
+}
+
+.comparador-nombre { font-size: 0.76rem; font-weight: 700; }
+.comparador-select { width: 130px; font-size: 0.75rem; }
+
+.comparador-quitar {
+  border: 0;
+  background: transparent;
+  color: #98a2b3;
+  cursor: pointer;
+  padding: 0 0.15rem;
+  font-size: 0.85rem;
+  line-height: 1;
+}
+.comparador-quitar:hover { color: #b42318; }
+
+.comparador-acciones {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.comparador-cantidad {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--text-muted, #6c757d);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 0;
+}
+.comparador-cantidad .form-select { width: 64px; }
+
+.comparador-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--n, 2), minmax(0, 1fr));
+  gap: 0.6rem;
+  align-items: start;
+  min-height: 0;
+}
+
+.comparador-panel {
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--border, #dee2e6);
+  border-top: 3px solid var(--panel-color, #97271C);
+  border-radius: 12px;
+  overflow: hidden;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.comparador-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.6rem;
+  border-bottom: 1px solid var(--border, #dee2e6);
+  background: #fbfcfd;
+  flex: 0 0 auto;
+}
+
+.comparador-lote-nombre { font-weight: 800; font-size: 0.8rem; }
+.comparador-meta {
+  margin-left: auto;
+  font-size: 0.68rem;
+  color: var(--text-muted, #6c757d);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.comparador-panel .tabla-scroll {
+  border: 0 !important;
+  border-radius: 0;
+  border-bottom: 0 !important;
+}
+
+.comparador-vacio {
+  padding: 2rem 1rem;
+  text-align: center;
+  color: var(--text-muted, #6c757d);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 180px;
+}
+.comparador-vacio i { font-size: 1.4rem; }
+.comparador-vacio p { margin: 0; font-size: 0.8rem; }
+
+/* Columnas clave y "Más columnas" (solo dentro del comparador) */
+.comparador-lotes col.cmp-extra { visibility: collapse; }
+.comparador-lotes.mas-columnas col.cmp-extra { visibility: visible; }
+.comparador-lotes .tabla-cmp { min-width: 0 !important; }
+
+/* Solo lectura */
+.comparador-lotes input[readonly] { cursor: default; }
+.comparador-lotes input[readonly]:focus { box-shadow: none; }
+
+/* Fila resaltada en todos los paneles */
+.comparador-panel tbody tr.cmp-fila-hover td { background-color: #fff3cd !important; }
+
+/* Pantalla completa del comparador */
+#comparadorLotes:fullscreen,
+#comparadorLotes.cmp-fs-fallback {
+  width: 100vw;
+  height: 100vh;
+  padding: 0.8rem 1rem;
+  background: var(--surface, #ffffff);
+  overflow: hidden;
+}
+#comparadorLotes.cmp-fs-fallback {
+  position: fixed;
+  inset: 0;
+  z-index: 9990;
+}
+#comparadorLotes:fullscreen .comparador-grid,
+#comparadorLotes.cmp-fs-fallback .comparador-grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  align-items: stretch;
+}
+#comparadorLotes:fullscreen .comparador-panel,
+#comparadorLotes.cmp-fs-fallback .comparador-panel { min-height: 0; }
+#comparadorLotes:fullscreen .comparador-panel .tabla-scroll,
+#comparadorLotes.cmp-fs-fallback .comparador-panel .tabla-scroll {
+  height: calc(100vh - 190px) !important;
+  max-height: calc(100vh - 190px) !important;
+}
+
+@media (max-width: 900px) {
+  /* Los paneles se apilan y la página puede desplazarse */
+  .comparador-grid { grid-template-columns: 1fr; }
+  .comparador-acciones { margin-left: 0; }
+  .comparador-meta { display: none; }
+  .comparador-panel .tabla-scroll {
+    height: 55vh !important;
+    max-height: 55vh !important;
+  }
+}

@@ -297,6 +297,18 @@ html[data-bs-theme="dark"] .table-fixed input:focus {
 html[data-bs-theme="dark"] .table-fixed input.saved { background: #1d3a2a !important; color: #c9f3d9; }
 html[data-bs-theme="dark"] .table-fixed input.error { background: #3d1f22 !important; color: #ffc9cd; }
 
+/* Comparador de lotes */
+html[data-bs-theme="dark"] .comparador-barra,
+html[data-bs-theme="dark"] .comparador-panel {
+  background: var(--surface);
+  border-color: var(--border);
+}
+html[data-bs-theme="dark"] .comparador-lote { background: #232b34; border-color: var(--border); }
+html[data-bs-theme="dark"] .comparador-panel-head { background: #20272e; border-color: var(--border); }
+html[data-bs-theme="dark"] .comparador-panel tbody tr.cmp-fila-hover td { background-color: #3a3320 !important; }
+html[data-bs-theme="dark"] #comparadorLotes:fullscreen,
+html[data-bs-theme="dark"] #comparadorLotes.cmp-fs-fallback { background: var(--surface); }
+
 /* Botón para mostrar/ocultar la ficha del lote en los gráficos */
 html[data-bs-theme="dark"] .ps-toggle-franja {
   background: #232b34;
