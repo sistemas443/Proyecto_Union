@@ -159,13 +159,13 @@
 
   /* Altura fija de la primera fila para que la segunda quede pegada sin huecos */
   .tabla-scroll thead tr:nth-child(1) th {
-    height: 36px;
+    height: 30px;
     vertical-align: middle;
     line-height: 1.15;
   }
 
   .tabla-scroll thead tr:nth-child(2) th {
-    top: 36px;
+    top: 30px;
     line-height: 1.15;
   }
 
@@ -356,6 +356,11 @@
       title="Mostrar/ocultar información del lote">
       <i class='bx bx-chevron-down fs-5 icono-colapso'></i>
     </button>
+
+    <button class="btn btn-outline-secondary btn-sm js-tabla-fs" type="button"
+      title="Ver la tabla en pantalla completa">
+      <i class="fas fa-expand"></i> <span class="d-none d-sm-inline">Pantalla completa</span>
+    </button>
     {% endif %}
   </div>
 </div>
@@ -504,9 +509,9 @@
         <th rowspan="2" class="th-orange" style="position: sticky; top: 0; z-index: 10;">Agua</th>
       </tr>
       <tr>
-        <th class="th-sub" style="position: sticky; top: 36px; z-index: 10;">Días</th>
-        <th class="th-sub" style="position: sticky; top: 36px; z-index: 10;">Semana</th>
-        <th class="th-sub" style="position: sticky; top: 36px; z-index: 10;">Kilos</th>
+        <th class="th-sub" style="position: sticky; top: 30px; z-index: 10;">Días</th>
+        <th class="th-sub" style="position: sticky; top: 30px; z-index: 10;">Semana</th>
+        <th class="th-sub" style="position: sticky; top: 30px; z-index: 10;">Kilos</th>
       </tr>
     </thead>
 

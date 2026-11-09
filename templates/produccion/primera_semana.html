@@ -145,6 +145,10 @@
     box-shadow: inset 0 -1px 0 #1a202c, 0 1px 0 #1a202c !important;
   }
 
+  /* Encabezado compacto: la segunda fila se pega a la primera */
+  .tabla-scroll thead tr:nth-child(1) th { height: 30px; }
+  .tabla-scroll thead tr:nth-child(2) th { top: 30px; }
+
   /* Subcabeceras (segunda fila) */
   .tabla-scroll thead tr:nth-child(2) th.th-sub {
     background-color: #e9edf1 !important;
@@ -233,6 +237,11 @@
       data-bs-target="#collapseInfoGeneral" aria-expanded="false" aria-controls="collapseInfoGeneral"
       title="Mostrar/ocultar información del lote">
       <i class='bx bx-chevron-down fs-5 icono-colapso'></i>
+    </button>
+
+    <button class="btn btn-outline-secondary btn-sm js-tabla-fs" type="button"
+      title="Ver la tabla en pantalla completa">
+      <i class="fas fa-expand"></i> <span class="d-none d-sm-inline">Pantalla completa</span>
     </button>
     {% endif %}
   </div>

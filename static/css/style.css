@@ -216,3 +216,61 @@ nav.navbar { padding-top: 0.25rem; padding-bottom: 0.25rem; }
 nav.navbar .navbar-brand img { height: 28px !important; }
 nav.navbar .navbar-brand span { font-size: 0.8rem !important; }
 nav.navbar .nav-link { font-size: 0.85rem; padding-top: 0.25rem; padding-bottom: 0.25rem; }
+
+/* ==========================================================================
+   TABLAS DE PRODUCCIÓN (1era semana, levante, diario, semanal, clasificación)
+   Versión compacta: encabezados y datos más pequeños para ver más contenido.
+   ========================================================================== */
+.table-fixed { font-size: 0.72rem; }
+.table-fixed th,
+.table-fixed td { padding: 0.12rem 0.2rem; }
+.table-fixed thead th { font-size: 0.6rem !important; line-height: 1.1; }
+.table-fixed thead th.th-sub { font-size: 0.55rem !important; }
+.table-fixed thead th[colspan] { font-size: 0.64rem !important; }
+.table-fixed input {
+  min-height: 22px;
+  font-size: 0.72rem !important;
+  padding: 0 0.2rem;
+}
+
+/* Pantalla completa de las tablas de Producción */
+.tabla-scroll:fullscreen,
+.tabla-scroll:-webkit-full-screen,
+.tabla-scroll.tabla-fs-fallback {
+  width: 100vw;
+  height: 100vh;
+  max-height: 100vh;
+  padding: 0;
+  background: var(--surface, #ffffff);
+  border: 0 !important;
+  border-radius: 0;
+  box-shadow: none;
+}
+.tabla-scroll.tabla-fs-fallback {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+}
+body.tabla-fs-abierta { overflow: hidden; }
+
+.tabla-fs-salir {
+  position: fixed;
+  top: 12px;
+  right: 16px;
+  z-index: 10000;
+  display: none;
+  align-items: center;
+  gap: 0.35rem;
+  background: #97271C;
+  color: #ffffff;
+  border: 0;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
+}
+.tabla-fs-salir:hover,
+.tabla-fs-salir:focus {
+  background: #7a1f16;
+  color: #ffffff;
+}
+.tabla-scroll:fullscreen .tabla-fs-salir,
+.tabla-scroll:-webkit-full-screen .tabla-fs-salir,
+.tabla-scroll.tabla-fs-fallback .tabla-fs-salir { display: inline-flex; }
