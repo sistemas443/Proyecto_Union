@@ -382,11 +382,11 @@
                             <td class="col-insumos">{{ formula['resumen_insumos_html'] | safe }}</td>
 
                             <!-- 4. TOTAL PESO -->
-                            <td class="col-peso px-3">{{ "{:,.2f}".format(formula['total_peso'] | default(0) | float) }} kg</td>
+                            <td class="col-peso px-3">{{ "{:,.0f}".format(formula['total_peso'] | default(0) | float) }} kg</td>
 
                             <!-- 5. COSTO BACHE -->
                             <td class="col-costo px-3">
-                                $ {{ "{:,.2f}".format(formula['costo_bache'] | default(0) | float) }}
+                                $ {{ "{:,.0f}".format(formula['costo_bache'] | default(0) | float) }}
                             </td>
 
                             <!-- 6. ACCIONES -->
