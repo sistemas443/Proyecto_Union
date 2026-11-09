@@ -119,8 +119,11 @@
   }
   .tn-nota-critica { color: #1f4e79; font-weight: 700; margin-left: .35rem; }
   .tn-vacio { padding: 3rem 1rem; text-align: center; color: var(--text-muted); }
+  .tn-th-obs, .tn-col-obs {
+    width: 380px; min-width: 380px; max-width: 380px;
+  }
   .tn-col-obs {
-    max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     position: relative; padding-right: 1.55rem !important;
   }
   .tn-obs-btn {
@@ -132,6 +135,15 @@
   }
   .tn-obs-btn:hover { background: #eef3fa; color: #1f4e79; }
   .tn-obs-full { white-space: pre-wrap; font-size: .85rem; line-height: 1.5; color: var(--text-primary); }
+  textarea.tn-obs-full {
+    display: block; width: 100%; min-height: 170px; resize: vertical;
+    border: 1px solid var(--border); border-radius: 8px; padding: .6rem .75rem;
+    background: #fff; outline: none;
+  }
+  textarea.tn-obs-full:focus {
+    border-color: #97271C; box-shadow: 0 0 0 3px rgba(151, 39, 28, .12);
+  }
+  .tn-obs-ayuda { font-size: .7rem; color: var(--text-muted); margin-right: auto; }
   .tn-card:fullscreen .modal,
   .tn-card:-webkit-full-screen .modal,
   .tn-card.tn-fs-fallback .modal { background: rgba(15, 23, 42, .45); }
@@ -893,7 +905,7 @@
                 <th class="{% if clave in ('tabla', 'tabla_min', 'tabla_sup') %}tn-th-guia{% endif %}{% if clave == 'pro' %} tn-th-pro{% endif %}">{{ etiqueta_sub }}</th>
                 {% endfor %}
                 {% endfor %}
-                <th>Observaciones</th>
+                <th class="tn-th-obs">Observaciones</th>
               </tr>
             </thead>
             <tbody>
@@ -966,9 +978,19 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
               </div>
               <div class="modal-body">
-                <div id="tnObsTexto" class="tn-obs-full"></div>
+                <textarea id="tnObsTexto" class="tn-obs-full" rows="8" maxlength="1000"
+                  aria-label="Texto de la observación"
+                  {% if not puede_editar %}readonly{% endif %}></textarea>
               </div>
               <div class="modal-footer">
+                <span class="tn-obs-ayuda">
+                  {% if puede_editar %}Ctrl+Enter guarda · máximo 1.000 caracteres{% else %}Modo lectura{% endif %}
+                </span>
+                {% if puede_editar %}
+                <button type="button" class="btn btn-primary btn-sm" id="tnObsGuardar">
+                  <i class="fas fa-floppy-disk me-1"></i> Guardar
+                </button>
+                {% endif %}
                 <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
               </div>
             </div>
@@ -1169,6 +1191,8 @@
         if (e.target.closest && e.target.closest('.tn-obs-btn')) e.preventDefault();
       });
 
+      let celdaObsActual = null;
+
       document.addEventListener('click', function (e) {
         const boton = e.target.closest ? e.target.closest('.tn-obs-btn') : null;
         if (!boton) return;
@@ -1176,10 +1200,62 @@
         e.stopPropagation();
         const modalEl = document.getElementById('modalObsTN');
         if (!modalEl || !window.bootstrap) return;
-        document.getElementById('tnObsTexto').textContent = boton.dataset.obs || '';
+        celdaObsActual = boton.closest('td');
+        const editor = document.getElementById('tnObsTexto');
+        editor.value = boton.dataset.obs || '';
         document.getElementById('tnObsSemana').textContent = boton.dataset.semana || '';
+        modalEl.addEventListener('shown.bs.modal', function () {
+          editor.focus();
+          editor.setSelectionRange(editor.value.length, editor.value.length);
+        }, { once: true });
         bootstrap.Modal.getOrCreateInstance(modalEl).show();
       });
+
+      async function guardarObservacionModal() {
+        if (!celdaObsActual) return;
+        const modalEl = document.getElementById('modalObsTN');
+        const editor = document.getElementById('tnObsTexto');
+        const botonGuardar = document.getElementById('tnObsGuardar');
+        const fila = celdaObsActual.closest('tr');
+        const texto = editor.value.trim();
+        if (botonGuardar) botonGuardar.disabled = true;
+        try {
+          const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              lote: lote,
+              semana: Number(fila.dataset.semana),
+              campo: 'observaciones',
+              valor: texto
+            })
+          });
+          const data = await res.json();
+          if (data.status !== 'ok') {
+            alert(data.msg || 'No se pudo guardar la observación.');
+            return;
+          }
+          pintarObs(celdaObsActual, data.valores.observaciones || '');
+          if (modalEl) bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+        } catch (e) {
+          alert('Error de conexión al guardar la observación.');
+        } finally {
+          if (botonGuardar) botonGuardar.disabled = false;
+        }
+      }
+
+      (function () {
+        const botonGuardar = document.getElementById('tnObsGuardar');
+        const editor = document.getElementById('tnObsTexto');
+        if (!botonGuardar || !editor) return;
+        botonGuardar.addEventListener('click', guardarObservacionModal);
+        editor.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+            e.preventDefault();
+            guardarObservacionModal();
+          }
+        });
+      })();
     })();
   </script>
 
