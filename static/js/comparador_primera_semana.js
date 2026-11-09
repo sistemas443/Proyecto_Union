@@ -89,7 +89,14 @@
   }
 
   function pintarBotonFs() {
-    if (btnFs) btnFs.textContent = estaCompleta() ? 'Salir' : 'Pantalla completa';
+    if (!btnFs) return;
+    if (estaCompleta()) {
+      btnFs.innerHTML = '<i class="fas fa-compress me-1"></i> <span>Salir de pantalla completa</span>';
+      btnFs.title = 'Salir de pantalla completa';
+    } else {
+      btnFs.innerHTML = '<i class="fas fa-expand me-1"></i> <span>Pantalla completa</span>';
+      btnFs.title = 'Ver la comparación en pantalla completa';
+    }
   }
 
   if (btnFs) {

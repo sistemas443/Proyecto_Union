@@ -88,6 +88,10 @@
   min-height: 0;
 }
 
+/* Con 4 lotes: dos arriba y dos abajo para aprovechar el ancho */
+.comparador-grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.comparador-grid-4 .tabla-scroll { min-height: 0 !important; }
+
 .comparador-panel {
   background: var(--surface, #ffffff);
   border: 1px solid var(--border, #dee2e6);

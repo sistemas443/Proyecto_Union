@@ -336,12 +336,18 @@
         </select>
       </label>
       <button type="button" class="btn btn-outline-secondary btn-sm" id="cmpMasColumnas">M&aacute;s columnas</button>
-      <button type="button" class="btn btn-outline-secondary btn-sm" id="cmpPantalla">Pantalla completa</button>
-      <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('primera_semana.primera_semana') }}">Salir</a>
+      <button type="button" class="btn btn-outline-secondary btn-sm" id="cmpPantalla"
+        title="Ver la comparación en pantalla completa">
+        <i class="fas fa-expand me-1"></i> <span>Pantalla completa</span>
+      </button>
+      <a class="btn btn-outline-danger btn-sm" href="{{ url_for('primera_semana.primera_semana') }}"
+        title="Cerrar la comparación y volver al lote actual">
+        <i class="fas fa-xmark me-1"></i> <span>Salir de comparación</span>
+      </a>
     </div>
   </div>
 
-  <div class="comparador-grid" style="--n: {{ cantidad }}">
+  <div class="comparador-grid comparador-grid-{{ cantidad }}" style="--n: {{ cantidad }}">
     {% for p in paneles %}
     <article class="comparador-panel" data-panel="{{ loop.index0 }}" style="--panel-color: {{ p.color }}">
       <header class="comparador-panel-head">
@@ -533,8 +539,34 @@
     const tablas = document.querySelectorAll('.tabla-scroll');
     if (!tablas.length) return;
 
+    // Con 4 lotes el comparador se ve en 2 filas: se calcula la altura
+    // para que las dos filas quepan en la pantalla.
+    const gridCuatro = document.querySelector('.comparador-grid-4');
+    const tablasCuatro = gridCuatro
+      ? Array.from(gridCuatro.querySelectorAll('.tabla-scroll'))
+      : [];
+
+    function ajustarCuatro() {
+      if (!gridCuatro || !tablasCuatro.length) return;
+      const rectGrid = gridCuatro.getBoundingClientRect();
+      const estilo = window.getComputedStyle(gridCuatro);
+      const separacion = parseFloat(estilo.rowGap) || 10;
+      const cabecera = gridCuatro.querySelector('.comparador-panel-head');
+      const altoCabecera = cabecera ? cabecera.getBoundingClientRect().height : 34;
+      const disponible = window.innerHeight - rectGrid.top - 12;
+      const altura = Math.max(150, Math.floor((disponible - separacion) / 2) - altoCabecera);
+      tablasCuatro.forEach(function (tabla) {
+        if (tabla.style.height !== altura + "px") {
+          tabla.style.height = altura + "px";
+          tabla.style.maxHeight = altura + "px";
+        }
+      });
+    }
+
     const observer = new ResizeObserver(() => {
+      ajustarCuatro();
       tablas.forEach(function (tabla) {
+        if (tablasCuatro.indexOf(tabla) !== -1) return;
         const rect = tabla.getBoundingClientRect();
         const pixelesLibres = window.innerHeight - rect.top;
         const alturaPerfecta = Math.max(220, pixelesLibres - 10);
@@ -546,6 +578,8 @@
       });
     });
 
+    ajustarCuatro();
+    window.addEventListener('resize', ajustarCuatro);
     observer.observe(document.body);
   });
 
