@@ -141,6 +141,9 @@ def update_semanal_field(id_semanal: int, columna: str, valor: str,
             'peso_ave_tab', 'peso_tab', 'ganancia_ave', 'conv_sem_tab'
         ]
 
+        # El valor anterior se usa en la auditoría. Debe existir para todas las columnas.
+        valor_anterior = None
+
         if id_lote and (columna in columnas_matematicas):
             # Obtiene la cantidad inicial de aves para hacer los cálculos de saldo
             res_aves = model.get_aves_iniciales(id_lote)
@@ -170,7 +173,7 @@ def update_semanal_field(id_semanal: int, columna: str, valor: str,
             valor_anterior = None
             try:
                 cur.execute("SAVEPOINT sp_select_previo")
-                cur.execute('SELECT "{}" FROM semanal_levante WHERE id = %s'.format(columna), (id_semanal,))
+                cur.execute('SELECT "{}" FROM semanal_levante WHERE id = %s'.format(col_db), (id_semanal,))
                 row = cur.fetchone()
                 valor_anterior = row[0] if row else None
                 cur.execute("RELEASE SAVEPOINT sp_select_previo")
@@ -248,7 +251,7 @@ def update_semanal_field(id_semanal: int, columna: str, valor: str,
                 if o_sem == 0:
                     cur.execute("SELECT COALESCE(SUM(otros), 0) FROM data_diario WHERE id_lote = %s AND dias BETWEEN %s AND %s", (id_lote, dia_inicio, dia_fin))
                     res = cur.fetchone()
-                    if res and res[0] > 0: o_sem = to_float_safe(res[0])
+                    if res and res[0] != 0: o_sem = to_float_safe(res[0])
 
                 # Actualiza variables acumuladoras
                 acum_kilos += c_k_real
@@ -258,7 +261,7 @@ def update_semanal_field(id_semanal: int, columna: str, valor: str,
                 acum_gr_ave_tab_exacto += (c_tab * 7.0)
 
                 # Cálculos de inventario de aves (mortalidad y saldos)
-                tiene_datos = (c_k_real > 0 or m_sem > 0 or s_sem > 0 or o_sem > 0 or c_tab > 0 or peso_real_val > 0)
+                tiene_datos = (c_k_real > 0 or m_sem > 0 or s_sem > 0 or o_sem != 0 or c_tab > 0 or peso_real_val > 0)
                 acu_val = acum_mort + acum_sel + acum_otros
                 acu_out = int(round(acu_val)) if tiene_datos else None
                 saldo_val = int(round(aves_iniciales - acu_val)) if (aves_iniciales > 0 and tiene_datos) else 0
@@ -356,7 +359,23 @@ def update_semanal_field(id_semanal: int, columna: str, valor: str,
                     WHERE id = %s                      
                 """, valores_update)
         else:
-            # Si no es una columna matemática, simplemente la guarda de forma aislada
+            # Si no es una columna matemática, simplemente la guarda de forma aislada.
+            # Antes se consulta el valor anterior para que la auditoría no falle.
+            col_db = columna
+            if columna == 'mort_sem': col_db = 'mort'
+            elif columna == 'mort_select_sem': col_db = 'sel'
+            elif columna == 'mort_venta': col_db = 'otros'
+            elif columna == 'mort_tab': col_db = 'porc_tab'
+            elif columna == 'peso_ave_real': col_db = 'peso_real'
+            elif columna == 'peso_ave_tab': col_db = 'peso_tab'
+            elif columna == 'cons_agua_real': col_db = 'agua_real'
+            elif columna == 'observaciones_lev': col_db = 'observaciones'
+            try:
+                cur.execute('SELECT "{}" FROM semanal_levante WHERE id = %s'.format(col_db), (id_semanal,))
+                row = cur.fetchone()
+                valor_anterior = row[0] if row else None
+            except Exception:
+                valor_anterior = None
             model.guardar_dato_simple(id_semanal, columna, valor_db, cur)
 
         # Registrar en auditoría
@@ -507,7 +526,7 @@ def recalcular_lote_semanal_levante_directo(id_lote, cur):
 
         cur.execute("SELECT COALESCE(SUM(otros), 0) FROM data_diario WHERE id_lote = %s AND dias BETWEEN %s AND %s", (id_lote, dia_inicio, dia_fin))
         res = cur.fetchone()
-        o_sem = to_float_safe(res[0]) if (res and res[0] > 0) else o_sem_manual
+        o_sem = to_float_safe(res[0]) if (res and res[0] != 0) else o_sem_manual
 
         # Continúa el flujo matemático sumando a los acumuladores para usarse en la siguiente semana
         acum_kilos += c_k_real
@@ -518,7 +537,7 @@ def recalcular_lote_semanal_levante_directo(id_lote, cur):
         acum_gr_ave_tab_exacto += (c_tab * 7.0)
 
         # Re-calcula la viabilidad del inventario de animales
-        tiene_datos = (c_k_real > 0 or m_sem > 0 or s_sem > 0 or o_sem > 0 or c_tab > 0 or peso_real_val > 0)
+        tiene_datos = (c_k_real > 0 or m_sem > 0 or s_sem > 0 or o_sem != 0 or c_tab > 0 or peso_real_val > 0)
         acu_val = acum_mort + acum_sel + acum_otros
         acu_out = int(round(acu_val)) if tiene_datos else None
         saldo_val = int(round(aves_iniciales - acu_val)) if (aves_iniciales > 0 and tiene_datos) else 0

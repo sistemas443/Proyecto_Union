@@ -280,6 +280,17 @@ def update_registro_diario_field(id_reg: int, columna: str, valor: str) -> tuple
                 try:
                     cur_sync = conn.cursor()
                     recalcular_lote_semanal_completo_directo(id_lote, cur_sync)
+                    try:
+                        cur_sync.execute("SAVEPOINT sp_levante")
+                        from models.semanal_levante.services import recalcular_lote_semanal_levante_directo
+                        recalcular_lote_semanal_levante_directo(id_lote, cur_sync)
+                        cur_sync.execute("RELEASE SAVEPOINT sp_levante")
+                    except Exception as ex_lev:
+                        print(f"[DISPARADOR ADVERTENCIA] No se actualizó levante: {str(ex_lev)}")
+                        try:
+                            cur_sync.execute("ROLLBACK TO SAVEPOINT sp_levante")
+                        except Exception:
+                            pass
                     cur_sync.close()
                 except Exception as ex_motor:
                     print(f"[DISPARADOR ADVERTENCIA] No se actualizo semanal: {str(ex_motor)}")
@@ -417,6 +428,22 @@ def procesar_excel_diario(archivo, lote_nombre, usuario_id=None, usuario_nombre=
         """
         
         psycopg2.extras.execute_values(cur, query_insert, valores_a_insertar)
+
+        # Refrescar semanal levante con la mortalidad, selección y consumo recién cargados.
+        cur_sync = conn.cursor()
+        try:
+            cur_sync.execute("SAVEPOINT sp_levante")
+            from models.semanal_levante.services import recalcular_lote_semanal_levante_directo
+            recalcular_lote_semanal_levante_directo(id_lote, cur_sync)
+            cur_sync.execute("RELEASE SAVEPOINT sp_levante")
+        except Exception as e:
+            print(f"[AVISO] No se pudo recalcular semanal levante: {e}")
+            try:
+                cur_sync.execute("ROLLBACK TO SAVEPOINT sp_levante")
+            except Exception:
+                pass
+        finally:
+            cur_sync.close()
 
         # Registro en auditoría (1 solo registro por carga)
         from models.auditoria.services import registrar_cambio

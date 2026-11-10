@@ -115,7 +115,7 @@
           class="form-control form-control-sm border-0 bg-transparent text-center celda-porc_mort_sem" readonly></td>
       <td><input type="text" value="{{ f['porc_mort_acum']|formato_decimal(2) }}"
           class="form-control form-control-sm border-0 bg-transparent text-center celda-porc_mort_acum" readonly></td>
-      <td><input type="text" value="{{ f['saldo_aves']|miles(0) if f['saldo_aves'] is not none and f['saldo_aves'] != '' else '' }}"
+      <td><input type="text" title="Aves iniciales menos la mortalidad, selección y ventas acumuladas" value="{{ f['saldo_aves']|miles(0) if f['saldo_aves'] is not none and f['saldo_aves'] != '' else '' }}"
           class="form-control form-control-sm border-0 bg-transparent text-center fw-bold celda-saldo_aves" readonly>
       </td>
 
