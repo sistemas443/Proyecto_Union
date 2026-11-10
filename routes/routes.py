@@ -800,7 +800,12 @@ def suplantar_usuario(id):
     conn = get_db_connection()
     cur = conn.cursor()
     try:
-        cur.execute("SELECT id, nombre_completo, activo FROM usuarios WHERE id = %s", (id,))
+        cur.execute("""
+            SELECT u.id, u.nombre_completo, u.activo, r.nombre, u.foto_perfil
+            FROM usuarios u
+            LEFT JOIN roles r ON r.id = u.rol_id
+            WHERE u.id = %s
+        """, (id,))
         usuario = cur.fetchone()
 
         if not usuario: return jsonify({'status': 'error', 'msg': 'Usuario no encontrado.'}), 404
@@ -810,11 +815,13 @@ def suplantar_usuario(id):
         session['admin_id_real'] = session['user_id']
         session['admin_nombre_real'] = session['user_nombre']
         session['admin_rol_real'] = session['user_rol']
+        session['admin_foto_real'] = session.get('user_foto', '')
 
-        # Aplicamos la máscara (Forzando el rol a 'Lector' por máxima seguridad)
+        # Aplicamos la identidad y el rol reales del usuario suplantado
         session['user_id'] = usuario[0]
         session['user_nombre'] = usuario[1]
-        session['user_rol'] = 'Lector'
+        session['user_rol'] = usuario[3] or 'Lector'
+        session['user_foto'] = usuario[4] or ''
         session['is_impersonating'] = True
 
         return jsonify({'status': 'ok'})
@@ -833,6 +840,7 @@ def revertir_suplantacion():
         session['user_id'] = session.pop('admin_id_real')
         session['user_nombre'] = session.pop('admin_nombre_real')
         session['user_rol'] = session.pop('admin_rol_real')
+        session['user_foto'] = session.pop('admin_foto_real', '')
         session.pop('is_impersonating')
         flash("Has vuelto a tu cuenta de Superadministrador.", "success")
     return redirect(url_for('main.gestion_usuarios'))

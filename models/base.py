@@ -275,6 +275,65 @@ def to_float_safe(val):
         return 0.0
 
 
+def a_numero(valor):
+    """Convierte a float aceptando coma decimal; devuelve None si no es numérico."""
+    if valor is None or str(valor).strip() == '':
+        return None
+    try:
+        return float(str(valor).strip().replace(',', '.'))
+    except (TypeError, ValueError):
+        return None
+
+
+def redondear(valor, decimales=2):
+    """Redondea un valor numérico; conserva None para celdas vacías."""
+    numero = a_numero(valor)
+    return None if numero is None else round(numero, decimales)
+
+
+def formatear_decimal(valor, decimales=2):
+    """Devuelve el número como texto con los decimales fijos; None si está vacío."""
+    numero = a_numero(valor)
+    return None if numero is None else f'{numero:.{decimales}f}'
+
+
+def respaldar_tabla_lote(tabla, id_lote):
+    """Guarda un CSV con las filas actuales del lote antes de reemplazarlas.
+
+    Se usa antes de los borrados masivos de las cargas de Excel. Si el respaldo
+    falla no interrumpe la carga: solo deja el aviso en consola.
+    """
+    import csv
+    from datetime import datetime
+
+    conn = None
+    cur = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute('SELECT * FROM "%s" WHERE id_lote = %%s' % tabla, (id_lote,))
+        filas = cur.fetchall()
+        columnas = [desc[0] for desc in cur.description]
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        carpeta = os.path.join(base_dir, 'respaldos')
+        os.makedirs(carpeta, exist_ok=True)
+        nombre = f'{tabla}_{id_lote}_{datetime.now():%Y%m%d_%H%M%S}.csv'
+        ruta = os.path.join(carpeta, nombre)
+        with open(ruta, 'w', newline='', encoding='utf-8') as archivo:
+            escritor = csv.writer(archivo)
+            escritor.writerow(columnas)
+            escritor.writerows(filas)
+        return ruta
+    except Exception as e:
+        print(f'[RESPALDO] No se pudo respaldar {tabla} del lote {id_lote}: {e}')
+        return None
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
+
+
 # Traducción de errores técnicos a texto que el usuario entiende.
 # Cada entrada es (patrones en minúsculas, mensaje amigable).
 _TRADUCCIONES_ERRORES = (

@@ -253,7 +253,7 @@ def update_registro_diario_field(id_reg: int, columna: str, valor: str) -> tuple
                     if int(f_id) == int(id_reg):
                         campos_diarios_actualizados = {
                             'produccion':          int(prod),
-                            'consumo_agua':        float(agua),
+                            'consumo_agua':        redondear(agua, 2),
                             'saldo_aves':          int(round(saldo_actual)),
                             'consumo_gr_a_d':      f"{real_gr_ave_exacto:.1f}" if real_gr_ave_exacto > 0 else '0.0',
                             'percent_diario_prod': f"{porc_prod_exacto:.1f}" if porc_prod_exacto > 0 else '0.0',
@@ -311,7 +311,7 @@ import io
 import pandas as pd
 import psycopg2.extras
 import numpy as np
-from models.base import get_db_connection
+from models.base import get_db_connection, redondear, respaldar_tabla_lote
 
 def procesar_excel_diario(archivo, lote_nombre, usuario_id=None, usuario_nombre=None):
     conn = get_db_connection()
@@ -370,7 +370,7 @@ def procesar_excel_diario(archivo, lote_nombre, usuario_id=None, usuario_nombre=
                 dias_valor,                                                           
                 semana_calculada, # Usamos el cálculo en lugar de leer el Excel directamente           
                 fila[3], fila[4], fila[5], fila[6], fila[7], fila[8], 
-                fila[9], fila[10], fila[11], fila[12], fila[13], fila[14], 
+                fila[9], fila[10], fila[11], fila[12], fila[13], redondear(fila[14], 2),
                 id_lote,
                 None, None, None, None, None, None, None, None, None, None, None
             )
@@ -400,6 +400,7 @@ def procesar_excel_diario(archivo, lote_nombre, usuario_id=None, usuario_nombre=
                            "No se modificó la información cargada.")
 
         # Barrido: se borran TODOS los registros previos del lote antes de insertar el archivo
+        respaldar_tabla_lote('data_diario', id_lote)
         cur.execute("DELETE FROM data_diario WHERE id_lote = %s", (id_lote,))
 
         # 4. Inserción Masiva

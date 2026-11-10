@@ -523,7 +523,7 @@
     style="position: fixed; bottom: 25px; left: 50%; transform: translateX(-50%); z-index: 1050; background-color: #212529; color: #ffffff; border: 2px solid #97271C;">
     <div class="text-white fw-bold d-flex align-items-center" style="font-size: 0.95rem;">
       <i class='bx bx-show fs-4 me-2 text-warning'></i>
-      <span class="me-3">Navegando como <span class="text-warning">{{ session.get('user_nombre') }}</span> (Solo Lectura)</span>
+      <span class="me-3">Navegando como <span class="text-warning">{{ session.get('user_nombre') }}</span> · Rol: {{ session.get('user_rol') }}</span>
     </div>
     <a href="{{ url_for('main.revertir_suplantacion') }}"
       class="btn btn-sm rounded-pill fw-bold px-3 shadow-sm border-0" style="background-color: #97271C; color: white;">

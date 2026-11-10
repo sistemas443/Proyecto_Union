@@ -1,7 +1,8 @@
 # models/primera_semana/services.py
 from datetime import datetime, timedelta, date
 import traceback
-from models.base import get_db_connection, parse_empty, to_float_safe
+from models.base import (get_db_connection, parse_empty, to_float_safe,
+                         redondear, a_numero)
 from models.cabecera.model import fetch_cabecera_by_lote
 from models.primera_semana.schemas import COLUMNAS_PERMITIDAS
 
@@ -532,6 +533,16 @@ def get_data_grafico_primera_semana(lote_nombre):
 
     return datos
 
+DECIMALES_PRIMERA_SEMANA = {
+    'consumo_kg': 2,
+    'peso_real': 2,
+    'unif_10_menos': 1,
+    'porc_uniformidad': 2,
+    'unif_10_mas': 1,
+    'coef_variacion': 2,
+}
+
+
 def procesar_excel_primera_semana(archivo_excel, lote_nombre, usuario_id=None, usuario_nombre=None):
     """
     Procesa un archivo Excel subido por el usuario para el módulo de Primera Semana.
@@ -648,6 +659,8 @@ def procesar_excel_primera_semana(archivo_excel, lote_nombre, usuario_id=None, u
         conn = get_db_connection()
         cur = conn.cursor()
         filas_actualizadas = 0
+        semanas_vistas = set()
+        errores = []
 
         def extraer_valor(v):
             if pd.isna(v): return None
@@ -664,6 +677,10 @@ def procesar_excel_primera_semana(archivo_excel, lote_nombre, usuario_id=None, u
 
             if val_semana not in ["0", "0/1", "0/2", "0/3", "0/4", "0/5", "0/6", "0/7"]:
                 continue
+            if val_semana in semanas_vistas:
+                errores.append(val_semana)
+                continue
+            semanas_vistas.add(val_semana)
 
             campos_a_actualizar = []
             valores = []
@@ -702,8 +719,20 @@ def procesar_excel_primera_semana(archivo_excel, lote_nombre, usuario_id=None, u
                             columnas_ya_procesadas.add(col_db)
                         else:
                             try:
+                                numero = a_numero(v)
+                                if numero is None:
+                                    continue
+                                if col_db in ('unif_10_menos', 'porc_uniformidad',
+                                              'unif_10_mas', 'coef_variacion'):
+                                    if numero < 0 or numero > 100:
+                                        errores.append(
+                                            f'{val_semana}: {col_db} fuera de rango ({numero})')
+                                        continue
                                 campos_a_actualizar.append(f'"{col_db}" = %s')
-                                valores.append(to_float_safe(v) or 0.0)
+                                valores.append(round(
+                                    numero,
+                                    DECIMALES_PRIMERA_SEMANA.get(col_db, 2)
+                                ))
                                 columnas_ya_procesadas.add(col_db)
                             except: pass
 
@@ -713,6 +742,13 @@ def procesar_excel_primera_semana(archivo_excel, lote_nombre, usuario_id=None, u
                 cur.execute(query, valores)
                 # rowcount: solo cuenta los días que de verdad se actualizaron
                 filas_actualizadas += cur.rowcount
+
+        if errores:
+            conn.rollback()
+            cur.close()
+            conn.close()
+            return False, ("El archivo tiene errores y no se cargó: "
+                           + "; ".join(errores[:5]))
 
         # 7. Disparar el recálculo matemático
         id_lote = cabecera.get('id')

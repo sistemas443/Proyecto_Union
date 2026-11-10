@@ -172,6 +172,30 @@ def create_app():
         return texto.replace(',', 'X').replace('.', ',').replace('X', '.')
 
     app.jinja_env.filters['numero_lat'] = numero_lat
+
+    def formato_decimal(valor, decimales=2):
+        """Devuelve el número con decimales fijos y punto decimal (para inputs)."""
+        if valor is None or str(valor).strip() == '':
+            return ''
+        try:
+            numero = float(str(valor).strip().replace(',', '.'))
+            return f'{numero:.{int(decimales)}f}'
+        except (TypeError, ValueError):
+            return ''
+
+    app.jinja_env.filters['formato_decimal'] = formato_decimal
+
+    def miles(valor, decimales=0):
+        """Formatea un número con separador de miles y decimales fijos."""
+        if valor is None or str(valor).strip() == '':
+            return ''
+        try:
+            numero = float(str(valor).strip().replace(',', ''))
+            return f'{numero:,.{int(decimales)}f}'
+        except (TypeError, ValueError):
+            return ''
+
+    app.jinja_env.filters['miles'] = miles
     # ---------------------------------------
 
     app.config.from_object(Config)

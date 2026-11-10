@@ -1,7 +1,8 @@
 # models/semanal/services.py
 
 from datetime import datetime, timedelta, date
-from models.base import get_db_connection, parse_empty, to_float_safe
+from models.base import (get_db_connection, parse_empty, to_float_safe,
+                         formatear_decimal, redondear, respaldar_tabla_lote)
 from models.semanal.schemas import COLUMNAS_PERMITIDAS
 from models.semanal import model
 from models.cabecera.model import fetch_cabecera_by_lote
@@ -1177,6 +1178,77 @@ def clean_num(val):
         # Si es un texto tipo "Producción no iniciada", "-", "N/A", etc.
         return None
 
+
+# Orden exacto de las columnas del INSERT de bd_vargas.
+COLUMNAS_BD_VARGAS = [
+    'lote', 'id_lote', 'fecha_fin_sem', 'sem_prod', 'sem_graf',
+    'prod_huevo_sem', 'prod_huevo_tab', 'prod_huevo_real',
+    'h_av_aloj_tab', 'h_av_aloj_real',
+    'consumo_alim_kg', 'consumo_alim_tab', 'consumo_alim_real', 'consumo_alim_k_a_a',
+    'conv_sem_tab', 'conv_acum_tab', 'conv_sem_real', 'conv_acum_real',
+    'mort_sem', 'mort_select_sem', 'mort_venta',
+    'percent_mort_sem', 'percent_mort_acum', 'percent_select_sem',
+    'percent_mort_and_select_acum',
+    'mort_tab', 'peso_ave_real', 'peso_ave_tab', 'unif', 'cv',
+    'peso_huevo_real', 'peso_huevo_tab', 'saldo_ave', 'observaciones',
+    'masa_huevo_real_sem', 'masa_huevo_tab_sem', 'masa_huevo_real_acum',
+    'masa_huevo_tab_acum', 'cons_agua_real', 'cons_agua_tab',
+    'huevo_acum', 'conv_kg_doc_acum', 'kg_sem', 'kg_acum', 'salidas_acum',
+    'porcentaje_prod_tb', 'porcentaje_tb', 'porcentaje_tx', 'porcentaje_rx',
+    'haa_tab', 'gr_tb_graf', 'porcentaje_prod_real', 'haa_real',
+    'gr_ave_dia_graf', 'porcentaje_mort_acum_graf', 'gr_por_huevo',
+    'precio_dieta', 'costo_huevo', 'prod_tab_unidad_huevo',
+    'consumo_kg_tab_graf', 'huevos_acum_tab', 'consumo_acum_tab',
+    'conv_acum_tab_1', 'conv_acum_tab_2', 'porcentaje_huevo_nc',
+    'total_huevo_real', 'cant_unidades_perdida', 'suma_saldo_aves',
+]
+
+# Columnas de texto de bd_vargas que deben guardarse con decimales fijos.
+DECIMALES_TEXTO_BD_VARGAS = {
+    'prod_huevo_tab': 2, 'prod_huevo_real': 2,
+    'h_av_aloj_tab': 2, 'h_av_aloj_real': 2,
+    'consumo_alim_real': 2, 'consumo_alim_k_a_a': 3,
+    'conv_sem_tab': 2, 'conv_acum_tab': 2,
+    'conv_sem_real': 3, 'conv_acum_real': 3,
+    'percent_mort_sem': 2, 'percent_mort_acum': 2,
+    'percent_mort_and_select_acum': 2, 'mort_tab': 2,
+    'peso_ave_real': 2, 'unif': 1, 'cv': 2,
+    'peso_huevo_real': 2, 'peso_huevo_tab': 2,
+    'masa_huevo_real_sem': 2, 'masa_huevo_real_acum': 2,
+    'masa_huevo_tab_acum': 2, 'cons_agua_real': 2,
+}
+
+# Columnas numéricas que conviene redondear antes de insertar.
+DECIMALES_NUMERICOS_BD_VARGAS = {
+    'conv_kg_doc_acum': 2,
+    'porcentaje_prod_tb': 2, 'porcentaje_tb': 2,
+    'porcentaje_tx': 2, 'porcentaje_rx': 2,
+    'haa_tab': 2, 'gr_tb_graf': 2, 'porcentaje_prod_real': 2,
+    'haa_real': 2, 'gr_ave_dia_graf': 2,
+    'porcentaje_mort_acum_graf': 2, 'gr_por_huevo': 2,
+    'precio_dieta': 2, 'costo_huevo': 2,
+    'prod_tab_unidad_huevo': 2, 'consumo_kg_tab_graf': 2,
+    'huevos_acum_tab': 2, 'consumo_acum_tab': 2,
+    'conv_acum_tab_1': 2, 'conv_acum_tab_2': 2,
+    'porcentaje_huevo_nc': 2, 'total_huevo_real': 2,
+    'cant_unidades_perdida': 2, 'suma_saldo_aves': 2,
+}
+
+
+def _formatear_valores_bd_vargas(valores):
+    """Aplica la precisión fija a las columnas de bd_vargas antes de insertar."""
+    valores = list(valores)
+    for i, columna in enumerate(COLUMNAS_BD_VARGAS):
+        if i >= len(valores):
+            break
+        if columna in DECIMALES_TEXTO_BD_VARGAS:
+            valores[i] = formatear_decimal(
+                valores[i], DECIMALES_TEXTO_BD_VARGAS[columna])
+        elif columna in DECIMALES_NUMERICOS_BD_VARGAS:
+            valores[i] = redondear(
+                valores[i], DECIMALES_NUMERICOS_BD_VARGAS[columna])
+    return tuple(valores)
+
 def procesar_excel_semanal_produccion(archivo, lote_nombre, usuario_id=None, usuario_nombre=None):
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -1195,6 +1267,11 @@ def procesar_excel_semanal_produccion(archivo, lote_nombre, usuario_id=None, usu
         # 2. Leer Excel (Hoja 'Sem-Prod', saltando 10 filas)
         df = pd.read_excel(archivo, sheet_name='Sem-Prod', skiprows=10, header=None)
 
+        # El archivo debe traer al menos las columnas del núcleo (hasta saldo de aves).
+        if df.shape[1] < 33:
+            return False, ("El archivo no trae las columnas mínimas de producción "
+                           "(se esperaban al menos 33 columnas hasta saldo de aves).")
+
         # El archivo puede venir con menos columnas que la plantilla oficial. En ese caso
         # las columnas que falten quedan vacías y se insertan como NULL.
         columnas_faltantes = max(0, 72 - df.shape[1])
@@ -1206,6 +1283,29 @@ def procesar_excel_semanal_produccion(archivo, lote_nombre, usuario_id=None, usu
         # Limpieza extrema de espacios en blanco
         df = df.replace(r'^\s*$', np.nan, regex=True)
         df = df.replace({np.nan: None})
+
+        # Validaciones de semanas y de datos mínimos antes de borrar los registros actuales.
+        semanas = []
+        for valor in df[2]:
+            numero = clean_num(valor)
+            if numero is not None:
+                semanas.append(int(numero))
+        if not semanas:
+            return False, "El archivo no trae semanas válidas."
+        if len(semanas) != len(set(semanas)):
+            return False, "El archivo tiene semanas repetidas. Corrige el archivo antes de cargarlo."
+        if any(s < 1 or s > 110 for s in semanas):
+            return False, "El archivo tiene semanas fuera del rango permitido (1 a 110)."
+        if not any((clean_num(v) or 0) > 0 for v in df[3]):
+            return False, "El archivo no trae datos de producción de huevos."
+        if not any((clean_num(v) or 0) > 0 for v in df[8]):
+            return False, "El archivo no trae datos de consumo de alimento."
+        for indice, maximo in ((19, 100), (20, 100), (22, 100), (53, 150)):
+            for valor in df[indice]:
+                numero = clean_num(valor)
+                if numero is not None and (numero < 0 or numero > maximo):
+                    return False, (f"El archivo tiene un porcentaje fuera de rango en la "
+                                   f"columna {indice + 1}. Debe estar entre 0 y {maximo}.")
 
         valores_a_insertar = []
 
@@ -1264,12 +1364,13 @@ def procesar_excel_semanal_produccion(archivo, lote_nombre, usuario_id=None, usu
                 clean_num(fila[70]),                   # cant_unidades_perdida (BS)
                 clean_num(fila[71])                    # suma_saldo_aves (BT)
             )
-            valores_a_insertar.append(valores)
+            valores_a_insertar.append(_formatear_valores_bd_vargas(valores))
 
         if not valores_a_insertar:
             return False, "El archivo está vacío o no contiene semanas válidas."
 
         # 4. Barrido: se borran TODOS los registros previos del lote antes de insertar el archivo
+        respaldar_tabla_lote('bd_vargas', id_lote)
         cur.execute("DELETE FROM bd_vargas WHERE id_lote = %s", (id_lote,))
 
         # 5. Inserción Masiva

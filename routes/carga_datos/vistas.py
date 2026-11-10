@@ -58,6 +58,19 @@ def procesar_carga():
         flash("Por favor, selecciona un archivo Excel válido.", "danger")
         return redirect(url_for('carga_datos.carga_datos_vista'), code=303)
 
+    extension = archivo.filename.rsplit('.', 1)[-1].lower() if '.' in archivo.filename else ''
+    if extension not in ('xlsx', 'xlsm', 'xls'):
+        flash("El archivo debe ser de Excel (.xlsx, .xlsm o .xls).", "danger")
+        return redirect(url_for('carga_datos.carga_datos_vista'), code=303)
+
+    if not lote_seleccionado:
+        flash("Selecciona el lote al que pertenece el archivo.", "danger")
+        return redirect(url_for('carga_datos.carga_datos_vista'), code=303)
+
+    if not request.form.get('confirmar_lote'):
+        flash("Debes confirmar que el archivo corresponde al lote seleccionado.", "danger")
+        return redirect(url_for('carga_datos.carga_datos_vista'), code=303)
+
     if modulo_seleccionado == 'diario':
         tabla_carga, contexto_carga = 'data_diario', 'Carga Excel de diario'
         try:

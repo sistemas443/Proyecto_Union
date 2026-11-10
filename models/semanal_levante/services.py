@@ -1,6 +1,7 @@
 # models/semanal_levante/services.py
 from datetime import datetime, timedelta
-from models.base import get_db_connection, parse_empty, to_float_safe
+from models.base import (get_db_connection, parse_empty, to_float_safe,
+                         redondear, a_numero)
 from models.semanal_levante.schemas import COLUMNAS_PERMITIDAS
 from models.semanal_levante import model
 from models.cabecera.model import fetch_cabecera_by_lote
@@ -593,6 +594,21 @@ def recalcular_lote_semanal_levante_directo(id_lote, cur):
             WHERE id = %s                      
         """, valores_update)
         
+DECIMALES_SEMANAL_LEVANTE = {
+    'peso_real': 2,
+    'peso_tab': 2,
+    'unif_porc_unif': 2,
+    'unif_porc_uni': 2,
+    'unif_10_menos': 1,
+    'unif_10_mas': 1,
+    'unif_cv': 2,
+    't_tarso': 2,
+    't_tarso_r': 2,
+    'agua_real': 2,
+    'agua_tabla': 2,
+}
+
+
 def procesar_excel_semanal_levante(archivo_excel, lote_nombre, usuario_id=None, usuario_nombre=None):
     """
     Procesa el Excel para el módulo Semanal Levante.
@@ -749,6 +765,8 @@ def procesar_excel_semanal_levante(archivo_excel, lote_nombre, usuario_id=None, 
             return v
 
         # 7. Iterar sobre las 18 semanas y armar el UPDATE
+        semanas_vistas = set()
+        errores = []
         for _, row in df.iterrows():
             # --- LIMPIEZA ROBUSTA DEL VALOR DE SEMANA ---
             val_semana_raw = row[col_semana]
@@ -766,6 +784,10 @@ def procesar_excel_semanal_levante(archivo_excel, lote_nombre, usuario_id=None, 
             num_semana = int(val_semana_str)
             if not (1 <= num_semana <= 18):
                 continue
+            if num_semana in semanas_vistas:
+                errores.append(num_semana)
+                continue
+            semanas_vistas.add(num_semana)
 
             campos_a_actualizar = []
             valores = []
@@ -789,11 +811,20 @@ def procesar_excel_semanal_levante(archivo_excel, lote_nombre, usuario_id=None, 
                         columnas_ya_procesadas.add(col_db)
                     else:
                         try:
-                            num = to_float_safe(v) or 0.0
+                            num = a_numero(v)
+                            if num is None:
+                                continue
                             if por_cien and 0 < num <= 1:
-                                num = round(num * 100, 1)
+                                num *= 100
+                            if col_db in ('unif_porc_unif', 'unif_porc_uni',
+                                          'unif_10_menos', 'unif_10_mas', 'unif_cv'):
+                                if num < 0 or num > 100:
+                                    errores.append(
+                                        f'Semana {num_semana}: {col_db} fuera de rango ({num})')
+                                    continue
+                            decimales = DECIMALES_SEMANAL_LEVANTE.get(col_db, 2)
                             campos_a_actualizar.append(f'"{col_db}" = %s')
-                            valores.append(num)
+                            valores.append(round(num, decimales))
                             columnas_ya_procesadas.add(col_db)
                         except: pass
 
@@ -805,6 +836,12 @@ def procesar_excel_semanal_levante(archivo_excel, lote_nombre, usuario_id=None, 
                 filas_actualizadas += cur.rowcount
 
         # 8. Si el archivo no actualizó ninguna semana, no se guarda ni se registra como éxito
+        if errores:
+            conn.rollback()
+            cur.close()
+            conn.close()
+            return False, ("El archivo tiene errores y no se cargó: "
+                           + "; ".join(str(e) for e in errores[:5]))
         if filas_actualizadas == 0:
             conn.rollback()
             cur.close()

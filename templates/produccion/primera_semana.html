@@ -4,6 +4,7 @@
 {% block head %}
 {% include 'planta_alimentos/_design_system.html' %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/comparador.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tabla_seleccion.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -263,6 +264,7 @@
 <div class="card card-clean ps-info-lote">
   <div class="ps-info-titulo">
     <i class="fas fa-circle-info"></i> Información del lote
+    {% include 'produccion/_panel_seleccion.html' %}
   </div>
   <div class="collapse" id="collapseInfoGeneral">
     <div class="ps-info-grid">
@@ -498,7 +500,10 @@
       const fila = this.closest('tr');
       const id = fila.dataset.id;
       const columna = this.dataset.col;
-      const valor = this.value;
+      let valor = this.value;
+      if (this.dataset.miles !== undefined) {
+        valor = window.limpiarMiles(valor);
+      }
 
       console.log('Enviando →', { id, columna, valor, fila: fila.outerHTML.substring(0, 150) });
 
@@ -599,4 +604,5 @@
 
   // La ficha del lote siempre inicia comprimida; el usuario la despliega si la necesita.
 </script>
+<script src="{{ url_for('static', filename='js/tabla_seleccion.js') }}"></script>
 {% endblock %}
