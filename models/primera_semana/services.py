@@ -394,6 +394,45 @@ def update_dia_0_desde_formulario(lote_nombre, datos_dia_0, usuario_id=None, usu
         conn.close()
 
 
+def sincronizar_primera_semana_desde_diario(id_lote, cur):
+    """Completa la mortalidad y la selección de la primera semana desde el diario.
+
+    Solo rellena los días que están en cero en primera_semana, para no borrar
+    valores digitados manualmente. Después recalcula el saldo y los acumulados.
+    """
+    cur.execute("SELECT lote, no_pollitas_recibidas FROM cabecera_lotes WHERE id = %s",
+                (id_lote,))
+    fila = cur.fetchone()
+    if not fila:
+        return
+    if isinstance(fila, dict):
+        lote = fila.get('lote')
+        aves = float(fila.get('no_pollitas_recibidas') or 0)
+    else:
+        lote = fila[0]
+        aves = float(fila[1] or 0)
+    if not lote or aves <= 0:
+        return
+
+    for dia in range(1, 8):
+        cur.execute("""
+            SELECT COALESCE(SUM(mortalidad), 0), COALESCE(SUM(sel), 0)
+            FROM data_diario WHERE id_lote = %s AND dias = %s
+        """, (id_lote, dia))
+        mort, sel = cur.fetchone()
+        mort = int(mort or 0)
+        sel = int(sel or 0)
+        if mort or sel:
+            cur.execute("""
+                UPDATE primera_semana
+                SET mortalidad = CASE WHEN COALESCE(mortalidad, 0) = 0 THEN %s ELSE mortalidad END,
+                    sel = CASE WHEN COALESCE(sel, 0) = 0 THEN %s ELSE sel END
+                WHERE id_lote = %s AND semana = %s
+            """, (mort, sel, id_lote, '0/%d' % dia))
+
+    recalcular_primera_semana_cascada_interna(lote, aves, cur)
+
+
 def recalcular_primera_semana_cascada_interna(lote_nombre, aves_iniciales, cur, id_reg=None, columna_editada=None, valor_manual=None):
     """
     Motor matemático central que procesa secuencialmente los registros de la primera semana.

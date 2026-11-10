@@ -536,7 +536,7 @@
         <td><input type="text" inputmode="numeric" data-miles="0" data-col="consumo_kg" value="{{ f['consumo_kg']|miles(0) if f['consumo_kg'] else '' }}"
             class="form-control form-control-sm border-0 bg-transparent text-center"></td>
             
-        <td><input type="number" data-col="mortalidad" value="{{ f['mortalidad'] if f['mortalidad'] is not none else '' }}"
+        <td><input type="number" data-col="mortalidad" value="{{ f['mortalidad'] if f['mortalidad'] is not none and f['mortalidad'] != 0 else '' }}"
             class="form-control form-control-sm border-0 bg-transparent text-center"></td>
             
         <td><input type="number" data-col="sel" value="{{ f['sel'] if f['sel'] else '' }}"

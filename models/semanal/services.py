@@ -341,11 +341,14 @@ def get_semanal_all(lote_nombre: str = '', cabecera=None):
     return filas_procesadas
 
 # FUNCIÓN CENTRAL DE MATEMÁTICA Y LÓGICA DE NEGOCIO
-def update_semanal_field(id_semanal: int, columna: str, valor: str) -> tuple[bool, dict, str]:
+def update_semanal_field(id_semanal: int, columna: str, valor: str,
+                         usuario_id=None, usuario_nombre=None) -> tuple[bool, dict, str]:
     if columna not in COLUMNAS_PERMITIDAS:
         return False, {}, f"Columna '{columna}' no permitida"
 
     valor_db = parse_empty(valor)
+    if columna in ('peso_ave_real', 'peso_real'):
+        valor_db = formatear_decimal(valor_db, 0)
     campos_actualizados = {}
     conn = get_db_connection()
     cur = conn.cursor()
@@ -693,6 +696,9 @@ def update_semanal_field(id_semanal: int, columna: str, valor: str) -> tuple[boo
                 """, valores_update)
             else:
                 model.guardar_dato_simple(id_semanal, columna, valor_db, cur)
+        else:
+            # Columnas que no participan en los cálculos (uniformidad, C.V., observaciones, etc.)
+            model.guardar_dato_simple(id_semanal, columna, valor_db, cur)
 
         conn.commit()
         return True, campos_actualizados, "Ok"
@@ -1212,7 +1218,7 @@ DECIMALES_TEXTO_BD_VARGAS = {
     'conv_sem_real': 3, 'conv_acum_real': 3,
     'percent_mort_sem': 2, 'percent_mort_acum': 2,
     'percent_mort_and_select_acum': 2, 'mort_tab': 2,
-    'peso_ave_real': 2, 'unif': 1, 'cv': 2,
+    'peso_ave_real': 0, 'unif': 1, 'cv': 2,
     'peso_huevo_real': 2, 'peso_huevo_tab': 2,
     'masa_huevo_real_sem': 2, 'masa_huevo_real_acum': 2,
     'masa_huevo_tab_acum': 2, 'cons_agua_real': 2,

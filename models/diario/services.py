@@ -291,6 +291,17 @@ def update_registro_diario_field(id_reg: int, columna: str, valor: str) -> tuple
                             cur_sync.execute("ROLLBACK TO SAVEPOINT sp_levante")
                         except Exception:
                             pass
+                    try:
+                        cur_sync.execute("SAVEPOINT sp_primera")
+                        from models.primera_semana.services import sincronizar_primera_semana_desde_diario
+                        sincronizar_primera_semana_desde_diario(id_lote, cur_sync)
+                        cur_sync.execute("RELEASE SAVEPOINT sp_primera")
+                    except Exception as ex_pri:
+                        print(f"[DISPARADOR ADVERTENCIA] No se sincronizó primera semana: {str(ex_pri)}")
+                        try:
+                            cur_sync.execute("ROLLBACK TO SAVEPOINT sp_primera")
+                        except Exception:
+                            pass
                     cur_sync.close()
                 except Exception as ex_motor:
                     print(f"[DISPARADOR ADVERTENCIA] No se actualizo semanal: {str(ex_motor)}")
@@ -429,7 +440,7 @@ def procesar_excel_diario(archivo, lote_nombre, usuario_id=None, usuario_nombre=
         
         psycopg2.extras.execute_values(cur, query_insert, valores_a_insertar)
 
-        # Refrescar semanal levante con la mortalidad, selección y consumo recién cargados.
+        # Refrescar semanal levante y primera semana con los datos recién cargados.
         cur_sync = conn.cursor()
         try:
             cur_sync.execute("SAVEPOINT sp_levante")
@@ -440,6 +451,17 @@ def procesar_excel_diario(archivo, lote_nombre, usuario_id=None, usuario_nombre=
             print(f"[AVISO] No se pudo recalcular semanal levante: {e}")
             try:
                 cur_sync.execute("ROLLBACK TO SAVEPOINT sp_levante")
+            except Exception:
+                pass
+        try:
+            cur_sync.execute("SAVEPOINT sp_primera")
+            from models.primera_semana.services import sincronizar_primera_semana_desde_diario
+            sincronizar_primera_semana_desde_diario(id_lote, cur_sync)
+            cur_sync.execute("RELEASE SAVEPOINT sp_primera")
+        except Exception as e:
+            print(f"[AVISO] No se pudo sincronizar primera semana: {e}")
+            try:
+                cur_sync.execute("ROLLBACK TO SAVEPOINT sp_primera")
             except Exception:
                 pass
         finally:
