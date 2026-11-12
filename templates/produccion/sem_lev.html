@@ -419,7 +419,7 @@
         </td>
 
         <!-- Columnas de consumo -->
-        <td class="celda-tabla"><input type="text" inputmode="decimal" data-col="cons_tab" value="{{ f['cons_tab']|formato_decimal(1) }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark"></td>
+        <td class="celda-tabla"><input type="text" inputmode="decimal" data-col="cons_tab" value="{{ f['cons_tab']|formato_decimal(0) }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark"></td>
         <td><input type="text" data-col="cons_real" value="{{ f['cons_real'] | round(1) if f['cons_real'] is not none and f['cons_real'] != '' else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center text-dark" readonly></td>
         <td><input type="text" inputmode="numeric" data-miles="0" data-col="cons_kilos_real" value="{{ f['cons_kilos_real']|miles(0) }}" class="form-control form-control-sm border-0 bg-transparent text-center text-dark"></td>
         <td><input type="text" data-col="cons_kilos_ajustado" value="{{ f['cons_kilos_ajustado']|miles(0) if f['cons_kilos_ajustado'] is not none and f['cons_kilos_ajustado'] != '' else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center text-dark fw-bold" readonly></td>
@@ -436,26 +436,26 @@
         <td><input type="text" inputmode="decimal" data-col="percent_mort_acum" value="{{ f['percent_mort_acum']|formato_decimal(2) }}" class="form-control form-control-sm border-0 bg-transparent text-center text-dark" readonly></td>
         <td><input type="number" data-col="percent_select_sem" value="{{ f['percent_select_sem'] or '' }}" class="form-control form-control-sm border-0 bg-transparent text-center text-dark" readonly></td>
         <td><input type="text" inputmode="decimal" data-col="percent_mort_and_select_acum" value="{{ f['percent_mort_and_select_acum']|formato_decimal(2) }}" class="form-control form-control-sm border-0 bg-transparent text-center text-dark" readonly></td>
-        <td class="celda-tabla"><input type="text" inputmode="decimal" data-col="porc_tab" value="{{ f['porc_tab']|formato_decimal(2) if f['porc_tab'] is not none and f['porc_tab'] != '' else (f['mort_tab']|formato_decimal(2) if f['mort_tab'] is not none and f['mort_tab'] != '' else '') }}" class="form-control form-control-sm border-0 bg-transparent text-center text-dark"></td>
+        <td class="celda-tabla"><input type="text" inputmode="decimal" data-col="porc_tab" value="{{ f['porc_tab']|formato_decimal(1) if f['porc_tab'] is not none and f['porc_tab'] != '' else (f['mort_tab']|formato_decimal(1) if f['mort_tab'] is not none and f['mort_tab'] != '' else '') }}" class="form-control form-control-sm border-0 bg-transparent text-center text-dark"></td>
         <td><input type="text" data-col="saldo_ave" title="Aves iniciales menos la mortalidad, selección y ventas acumuladas" value="{{ f['saldo_ave']|miles(0) if f['saldo_ave'] is not none and f['saldo_ave'] != '' else 0 }}" class="form-control form-control-sm border-0 bg-transparent text-center text-dark" readonly></td>
 
         <!-- Columnas de peso, unif y tarsos -->
         <td class="celda-tabla"><input type="text" inputmode="numeric" data-miles="0" data-col="peso_ave_tab" value="{{ f['peso_ave_tab']|miles(0) }}" class="form-control form-control-sm border-0 bg-transparent text-center text-dark"></td>
-        <td><input type="text" inputmode="numeric" data-miles="2" data-col="peso_ave_real" value="{{ f['peso_ave_real']|miles(2) }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark"></td>
+        <td><input type="text" inputmode="numeric" data-miles="1" data-col="peso_ave_real" value="{{ f['peso_ave_real']|miles(1) }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark"></td>
 
         <!-- Unif T con formato de porcentaje -->
         <td class="celda-tabla"><input type="text" data-col="unif_porc_uni" value="{{ f['unif_porc_uni'] ~ '%' if f['unif_porc_uni'] is not none and f['unif_porc_uni'] != '' else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark"></td>
             
         <td><input type="text" inputmode="decimal" data-col="unif_10_menos" value="{{ f['unif_10_menos']|formato_decimal(1) }}" class="form-control form-control-sm border-0 bg-transparent text-center text-dark"></td>
-        <td><input type="text" inputmode="decimal" data-col="unif_porc_unif" value="{{ f['unif_porc_unif']|formato_decimal(2) }}" class="form-control form-control-sm border-0 bg-transparent text-center text-dark"></td>
+        <td><input type="text" inputmode="decimal" data-col="unif_porc_unif" value="{{ f['unif_porc_unif']|formato_decimal(1) }}" class="form-control form-control-sm border-0 bg-transparent text-center text-dark"></td>
         <td><input type="text" inputmode="decimal" data-col="unif_10_mas" value="{{ f['unif_10_mas']|formato_decimal(1) }}" class="form-control form-control-sm border-0 bg-transparent text-center text-dark"></td>
         <td><input type="text" inputmode="decimal" data-col="unif_cv" value="{{ f['unif_cv']|formato_decimal(2) }}" class="form-control form-control-sm border-0 bg-transparent text-center text-dark"></td>
 
-        <td class="celda-tabla"><input type="text" inputmode="decimal" data-col="t_tarso" value="{{ f['t_tarso']|formato_decimal(2) }}" class="form-control form-control-sm border-0 bg-transparent text-center text-dark"></td>
+        <td class="celda-tabla"><input type="text" inputmode="decimal" data-col="t_tarso" value="{{ f['t_tarso']|formato_decimal(0) }}" class="form-control form-control-sm border-0 bg-transparent text-center text-dark"></td>
         <td><input type="text" inputmode="decimal" data-col="t_tarso_r" value="{{ f['t_tarso_r']|formato_decimal(2) }}" class="form-control form-control-sm border-0 bg-transparent text-center text-dark"></td>
 
         <!-- Columnas de agua -->
-        <td class="celda-tabla"><input type="text" inputmode="decimal" data-col="agua_tabla" value="{{ f['agua_tabla']|formato_decimal(2) }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark"></td>
+        <td class="celda-tabla"><input type="text" inputmode="decimal" data-col="agua_tabla" value="{{ f['agua_tabla']|formato_decimal(0) }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark"></td>
         <td><input type="text" inputmode="decimal" data-col="cons_agua_real" value="{{ f['cons_agua_real']|formato_decimal(2) }}" class="form-control form-control-sm border-0 bg-transparent text-center text-dark"></td>
 
         <!-- Observaciones -->

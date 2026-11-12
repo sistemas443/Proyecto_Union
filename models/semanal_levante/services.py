@@ -125,6 +125,14 @@ def update_semanal_field(id_semanal: int, columna: str, valor: str,
     from models.auditoria.services import registrar_cambio
 
     valor_db = parse_empty(valor)
+    if valor_db is not None and columna in DECIMALES_SEMANAL_LEVANTE:
+        try:
+            valor_db = round(
+                float(str(valor_db).replace(',', '.')),
+                DECIMALES_SEMANAL_LEVANTE[columna]
+            )
+        except (TypeError, ValueError):
+            pass
     campos_actualizados = {}
     conn = get_db_connection()
     cur = conn.cursor()
@@ -614,17 +622,19 @@ def recalcular_lote_semanal_levante_directo(id_lote, cur):
         """, valores_update)
         
 DECIMALES_SEMANAL_LEVANTE = {
-    'peso_real': 2,
+    'peso_real': 1,
     'peso_tab': 2,
-    'unif_porc_unif': 2,
+    'cons_tab': 0,
+    'porc_tab': 1,
+    'unif_porc_unif': 1,
     'unif_porc_uni': 2,
     'unif_10_menos': 1,
     'unif_10_mas': 1,
     'unif_cv': 2,
-    't_tarso': 2,
+    't_tarso': 0,
     't_tarso_r': 2,
     'agua_real': 2,
-    'agua_tabla': 2,
+    'agua_tabla': 0,
 }
 
 

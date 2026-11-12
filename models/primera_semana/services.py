@@ -158,8 +158,7 @@ def get_primera_semana_by_lote(lote_nombre, cabecera=None):
         cur.execute("""
             UPDATE primera_semana ps
             SET consumo_kg = dd.consumo_kg,
-                mortalidad = dd.mortalidad,
-                sel = dd.sel
+                mortalidad = dd.mortalidad
             FROM data_diario dd
             WHERE ps.lote = dd.lote 
               AND ps.lote = %s
@@ -416,19 +415,16 @@ def sincronizar_primera_semana_desde_diario(id_lote, cur):
 
     for dia in range(1, 8):
         cur.execute("""
-            SELECT COALESCE(SUM(mortalidad), 0), COALESCE(SUM(sel), 0)
+            SELECT COALESCE(SUM(mortalidad), 0)
             FROM data_diario WHERE id_lote = %s AND dias = %s
         """, (id_lote, dia))
-        mort, sel = cur.fetchone()
-        mort = int(mort or 0)
-        sel = int(sel or 0)
-        if mort or sel:
+        mort = int(cur.fetchone()[0] or 0)
+        if mort:
             cur.execute("""
                 UPDATE primera_semana
-                SET mortalidad = CASE WHEN COALESCE(mortalidad, 0) = 0 THEN %s ELSE mortalidad END,
-                    sel = CASE WHEN COALESCE(sel, 0) = 0 THEN %s ELSE sel END
+                SET mortalidad = CASE WHEN COALESCE(mortalidad, 0) = 0 THEN %s ELSE mortalidad END
                 WHERE id_lote = %s AND semana = %s
-            """, (mort, sel, id_lote, '0/%d' % dia))
+            """, (mort, id_lote, '0/%d' % dia))
 
     recalcular_primera_semana_cascada_interna(lote, aves, cur)
 
@@ -573,7 +569,8 @@ def get_data_grafico_primera_semana(lote_nombre):
     return datos
 
 DECIMALES_PRIMERA_SEMANA = {
-    'consumo_kg': 2,
+    'consumo_kg': 0,
+    'peso_tabla': 0,
     'peso_real': 2,
     'unif_10_menos': 1,
     'porc_uniformidad': 2,
