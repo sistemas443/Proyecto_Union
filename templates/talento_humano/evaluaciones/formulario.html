@@ -2,7 +2,73 @@
 
 {% block title %}Nueva evaluación de desempeño – Avícola San Martín{% endblock %}
 
+{% block head %}
+<style>
+  /* Escala de respuestas con botones (5 → 1) */
+  .scale-group { display: inline-flex; gap: 3px; }
+  .scale-group input { position: absolute; opacity: 0; pointer-events: none; }
+  .scale-group label {
+    width: 30px; height: 30px; border-radius: 8px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: .8rem; font-weight: 800;
+    border: 1.5px solid #d0d5dd; background: #fff; color: #667085;
+    cursor: pointer; user-select: none;
+    transition: transform .08s ease, background-color .12s ease, border-color .12s ease, color .12s ease;
+  }
+  .scale-group label:hover { transform: translateY(-1px); background: #f8f9fb; }
+  .scale-group label:active { transform: translateY(0) scale(.96); }
+  .scale-group label[data-v="5"] { color: #12805c; border-color: #b7e4d4; }
+  .scale-group label[data-v="4"] { color: #3aa981; border-color: #c7e9db; }
+  .scale-group label[data-v="3"] { color: #d97706; border-color: #f3d6a6; }
+  .scale-group label[data-v="2"] { color: #e8590c; border-color: #f7cdb5; }
+  .scale-group label[data-v="1"] { color: #c92a2a; border-color: #f2c2c2; }
+  .scale-group input:checked + label[data-v="5"] { background: #12805c; border-color: #12805c; color: #fff; box-shadow: 0 2px 6px rgba(18,128,92,.28); }
+  .scale-group input:checked + label[data-v="4"] { background: #3aa981; border-color: #3aa981; color: #fff; box-shadow: 0 2px 6px rgba(58,169,129,.28); }
+  .scale-group input:checked + label[data-v="3"] { background: #d97706; border-color: #d97706; color: #fff; box-shadow: 0 2px 6px rgba(217,119,6,.28); }
+  .scale-group input:checked + label[data-v="2"] { background: #e8590c; border-color: #e8590c; color: #fff; box-shadow: 0 2px 6px rgba(232,89,12,.28); }
+  .scale-group input:checked + label[data-v="1"] { background: #c92a2a; border-color: #c92a2a; color: #fff; box-shadow: 0 2px 6px rgba(201,42,42,.28); }
+
+  .ind-row { display: flex; align-items: center; gap: 1rem; padding: .6rem .5rem; border-top: 1px solid #f4f5f7; }
+  .ind-row:first-of-type { border-top: 0; }
+  .ind-desc { flex: 1 1 auto; line-height: 1.3; color: #344054; display: flex; align-items: flex-start; gap: .45rem; }
+  .ind-desc .ind-texto { flex: 1 1 auto; }
+  .picto-ind { flex: 0 0 auto; width: 40px; height: 40px; border-radius: 10px; background: #eef4ff; color: #1d4ed8; display: inline-flex; align-items: center; justify-content: center; font-size: 1.15rem; }
+  .ind-clara { display: block; font-weight: 600; color: #1f2430; }
+  .ind-original { display: block; font-size: .7rem; color: #98a2b3; margin-top: .15rem; }
+  .btn-speak {
+    flex: 0 0 auto; width: 26px; height: 26px; border-radius: 50%;
+    border: 1px solid #e0e4ea; background: #fff; color: #667085;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 1rem; cursor: pointer; transition: all .12s ease; margin-top: 1px;
+  }
+  .btn-speak:hover { background: #f2f4f7; color: #97271C; border-color: #f3c5bd; }
+  .btn-speak.is-playing { background: #fbeae7; color: #97271C; border-color: #f3c5bd; }
+  .ind-control { display: flex; align-items: center; gap: 1.1rem; flex: 0 0 auto; }
+  .scale-wrap { display: flex; flex-direction: column; align-items: center; gap: .18rem; }
+  .scale-lbl { font-size: .55rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: #98a2b3; }
+  .ind-pct { min-width: 46px; text-align: center; font-size: .76rem; font-weight: 800; color: #98a2b3; background: #f8f9fb; border: 1px solid #e7e9ee; border-radius: 7px; padding: .22rem .35rem; }
+  .ind-pct.has-val { color: #1f2430; background: #fff; }
+
+  .legend { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .9rem; padding: .7rem 1rem; }
+  .legend .lg-title { font-size: .7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: #667085; margin-right: .3rem; }
+  .legend .lg-item { display: inline-flex; align-items: center; gap: .35rem; font-size: .74rem; color: #344054; }
+  .chip { width: 22px; height: 22px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; font-size: .72rem; font-weight: 800; color: #fff; }
+  .chip.v5 { background: #12805c; } .chip.v4 { background: #3aa981; }
+  .chip.v3 { background: #d97706; } .chip.v2 { background: #e8590c; }
+  .chip.v1 { background: #c92a2a; }
+  .voz-control { display: inline-flex; align-items: center; gap: .4rem; margin-left: auto; }
+  .voz-label { font-size: .7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: #667085; }
+  .voz-select { width: auto; min-width: 240px; font-size: .78rem; }
+
+  @media (max-width: 820px) {
+    .ind-row { flex-direction: column; align-items: stretch; gap: .55rem; }
+    .ind-control { justify-content: space-between; }
+  }
+</style>
+{% endblock %}
+
 {% block content %}
+{% set TITULOS = {5: 'Siempre (100%)', 4: 'Casi siempre (75%)', 3: 'Ocasionalmente (50%)', 2: 'Casi nunca (25%)', 1: 'Nunca (0%)'} %}
 <div class="container-fluid mt-3 pb-5">
 
     <div class="d-flex justify-content-between align-items-end mb-3 flex-wrap gap-2 px-2">
@@ -13,17 +79,41 @@
                 <p class="page-sub mb-0 mt-1">Formato GTH F 011 · escala Siempre(5) a Nunca(1)</p>
             </div>
         </div>
+        {% if session.get('user_rol') == 'Talento humano' %}
         <a href="{{ url_for('talento_humano.evaluacion_catalogo') }}" class="btn btn-sm btn-outline-secondary" title="Administrar criterios y preguntas">
             <i class='bx bx-slider-alt'></i> Catálogo de preguntas
         </a>
+        {% endif %}
         <a href="{{ url_for('talento_humano.evaluaciones') }}" class="btn btn-sm btn-outline-secondary">
             <i class='bx bx-arrow-back'></i> Volver
         </a>
     </div>
 
+    {% if ciclo_info %}
+    <div class="alert alert-info d-flex align-items-start gap-2 py-2 px-3 mb-3">
+        <i class='bx bx-calendar-check fs-5'></i>
+        <div class="small">
+            Evaluando el ciclo <strong>{{ ciclo_info.tipo_label }}</strong>.
+            Cumple el <strong>{{ ciclo_info.fecha_cumplimiento.strftime('%d/%m/%Y') }}</strong>
+            · Ventana de realización:
+            <strong>{{ ciclo_info.fecha_objetivo.strftime('%d/%m/%Y') }}</strong>
+            a <strong>{{ ciclo_info.fecha_cumplimiento.strftime('%d/%m/%Y') }}</strong>.
+            {% if ciclo_info.estado == 'vencida' %}
+            <span class="badge bg-danger ms-1">Vencida</span>
+            {% elif ciclo_info.estado == 'en_ventana' %}
+            <span class="badge bg-warning text-dark ms-1">En ventana</span>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
     <form method="get" action="{{ url_for('talento_humano.evaluacion_nueva') }}" id="filtroColaborador" class="d-none"></form>
 
     <form method="post" action="{{ url_for('talento_humano.evaluacion_nueva') }}">
+        {% if ciclo_tipo and ciclo_numero %}
+        <input type="hidden" name="ciclo_tipo" value="{{ ciclo_tipo }}">
+        <input type="hidden" name="ciclo_numero" value="{{ ciclo_numero }}">
+        {% endif %}
         <!-- IDENTIFICACIÓN Y PERIODO -->
         <div class="card shadow-sm border-0 mb-3 px-2">
             <div class="card-body">
@@ -81,6 +171,24 @@
 
         <!-- CRITERIOS -->
         {% if colaborador_sel %}
+        <!-- Leyenda de escala -->
+        <div class="card shadow-sm border-0 mb-3 px-2">
+            <div class="legend">
+                <span class="lg-title">Escala de respuesta</span>
+                <span class="lg-item"><span class="chip v5">5</span> Siempre · 100%</span>
+                <span class="lg-item"><span class="chip v4">4</span> Casi siempre · 75%</span>
+                <span class="lg-item"><span class="chip v3">3</span> Ocasionalmente · 50%</span>
+                <span class="lg-item"><span class="chip v2">2</span> Casi nunca · 25%</span>
+                <span class="lg-item"><span class="chip v1">1</span> Nunca · 0%</span>
+                <span class="voz-control">
+                    <label for="vozSelect" class="voz-label"><i class='bx bx-microphone'></i> Voz</label>
+                    <select id="vozSelect" class="form-select form-select-sm voz-select">
+                        <option value="">Automática (la más natural)</option>
+                    </select>
+                </span>
+            </div>
+        </div>
+
         {% for c in criterios %}
         <div class="card shadow-sm border-0 mb-3 px-2 criterio" data-criterio-id="{{ c.id }}">
             <div class="card-header bg-white border-0 d-flex align-items-center gap-2 px-3 py-2">
@@ -89,35 +197,50 @@
                 <span class="ms-auto badge bg-light text-dark border promedio-criterio">—</span>
             </div>
             <div class="card-body pt-0">
-                <div class="row g-2 text-uppercase text-muted fw-semibold px-2" style="font-size:.72rem;">
-                    <div class="col-7">Indicador conductual</div>
-                    <div class="col-2 text-center">Evaluador</div>
-                    <div class="col-1 text-center">%</div>
-                    <div class="col-2 text-center">Autoevaluación</div>
-                </div>
                 {% for ind in c.indicadores %}
-                <div class="row g-2 align-items-center border-top py-2 px-2 indicador">
-                    <div class="col-7 small">{{ ind.descripcion }}</div>
-                    <div class="col-2">
-                        <select class="form-select form-select-sm score-evaluador" name="score_evaluador_{{ ind.id }}">
-                            <option value="">—</option>
-                            <option value="5">Siempre (5)</option>
-                            <option value="4">Casi siempre (4)</option>
-                            <option value="3">Ocasionalmente (3)</option>
-                            <option value="2">Casi nunca (2)</option>
-                            <option value="1">Nunca (1)</option>
-                        </select>
+                <div class="ind-row indicador" data-ind-id="{{ ind.id }}">
+                    <div class="ind-desc small">
+                        {% if ind.pictograma %}
+                        <span class="picto-ind">
+                            {% if 'fa-' in ind.pictograma %}
+                            <i class="{{ ind.pictograma }}"></i>
+                            {% else %}
+                            {{ ind.pictograma }}
+                            {% endif %}
+                        </span>
+                        {% endif %}
+                        <span class="ind-texto">
+                            {% if ind.descripcion_clara %}
+                            <span class="ind-clara">{{ ind.descripcion_clara }}</span>
+                            <span class="ind-original">{{ ind.descripcion }}</span>
+                            {% else %}
+                            <span class="ind-clara">{{ ind.descripcion }}</span>
+                            {% endif %}
+                        </span>
+                        <button type="button" class="btn-speak" title="Escuchar pregunta" aria-label="Escuchar pregunta">
+                            <i class='bx bx-volume-full'></i>
+                        </button>
                     </div>
-                    <div class="col-1 text-center small fw-semibold pct-evaluador">—</div>
-                    <div class="col-2">
-                        <select class="form-select form-select-sm score-autoevaluacion" name="score_autoevaluacion_{{ ind.id }}">
-                            <option value="">—</option>
-                            <option value="5">Siempre (5)</option>
-                            <option value="4">Casi siempre (4)</option>
-                            <option value="3">Ocasionalmente (3)</option>
-                            <option value="2">Casi nunca (2)</option>
-                            <option value="1">Nunca (1)</option>
-                        </select>
+                    <div class="ind-control">
+                        <div class="scale-wrap">
+                            <span class="scale-lbl">Evaluador</span>
+                            <div class="scale-group">
+                                {% for v in [5, 4, 3, 2, 1] %}
+                                <input type="radio" name="score_evaluador_{{ ind.id }}" id="ev_{{ ind.id }}_{{ v }}" value="{{ v }}">
+                                <label for="ev_{{ ind.id }}_{{ v }}" data-v="{{ v }}" title="{{ TITULOS[v] }}">{{ v }}</label>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <div class="scale-wrap">
+                            <span class="scale-lbl">Autoevaluación</span>
+                            <div class="scale-group">
+                                {% for v in [5, 4, 3, 2, 1] %}
+                                <input type="radio" name="score_autoevaluacion_{{ ind.id }}" id="au_{{ ind.id }}_{{ v }}" value="{{ v }}">
+                                <label for="au_{{ ind.id }}_{{ v }}" data-v="{{ v }}" title="{{ TITULOS[v] }}">{{ v }}</label>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <span class="ind-pct">—</span>
                     </div>
                 </div>
                 {% endfor %}
@@ -173,24 +296,49 @@
 
   function recalcular() {
     let sumaFinal = 0, nCriterios = 0;
+
     document.querySelectorAll('.criterio').forEach(function (criterio) {
       const evPcts = [], auPcts = [];
+
       criterio.querySelectorAll('.indicador').forEach(function (ind) {
-        const ev = parseInt(ind.querySelector('.score-evaluador').value) || 0;
-        const au = parseInt(ind.querySelector('.score-autoevaluacion').value) || 0;
-        ind.querySelector('.pct-evaluador').textContent = ev ? pct(ev) + '%' : '—';
-        ind.querySelector('.pct-autoevaluacion').textContent = au ? pct(au) + '%' : '—';
+        const id = ind.dataset.indId;
+        const evEl = ind.querySelector('input[name="score_evaluador_' + id + '"]:checked');
+        const auEl = ind.querySelector('input[name="score_autoevaluacion_' + id + '"]:checked');
+        const ev = evEl ? parseInt(evEl.value) : 0;
+        const au = auEl ? parseInt(auEl.value) : 0;
+
+        // % combinado del indicador (evaluador + autoevaluación)
+        const vals = [];
+        if (ev) vals.push(pct(ev));
+        if (au) vals.push(pct(au));
+        const pctEl = ind.querySelector('.ind-pct');
+        if (vals.length) {
+          pctEl.textContent = Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) + '%';
+          pctEl.classList.add('has-val');
+        } else {
+          pctEl.textContent = '—';
+          pctEl.classList.remove('has-val');
+        }
+
         if (ev) evPcts.push(pct(ev));
         if (au) auPcts.push(pct(au));
       });
+
       const evAvg = evPcts.length ? evPcts.reduce((a, b) => a + b, 0) / evPcts.length : 0;
       const auAvg = auPcts.length ? auPcts.reduce((a, b) => a + b, 0) / auPcts.length : 0;
       const prom = (evAvg + auAvg) / 2;
-      criterio.querySelector('.promedio-criterio').textContent = prom.toFixed(1) + '%';
-      if (evPcts.length || auPcts.length) { sumaFinal += prom; nCriterios++; }
+      const promEl = criterio.querySelector('.promedio-criterio');
+      if (evPcts.length || auPcts.length) {
+        promEl.textContent = prom.toFixed(1) + '%';
+        sumaFinal += prom;
+        nCriterios++;
+      } else {
+        promEl.textContent = '—';
+      }
     });
+
     const final = nCriterios ? sumaFinal / nCriterios : 0;
-    document.getElementById('resultado-final').textContent = final ? final.toFixed(1) + '%' : '—';
+    document.getElementById('resultado-final').textContent = nCriterios ? final.toFixed(1) + '%' : '—';
     const badge = document.getElementById('badge-resultado');
     if (nCriterios === 0) {
       badge.textContent = 'Sin calificar';
@@ -205,9 +353,137 @@
   }
 
   document.addEventListener('change', function (e) {
-    if (e.target.classList.contains('score-evaluador') || e.target.classList.contains('score-autoevaluacion')) {
-      recalcular();
-    }
+    if (e.target.matches('.scale-group input')) recalcular();
   });
+
+  // Permitir desmarcar al hacer clic sobre la opción ya seleccionada
+  document.querySelectorAll('.scale-group label').forEach(function (lbl) {
+    lbl.addEventListener('click', function (e) {
+      const input = document.getElementById(lbl.getAttribute('for'));
+      if (input && input.checked) {
+        e.preventDefault();
+        input.checked = false;
+        recalcular();
+      }
+    });
+  });
+
+  // Lectura por voz de cada pregunta (Web Speech API)
+  (function () {
+    const synth = window.speechSynthesis;
+    const botones = document.querySelectorAll('.btn-speak');
+    if (!synth || !botones.length) return;
+
+    let actual = null;
+
+    function detener() {
+      synth.cancel();
+      if (actual) {
+        actual.classList.remove('is-playing');
+        const icono = actual.querySelector('i');
+        if (icono) icono.className = 'bx bx-volume-full';
+        actual = null;
+      }
+    }
+
+    // --- Selección de la voz más natural disponible ---
+    const sel = document.getElementById('vozSelect');
+    const CLAVE_VOZ = 'vozEvaluacion';
+
+    function puntaje(v) {
+      const n = (v.name || '').toLowerCase();
+      let p = 0;
+      if (/natural|neural/.test(n)) p += 100;
+      if (/online/.test(n)) p += 40;
+      if (/^es[-_]co/i.test(v.lang)) p += 30;
+      else if (/^es[-_]/i.test(v.lang)) p += 10;
+      if (/salome|dalia|sabina|helena|laura|jorge|raul|monica|paulina|camila|andres/.test(n)) p += 20;
+      if (/google/.test(n)) p += 15;
+      return p;
+    }
+
+    function vocesEspanol() {
+      const todas = synth.getVoices ? synth.getVoices() : [];
+      return todas
+        .filter(v => /^es[-_]/i.test(v.lang))
+        .sort((a, b) => puntaje(b) - puntaje(a));
+    }
+
+    function vozPreferida() {
+      const voces = vocesEspanol();
+      if (!voces.length) return null;
+      const guardada = localStorage.getItem(CLAVE_VOZ);
+      if (guardada) {
+        const encontrada = voces.find(v => v.name === guardada);
+        if (encontrada) return encontrada;
+      }
+      return voces[0];
+    }
+
+    function poblarSelect() {
+      if (!sel) return;
+      const voces = vocesEspanol();
+      const guardada = localStorage.getItem(CLAVE_VOZ) || '';
+      sel.innerHTML = '<option value="">Automática (la más natural)</option>';
+      voces.forEach(function (v) {
+        const opt = document.createElement('option');
+        opt.value = v.name;
+        opt.textContent = v.name + ' (' + v.lang + ')';
+        if (v.name === guardada) opt.selected = true;
+        sel.appendChild(opt);
+      });
+    }
+
+    poblarSelect();
+    if (synth.onvoiceschanged !== undefined) {
+      synth.onvoiceschanged = poblarSelect;
+    }
+    if (sel) {
+      sel.addEventListener('change', function () {
+        if (sel.value) localStorage.setItem(CLAVE_VOZ, sel.value);
+        else localStorage.removeItem(CLAVE_VOZ);
+      });
+    }
+
+    botones.forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        const eraActual = (actual === btn);
+        detener();
+        if (eraActual) return;  // si ya estaba sonando, solo se detiene
+
+        const cont = btn.closest('.ind-desc');
+        const clara = cont ? cont.querySelector('.ind-clara') : null;
+        const texto = clara ? clara.textContent.trim() : (cont ? cont.querySelector('.ind-texto').textContent.trim() : '');
+        if (!texto) return;
+
+        const utt = new SpeechSynthesisUtterance(texto);
+        const voz = vozPreferida();
+        utt.lang = voz ? voz.lang : 'es-CO';
+        utt.rate = 1.0;
+        utt.pitch = 1.0;
+        if (voz) utt.voice = voz;
+
+        utt.onstart = function () {
+          actual = btn;
+          btn.classList.add('is-playing');
+          const icono = btn.querySelector('i');
+          if (icono) icono.className = 'bx bx-stop-circle';
+        };
+        utt.onend = function () {
+          btn.classList.remove('is-playing');
+          const icono = btn.querySelector('i');
+          if (icono) icono.className = 'bx bx-volume-full';
+          if (actual === btn) actual = null;
+        };
+        utt.onerror = utt.onend;
+
+        synth.speak(utt);
+      });
+    });
+
+    // Detener la voz al salir de la página
+    window.addEventListener('beforeunload', function () { synth.cancel(); });
+  })();
 </script>
 {% endblock %}

@@ -11,9 +11,11 @@ from routes.primera_semana.vistas import primera_semana_bp
 from routes.semanal_levante.vistas import semanal_levante_bp
 from routes.semanal.vistas import semanal_bp
 from routes.diario.vistas import diario_bp
+from routes.reporte_diario.vistas import reporte_diario_bp
 from routes.clasificacion.vistas import clasificacion_bp
 from routes.lotes.vistas import lotes_bp
 from routes.calificacion_lotes.vistas import calificacion_bp
+from routes.eventualidades.vistas import eventualidades_bp
 from routes.catalogos.api import catalogos_bp
 from routes.consolidados.vistas import consolidados_bp
 from routes.carga_datos.vistas import carga_datos_bp
@@ -184,9 +186,11 @@ def create_app():
     app.register_blueprint(semanal_levante_bp)     # Blueprint modular de semanal levante
     app.register_blueprint(semanal_bp)             # Blueprint modular de semanal producción (+ gráficos)
     app.register_blueprint(diario_bp)              # Blueprint modular de diario
+    app.register_blueprint(reporte_diario_bp)       # Reporte Diario (captura diaria por lote)
     app.register_blueprint(clasificacion_bp)       # Blueprint modular de clasificación
     app.register_blueprint(lotes_bp)               # Blueprint modular de lotes (+ cabecera)
     app.register_blueprint(calificacion_bp)        # Calificación de lotes vs tabla genética
+    app.register_blueprint(eventualidades_bp)      # Eventualidades por lote (notas en gráficos)
     app.register_blueprint(catalogos_bp)           # Blueprint de catálogos con foto (Superadmin)
     app.register_blueprint(consolidados_bp)         # Blueprint de consolidados L+P
     app.register_blueprint(carga_datos_bp)         # Blueprint modular de carga masiva de datos

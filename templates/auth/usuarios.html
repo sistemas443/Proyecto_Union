@@ -115,6 +115,7 @@
                         <th>Nombre Completo</th>
                         <th>Usuario (Login)</th>
                         <th>Rol</th>
+                        <th>Área</th>
                         <th>Estado</th>
                         <th class="text-center pe-4">Acciones</th>
                     </tr>
@@ -150,6 +151,9 @@
                             </span>
                         </td>
 
+                        <!-- Área asignada (para líderes de proceso) -->
+                        <td class="small text-muted">{{ u[8] or '—' }}</td>
+
                         <!-- Columna Estado -->
                         <td>
                             {% if u[3] %}
@@ -169,6 +173,7 @@
                             <button class="btn btn-sm btn-outline-secondary shadow-sm btn-editar-usuario" data-id="{{ u[0] }}"
                                 data-nombre="{{ u[1] }}" data-user="{{ u[2] }}" data-rol="{{ u[5] }}"
                                 data-foto="{{ u[6] if u[6] else '' }}" data-correo="{{ u[7] if u[7] else '' }}"
+                                data-area="{{ u[8] if u[8] else '' }}"
                                 title="Editar Usuario">
                                 <i class='bx bx-edit-alt'></i>
                             </button>
@@ -197,7 +202,7 @@
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="6" class="text-center py-4 text-muted">No hay usuarios registrados.</td>
+                        <td colspan="7" class="text-center py-4 text-muted">No hay usuarios registrados.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -271,6 +276,25 @@
                         </div>
                     </div>
 
+                    <div class="mb-3" id="grupo_area">
+                        <label class="form-label fw-bold text-secondary">Área asignada
+                            <small class="text-muted fw-normal">(solo para Líder de proceso)</small>
+                        </label>
+                        <div class="input-group shadow-sm">
+                            <select class="form-select border-end-0" name="area" id="form_area">
+                                <option value="">— Sin área —</option>
+                                {% for a in areas %}
+                                <option value="{{ a }}">{{ a }}</option>
+                                {% endfor %}
+                            </select>
+                            <button type="button" class="btn fw-bold text-white shadow-sm"
+                                style="background-color: #97271C; border: none;" onclick="abrirModalAreas()"
+                                title="Agregar, editar o eliminar áreas">
+                                <i class='bx bx-cog'></i> Gestionar
+                            </button>
+                        </div>
+                    </div>
+
                     <div class="mb-3">
                         <label class="form-label fw-bold text-secondary">Contraseña <small class="text-muted fw-normal"
                                 id="pass_hint"></small></label>
@@ -312,6 +336,32 @@
         </div>
     </div>
 </div>
+
+<!-- MODAL 3: ADMINISTRAR ÁREAS -->
+<div class="modal fade" id="modalAreas" tabindex="-1" aria-hidden="true" style="z-index: 1070;">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header text-white border-0" style="background-color: #343a40;">
+                <h5 class="modal-title fw-bold"><i class='bx bx-buildings me-2'></i>Administrar áreas</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body p-4 bg-light">
+                <div class="input-group shadow-sm mb-3">
+                    <input type="text" class="form-control" id="nueva_area_nombre" placeholder="Nueva área…">
+                    <button type="button" class="btn fw-bold text-white" style="background-color: #97271C;" onclick="crearArea()">
+                        <i class='bx bx-plus'></i> Agregar
+                    </button>
+                </div>
+                <div id="listaAreas" class="d-flex flex-column gap-2">
+                    <div class="text-muted small">Cargando…</div>
+                </div>
+                <small class="text-muted d-block mt-3">
+                    <i class='bx bx-info-circle'></i> Si un área está en uso, al eliminarla se desactiva (se oculta de los selectores).
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 <!-- BLOQUE DE SCRIPTS -->
@@ -340,10 +390,12 @@
 
     let modalUser;
     let modalRolUI;
+    let modalAreasUI;
 
     document.addEventListener("DOMContentLoaded", function () {
         modalUser = new bootstrap.Modal(document.getElementById('modalUsuario'));
         modalRolUI = new bootstrap.Modal(document.getElementById('modalRol'));
+        modalAreasUI = new bootstrap.Modal(document.getElementById('modalAreas'));
 
         // BUSCADOR EN TIEMPO REAL DE USUARIOS
         const buscador = document.getElementById('buscadorUsuarios');
@@ -353,7 +405,7 @@
                 const filas = document.querySelectorAll('table tbody tr');
 
                 filas.forEach(fila => {
-                    if (fila.querySelector('td') && fila.querySelector('td').colSpan === 6) return;
+                    if (fila.querySelector('td') && fila.querySelector('td').colSpan === 7) return;
                     const textoFila = fila.textContent.toLowerCase();
 
                     if (textoFila.includes(textoFiltro)) {
@@ -374,8 +426,9 @@
                 const rol = this.getAttribute('data-rol');
                 const foto = this.getAttribute('data-foto');
                 const correo = this.getAttribute('data-correo');
+                const area = this.getAttribute('data-area');
 
-                editarUsuario(id, nombre, user, rol, foto, correo);
+                editarUsuario(id, nombre, user, rol, foto, correo, area);
             });
         });
 
@@ -419,6 +472,7 @@
         document.getElementById('form_password').value = '';
         document.getElementById('form_foto').value = '';
         document.getElementById('form_correo').value = '';
+        document.getElementById('form_area').value = '';
         document.getElementById('form_username').classList.remove('is-invalid');
 
         document.getElementById('preview_foto').style.display = 'none';
@@ -431,13 +485,14 @@
         modalUser.show();
     }
 
-    function editarUsuario(id, nombre, user, rol, foto, correo) {
+    function editarUsuario(id, nombre, user, rol, foto, correo, area) {
         document.getElementById('form_id').value = id;
         document.getElementById('form_nombre').value = nombre;
         document.getElementById('form_username').value = user;
         document.getElementById('form_rol').value = rol;
         document.getElementById('form_foto').value = '';
         document.getElementById('form_correo').value = correo;
+        document.getElementById('form_area').value = area || '';
         document.getElementById('form_username').classList.remove('is-invalid');
 
         const previewImg = document.getElementById('preview_foto');
@@ -533,6 +588,157 @@
                 console.error(err);
                 appError("No se pudo conectar con el servidor para crear el rol.", "Error de conexión");
             });
+    }
+
+    // --- CATÁLOGO DE ÁREAS ---
+    function abrirModalAreas() {
+        cargarAreas();
+        modalAreasUI.show();
+    }
+
+    function cargarAreas() {
+        const cont = document.getElementById('listaAreas');
+        if (!cont) return;
+        cont.innerHTML = '<div class="text-muted small">Cargando…</div>';
+        fetch("{{ url_for('main.api_areas_list') }}")
+            .then(r => r.json())
+            .then(data => {
+                if (data.status !== 'ok') throw new Error(data.msg || 'Error');
+                cont.innerHTML = '';
+                if (!data.areas.length) {
+                    cont.innerHTML = '<div class="text-muted small">No hay áreas.</div>';
+                    return;
+                }
+                data.areas.forEach(function (a) {
+                    const row = document.createElement('div');
+                    row.className = 'd-flex align-items-center gap-2 bg-white border rounded px-2 py-1';
+
+                    const nombre = document.createElement('span');
+                    nombre.className = 'flex-grow-1 small' + (a.activa ? '' : ' text-muted text-decoration-line-through');
+                    nombre.textContent = a.nombre;
+                    row.appendChild(nombre);
+
+                    if (!a.activa) {
+                        const badge = document.createElement('span');
+                        badge.className = 'badge bg-secondary';
+                        badge.textContent = 'Inactiva';
+                        row.appendChild(badge);
+                    }
+
+                    const btnEdit = document.createElement('button');
+                    btnEdit.type = 'button';
+                    btnEdit.className = 'btn btn-sm btn-outline-secondary';
+                    btnEdit.title = 'Editar';
+                    btnEdit.innerHTML = "<i class='bx bx-edit-alt'></i>";
+                    btnEdit.addEventListener('click', function () { editarArea(a.id, a.nombre); });
+                    row.appendChild(btnEdit);
+
+                    const btnDel = document.createElement('button');
+                    btnDel.type = 'button';
+                    btnDel.className = 'btn btn-sm btn-outline-danger';
+                    btnDel.title = 'Eliminar';
+                    btnDel.innerHTML = "<i class='bx bx-trash'></i>";
+                    btnDel.addEventListener('click', function () { eliminarArea(a.id, a.nombre); });
+                    row.appendChild(btnDel);
+
+                    cont.appendChild(row);
+                });
+            })
+            .catch(function () {
+                cont.innerHTML = '<div class="text-danger small">No se pudieron cargar las áreas.</div>';
+            });
+    }
+
+    function refrescarSelectAreas() {
+        const sel = document.getElementById('form_area');
+        if (!sel) return;
+        const actual = sel.value;
+        fetch("{{ url_for('main.api_areas_list') }}")
+            .then(r => r.json())
+            .then(data => {
+                if (data.status !== 'ok') return;
+                sel.innerHTML = '<option value="">— Sin área —</option>';
+                data.areas.filter(function (a) { return a.activa; }).forEach(function (a) {
+                    const opt = document.createElement('option');
+                    opt.value = a.nombre;
+                    opt.textContent = a.nombre;
+                    sel.appendChild(opt);
+                });
+                if (actual && Array.from(sel.options).some(function (o) { return o.value === actual; })) {
+                    sel.value = actual;
+                }
+            });
+    }
+
+    function crearArea() {
+        const input = document.getElementById('nueva_area_nombre');
+        const nombre = input.value.trim();
+        if (!nombre) { appWarning('Escribe el nombre del área.', 'Campo requerido'); return; }
+        fetch("{{ url_for('main.api_areas_crear') }}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nombre: nombre })
+        })
+            .then(r => r.json())
+            .then(data => {
+                if (data.status !== 'ok') { appWarning(data.msg, 'Atención'); return; }
+                input.value = '';
+                cargarAreas();
+                refrescarSelectAreas();
+                appSuccess('Área creada.', 'Listo');
+            })
+            .catch(function () { appError('No se pudo crear el área.', 'Error'); });
+    }
+
+    function editarArea(id, nombreActual) {
+        Swal.fire({
+            title: 'Editar área',
+            input: 'text',
+            inputValue: nombreActual,
+            showCancelButton: true,
+            confirmButtonText: 'Guardar',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#97271C',
+            inputValidator: function (v) { return (!v || !v.trim()) ? 'Escribe el nombre' : null; }
+        }).then(function (res) {
+            if (!res.isConfirmed) return;
+            fetch(`/api/areas/${id}/editar`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nombre: res.value.trim() })
+            })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status !== 'ok') { appWarning(data.msg, 'Atención'); return; }
+                    cargarAreas();
+                    refrescarSelectAreas();
+                    appSuccess('Área actualizada.', 'Listo');
+                })
+                .catch(function () { appError('No se pudo actualizar el área.', 'Error'); });
+        });
+    }
+
+    function eliminarArea(id, nombre) {
+        Swal.fire({
+            title: '¿Eliminar área?',
+            html: 'Se eliminará o desactivará <strong>' + escaparHtmlUsuario(nombre) + '</strong>.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#97271C'
+        }).then(function (res) {
+            if (!res.isConfirmed) return;
+            fetch(`/api/areas/${id}/eliminar`, { method: 'POST' })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status !== 'ok') { appWarning(data.msg, 'Atención'); return; }
+                    cargarAreas();
+                    refrescarSelectAreas();
+                    appSuccess(data.accion === 'desactivada' ? 'Área desactivada (estaba en uso).' : 'Área eliminada.', 'Listo');
+                })
+                .catch(function () { appError('No se pudo eliminar el área.', 'Error'); });
+        });
     }
 
     // --- SISTEMA DE SUPLANTACIÓN (LOGIN AS) ---

@@ -575,7 +575,8 @@
   {% set ep = request.endpoint or '' %}
   {% set en_documentos = ep == 'talento_humano.documentos_colaborador' %}
   {% set en_reporte = request.view_args.get('tema') if (ep == 'talento_humano.reporte_tema' and request.view_args) else None %}
-  {% set en_evaluaciones = ep.startswith('talento_humano.evaluacion') %}
+  {% set en_evaluaciones = ep.startswith('talento_humano.evaluacion') and ep != 'talento_humano.evaluaciones_pendientes' %}
+  {% set en_pendientes = ep == 'talento_humano.evaluaciones_pendientes' %}
   <div class="sidebar-th" role="navigation" aria-label="Menú de Talento Humano">
     <div class="sidebar-header">Talento humano</div>
     {{ rail_link(url_for('talento_humano.colaboradores'), 'bx-group', 'Colaboradores',
@@ -589,6 +590,7 @@
     <div class="sidebar-divider"></div>
     <div class="sidebar-header">Desempeño</div>
     {{ rail_link(url_for('talento_humano.evaluaciones'), 'bx-task', 'Evaluación de desempeño', en_evaluaciones) }}
+    {{ rail_link(url_for('talento_humano.evaluaciones_pendientes'), 'bx-calendar-check', 'Pendientes por evaluar', en_pendientes) }}
 
     <div class="sidebar-divider"></div>
     <a href="#" class="rail-parent{{ ' is-open' if en_reporte }}" role="button" aria-expanded="{{ 'true' if en_reporte else 'false' }}" aria-controls="railReportes" onclick="toggleRailSub(event, this)">

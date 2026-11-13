@@ -13,6 +13,7 @@ from werkzeug.utils import secure_filename
 from PIL import Image, ImageOps
 
 from models.base import get_db_connection, obtener_hash_git
+from models.talento_humano.areas import Area
 from models.auditoria.services import (
     obtener_historial, 
     contar_historial,
@@ -126,7 +127,7 @@ def login():
     try:
         # Extrae los credenciales de la base de datos junto con el rol e imagen del usuario
         cur.execute("""
-            SELECT u.id, u.nombre_completo, u.password_hash, u.activo, r.nombre, u.foto_perfil
+            SELECT u.id, u.nombre_completo, u.password_hash, u.activo, r.nombre, u.foto_perfil, u.area
             FROM usuarios u
             JOIN roles r ON u.rol_id = r.id
             WHERE u.username = %s
@@ -145,6 +146,7 @@ def login():
                 session['user_nombre'] = usuario[1] # Nombre completo del usuario (para mostrar en la interfaz)
                 session['user_rol'] = usuario[4] # Nombre del rol (Superadmin, Editor, Lector)
                 session['user_foto'] = usuario[5] or ''  # Nombre del archivo de la foto de perfil (si existe) o cadena vacía
+                session['user_area'] = usuario[6] or ''  # Área asignada (para líderes de proceso)
 
                 # Mensaje de bienvenida con imagen incrustada
                 img_url = url_for('static', filename='img/Saludo.gif')
@@ -462,7 +464,7 @@ def gestion_usuarios():
     cur = conn.cursor()
     try:
         cur.execute("""
-            SELECT u.id, u.nombre_completo, u.username, u.activo, r.nombre as rol_nombre, r.id as rol_id, u.foto_perfil, u.correo
+            SELECT u.id, u.nombre_completo, u.username, u.activo, r.nombre as rol_nombre, r.id as rol_id, u.foto_perfil, u.correo, u.area
             FROM usuarios u
             JOIN roles r ON u.rol_id = r.id
             ORDER BY u.id ASC
@@ -471,15 +473,17 @@ def gestion_usuarios():
 
         cur.execute("SELECT id, nombre FROM roles ORDER BY id ASC")
         roles = cur.fetchall()
+
+        areas = Area.nombres()
     except Exception as e:
         print(f"[ERROR CARGANDO USUARIOS]: {e}")
         flash("Error interno al cargar la lista de usuarios.", "error")
-        usuarios, roles = [], []
+        usuarios, roles, areas = [], [], []
     finally:
         cur.close()
         conn.close()
 
-    return render_template('auth/usuarios.html', usuarios=usuarios, roles=roles)
+    return render_template('auth/usuarios.html', usuarios=usuarios, roles=roles, areas=areas)
 
 @bp.route('/api/usuarios/<int:id>/foto')
 def foto_usuario(id):
@@ -515,6 +519,7 @@ def guardar_usuario():
     rol_id = request.form.get('rol_id')
     file_foto = request.files.get('foto_perfil')
     correo = request.form.get('correo', '').strip()
+    area = request.form.get('area', '').strip() or None
 
     conn = get_db_connection()
     cur = conn.cursor()
@@ -563,19 +568,20 @@ def guardar_usuario():
                 cur.execute("""
                     UPDATE usuarios SET nombre_completo = %s, username = %s, rol_id = %s,
                            password_hash = %s, foto_perfil = %s,
-                           foto_data = COALESCE(%s, foto_data), correo = %s
+                           foto_data = COALESCE(%s, foto_data), correo = %s, area = %s
                     WHERE id = %s
-                """, (nombre_completo, username, rol_id, hash_pass, foto_nombre, foto_data, correo, id_usuario))
+                """, (nombre_completo, username, rol_id, hash_pass, foto_nombre, foto_data, correo, area, id_usuario))
             else:
                 cur.execute("""
                     UPDATE usuarios SET nombre_completo = %s, username = %s, rol_id = %s,
-                           foto_perfil = %s, foto_data = COALESCE(%s, foto_data), correo = %s
+                           foto_perfil = %s, foto_data = COALESCE(%s, foto_data), correo = %s, area = %s
                     WHERE id = %s
-                """, (nombre_completo, username, rol_id, foto_nombre, foto_data, correo, id_usuario))
+                """, (nombre_completo, username, rol_id, foto_nombre, foto_data, correo, area, id_usuario))
 
             if int(id_usuario) == int(session.get('user_id')):
                 session['user_nombre'] = nombre_completo
                 session['user_foto'] = foto_nombre or ''
+                session['user_area'] = area or ''
                 session.modified = True
 
             flash("Usuario actualizado con éxito", "success")
@@ -587,9 +593,9 @@ def guardar_usuario():
 
             hash_pass = generate_password_hash(password)
             cur.execute("""
-                INSERT INTO usuarios (nombre_completo, username, password_hash, rol_id, foto_perfil, foto_data, correo)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-            """, (nombre_completo, username, hash_pass, rol_id, foto_nombre, foto_data, correo))
+                INSERT INTO usuarios (nombre_completo, username, password_hash, rol_id, foto_perfil, foto_data, correo, area)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """, (nombre_completo, username, hash_pass, rol_id, foto_nombre, foto_data, correo, area))
             flash("Usuario creado con éxito", "success")
 
         conn.commit()
@@ -606,6 +612,49 @@ def guardar_usuario():
         conn.close()
 
     return redirect(url_for('main.gestion_usuarios'))
+
+
+# ============================================================
+# API: CATÁLOGO DE ÁREAS (modal del formulario de usuarios)
+# ============================================================
+@bp.route('/api/areas', methods=['GET'])
+@login_requerido
+@superadmin_requerido
+def api_areas_list():
+    return jsonify({'status': 'ok', 'areas': Area.listar(solo_activas=False)})
+
+
+@bp.route('/api/areas/crear', methods=['POST'])
+@login_requerido
+@superadmin_requerido
+def api_areas_crear():
+    data = request.get_json(silent=True) or {}
+    nuevo_id, error = Area.crear(data.get('nombre'))
+    if error:
+        return jsonify({'status': 'error', 'msg': error}), 400
+    return jsonify({'status': 'ok', 'id': nuevo_id})
+
+
+@bp.route('/api/areas/<int:id>/editar', methods=['POST'])
+@login_requerido
+@superadmin_requerido
+def api_areas_editar(id):
+    data = request.get_json(silent=True) or {}
+    ok, error = Area.renombrar(id, data.get('nombre'))
+    if not ok:
+        return jsonify({'status': 'error', 'msg': error}), 400
+    return jsonify({'status': 'ok'})
+
+
+@bp.route('/api/areas/<int:id>/eliminar', methods=['POST'])
+@login_requerido
+@superadmin_requerido
+def api_areas_eliminar(id):
+    ok, error, accion = Area.eliminar(id)
+    if not ok:
+        return jsonify({'status': 'error', 'msg': error}), 400
+    return jsonify({'status': 'ok', 'accion': accion})
+
 
 @bp.route('/api/usuarios/toggle/<int:id>', methods=['POST'])
 @login_requerido

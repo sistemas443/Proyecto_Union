@@ -12,6 +12,12 @@
             </a>
         </li>
         <li>
+            <a class="dropdown-item{{ ' active' if ep.startswith('reporte_diario.') }}"
+                href="{{ url_for('reporte_diario.reporte_diario') }}">
+                <i class='bx bx-clipboard'></i> Reporte Diario
+            </a>
+        </li>
+        <li>
             <a class="dropdown-item{{ ' active' if ep.startswith('calificacion_lotes.') }}"
                 href="{{ url_for('calificacion_lotes.vista_calificacion') }}">
                 <i class='bx bx-medal'></i> Calificación de lotes

@@ -29,14 +29,14 @@
 
         <!-- ROL: PRODUCCION - solo módulo de Producción -->
         {% elif session.get('user_rol') == 'PRODUCCION' %}
-        {% set en_produccion = ep.startswith('lotes.') or ep.startswith('calificacion_lotes.') or ep.startswith('consolidados.') or ep.startswith('diario.') or ep.startswith('semanal.') or ep.startswith('semanal_levante.') or ep.startswith('primera_semana.') %}
+        {% set en_produccion = ep.startswith('lotes.') or ep.startswith('calificacion_lotes.') or ep.startswith('consolidados.') or ep.startswith('diario.') or ep.startswith('semanal.') or ep.startswith('semanal_levante.') or ep.startswith('primera_semana.') or ep.startswith('reporte_diario.') %}
         <ul class="navbar-nav app-nav me-auto mb-2 mb-lg-0">
           {% include 'generales/_menu_produccion.html' %}
         </ul>
 
         <!-- ROLES: DIRECTOR DE PLANTA - Ven módulos: Producción, Clasificación, Planta de Alimentos -->
         {% elif session.get('user_rol') == 'Director de Planta' %}
-        {% set en_produccion = ep.startswith('lotes.') or ep.startswith('calificacion_lotes.') or ep.startswith('diario.') or ep.startswith('semanal.') or ep.startswith('semanal_levante.') or ep.startswith('primera_semana.') %}
+        {% set en_produccion = ep.startswith('lotes.') or ep.startswith('calificacion_lotes.') or ep.startswith('diario.') or ep.startswith('semanal.') or ep.startswith('semanal_levante.') or ep.startswith('primera_semana.') or ep.startswith('reporte_diario.') %}
         {% set en_planta = ep.startswith('planta_alimentos.') or ep.startswith('tablas_nutricionales.') %}
         {% set en_clasificacion = ep.startswith('clasificacion.') %}
         <ul class="navbar-nav app-nav me-auto mb-2 mb-lg-0">
@@ -72,9 +72,31 @@
 
         </ul>
 
+        <!-- ROL: LÍDER DE PROCESO / COORDINADOR ADMINISTRATIVO - Solo evaluaciones de su alcance -->
+        {% elif session.get('user_rol') in ('Líder de proceso', 'Coordinador administrativo') %}
+        <ul class="navbar-nav app-nav me-auto mb-2 mb-lg-0">
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle{{ ' is-current' if ep.startswith('talento_humano.evaluacion') }}" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="fas fa-clipboard-check"></i> Evaluaciones
+            </a>
+            <ul class="dropdown-menu dropdown-menu-dark">
+              <li>
+                <a class="dropdown-item{{ ' active' if ep == 'talento_humano.evaluaciones_pendientes' }}" href="{{ url_for('talento_humano.evaluaciones_pendientes') }}">
+                  <i class='bx bx-calendar-check'></i> Pendientes
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item{{ ' active' if ep == 'talento_humano.evaluaciones' }}" href="{{ url_for('talento_humano.evaluaciones') }}">
+                  <i class='bx bx-list-ul'></i> Historial
+                </a>
+              </li>
+            </ul>
+          </li>
+        </ul>
+
         <!-- ROLES: SUPERADMIN, EDITOR, LECTOR - Ven módulos operativos + extras Superadmin -->
         {% else %}
-        {% set en_produccion = ep.startswith('lotes.') or ep.startswith('calificacion_lotes.') or ep.startswith('diario.') or ep.startswith('semanal.') or ep.startswith('semanal_levante.') or ep.startswith('primera_semana.') %}
+        {% set en_produccion = ep.startswith('lotes.') or ep.startswith('calificacion_lotes.') or ep.startswith('diario.') or ep.startswith('semanal.') or ep.startswith('semanal_levante.') or ep.startswith('primera_semana.') or ep.startswith('reporte_diario.') %}
         {% set en_planta = ep.startswith('planta_alimentos.') or ep.startswith('tablas_nutricionales.') %}
         {% set en_clasificacion = ep.startswith('clasificacion.') %}
         <ul class="navbar-nav app-nav me-auto mb-2 mb-lg-0">

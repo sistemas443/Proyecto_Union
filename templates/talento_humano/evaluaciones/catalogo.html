@@ -24,9 +24,21 @@
   .area-grupo[open] summary .chev { transform: rotate(180deg); }
   .area-grupo-body { border-top: 1px solid #eef0f3; background: #fff; border-radius: 0 0 10px 10px; }
 
-  .q-row { display: flex; align-items: center; gap: .6rem; padding: .5rem .8rem; border-bottom: 1px solid #f4f5f7; }
+  .q-row { padding: .5rem .8rem; border-bottom: 1px solid #f4f5f7; }
   .q-row:last-child { border-bottom: 0; }
-  .q-row .txt { flex: 1; font-size: .82rem; color: #344054; }
+  .q-main { display: flex; align-items: center; gap: .6rem; }
+  .q-main .txt { flex: 1; font-size: .82rem; color: #344054; }
+  .q-picto { color: #1d4ed8; font-size: 1rem; }
+  .q-badge-apoyo { font-size: .62rem; font-weight: 700; color: #12805c; background: #ecfdf3; border: 1px solid #b7e4d4; border-radius: 999px; padding: .08rem .45rem; }
+
+  .apoyos { margin-top: .3rem; }
+  .apoyos > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: .3rem; font-size: .72rem; font-weight: 600; color: #1d4ed8; }
+  .apoyos > summary::-webkit-details-marker { display: none; }
+  .apoyos-form { display: flex; gap: .55rem; align-items: flex-end; flex-wrap: wrap; margin-top: .4rem; padding: .55rem .65rem; background: #f8f9fb; border: 1px solid #eef0f3; border-radius: 8px; }
+  .apoyos-form .campo { display: flex; flex-direction: column; gap: .2rem; }
+  .apoyos-form label { font-size: .6rem; text-transform: uppercase; letter-spacing: .04em; color: #667085; font-weight: 700; }
+  .apoyos-form .campo-claro { flex: 1 1 280px; }
+  .apoyos-form .campo-picto { flex: 0 0 210px; }
 
   .btn-ico { width: 30px; height: 30px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; }
 
@@ -37,6 +49,51 @@
 {% endblock %}
 
 {% block content %}
+{% set PICTOGRAMAS = [
+    ('', 'Sin pictograma'),
+    ('fa-solid fa-bullseye', 'Meta / objetivo'),
+    ('fa-solid fa-chart-line', 'Productividad'),
+    ('fa-solid fa-arrow-trend-up', 'Mejora / crecimiento'),
+    ('fa-solid fa-gauge-high', 'Rendimiento'),
+    ('fa-solid fa-stopwatch', 'Tiempo / rapidez'),
+    ('fa-solid fa-hourglass-half', 'Plazos / cumplimiento'),
+    ('fa-solid fa-clock', 'Horario / puntualidad'),
+    ('fa-solid fa-calendar-check', 'Planificación / asistencia'),
+    ('fa-solid fa-calendar-days', 'Cronograma'),
+    ('fa-solid fa-list-check', 'Tareas / prioridades'),
+    ('fa-solid fa-clipboard-check', 'Registro / reporte'),
+    ('fa-solid fa-file-lines', 'Documentación'),
+    ('fa-solid fa-file-signature', 'Justificación / permisos'),
+    ('fa-solid fa-bullhorn', 'Informar / reportar'),
+    ('fa-solid fa-comments', 'Comunicación'),
+    ('fa-solid fa-comment-dots', 'Expresar ideas'),
+    ('fa-solid fa-ear-listen', 'Escuchar'),
+    ('fa-solid fa-people-group', 'Trabajo en equipo'),
+    ('fa-solid fa-handshake', 'Acuerdo / respeto'),
+    ('fa-solid fa-hand-holding-heart', 'Apoyo'),
+    ('fa-solid fa-face-smile', 'Actitud positiva'),
+    ('fa-solid fa-heart', 'Bienestar / salud'),
+    ('fa-solid fa-heart-pulse', 'Manejo del estrés'),
+    ('fa-solid fa-brain', 'Pensamiento crítico'),
+    ('fa-solid fa-lightbulb', 'Iniciativa / ideas'),
+    ('fa-solid fa-circle-check', 'Responsabilidad'),
+    ('fa-solid fa-award', 'Calidad / logro'),
+    ('fa-solid fa-graduation-cap', 'Conocimiento / capacitación'),
+    ('fa-solid fa-user-tie', 'Liderazgo'),
+    ('fa-solid fa-screwdriver-wrench', 'Herramientas / técnica'),
+    ('fa-solid fa-gears', 'Procesos / tecnología'),
+    ('fa-solid fa-broom', 'Limpieza / orden'),
+    ('fa-solid fa-spray-can-sparkles', 'Desinfección'),
+    ('fa-solid fa-mug-hot', 'Cafetería / atención'),
+    ('fa-solid fa-boxes-stacked', 'Insumos / almacenamiento'),
+    ('fa-solid fa-warehouse', 'Almacén / inventario'),
+    ('fa-solid fa-recycle', 'Reciclaje / desperdicio'),
+    ('fa-solid fa-coins', 'Costos / dinero'),
+    ('fa-solid fa-shield-halved', 'Seguridad / EPP'),
+    ('fa-solid fa-triangle-exclamation', 'Riesgos / alertas'),
+    ('fa-solid fa-headset', 'Soporte / servicio'),
+    ('fa-solid fa-arrows-rotate', 'Adaptación / cambio')
+] %}
 <div class="container-fluid mt-3 pb-4">
 
     <div class="d-flex justify-content-between align-items-end mb-3 flex-wrap gap-2 px-2">
@@ -87,10 +144,36 @@
             <div class="area-grupo-body">
                 {% for ind in g.indicadores %}
                 <div class="q-row">
-                    <span class="txt">{{ ind.descripcion }}</span>
-                    <form method="post" action="{{ url_for('talento_humano.evaluacion_catalogo_indicador_eliminar', id=ind.id) }}" class="d-inline" onsubmit="return confirm('¿Eliminar esta pregunta?');">
-                        <button class="btn btn-sm btn-outline-danger btn-ico" title="Eliminar pregunta"><i class='bx bx-trash'></i></button>
-                    </form>
+                    <div class="q-main">
+                        <span class="txt">{{ ind.descripcion }}</span>
+                        {% if ind.pictograma %}
+                        <i class="{{ ind.pictograma }} q-picto" title="Pictograma"></i>
+                        {% endif %}
+                        {% if ind.descripcion_clara %}
+                        <span class="q-badge-apoyo" title="{{ ind.descripcion_clara }}">Apoyos</span>
+                        {% endif %}
+                        <form method="post" action="{{ url_for('talento_humano.evaluacion_catalogo_indicador_eliminar', id=ind.id) }}" class="d-inline" onsubmit="return confirm('¿Eliminar esta pregunta?');">
+                            <button class="btn btn-sm btn-outline-danger btn-ico" title="Eliminar pregunta"><i class='bx bx-trash'></i></button>
+                        </form>
+                    </div>
+                    <details class="apoyos">
+                        <summary><i class='bx bx-accessibility'></i> Editar apoyos visuales</summary>
+                        <form method="post" action="{{ url_for('talento_humano.evaluacion_catalogo_indicador_apoyos', id=ind.id) }}" class="apoyos-form">
+                            <div class="campo campo-claro">
+                                <label>Lenguaje claro</label>
+                                <input type="text" name="descripcion_clara" class="form-control form-control-sm" value="{{ ind.descripcion_clara or '' }}" placeholder="Frase corta y fácil de entender">
+                            </div>
+                            <div class="campo campo-picto">
+                                <label>Pictograma</label>
+                                <select name="pictograma" class="form-select form-select-sm">
+                                    {% for valor, etiqueta in PICTOGRAMAS %}
+                                    <option value="{{ valor }}" {{ 'selected' if (ind.pictograma or '') == valor }}>{{ etiqueta }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-sm btn-outline-primary text-nowrap"><i class='bx bx-save'></i> Guardar</button>
+                        </form>
+                    </details>
                 </div>
                 {% endfor %}
             </div>

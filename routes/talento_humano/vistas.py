@@ -22,6 +22,7 @@ from models.talento_humano.cursos import Curso
 from models.talento_humano.epp_sst import EppSST
 from models.talento_humano.reportes import ReportesTH
 from models.talento_humano.desempeno import Desempeno, MINIMO_APROBACION
+from models.talento_humano.evaluaciones_programadas import EvaluacionesProgramadas
 
 # Decorador específico para Talento Humano
 def talento_humano_requerido(f):
@@ -35,6 +36,44 @@ def talento_humano_requerido(f):
             return redirect(url_for('main.pantalla_principal'))
         return f(*args, **kwargs)
     return decorated_function
+
+
+# Roles que pueden entrar al módulo de evaluaciones (con alcance propio)
+ROLES_EVALUACION = ('Talento humano', 'Líder de proceso', 'Coordinador administrativo')
+
+
+def evaluacion_requerido(f):
+    from functools import wraps
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if session.get('user_rol') not in ROLES_EVALUACION:
+            if request.path.startswith('/api/'):
+                return jsonify({'status': 'error', 'msg': 'Acceso denegado.'}), 403
+            flash("Acceso denegado. No tienes permiso para las evaluaciones.", "error")
+            return redirect(url_for('main.pantalla_principal'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+def alcance_evaluacion():
+    """Filtro de alcance según el rol: área (líder) o solo líderes (coordinador)."""
+    rol = session.get('user_rol')
+    if rol == 'Líder de proceso':
+        return {'area': (session.get('user_area') or '').strip() or None, 'solo_lideres': False}
+    if rol == 'Coordinador administrativo':
+        return {'area': None, 'solo_lideres': True}
+    return {'area': None, 'solo_lideres': False}
+
+
+def _en_alcance(cargo, area):
+    """Valida que un colaborador pertenezca al alcance del usuario."""
+    alc = alcance_evaluacion()
+    if alc['area']:
+        return (area or '').strip() == alc['area']
+    if alc['solo_lideres']:
+        c = (cargo or '').strip().lower()
+        return c.startswith('lider') or c.startswith('líder')
+    return True
 
 
 talento_humano_bp = Blueprint('talento_humano', __name__, url_prefix='/talento_humano')
@@ -189,26 +228,82 @@ def reporte_tema(tema):
 # ============================================================
 @talento_humano_bp.route('/evaluaciones')
 @login_requerido
-@talento_humano_requerido
+@evaluacion_requerido
 def evaluaciones():
-    """Listado de evaluaciones de desempeño, agrupado por área."""
-    grupos = Desempeno.listar_agrupado()
+    """Listado de evaluaciones de desempeño, agrupado por área (según alcance)."""
+    grupos = Desempeno.listar_agrupado(**alcance_evaluacion())
     total = sum(len(g['evaluaciones']) for g in grupos)
     return render_template('talento_humano/evaluaciones/listado.html',
                            grupos=grupos, total=total)
 
 
+@talento_humano_bp.route('/evaluaciones/pendientes')
+@login_requerido
+@evaluacion_requerido
+def evaluaciones_pendientes():
+    """Vista administradora: pendientes por evaluación, según el alcance del rol."""
+    alc = alcance_evaluacion()
+    es_lider = session.get('user_rol') == 'Líder de proceso'
+    mi_area = (session.get('user_area') or '').strip()
+
+    todos = EvaluacionesProgramadas.get_pendientes(
+        area=alc['area'], solo_lideres=alc['solo_lideres'])
+
+    areas = sorted(
+        {(i.get('area') or '').strip() or 'Sin área' for i in todos},
+        key=lambda a: (a == 'Sin área', a.lower()),
+    )
+
+    area_f = request.args.get('area', '').strip()
+    if es_lider:
+        area_f = mi_area
+    estado_f = request.args.get('estado', '').strip()
+    q = request.args.get('q', '').strip()
+
+    items = todos
+    if area_f:
+        items = [i for i in items if ((i.get('area') or '').strip() or 'Sin área') == area_f]
+    if estado_f in ('proxima', 'en_ventana', 'vencida'):
+        items = [i for i in items if i['estado'] == estado_f]
+    if q:
+        qq = q.lower()
+        items = [i for i in items
+                 if qq in (i.get('nombre_completo') or '').lower()
+                 or qq in (i.get('num_doc') or '').lower()]
+
+    anios = EvaluacionesProgramadas.agrupar(items)
+    total = EvaluacionesProgramadas.totales(items)
+
+    return render_template('talento_humano/evaluaciones/pendientes.html',
+                           anios=anios, total=total, areas=areas,
+                           area_f=area_f, estado_f=estado_f, q=q,
+                           es_lider=es_lider, mi_area=mi_area)
+
+
 @talento_humano_bp.route('/evaluaciones/nueva', methods=['GET', 'POST'])
 @login_requerido
-@talento_humano_requerido
+@evaluacion_requerido
 def evaluacion_nueva():
-    colaboradores = Desempeno.get_colaboradores_activos()
+    colaboradores = Desempeno.get_colaboradores_activos(**alcance_evaluacion())
 
     # Colaborador seleccionado: por query string en GET o por form en POST
     colaborador_id = request.values.get('colaborador_id', type=int)
     col_sel = Colaborador.get_by_id(colaborador_id) if colaborador_id else None
+
+    # Validar que el colaborador pertenezca al alcance del usuario
+    if col_sel and not _en_alcance(col_sel.get('cargo'), col_sel.get('area')):
+        flash('Ese colaborador no pertenece a tu alcance.', 'error')
+        return redirect(url_for('talento_humano.evaluaciones_pendientes'))
+
     area = col_sel.get('area') if col_sel else None
     criterios = Desempeno.get_criterios(area) if area else Desempeno.get_criterios(None)
+
+    # Ciclo de evaluación (cuando se llega desde la vista de pendientes)
+    ciclo_tipo = request.values.get('ciclo_tipo') or None
+    ciclo_numero = request.values.get('ciclo_numero', type=int)
+    ciclo_info = None
+    if colaborador_id and ciclo_tipo and ciclo_numero:
+        ciclo_info = EvaluacionesProgramadas.ciclo_de(colaborador_id, ciclo_tipo, ciclo_numero)
 
     # Jefe inmediato sugerido como evaluador
     jefe_id = col_sel.get('jefe_inmediato_id') if col_sel else None
@@ -221,6 +316,20 @@ def evaluacion_nueva():
         if not colaborador_id:
             flash('Debe seleccionar el colaborador a evaluar.', 'error')
             return redirect(url_for('talento_humano.evaluacion_nueva'))
+
+        # Validaciones del ciclo (si la evaluación viene desde "Pendientes")
+        if ciclo_tipo and ciclo_numero:
+            info = EvaluacionesProgramadas.ciclo_de(colaborador_id, ciclo_tipo, ciclo_numero)
+            if not info:
+                flash('El ciclo indicado no corresponde a este colaborador.', 'error')
+                return redirect(url_for('talento_humano.evaluaciones_pendientes'))
+            if info['estado'] == 'proxima':
+                flash('Aún no abre la ventana para este ciclo (desde '
+                      + info['fecha_objetivo'].strftime('%d/%m/%Y') + ').', 'error')
+                return redirect(url_for('talento_humano.evaluaciones_pendientes'))
+            if EvaluacionesProgramadas.esta_realizado(colaborador_id, ciclo_tipo, ciclo_numero):
+                flash('Ya existe una evaluación registrada para este ciclo.', 'error')
+                return redirect(url_for('talento_humano.evaluaciones_pendientes'))
 
         data = {
             'colaborador_id': colaborador_id,
@@ -235,6 +344,8 @@ def evaluacion_nueva():
             'objetivos': request.form.get('objetivos', '').strip() or None,
             'area': area,
             'creado_por': session.get('user_id'),
+            'ciclo_tipo': ciclo_tipo,
+            'ciclo_numero': ciclo_numero,
             'detalles': [],
         }
         if data['evaluador_id']:
@@ -257,16 +368,21 @@ def evaluacion_nueva():
     return render_template('talento_humano/evaluaciones/formulario.html',
                            criterios=criterios, colaboradores=colaboradores,
                            colaborador_sel=col_sel, area=area,
-                           jefe_id=jefe_id, jefe_nombre=jefe_nombre)
+                           jefe_id=jefe_id, jefe_nombre=jefe_nombre,
+                           ciclo_tipo=ciclo_tipo, ciclo_numero=ciclo_numero,
+                           ciclo_info=ciclo_info)
 
 
 @talento_humano_bp.route('/evaluaciones/<int:id>')
 @login_requerido
-@talento_humano_requerido
+@evaluacion_requerido
 def evaluacion_detalle(id):
     ev = Desempeno.get_by_id(id)
     if not ev:
         abort(404)
+    if not _en_alcance(ev.get('cargo'), ev.get('area_colaborador')):
+        flash('No tienes permiso para ver esa evaluación.', 'error')
+        return redirect(url_for('talento_humano.evaluaciones'))
     return render_template('talento_humano/evaluaciones/detalle.html',
                            ev=ev, minimo=MINIMO_APROBACION)
 
@@ -317,6 +433,19 @@ def evaluacion_catalogo_indicador():
         flash('Indicador agregado.', 'success')
     else:
         flash('Debe indicar criterio y descripción.', 'error')
+    return redirect(url_for('talento_humano.evaluacion_catalogo'))
+
+
+@talento_humano_bp.route('/evaluaciones/catalogo/indicador/<int:id>/apoyos', methods=['POST'])
+@login_requerido
+@talento_humano_requerido
+def evaluacion_catalogo_indicador_apoyos(id):
+    descripcion_clara = request.form.get('descripcion_clara', '').strip() or None
+    pictograma = request.form.get('pictograma', '').strip() or None
+    if Desempeno.actualizar_indicador_apoyos(id, descripcion_clara, pictograma):
+        flash('Apoyos visuales actualizados.', 'success')
+    else:
+        flash('No se encontró la pregunta.', 'error')
     return redirect(url_for('talento_humano.evaluacion_catalogo'))
 
 
