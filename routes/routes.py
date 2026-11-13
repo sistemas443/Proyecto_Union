@@ -41,6 +41,45 @@ def login_requerido(f):
         return f(*args, **kwargs)
     return decorated_function
 
+
+@bp.before_app_request
+def verificar_usuario_activo():
+    """Expulsa en vivo a un usuario que fue desactivado por un administrador."""
+    if 'user_id' not in session:
+        return None
+
+    ruta = request.path or ''
+    if ruta.startswith('/static/') or ruta in ('/', '/login', '/logout', '/favicon.ico'):
+        return None
+    if ruta.startswith(('/solicitar-', '/verificar-pin', '/cambiar-clave-pin')):
+        return None
+
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        try:
+            cur.execute("SELECT activo FROM usuarios WHERE id = %s", (session.get('user_id'),))
+            fila = cur.fetchone()
+        finally:
+            cur.close()
+            conn.close()
+    except Exception as e:
+        # Un fallo de base de datos no debe tumbar la navegación normal.
+        print(f"[ERROR VERIFICANDO USUARIO ACTIVO]: {e}")
+        return None
+
+    if fila and fila[0]:
+        return None
+
+    session.clear()
+    mensaje = "Tu cuenta fue desactivada. No tienes acceso al sistema. Contacta al administrador."
+
+    if ruta.startswith('/api/'):
+        return jsonify({'status': 'error', 'msg': mensaje, 'sesion': 'inactiva'}), 401
+
+    return redirect(url_for('main.login_page', acceso='desactivado'))
+
+
 def superadmin_requerido(f):
     # Candado de acceso exclusivo para las configuraciones críticas (Creación de usuarios y roles)
     @wraps(f)
@@ -137,8 +176,7 @@ def login():
         if usuario and check_password_hash(usuario[2], password):
             # Rechaza el acceso si un Superadmin desactivó (Soft Delete) esta cuenta
             if not usuario[3]:
-                flash("Tu cuenta está desactivada. Contacta al administrador.", "error")
-                return redirect(url_for('main.pantalla_principal'))
+                return redirect(url_for('main.login_page', acceso='desactivado'))
             else:
                 # Inyecta las variables esenciales de autorización y diseño en las cookies encriptadas de la sesión
                 session['user_id'] = usuario[0] # ID único del usuario en la base de datos
@@ -164,6 +202,13 @@ def login():
         conn.close()
 
     return redirect(url_for('main.login_page'))
+
+@bp.route('/api/sesion/estado')
+@login_requerido
+def estado_sesion():
+    """Devuelve el estado de la sesión; el before_request la invalida si el usuario está inactivo."""
+    return jsonify({'status': 'ok', 'activo': True})
+
 
 @bp.route('/solicitar-recuperacion', methods=['POST'])
 @limitar_intentos

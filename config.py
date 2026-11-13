@@ -22,6 +22,14 @@ class Config:
     MASTER_SST_USER = os.environ.get('MASTER_SST_USER', DB_USER)
     MASTER_SST_PASSWORD = os.environ.get('MASTER_SST_PASSWORD', DB_PASSWORD)
 
+    # Tercera base (gestion ambiental). Contiene los datos migrados de los
+    # aplicativos de AppSheet (sedes Lourdes y Vargas).
+    GA_DB_HOST = os.environ.get('GA_DB_HOST', DB_HOST)
+    GA_DB_PORT = os.environ.get('GA_DB_PORT', DB_PORT)
+    GA_DB_NAME = os.environ.get('GA_DB_NAME', 'master_ga')
+    GA_DB_USER = os.environ.get('GA_DB_USER', DB_USER)
+    GA_DB_PASSWORD = os.environ.get('GA_DB_PASSWORD', DB_PASSWORD)
+
 try:
     conn = psycopg2.connect(
         host=Config.DB_HOST,

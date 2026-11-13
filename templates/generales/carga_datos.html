@@ -1,313 +1,1028 @@
 {% extends 'generales/layout.html' %}
 {% block title %}Carga Masiva de Datos{% endblock %}
 
+{% block head %}
+{% include 'planta_alimentos/_design_system.html' %}
+{% endblock %}
+
 {% block content %}
 <style>
-    /* Escala normal (100%) */
+    /* La central de carga debe poder desplazarse en pantallas pequeñas. */
     body {
-        overflow-y: hidden !important;
+        overflow-y: auto !important;
+        overflow-x: hidden;
     }
 
-    /* --- ZONA DE SOLTURA (DROP ZONE) --- */
-    .drop-zone {
+    .carga-page {
         width: 100%;
-        height: 200px;
-        border: 3px dashed #ced4da;
-        border-radius: 10px;
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: clamp(1rem, 2vw, 1.75rem);
+    }
+
+    .carga-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        flex-wrap: wrap;
+        margin-bottom: 1.25rem;
+    }
+
+    .carga-header-main {
+        display: flex;
+        align-items: center;
+        gap: 0.85rem;
+        min-width: 0;
+    }
+
+    .carga-header .page-title {
+        font-size: 1.15rem;
+        line-height: 1.2;
+    }
+
+    .carga-header .page-subtitle {
+        font-size: 0.8rem;
+        line-height: 1.35;
+    }
+
+    .carga-alertas {
+        margin-bottom: 1rem;
+    }
+
+    .carga-alertas .alert {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+        border-radius: 0.5rem;
+        box-shadow: none;
+        font-size: 0.82rem;
+    }
+
+    .carga-alertas .alert i {
+        font-size: 1.05rem;
+        line-height: 1.2;
+        margin-top: 0.1rem;
+    }
+
+    .carga-alertas .alert .btn-close {
+        margin-left: auto;
+    }
+
+    .carga-layout {
+        width: 100%;
+    }
+
+    .carga-form-card {
+        overflow: hidden;
+    }
+
+    .carga-card-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid var(--border);
+        background: var(--surface);
+    }
+
+    .carga-card-title {
+        margin: 0;
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .carga-card-sub {
+        margin: 0.15rem 0 0;
+        font-size: 0.78rem;
+        color: var(--text-muted);
+    }
+
+    .carga-form {
+        padding: clamp(1rem, 2vw, 1.35rem);
+    }
+
+    .carga-form-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1rem 1.1rem;
+    }
+
+    .carga-field {
+        min-width: 0;
+    }
+
+    .carga-field-full {
+        grid-column: 1 / -1;
+    }
+
+    .step-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        margin-bottom: 0.35rem;
+    }
+
+    .step-num {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 1.15rem;
+        height: 1.15rem;
+        padding: 0 0.32rem;
+        flex: 0 0 auto;
+        border-radius: 999px;
+        background: var(--action-primary);
+        color: #ffffff;
+        font-size: 0.7rem;
+        font-weight: 700;
+        line-height: 1;
+    }
+
+    .carga-field .form-select {
+        min-height: 42px;
+        font-size: 0.84rem;
+    }
+
+    .carga-field .form-text-muted {
+        margin: 0.35rem 0 0;
+        font-size: 0.78rem;
+    }
+
+    .carga-page .badge-estado {
+        font-size: 0.72rem;
+    }
+
+    .drop-zone {
+        position: relative;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
+        gap: 0.25rem;
+        min-height: 180px;
+        padding: 1.25rem;
+        border: 1.5px dashed var(--border);
+        border-radius: 0.65rem;
+        background: var(--surface-alt);
+        color: var(--text-secondary);
         text-align: center;
-        background-color: #f8f9fa;
         cursor: pointer;
-        transition: all 0.3s ease;
-        position: relative;
+        transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease;
+    }
+
+    .drop-zone:hover,
+    .drop-zone:focus-visible {
+        border-color: var(--action-primary);
+        background: #f1f4f7;
+        color: var(--text-primary);
+        outline: none;
+    }
+
+    .drop-zone:focus-visible {
+        box-shadow: 0 0 0 2px rgba(44, 62, 80, 0.18);
+    }
+
+    .drop-zone.is-dragging {
+        border-color: var(--action-primary);
+        background: #e9eef3;
+        color: var(--text-primary);
+    }
+
+    .drop-zone.has-file {
+        border-style: solid;
+        border-color: var(--success);
+        background: #f1f9f4;
+        color: var(--text-primary);
+    }
+
+    .drop-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2.5rem;
+        height: 2.5rem;
+        margin-bottom: 0.35rem;
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        background: var(--surface);
+        color: var(--action-primary);
+        font-size: 1.35rem;
+    }
+
+    .has-file .drop-icon {
+        color: var(--success);
+        border-color: #bfe3cf;
+        background: #ffffff;
+    }
+
+    .drop-title {
+        font-size: 0.92rem;
+        font-weight: 700;
+    }
+
+    .drop-help {
+        font-size: 0.76rem;
+        color: var(--text-muted);
+    }
+
+    .drop-file {
+        display: none;
+        max-width: 100%;
+        margin-top: 0.5rem;
+        padding: 0.25rem 0.6rem;
+        border: 1px solid #bfe3cf;
+        border-radius: 999px;
+        background: #ffffff;
+        color: var(--success);
+        font-size: 0.78rem;
+        font-weight: 600;
         overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
-    .drop-zone .icon {
-        font-size: 3rem;
-        color: #6c757d;
-        margin-bottom: 10px;
-        transition: color 0.3s;
+    .has-file .drop-file {
+        display: inline-block;
     }
 
-    .drop-zone .text {
-        font-size: 1.1rem;
-        color: #6c757d;
-        font-weight: 500;
+    .drop-zone.has-error {
+        border-style: solid;
+        border-color: var(--danger);
+        background: #fdf1f2;
+        color: var(--text-primary);
     }
 
-    .drop-zone .subtext {
-        font-size: 0.9rem;
-        color: #adb5bd;
-        margin-top: 5px;
+    .has-error .drop-icon {
+        color: var(--danger);
+        border-color: #f5c2c7;
+        background: #ffffff;
+    }
+
+    .has-error .drop-file {
+        color: var(--danger);
+        border-color: #f5c2c7;
+    }
+
+    .carga-actions {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        flex-wrap: wrap;
+        margin-top: 1.25rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border);
+    }
+
+    .carga-verificacion {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.45rem;
+        max-width: 36rem;
+        margin: 0;
+        font-size: 0.78rem;
+        line-height: 1.35;
+        color: var(--text-muted);
+    }
+
+    .carga-verificacion i {
+        margin-top: 0.05rem;
+        color: var(--action-primary);
+        font-size: 0.95rem;
+    }
+
+    .carga-submit {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.45rem;
+        min-height: 44px;
+        padding: 0.5rem 1.15rem;
+        font-size: 0.84rem;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .carga-submit:disabled {
+        background-color: var(--surface-alt) !important;
+        border-color: var(--border) !important;
+        color: var(--text-muted) !important;
+        opacity: 1;
+        cursor: not-allowed;
+    }
+
+    .carga-submit.procesando:disabled {
+        background-color: var(--action-primary) !important;
+        border-color: var(--action-primary) !important;
+        color: #ffffff !important;
+    }
+
+    .carga-hint {
+        margin: 0.65rem 0 0;
+        font-size: 0.78rem;
+        color: var(--text-muted);
+    }
+
+    .carga-hint.is-ready {
+        color: var(--success);
+    }
+
+    .carga-error {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.4rem;
+        margin: 0.55rem 0 0;
+        font-size: 0.78rem;
+        line-height: 1.35;
+        color: var(--danger);
+    }
+
+    .carga-error i {
+        margin-top: 0.05rem;
+        font-size: 0.95rem;
     }
 
     #archivo_excel {
         display: none;
     }
 
-    .file-name {
-        margin-top: 10px;
-        font-weight: bold;
-        color: #198754;
-        display: none;
-    }
-
-    /* --- OVERLAY DE PANTALLA COMPLETA --- */
+    /* Overlay funcional para arrastrar archivos. */
     #fullPageOverlay {
         position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(33, 37, 41, 0.9);
+        inset: 0;
         z-index: 99999;
         display: none;
-        flex-direction: column;
         align-items: center;
         justify-content: center;
-        color: white;
+        padding: 1.5rem;
+        background: rgba(20, 26, 33, 0.82);
+        color: #ffffff;
         text-align: center;
+        opacity: 0;
         pointer-events: none;
-        transition: opacity 0.3s ease;
-        backdrop-filter: blur(5px);
+        transition: opacity 180ms ease;
     }
 
     #fullPageOverlay.active {
         display: flex;
+        opacity: 1;
+    }
+
+    .overlay-box {
+        width: min(32rem, 100%);
+        padding: 2rem 1.25rem;
+        border: 1.5px dashed rgba(255, 255, 255, 0.45);
+        border-radius: 0.75rem;
+        background: rgba(255, 255, 255, 0.03);
     }
 
     #fullPageOverlay .overlay-icon {
-        font-size: 8rem;
-        color: #0d6efd;
-        margin-bottom: 20px;
-        animation: bounce 1s infinite alternate;
-        text-shadow: 0 4px 15px rgba(13, 110, 253, 0.5);
+        margin-bottom: 0.75rem;
+        color: #ffffff;
+        font-size: 3.5rem;
     }
 
     #fullPageOverlay .overlay-text {
-        font-size: 2.5rem;
-        font-weight: 900;
-        text-shadow: 0 2px 4px rgba(0,0,0,0.8);
-        letter-spacing: 1px;
+        font-size: 1.2rem;
+        font-weight: 700;
     }
 
     #fullPageOverlay .overlay-subtext {
-        font-size: 1.3rem;
-        color: #adb5bd;
-        margin-top: 15px;
-        font-weight: 500;
+        margin-top: 0.35rem;
+        color: rgba(255, 255, 255, 0.72);
+        font-size: 0.82rem;
     }
 
-    @keyframes bounce {
-        from { transform: translateY(0); }
-        to { transform: translateY(-20px); }
+    ::selection {
+        background: rgba(44, 62, 80, 0.18);
+        color: var(--text-primary);
+    }
+
+    @media (max-width: 767px) {
+        .carga-page {
+            padding: 0.85rem;
+        }
+
+        .carga-header {
+            margin-bottom: 1rem;
+        }
+
+        .carga-form-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .carga-field-full {
+            grid-column: auto;
+        }
+
+        .carga-actions {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .carga-submit {
+            width: 100%;
+        }
+
+        .carga-verificacion {
+            max-width: none;
+        }
+
+        .drop-zone {
+            min-height: 155px;
+        }
+    }
+
+    @media (max-width: 420px) {
+        .carga-page {
+            padding: 0.65rem;
+        }
+
+        .carga-card-head,
+        .carga-form {
+            padding: 0.9rem;
+        }
+
+        .carga-header .page-title {
+            font-size: 1.05rem;
+        }
+
+        .carga-header > .badge-estado {
+            display: none;
+        }
+
+        .drop-help {
+            font-size: 0.7rem;
+        }
+    }
+
+    @media (pointer: coarse) {
+        .carga-field .form-select,
+        .carga-submit {
+            min-height: 46px;
+        }
+
+        .drop-zone {
+            min-height: 170px;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+            animation-duration: 0.01ms !important;
+            transition-duration: 0.01ms !important;
+        }
     }
 </style>
 
-<div class="container-fluid px-4 py-4">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card shadow border-0">
-                <div class="card-header bg-dark text-white py-3">
-                    <h5 class="mb-0 fw-bold"><i class='bx bx-upload me-2'></i>Central de Carga Masiva</h5>
-                </div>
-                <div class="card-body p-4">
-                    <!-- Bloque de Alertas Flash -->
-                    {% with messages = get_flashed_messages(with_categories=true) %}
-                    {% if messages %}
-                    {% for category, message in messages %}
-                    <div class="alert alert-{{ category }} alert-dismissible fade show fw-bold shadow-sm" role="alert">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                    {% endfor %}
-                    {% endif %}
-                    {% endwith %}
-
-                    <form action="{{ url_for('carga_datos.procesar_carga') }}" method="POST" enctype="multipart/form-data" id="formCarga">
-
-                        <div class="mb-4">
-                            <label for="modulo" class="form-label fw-bold text-secondary">1. Selecciona el Tipo de Informe</label>
-                            <select name="modulo" id="modulo" class="form-select shadow-sm" required>
-                                <option value="">-- Elige el módulo --</option>
-                                <option value="diario">Informe Diario</option>
-                                <option value="primera_semana">1era Semana</option>
-                                <option value="semanal_levante">Semanal Levante</option>
-                                <option value="semanal_prod">Informe Semanal de Producción</option>
-                                <option value="clasificacion">Clasificación de Producción</option>
-                            </select>
-                        </div>
-
-                        <div class="mb-4">
-                            <label for="lote" class="form-label fw-bold text-secondary">2. Selecciona el Lote de Destino</label>
-                            <select name="lote" id="lote" class="form-select shadow-sm" required>
-                                <option value="">-- Elige un lote --</option>
-                                {% for l in lotes %}
-                                <option value="{{ l }}">{{ l }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-
-                        <!-- 3. ZONA DE ARRASTRAR Y SOLTAR -->
-                        <div class="mb-4">
-                            <label class="form-label fw-bold text-secondary">3. Sube el archivo Excel (.xlsx, .xls, .xlsm)</label>
-
-                            <!-- Input oculto real -->
-                            <input type="file" id="archivo_excel" name="archivo_excel" accept=".xlsx, .xls, .xlsm" required>
-
-                            <!-- Zona visual Drop Zone -->
-                            <div class="drop-zone" id="dropZone">
-                                <i class='bx bx-cloud-upload icon'></i>
-                                <div class="text">Arrastra tu archivo aquí</div>
-                                <div class="subtext">o haz clic para seleccionar</div>
-                                <div class="file-name" id="fileNameDisplay"></div>
-                            </div>
-                        </div>
-
-                        <div class="form-check mb-3">
-                            <input class="form-check-input" type="checkbox" name="confirmar_lote" id="confirmar_lote" required>
-                            <label class="form-check-label" for="confirmar_lote">
-                                Confirmo que el archivo corresponde al lote seleccionado y que reemplazará los datos actuales de ese lote.
-                            </label>
-                        </div>
-
-                        <button type="submit" class="btn btn-primary w-100 fw-bold shadow-sm py-2">
-                            <i class='bx bx-check-circle me-1'></i> Procesar y Guardar Datos
-                        </button>
-                    </form>
-                </div>
+<div class="carga-page">
+    <header class="carga-header">
+        <div class="carga-header-main">
+            <div class="page-icon">
+                <i class='bx bx-cloud-upload'></i>
+            </div>
+            <div>
+                <h1 class="page-title mb-0">Central de carga</h1>
+                <p class="page-subtitle mb-0">Actualiza los datos de un lote desde un archivo Excel.</p>
             </div>
         </div>
+        <span class="badge-estado badge-neutro">
+            <i class='bx bx-lock-alt me-1'></i> Solo Superadmin
+        </span>
+    </header>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="carga-alertas">
+        {% for category, message in messages %}
+        {% set icono = 'bx-check-circle' if category == 'success' else ('bx-error-circle' if category == 'danger' else 'bx-info-circle') %}
+        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+            <i class='bx {{ icono }}'></i>
+            <span>{{ message }}</span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    <div class="carga-layout">
+        <section class="card-clean carga-form-card" aria-labelledby="cargaFormTitle">
+            <div class="carga-card-head">
+                <div>
+                    <h2 class="carga-card-title" id="cargaFormTitle">Nueva carga</h2>
+                    <p class="carga-card-sub">Completa los pasos y verifica el lote de destino.</p>
+                </div>
+                <span class="badge-estado badge-pendiente" id="estadoCarga">Pendiente</span>
+            </div>
+
+            <form action="{{ url_for('carga_datos.procesar_carga') }}" method="POST"
+                  enctype="multipart/form-data" id="formCarga" class="carga-form">
+
+                <div class="carga-form-grid">
+                    <div class="carga-field">
+                        <label for="modulo" class="form-label-design step-label">
+                            <span class="step-num">1</span> Tipo de informe
+                        </label>
+                        <select name="modulo" id="modulo" class="form-select" required>
+                            <option value="">-- Elige el módulo --</option>
+                            <option value="diario">Informe Diario</option>
+                            <option value="primera_semana">1era Semana</option>
+                            <option value="semanal_levante">Semanal Levante</option>
+                            <option value="semanal_prod">Informe Semanal de Producción</option>
+                            <option value="clasificacion">Clasificación de Producción</option>
+                        </select>
+                    </div>
+
+                    <div class="carga-field">
+                        <label for="lote" class="form-label-design step-label">
+                            <span class="step-num">2</span> Lote de destino
+                        </label>
+                        <select name="lote" id="lote" class="form-select" required>
+                            <option value="">-- Elige un lote --</option>
+                            {% for l in lotes %}
+                            <option value="{{ l }}">{{ l }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="carga-field carga-field-full" id="bloqueTablaPrimera" style="display: none;">
+                        <label for="tabla_dia" class="form-label-design step-label">
+                            <span class="step-num">2.1</span> Tabla de Primera Semana
+                        </label>
+                        <select name="tabla_dia" id="tabla_dia" class="form-select" disabled>
+                            <option value="dia1">Día 1 (tabla oficial)</option>
+                            <option value="dia2">Día 2 (tabla visual)</option>
+                        </select>
+                        <p class="form-text-muted">Este lote tiene las dos tablas. Elige dónde cargar la información.</p>
+                    </div>
+
+                    <div class="carga-field carga-field-full">
+                        <span class="form-label-design step-label">
+                            <span class="step-num">3</span> Archivo Excel
+                        </span>
+                        <input type="file" id="archivo_excel" name="archivo_excel"
+                               accept=".xlsx, .xls, .xlsm" required>
+
+                        <div class="drop-zone" id="dropZone" role="button" tabindex="0"
+                             aria-label="Seleccionar o arrastrar un archivo Excel">
+                            <span class="drop-icon"><i class='bx bx-cloud-upload'></i></span>
+                            <div class="drop-title">Arrastra tu archivo aquí</div>
+                            <div class="drop-help">o haz clic para seleccionar · .xlsx, .xls, .xlsm</div>
+                            <div class="drop-file" id="fileNameDisplay" aria-live="polite"></div>
+                        </div>
+
+                        <p class="carga-error" id="cargaErrorLote" role="alert" aria-live="assertive"
+                           style="display: none;">
+                            <i class='bx bx-error-circle'></i>
+                            <span id="cargaErrorLoteTexto"></span>
+                        </p>
+                    </div>
+                </div>
+
+                <div class="carga-actions">
+                    <p class="carga-verificacion">
+                        <i class='bx bx-lock-alt'></i>
+                        <span>El sistema verificará que el lote del archivo coincida con el lote seleccionado.</span>
+                    </p>
+                    <button type="submit" class="btn btn-primary carga-submit" id="btnProcesar" disabled>
+                        <i class='bx bx-check-circle'></i>
+                        <span>Procesar y guardar</span>
+                    </button>
+                </div>
+                <p class="carga-hint" id="cargaHint">
+                    Selecciona el tipo de informe, el lote y el archivo para continuar.
+                </p>
+            </form>
+        </section>
     </div>
 </div>
 
-<!-- OVERLAY DE PANTALLA COMPLETA (Fuera del container, oculto por defecto) -->
-<div id="fullPageOverlay">
-    <i class='bx bx-cloud-upload overlay-icon'></i>
-    <div class="overlay-text">Suelta el archivo aquí</div>
-    <div class="overlay-subtext">El archivo se cargará automáticamente en el formulario</div>
+<div id="fullPageOverlay" aria-hidden="true">
+    <div class="overlay-box">
+        <i class='bx bx-cloud-upload overlay-icon'></i>
+        <div class="overlay-text">Suelta el archivo aquí</div>
+        <div class="overlay-subtext">Formatos: .xlsx, .xls, .xlsm</div>
+    </div>
 </div>
-
 {% endblock %}
 
 {% block scripts %}
 <script>
-    // --- SISTEMA INTELIGENTE DE ALTURA PERFECTA (RESIZE OBSERVER) ---
     document.addEventListener("DOMContentLoaded", function () {
-        const tabla = document.querySelector('.tabla-scroll');
-        if (tabla) {
-            const observer = new ResizeObserver(() => {
-                const rect = tabla.getBoundingClientRect();
-                const pixelesLibres = window.innerHeight - rect.top;
-                const alturaPerfecta = pixelesLibres - 10;
-                tabla.style.height = alturaPerfecta + "px";
-                tabla.style.maxHeight = alturaPerfecta + "px";
-            });
-            observer.observe(document.body);
-        }
-    });
-
-    // --- LÓGICA DEL DRAG & DROP (PANTALLA COMPLETA CON VALIDACIÓN DE PÍXELES) ---
-    document.addEventListener("DOMContentLoaded", function() {
-        const dropZone = document.getElementById('dropZone');
+        const form = document.getElementById('formCarga');
+        const modulo = document.getElementById('modulo');
+        const lote = document.getElementById('lote');
         const fileInput = document.getElementById('archivo_excel');
+        const dropZone = document.getElementById('dropZone');
         const fileNameDisplay = document.getElementById('fileNameDisplay');
+        const btnProcesar = document.getElementById('btnProcesar');
+        const estadoCarga = document.getElementById('estadoCarga');
+        const cargaHint = document.getElementById('cargaHint');
         const overlay = document.getElementById('fullPageOverlay');
+        const bloqueTabla = document.getElementById('bloqueTablaPrimera');
+        const selectTabla = document.getElementById('tabla_dia');
+        const errorLote = document.getElementById('cargaErrorLote');
+        const errorLoteTexto = document.getElementById('cargaErrorLoteTexto');
+        const lotesConDia2 = new Set({{ lotes_con_dia2|tojson }});
 
-        // --- VALIDACIÓN DE PÍXELES DE PANTALLA ---
-        function ajustarOverlayAPantalla() {
-            const ancho = window.innerWidth;
-            const alto = window.innerHeight;
+        let loteArchivoEstado = 'pendiente';
+        let loteArchivoMensaje = '';
+        let verificacionLoteId = 0;
 
-            if (ancho < 1366 || alto < 768) {
-                overlay.style.fontSize = '0.8rem';
-                document.querySelector('#fullPageOverlay .overlay-icon').style.fontSize = '5rem';
-                document.querySelector('#fullPageOverlay .overlay-text').style.fontSize = '1.8rem';
-            } else {
-                overlay.style.fontSize = '1rem';
-                document.querySelector('#fullPageOverlay .overlay-icon').style.fontSize = '8rem';
-                document.querySelector('#fullPageOverlay .overlay-text').style.fontSize = '2.5rem';
+        if (!form || !modulo || !lote || !fileInput || !dropZone || !btnProcesar) return;
+
+        // --- SELECTOR DÍA 1 / DÍA 2 PARA PRIMERA SEMANA ---
+        function actualizarSelectorTabla() {
+            const mostrar = modulo.value === 'primera_semana' && lotesConDia2.has(lote.value);
+            bloqueTabla.style.display = mostrar ? '' : 'none';
+            selectTabla.disabled = !mostrar;
+            if (!mostrar) selectTabla.value = 'dia1';
+        }
+
+        // --- VALIDACIÓN DEL FORMULARIO Y DEL LOTE DEL ARCHIVO ---
+        function mostrarErrorLote(mensaje) {
+            if (!errorLote || !errorLoteTexto) return;
+            errorLoteTexto.textContent = mensaje || '';
+            errorLote.style.display = mensaje ? 'flex' : 'none';
+        }
+
+        function marcarDropZoneError() {
+            dropZone.classList.add('has-error');
+            dropZone.querySelector('.drop-icon i').className = 'bx bx-error-circle';
+            dropZone.querySelector('.drop-title').textContent = 'Archivo no corresponde';
+            dropZone.querySelector('.drop-help').textContent =
+                'Selecciona el archivo del lote ' + (lote.value || 'seleccionado') + ' o cambia el lote.';
+        }
+
+        function limpiarDropZoneError() {
+            dropZone.classList.remove('has-error');
+            if (fileInput.files.length > 0) {
+                dropZone.querySelector('.drop-icon i').className = 'bx bx-check-circle';
+                dropZone.querySelector('.drop-title').textContent = 'Archivo listo';
+                dropZone.querySelector('.drop-help').textContent = 'Haz clic para cambiar el archivo';
             }
         }
 
-        ajustarOverlayAPantalla();
-        window.addEventListener('resize', ajustarOverlayAPantalla);
+        function actualizarEstadoBoton() {
+            const baseOk = Boolean(
+                modulo.value &&
+                lote.value &&
+                fileInput.files.length > 0
+            );
+            const listo = baseOk && loteArchivoEstado === 'ok';
 
-        // 1. Click en la zona -> Abre el explorador de archivos
-        dropZone.addEventListener('click', () => {
+            btnProcesar.disabled = !listo;
+            cargaHint.classList.toggle('is-ready', listo);
+
+            if (loteArchivoEstado === 'error') {
+                marcarDropZoneError();
+                mostrarErrorLote(loteArchivoMensaje);
+                estadoCarga.textContent = 'Revisar';
+                estadoCarga.className = 'badge-estado badge-critica';
+                cargaHint.textContent = 'Corrige el archivo o el lote para continuar.';
+                return false;
+            }
+
+            mostrarErrorLote('');
+            limpiarDropZoneError();
+
+            if (loteArchivoEstado === 'verificando') {
+                estadoCarga.textContent = 'Verificando';
+                estadoCarga.className = 'badge-estado badge-pendiente';
+                cargaHint.textContent = 'Verificando el lote del archivo...';
+                return false;
+            }
+
+            if (listo) {
+                estadoCarga.textContent = 'Listo';
+                estadoCarga.className = 'badge-estado badge-ok';
+                cargaHint.textContent = 'Todo listo. Puedes procesar la carga.';
+                return true;
+            }
+
+            estadoCarga.textContent = 'Pendiente';
+            estadoCarga.className = 'badge-estado badge-pendiente';
+            cargaHint.textContent = 'Selecciona el tipo de informe, el lote y el archivo para continuar.';
+            return false;
+        }
+
+        function normalizarHojaJS(nombre) {
+            return String(nombre || '')
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .toLowerCase()
+                .replace(/[^a-z0-9]/g, '');
+        }
+
+        function extraerLoteJS(valor) {
+            if (valor === null || valor === undefined) return null;
+            if (typeof valor === 'number') {
+                return isFinite(valor) && valor > 0 ? String(Math.trunc(valor)) : null;
+            }
+            const texto = String(valor).trim();
+            if (!texto || /^(nan|none|lote:?)$/i.test(texto)) return null;
+            const coincidencia = texto.toUpperCase().match(/(\d{1,4}(?:-\d{1,4})?)/);
+            return coincidencia ? coincidencia[1] : null;
+        }
+
+        function extraerLoteDeNombre(nombre) {
+            const base = String(nombre || '').replace(/\.[^.]+$/, '');
+            const completo = base.match(/(\d{1,3}-\d{1,3})/);
+            if (completo) return completo[1];
+            const simple = base.match(/(\d{1,3})/);
+            return simple ? simple[1] : null;
+        }
+
+        function validarLoteEnLibroJS(buffer, loteSeleccionado, nombreArchivo) {
+            if (typeof XLSX === 'undefined') {
+                // Si la librería no está disponible, el servidor hará la validación.
+                return { ok: true, msg: '' };
+            }
+
+            let libro;
+            try {
+                libro = XLSX.read(new Uint8Array(buffer), { type: 'array' });
+            } catch (error) {
+                return { ok: false, msg: 'No se pudo leer el archivo Excel.' };
+            }
+
+            const completos = new Set();
+            const bases = new Set();
+            const ignoradas = new Set(['tabvariablesfinales', 'etiquetadatos']);
+            const celdasConocidas = {
+                semlevante: ['H8'],
+                semprod: ['P5'],
+                clasificacion: ['P5'],
+                diario: ['K2']
+            };
+
+            function agregar(valor) {
+                const encontrado = extraerLoteJS(valor);
+                if (!encontrado) return;
+                if (encontrado.indexOf('-') !== -1) completos.add(encontrado);
+                else bases.add(encontrado);
+            }
+
+            (libro.SheetNames || []).forEach(function (nombreHoja) {
+                const normal = normalizarHojaJS(nombreHoja);
+                if (!normal || ignoradas.has(normal) || normal.indexOf('grafico') === 0) return;
+
+                const hoja = libro.Sheets[nombreHoja];
+                if (!hoja) return;
+
+                const celdas = (celdasConocidas[normal] || []).slice();
+                if (normal.indexOf('1rasemana') === 0 || normal.indexOf('primera') === 0) {
+                    celdas.push('C4');
+                }
+                celdas.forEach(function (ref) {
+                    if (hoja[ref]) agregar(hoja[ref].v);
+                });
+
+                let filas;
+                try {
+                    filas = XLSX.utils.sheet_to_json(hoja, {
+                        header: 1, raw: true, defval: null, blankrows: false
+                    });
+                } catch (error) {
+                    return;
+                }
+
+                const maxFilas = Math.min(filas.length, 40);
+                for (let f = 0; f < maxFilas; f++) {
+                    const fila = filas[f] || [];
+                    const maxColumnas = Math.min(fila.length, 60);
+                    for (let c = 0; c < maxColumnas; c++) {
+                        const valor = fila[c];
+                        if (typeof valor === 'string' && valor.toLowerCase().indexOf('lote') !== -1) {
+                            agregar(valor);
+                            if (c + 1 < fila.length) agregar(fila[c + 1]);
+                        }
+                    }
+                }
+            });
+
+            const seleccionado = extraerLoteJS(loteSeleccionado);
+            if (!seleccionado) {
+                return { ok: false, msg: 'No se pudo interpretar el lote seleccionado.' };
+            }
+
+            if (completos.size === 1) {
+                const detectado = Array.from(completos)[0];
+                return detectado === seleccionado
+                    ? { ok: true, msg: '' }
+                    : { ok: false, msg: 'El archivo corresponde al lote ' + detectado + ', pero seleccionaste el lote ' + seleccionado + '.' };
+            }
+
+            if (completos.size > 1) {
+                return {
+                    ok: false,
+                    msg: 'El archivo contiene varios lotes (' + Array.from(completos).join(', ') + '). Sube un archivo de un solo lote.'
+                };
+            }
+
+            // Si el contenido solo trae el lote base, el nombre del archivo
+            // puede aportar la variante completa (por ejemplo, Lote 69-10.xlsm).
+            const loteNombre = extraerLoteDeNombre(nombreArchivo);
+            const baseSeleccionada = seleccionado.split('-')[0];
+            if (loteNombre && loteNombre.indexOf('-') !== -1) {
+                if (bases.size && !bases.has(baseSeleccionada)) {
+                    return {
+                        ok: false,
+                        msg: 'El contenido del archivo indica el lote base ' + Array.from(bases).join(', ') + ', pero seleccionaste el lote ' + seleccionado + '.'
+                    };
+                }
+                if (loteNombre === seleccionado) {
+                    return { ok: true, msg: '' };
+                }
+                return {
+                    ok: false,
+                    msg: 'El nombre del archivo indica el lote ' + loteNombre + ', pero seleccionaste el lote ' + seleccionado + '. Verifica el archivo o cambia el lote.'
+                };
+            }
+
+            if (bases.size === 1 && seleccionado.indexOf('-') === -1) {
+                const detectado = Array.from(bases)[0];
+                return detectado === seleccionado
+                    ? { ok: true, msg: '' }
+                    : { ok: false, msg: 'El archivo corresponde al lote ' + detectado + ', pero seleccionaste el lote ' + seleccionado + '.' };
+            }
+
+            if (bases.size) {
+                return {
+                    ok: false,
+                    msg: 'No se pudo verificar el lote completo dentro del archivo. Se encontró solo el lote base ' + Array.from(bases).join(', ') + '. El archivo debe incluir el lote completo, por ejemplo 69-10.'
+                };
+            }
+
+            return {
+                ok: false,
+                msg: 'No se pudo detectar el lote dentro del archivo. Verifica que sea el archivo correcto.'
+            };
+        }
+
+        async function verificarLoteArchivo() {
+            const idVerificacion = ++verificacionLoteId;
+
+            if (!fileInput.files.length || !lote.value) {
+                loteArchivoEstado = 'pendiente';
+                loteArchivoMensaje = '';
+                actualizarEstadoBoton();
+                return;
+            }
+
+            loteArchivoEstado = 'verificando';
+            loteArchivoMensaje = '';
+            actualizarEstadoBoton();
+
+            try {
+                const archivo = fileInput.files[0];
+                const buffer = await archivo.arrayBuffer();
+                if (idVerificacion !== verificacionLoteId) return;
+
+                const resultado = validarLoteEnLibroJS(buffer, lote.value, archivo.name);
+                if (idVerificacion !== verificacionLoteId) return;
+
+                if (resultado.ok) {
+                    loteArchivoEstado = 'ok';
+                    loteArchivoMensaje = '';
+                } else {
+                    loteArchivoEstado = 'error';
+                    loteArchivoMensaje = resultado.msg;
+                }
+            } catch (error) {
+                if (idVerificacion !== verificacionLoteId) return;
+                console.error('No se pudo verificar el lote del archivo:', error);
+                loteArchivoEstado = 'error';
+                loteArchivoMensaje = 'No se pudo leer el archivo para verificar el lote.';
+            }
+
+            actualizarEstadoBoton();
+        }
+
+        // --- ARCHIVO: SELECCIÓN, ARRASTRE Y NOMBRE ---
+        function actualizarNombreArchivo(nombre) {
+            fileNameDisplay.textContent = nombre;
+            dropZone.classList.add('has-file');
+            dropZone.querySelector('.drop-icon i').className = 'bx bx-check-circle';
+            dropZone.querySelector('.drop-title').textContent = 'Archivo listo';
+            dropZone.querySelector('.drop-help').textContent = 'Haz clic para cambiar el archivo';
+        }
+
+        dropZone.addEventListener('click', function () {
             fileInput.click();
         });
 
-        // 2. Prevenir el comportamiento por defecto en TODA la ventana
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            document.body.addEventListener(eventName, (e) => {
+        dropZone.addEventListener('keydown', function (evento) {
+            if (evento.key === 'Enter' || evento.key === ' ') {
+                evento.preventDefault();
+                fileInput.click();
+            }
+        });
+
+        fileInput.addEventListener('change', function () {
+            if (this.files.length > 0) {
+                actualizarNombreArchivo(this.files[0].name);
+            } else {
+                dropZone.classList.remove('has-file');
+                fileNameDisplay.textContent = '';
+                dropZone.querySelector('.drop-icon i').className = 'bx bx-cloud-upload';
+                dropZone.querySelector('.drop-title').textContent = 'Arrastra tu archivo aquí';
+                dropZone.querySelector('.drop-help').textContent = 'o haz clic para seleccionar · .xlsx, .xls, .xlsm';
+            }
+
+            loteArchivoEstado = 'pendiente';
+            loteArchivoMensaje = '';
+            actualizarEstadoBoton();
+            verificarLoteArchivo();
+        });
+
+        // Prevenir el comportamiento por defecto del navegador al arrastrar.
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(function (evento) {
+            document.body.addEventListener(evento, function (e) {
                 e.preventDefault();
                 e.stopPropagation();
             }, false);
         });
 
-        // 3. Mostrar el Overlay cuando se arrastra un archivo
-        document.body.addEventListener('dragenter', (e) => {
+        document.body.addEventListener('dragenter', function (e) {
             if (e.dataTransfer && e.dataTransfer.types.includes('Files')) {
                 overlay.classList.add('active');
+                overlay.setAttribute('aria-hidden', 'false');
+                dropZone.classList.add('is-dragging');
             }
         });
 
-        // 4. Ocultar el Overlay cuando el ratón sale de la ventana
-        let dragLeaveTimer;
-        document.body.addEventListener('dragleave', (e) => {
+        let temporizadorSalida;
+        document.body.addEventListener('dragleave', function (e) {
             if (!e.relatedTarget) {
-                clearTimeout(dragLeaveTimer);
-                dragLeaveTimer = setTimeout(() => {
+                clearTimeout(temporizadorSalida);
+                temporizadorSalida = setTimeout(function () {
                     overlay.classList.remove('active');
-                }, 100);
+                    overlay.setAttribute('aria-hidden', 'true');
+                    dropZone.classList.remove('is-dragging');
+                }, 80);
             }
         });
 
-        // 5. Manejar el archivo soltado en CUALQUIER parte de la ventana
-        document.body.addEventListener('drop', (e) => {
-            clearTimeout(dragLeaveTimer);
+        document.body.addEventListener('drop', function (e) {
+            clearTimeout(temporizadorSalida);
             overlay.classList.remove('active');
+            overlay.setAttribute('aria-hidden', 'true');
+            dropZone.classList.remove('is-dragging');
 
-            const files = e.dataTransfer.files;
-            if (files.length > 0) {
-                const file = files[0];
-                if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls') || file.name.endsWith('.xlsm')) {
-                    fileInput.files = files;
-                    actualizarNombreArchivo(file.name);
-                } else {
-                    alert("Por favor, suelta solo archivos Excel (.xlsx, .xls o .xlsm)");
+            const archivos = e.dataTransfer.files;
+            if (!archivos || archivos.length === 0) return;
+
+            const archivo = archivos[0];
+            const nombre = archivo.name.toLowerCase();
+            if (nombre.endsWith('.xlsx') || nombre.endsWith('.xls') || nombre.endsWith('.xlsm')) {
+                fileInput.files = archivos;
+                actualizarNombreArchivo(archivo.name);
+                loteArchivoEstado = 'pendiente';
+                loteArchivoMensaje = '';
+                actualizarEstadoBoton();
+                verificarLoteArchivo();
+            } else {
+                alert('Por favor, suelta solo archivos Excel (.xlsx, .xls o .xlsm).');
+            }
+        });
+
+        // --- EVENTOS DE VALIDACIÓN ---
+        modulo.addEventListener('change', function () {
+            actualizarSelectorTabla();
+            verificarLoteArchivo();
+        });
+        lote.addEventListener('change', function () {
+            actualizarSelectorTabla();
+            verificarLoteArchivo();
+        });
+
+        // --- ESTADO DE PROCESAMIENTO ---
+        form.addEventListener('submit', function (evento) {
+            if (!actualizarEstadoBoton()) {
+                evento.preventDefault();
+                if (loteArchivoEstado === 'pendiente' && fileInput.files.length && lote.value) {
+                    verificarLoteArchivo();
                 }
+                return;
             }
+            btnProcesar.disabled = true;
+            btnProcesar.classList.add('procesando');
+            btnProcesar.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span><span>Procesando...</span>';
+            estadoCarga.textContent = 'Procesando';
+            estadoCarga.className = 'badge-estado badge-pendiente';
         });
 
-        // 6. Manejar el archivo seleccionado por click
-        fileInput.addEventListener('change', function() {
-            if (this.files.length > 0) {
-                actualizarNombreArchivo(this.files[0].name);
-            }
-        });
-
-        // Función auxiliar para mostrar el nombre del archivo
-        function actualizarNombreArchivo(nombre) {
-            fileNameDisplay.textContent = "Archivo seleccionado: " + nombre;
-            fileNameDisplay.style.display = 'block';
-
-            dropZone.style.borderColor = '#198754';
-            dropZone.style.backgroundColor = '#d1e7dd';
-
-            const icon = dropZone.querySelector('.icon');
-            icon.classList.remove('bx-cloud-upload');
-            icon.classList.add('bx-check-circle');
-            icon.style.color = '#198754';
-
-            dropZone.querySelector('.text').textContent = "¡Archivo listo!";
-            dropZone.querySelector('.subtext').textContent = "Haz clic para cambiar si lo deseas";
-        }
+        actualizarSelectorTabla();
+        actualizarEstadoBoton();
     });
 </script>
 {% endblock %}

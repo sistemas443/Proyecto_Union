@@ -74,6 +74,27 @@
         letter-spacing: 0.8px;
     }
 
+    .login-alert {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.45rem;
+        margin-bottom: 1.1rem;
+        padding: 0.7rem 0.85rem;
+        border: 1px solid #f5c2c7;
+        border-radius: 0.5rem;
+        background: #fdecee;
+        color: #842029;
+        font-size: 0.85rem;
+        line-height: 1.35;
+        text-align: left;
+    }
+
+    .login-alert i {
+        flex: 0 0 auto;
+        margin-top: 0.05rem;
+        font-size: 1.05rem;
+    }
+
     /* 4. INPUTS Y CONTENEDOR DE CONTRASEÑA */
     .form-control {
         border: 1px solid #ced4da;
@@ -179,6 +200,13 @@
     </div>
     <h3>Iniciar sesión</h3>
     <div class="subtitle">AVICOLA SAN MARTIN</div>
+
+    {% if request.args.get('acceso') == 'desactivado' %}
+    <div class="login-alert" role="alert">
+        <i class='bx bx-lock-alt'></i>
+        <span>Tu cuenta está desactivada. No tienes acceso al sistema. Contacta al administrador.</span>
+    </div>
+    {% endif %}
 
     <form action="/login" method="POST">
         <input type="text" class="form-control mb-3" id="username" name="username" placeholder="Usuario" required autocomplete="off">

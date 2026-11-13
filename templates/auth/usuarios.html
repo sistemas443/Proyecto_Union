@@ -466,7 +466,7 @@
         Swal.fire({
             title: desactivar ? '¿Desactivar acceso?' : '¿Reactivar acceso?',
             html: (desactivar
-                ? 'El usuario <strong>' + escaparHtmlUsuario(nombre) + '</strong> dejará de poder ingresar al sistema.'
+                ? 'El usuario <strong>' + escaparHtmlUsuario(nombre) + '</strong> cerrará su sesión activa y no podrá volver a ingresar al sistema.'
                 : 'El usuario <strong>' + escaparHtmlUsuario(nombre) + '</strong> podrá volver a ingresar al sistema.'),
             icon: 'warning',
             showCancelButton: true,

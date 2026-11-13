@@ -69,6 +69,20 @@ PARAMETROS_SST = dict(
     keepalives_count=3,
 )
 
+PARAMETROS_GA = dict(
+    host=Config.GA_DB_HOST,
+    database=Config.GA_DB_NAME,
+    user=Config.GA_DB_USER,
+    password=Config.GA_DB_PASSWORD,
+    port=Config.GA_DB_PORT,
+    client_encoding='utf8',
+    connect_timeout=10,
+    keepalives=1,
+    keepalives_idle=30,
+    keepalives_interval=10,
+    keepalives_count=3,
+)
+
 
 class ConexionPool:
     """
@@ -259,6 +273,17 @@ def get_db_connection():
 def get_master_sst_connection():
     """Conexión de solo lectura a la base de Seguridad y Salud en el Trabajo."""
     return psycopg2.connect(**PARAMETROS_SST)
+
+
+def get_ga_connection():
+    """
+    Conexion de solo lectura a la base de Gestion Ambiental (master_ga).
+
+    Alli viven las tablas migradas desde los aplicativos de AppSheet de las
+    sedes Lourdes y Vargas. Se abre una conexion por operacion y se cierra
+    con close(), igual que en el resto del proyecto.
+    """
+    return psycopg2.connect(**PARAMETROS_GA)
 
 
 def parse_empty(value):

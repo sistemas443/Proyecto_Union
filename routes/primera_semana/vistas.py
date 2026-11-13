@@ -1,6 +1,13 @@
 from flask import Blueprint, render_template, request, session
 from routes.routes import login_requerido
 from models.primera_semana.services import get_primera_semana_by_lote, get_data_grafico_primera_semana
+from models.primera_semana.activa import get_tabla_activa
+from models.primera_semana.dia2_services import (
+    get_dia2_by_lote,
+    tiene_dia2,
+    roles_pueden_dia2,
+    puede_editar_dia2,
+)
 from models.cabecera.services import get_cabecera_info
 from models.lotes.services import get_lotes_distintos
 from models.catalogos import services as catalogos_services
@@ -31,6 +38,12 @@ def primera_semana():
     if lote_seleccionado and lote_seleccionado != 'VACIO':
         cabecera = get_cabecera_info(lote_seleccionado)
         filas = get_primera_semana_by_lote(lote_seleccionado, cabecera)
+
+    def _filas_activas(lote, cab):
+        """Devuelve las filas de la tabla activa del lote (Día 1 o Día 2)."""
+        if lote and get_tabla_activa(lote) == 'dia2':
+            return get_dia2_by_lote(lote)
+        return get_primera_semana_by_lote(lote, cab)
 
     # --- Comparador de lotes (piloto) ---
     comparar = (
@@ -63,10 +76,10 @@ def primera_semana():
                 lote_a = candidato_a
 
         if lote_a == lote_seleccionado:
-            cab_a, filas_a = cabecera, filas
+            cab_a, filas_a = cabecera, _filas_activas(lote_a, cabecera)
         else:
             cab_a = get_cabecera_info(lote_a)
-            filas_a = get_primera_semana_by_lote(lote_a, cab_a)
+            filas_a = _filas_activas(lote_a, cab_a)
 
         usados = {lote_a}
         paneles.append({
@@ -94,8 +107,20 @@ def primera_semana():
                 'color': COLORES_COMPARADOR[indice],
                 'lote': lote_extra,
                 'cabecera': cab_extra,
-                'filas': get_primera_semana_by_lote(lote_extra, cab_extra),
+                'filas': _filas_activas(lote_extra, cab_extra),
             })
+
+    rol_actual = session.get('user_rol')
+    permitido_dia2 = roles_pueden_dia2(rol_actual)
+    editar_dia2 = puede_editar_dia2(rol_actual)
+    dia2_existe = False
+    filas_dia2 = []
+    tabla_activa = 'dia1'
+    if lote_seleccionado and lote_seleccionado != 'VACIO' and not comparar:
+        dia2_existe = tiene_dia2(lote_seleccionado)
+        if dia2_existe:
+            filas_dia2 = get_dia2_by_lote(lote_seleccionado)
+            tabla_activa = get_tabla_activa(lote_seleccionado)
 
     return render_template(
         'produccion/primera_semana.html',
@@ -109,6 +134,11 @@ def primera_semana():
         paneles=paneles,
         lotes_extra=lotes_extra,
         lote_a=lote_a,
+        puede_dia2=permitido_dia2,
+        puede_editar_dia2=editar_dia2,
+        dia2_existe=dia2_existe,
+        filas_dia2=filas_dia2,
+        tabla_activa=tabla_activa,
     )
 
 

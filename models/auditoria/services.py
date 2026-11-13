@@ -54,6 +54,7 @@ TABLAS_CON_ID_LOTE = {
     'semanal_levante': ('id', 'id_lote'),
     'clasificacion_produccion': ('id', 'id_lote'),
     'primera_semana': ('id', 'id_lote'),
+    'primera_semana_dia2': ('id', 'id_lote'),
 }
 
 

@@ -413,6 +413,9 @@ def sincronizar_primera_semana_desde_diario(id_lote, cur):
     if not lote or aves <= 0:
         return
 
+    cur.execute("SELECT 1 FROM primera_semana_dia2 WHERE lote = %s LIMIT 1", (lote,))
+    tiene_dia2 = cur.fetchone() is not None
+
     for dia in range(1, 8):
         cur.execute("""
             SELECT COALESCE(SUM(mortalidad), 0)
@@ -425,8 +428,17 @@ def sincronizar_primera_semana_desde_diario(id_lote, cur):
                 SET mortalidad = CASE WHEN COALESCE(mortalidad, 0) = 0 THEN %s ELSE mortalidad END
                 WHERE id_lote = %s AND semana = %s
             """, (mort, id_lote, '0/%d' % dia))
+            if tiene_dia2:
+                cur.execute("""
+                    UPDATE primera_semana_dia2
+                    SET mortalidad = CASE WHEN COALESCE(mortalidad, 0) = 0 THEN %s ELSE mortalidad END
+                    WHERE id_lote = %s AND semana = %s
+                """, (mort, id_lote, '0/%d' % dia))
 
     recalcular_primera_semana_cascada_interna(lote, aves, cur)
+    if tiene_dia2:
+        from models.primera_semana.dia2_services import recalcular_dia2_cascada_interna
+        recalcular_dia2_cascada_interna(lote, aves, cur)
 
 
 def recalcular_primera_semana_cascada_interna(lote_nombre, aves_iniciales, cur, id_reg=None, columna_editada=None, valor_manual=None):
@@ -534,8 +546,13 @@ def get_data_grafico_primera_semana(lote_nombre):
     """
     if not lote_nombre or lote_nombre == 'VACIO':
         return None
-        
-    filas = get_primera_semana_by_lote(lote_nombre)
+
+    from models.primera_semana.activa import get_tabla_activa
+    if get_tabla_activa(lote_nombre) == 'dia2':
+        from models.primera_semana.dia2_services import get_dia2_by_lote
+        filas = get_dia2_by_lote(lote_nombre)
+    else:
+        filas = get_primera_semana_by_lote(lote_nombre)
     if not filas:
         return None
 
@@ -579,12 +596,14 @@ DECIMALES_PRIMERA_SEMANA = {
 }
 
 
-def procesar_excel_primera_semana(archivo_excel, lote_nombre, usuario_id=None, usuario_nombre=None):
+def procesar_excel_primera_semana(archivo_excel, lote_nombre, usuario_id=None, usuario_nombre=None, dia2=False):
     """
     Procesa un archivo Excel subido por el usuario para el módulo de Primera Semana.
     Escanea todas las hojas buscando la tabla correcta, fusiona celdas combinadas,
     extrae solo los datos crudos (los que el usuario digita) y detona el recálculo
     matemático en cascada.
+
+    Si dia2=True, carga los datos en primera_semana_dia2 en lugar de la tabla oficial.
     """
     import pandas as pd
     import unicodedata
@@ -597,6 +616,14 @@ def procesar_excel_primera_semana(archivo_excel, lote_nombre, usuario_id=None, u
     cabecera = fetch_cabecera_by_lote(lote_nombre)
     if not cabecera:
         return False, f"El lote '{lote_nombre}' no existe en el sistema."
+
+    if dia2:
+        from models.primera_semana import dia2 as dia2_model
+        if dia2_model.count_dia2(lote_nombre) == 0:
+            return False, ("El lote no tiene la tabla del Día 2. "
+                           "Genérela primero en Primera Semana.")
+
+    tabla_destino = 'primera_semana_dia2' if dia2 else 'primera_semana'
 
     try:
         # 1. Garantizar que la estructura de los 8 días exista en la BD
@@ -617,22 +644,34 @@ def procesar_excel_primera_semana(archivo_excel, lote_nombre, usuario_id=None, u
             texto = ' '.join(texto.split())
             return texto
 
-        # 3. Escáner flexible
+        # 3. Escáner flexible: guarda todas las hojas candidatas
+        candidatas = []
         for nombre_hoja, hoja_df in hojas.items():
             for i, row in hoja_df.iterrows():
                 fila_texto = " ".join([normalizar(x) for x in row.values])
-                
+
                 tiene_semana = 'semana' in fila_texto
                 tiene_mortalidad = 'mortalidad' in fila_texto or 'mort' in fila_texto
                 tiene_uniformidad = 'uniformidad' in fila_texto or 'unif' in fila_texto
-                
+
                 if sum([tiene_semana, tiene_mortalidad, tiene_uniformidad]) >= 2:
-                    df = hoja_df
-                    header_idx = i
+                    candidatas.append((nombre_hoja, hoja_df, i))
                     break
-            
-            if df is not None:
-                break
+
+        # Dar prioridad a las hojas de primera semana sobre otras (Sem-Levante, etc.)
+        prioritarias = [
+            item for item in candidatas
+            if '1ra semana' in normalizar(item[0]) or 'primera' in normalizar(item[0])
+        ]
+        base = prioritarias if prioritarias else candidatas
+
+        df = None
+        header_idx = -1
+        if base:
+            indice = 1 if dia2 else 0
+            if indice >= len(base):
+                indice = 0
+            _nombre_hoja, df, header_idx = base[indice]
 
         if df is None:
             hojas_info = ", ".join([f"'{h}' ({len(d)} filas)" for h, d in hojas.items()])
@@ -774,7 +813,7 @@ def procesar_excel_primera_semana(archivo_excel, lote_nombre, usuario_id=None, u
 
             if campos_a_actualizar:
                 valores.extend([lote_nombre, val_semana])
-                query = f"UPDATE primera_semana SET {', '.join(campos_a_actualizar)} WHERE lote = %s AND semana = %s"
+                query = f"UPDATE {tabla_destino} SET {', '.join(campos_a_actualizar)} WHERE lote = %s AND semana = %s"
                 cur.execute(query, valores)
                 # rowcount: solo cuenta los días que de verdad se actualizaron
                 filas_actualizadas += cur.rowcount
@@ -793,7 +832,11 @@ def procesar_excel_primera_semana(archivo_excel, lote_nombre, usuario_id=None, u
         aves_iniciales = float(cab_info[0]) if cab_info and cab_info[0] else 10000.0
         if aves_iniciales <= 0: aves_iniciales = 1.0
 
-        recalcular_primera_semana_cascada_interna(lote_nombre, aves_iniciales, cur)
+        if dia2:
+            from models.primera_semana.dia2_services import recalcular_dia2_cascada_interna
+            recalcular_dia2_cascada_interna(lote_nombre, aves_iniciales, cur)
+        else:
+            recalcular_primera_semana_cascada_interna(lote_nombre, aves_iniciales, cur)
 
         # Registrar en auditoría (1 solo registro por carga)
         if filas_actualizadas > 0:
@@ -801,7 +844,7 @@ def procesar_excel_primera_semana(archivo_excel, lote_nombre, usuario_id=None, u
             registrar_cambio(
                 usuario_id=usuario_id,
                 usuario_nombre=usuario_nombre or 'Desconocido',
-                tabla='primera_semana',
+                tabla=tabla_destino,
                 id_registro=id_lote,
                 campo='Carga Excel',
                 valor_anterior=None,

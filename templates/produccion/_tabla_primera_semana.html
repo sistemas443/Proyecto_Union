@@ -1,6 +1,11 @@
 {# Tabla reutilizable: normal (editable) o comparación (solo lectura) #}
 {% set ro = 'readonly' if solo_lectura else '' %}
-<div class="tabla-scroll shadow-sm border rounded">
+{% set es_dia2 = dia2 if dia2 is defined else False %}
+{% set esta_activa = activa if activa is defined else False %}
+{% set ro_calculado_dia2 = 'readonly' if (solo_lectura or es_dia2) else '' %}
+<div class="tabla-scroll shadow-sm border rounded{% if es_dia2 %} tabla-dia2{% endif %}{% if esta_activa %} tabla-activa{% endif %}"
+  {% if contenedor_id is defined and contenedor_id %}id="{{ contenedor_id }}"{% endif %}
+  {% if es_dia2 %}data-tabla="dia2"{% endif %}>
   <table class="table table-sm table-fixed tabla-cmp mb-0" style="width: 100% !important; min-width: 2500px;">
 
     <colgroup>
@@ -73,8 +78,15 @@
       <tr data-id="{{ f['id_diario'] }}">
       <!-- COLUMNA FIJA 1: Fecha (Nivel 98) -->
       <td style="position: sticky; left: 0; z-index: 98; background-color: #ffffff; box-shadow: 1px 0 0 #dee2e6;">
+        {% if es_dia2 and loop.first %}
+        <input type="date" data-fecha-original="{{ f['fecha_dia'] or '' }}" data-fecha-dia2-inicio
+          value="{{ f['fecha_dia'] or '' }}"
+          class="form-control form-control-sm border-0 bg-transparent text-center"
+          {% if solo_lectura %}readonly{% endif %}>
+        {% else %}
         <input type="text" data-fecha-original="{{ f['fecha_dia'] or '' }}"
           class="form-control form-control-sm border-0 bg-transparent text-center formato-fecha-primera" readonly>
+        {% endif %}
       </td>
 
       <!-- COLUMNA FIJA 2: Semana (Nivel 98) -->
@@ -87,13 +99,13 @@
       <td class="celda-tabla">
         <input type="text" inputmode="numeric" data-miles="0" data-col="consumo_gr_a_tab" value="{{ f['consumo_gr_a_tab']|miles(1) }}"
           class="form-control form-control-sm border-0 text-center"
-           {{ ro }}>
+           {{ ro_calculado_dia2 }}>
       </td>
 
       <td><input type="text" data-col="consumo_gr_a_d" value="{{ f['consumo_gr_a_d']|miles(2) }}"
-          class="form-control form-control-sm border-0 bg-transparent text-center celda-consumo_gr_a_d" {{ ro }}></td>
+          class="form-control form-control-sm border-0 bg-transparent text-center celda-consumo_gr_a_d" {{ ro_calculado_dia2 }}></td>
       <td><input type="text" inputmode="numeric" data-miles="0" data-col="consumo_kg" value="{{ f['consumo_kg']|miles(0) }}"
-          class="form-control form-control-sm border-0 bg-transparent text-center" {{ ro }}></td>
+          class="form-control form-control-sm border-0 bg-transparent text-center" {{ ro_calculado_dia2 }}></td>
       <td><input type="text" value="{{ f['cons_k_acum']|miles(0) }}"
           class="form-control form-control-sm border-0 bg-transparent text-center celda-cons_k_acum" readonly></td>
 
@@ -108,9 +120,9 @@
 
       <td><input type="number" data-col="mortalidad"
           value="{{ f['mortalidad'] if f['mortalidad'] is not none else '' }}"
-          class="form-control form-control-sm border-0 bg-transparent text-center" {{ ro }}></td>
+          class="form-control form-control-sm border-0 bg-transparent text-center" {{ ro_calculado_dia2 }}></td>
       <td><input type="number" data-col="sel" value="{{ f['sel'] if f['sel'] is not none else '' }}"
-          class="form-control form-control-sm border-0 bg-transparent text-center" {{ ro }}></td>
+          class="form-control form-control-sm border-0 bg-transparent text-center" {{ ro_calculado_dia2 }}></td>
       <td><input type="text" value="{{ f['porc_mort_sem']|formato_decimal(2) }}"
           class="form-control form-control-sm border-0 bg-transparent text-center celda-porc_mort_sem" readonly></td>
       <td><input type="text" value="{{ f['porc_mort_acum']|formato_decimal(2) }}"
@@ -123,7 +135,7 @@
       <td class="celda-tabla">
         <input type="text" inputmode="numeric" data-miles="0" data-col="peso_tabla" value="{{ f['peso_tabla']|miles(0) }}"
           class="form-control form-control-sm border-0 text-center"
-           {{ ro }}>
+           {{ ro_calculado_dia2 }}>
       </td>
 
       <td><input type="text" inputmode="numeric" data-miles="2" data-col="peso_real" value="{{ f['peso_real']|miles(2) }}"
@@ -141,9 +153,9 @@
         <div class="d-flex align-items-center h-100">
           <input type="text" data-col="observaciones" value="{{ f['observaciones'] or '' }}"
             title="{{ f['observaciones'] or 'Escribir observación...' }}" placeholder="..."
-            class="form-control form-control-sm border-0 bg-transparent text-start px-2 w-100 pe-4" {{ ro }}>
+            class="form-control form-control-sm border-0 bg-transparent text-start px-2 w-100 pe-4" {{ ro_calculado_dia2 }}>
 
-          {% if not solo_lectura %}
+          {% if not solo_lectura and not es_dia2 %}
           <i class='bx bxs-chevron-down position-absolute icono-obs'
             onclick="abrirModalObs(this)" title="Ampliar observación"></i>
           {% endif %}

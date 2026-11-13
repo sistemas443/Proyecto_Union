@@ -199,7 +199,7 @@ def update_semanal_field(id_semanal: int, columna: str, valor: str,
             cur.execute("""
                 UPDATE semanal_levante sl
                 SET peso_real = ps.peso_real
-                FROM primera_semana ps
+                FROM primera_semana_activa ps
                 WHERE sl.id_lote = ps.id_lote
                   AND ps.semana = '0/7'
                   AND sl.sem = 1
@@ -475,7 +475,7 @@ def recalcular_lote_semanal_levante_directo(id_lote, cur):
     cur.execute("""
         UPDATE semanal_levante sl
         SET peso_real = ps.peso_real
-        FROM primera_semana ps
+        FROM primera_semana_activa ps
         WHERE sl.id_lote = ps.id_lote
           AND ps.semana = '0/7'
           AND sl.sem = 1

@@ -101,136 +101,42 @@
   }
 
   function iniciar() {
-    var contenedores = Array.prototype.filter.call(
-      document.querySelectorAll('.tabla-scroll'),
-      function (elemento) { return elemento.offsetParent !== null; }
-    );
-    if (contenedores.length !== 1) return;
-
-    var contenedor = contenedores[0];
-    var tabla = contenedor.querySelector('table');
     var panel = document.getElementById('panelSeleccion');
-    if (!tabla || !panel) return;
-
-    var cuerpo = tabla.querySelector('tbody');
-    if (!cuerpo) return;
-    var filas = Array.prototype.slice.call(cuerpo.querySelectorAll('tr[data-id]'));
-    if (!filas.length) return;
-
     var rangoTexto = document.getElementById('seleccionRango');
     var resultados = document.getElementById('seleccionResultados');
     var datos = document.getElementById('seleccionDatos');
-    if (!rangoTexto || !resultados || !datos) return;
+    if (!panel || !rangoTexto || !resultados || !datos) return;
 
-    var columnaFecha = -1;
-    if (filas[0]) {
-      for (var i = 0; i < filas[0].cells.length; i++) {
-        if (filas[0].cells[i].querySelector('input[data-fecha-original]')) {
-          columnaFecha = i;
-          break;
-        }
-      }
-    }
+    // Primera Semana normal tiene IDs propios (tabla oficial + Día 2).
+    // En el resto de vistas se mantiene el comportamiento de una sola tabla,
+    // y en el comparador (varias tablas sin estos IDs) no se inicializa.
+    var tablaDia1 = document.getElementById('tablaDia1Contenedor');
+    var tablaDia2 = document.getElementById('tablaDia2Contenedor');
+    var contenedores = [];
 
-    var ancla = null;
-    var rango = null;
-    var origen = null;
-    var pendiente = false;
-    var arrastrando = false;
-    var celdasMarcadas = [];
-
-    function rectangulo(a, b) {
-      return {
-        r1: Math.min(a.r, b.r), r2: Math.max(a.r, b.r),
-        c1: Math.min(a.c, b.c), c2: Math.max(a.c, b.c)
-      };
-    }
-
-    function inputDe(fila, columna) {
-      if (!fila) return null;
-      var celda = fila.cells[columna];
-      return celda ? celda.querySelector('input') : null;
-    }
-
-    function columnaDe(fila, columna) {
-      var input = inputDe(fila, columna);
-      return input ? (input.dataset.col || '') : '';
-    }
-
-    function parseNumero(valor) {
-      if (valor === null || valor === undefined) return null;
-      var texto = String(valor).trim();
-      if (texto === '') return null;
-      if (texto.indexOf(',') !== -1 && texto.indexOf('.') !== -1) {
-        texto = texto.replace(/\./g, '').replace(',', '.');
-      } else if (texto.indexOf(',') !== -1) {
-        texto = texto.replace(',', '.');
-      } else if (/^-?\d{1,3}(\.\d{3})+$/.test(texto)) {
-        // Formato español de miles sin decimales, por ejemplo 12.345
-        texto = texto.replace(/\./g, '');
-      }
-      if (!/^-?\d+(\.\d+)?$/.test(texto)) return null;
-      var numero = parseFloat(texto);
-      return isFinite(numero) ? numero : null;
-    }
-
-    function formatear(numero) {
-      return numero.toLocaleString('es-CO', {
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 2
-      });
-    }
-
-    function inputFecha(fila) {
-      return fila ? fila.querySelector('input[data-fecha-original]') : null;
-    }
-
-    function fechaDeFila(fila) {
-      var input = inputFecha(fila);
-      var original = input ? (input.getAttribute('data-fecha-original') || '').trim() : '';
-      var partes = original.split('-');
-      if (partes.length < 3) return null;
-      var fecha = new Date(
-        parseInt(partes[0], 10),
-        parseInt(partes[1], 10) - 1,
-        parseInt(partes[2].slice(0, 2), 10)
+    if (tablaDia1) {
+      contenedores.push(tablaDia1);
+      if (tablaDia2) contenedores.push(tablaDia2);
+    } else {
+      var visibles = Array.prototype.filter.call(
+        document.querySelectorAll('.tabla-scroll'),
+        function (elemento) { return elemento.offsetParent !== null; }
       );
-      return isNaN(fecha.getTime()) ? null : fecha;
+      if (visibles.length !== 1) return;
+      contenedores = visibles;
     }
 
-    function textoFecha(fecha) {
-      if (!fecha) return '';
-      return fecha.toLocaleDateString('es-CO', {
-        weekday: 'short', day: '2-digit', month: 'short'
-      }).replace(/\./g, '');
-    }
-
-    function fechaCrudaDe(fila) {
-      var input = inputFecha(fila);
-      if (!input) return '';
-      var original = (input.getAttribute('data-fecha-original') || '').trim();
-      return original ? original.split(' ')[0] : String(input.value || '');
-    }
+    var controladores = [];
+    var activo = null;
 
     function ajustarAltura() {
-      if (typeof window.aplicarAlturaTabla === 'function') {
+      if (typeof window.ajustarAlturaPrimeraSemana === 'function') {
+        window.ajustarAlturaPrimeraSemana();
+      } else if (typeof window.aplicarAlturaTabla === 'function') {
         window.aplicarAlturaTabla();
       } else {
         window.dispatchEvent(new Event('resize'));
       }
-    }
-
-    function limpiarMarcas() {
-      celdasMarcadas.forEach(function (celda) {
-        celda.classList.remove('celda-seleccionada');
-        celda.classList.remove('celda-fecha-seleccionada');
-        celda.style.boxShadow = '';
-      });
-      celdasMarcadas = [];
-    }
-
-    function esRangoMultiple() {
-      return !!rango && !(rango.r1 === rango.r2 && rango.c1 === rango.c2);
     }
 
     function ocultarResultados() {
@@ -239,206 +145,367 @@
       ajustarAltura();
     }
 
-    function pintar() {
-      limpiarMarcas();
+    function activar(controlador) {
+      if (activo === controlador) return;
+      if (activo) activo.limpiar();
+      activo = controlador;
+    }
 
-      if (!rango) {
-        ocultarResultados();
-        return;
+    function limpiarActivo() {
+      if (activo) activo.limpiar();
+      activo = null;
+    }
+
+    function crearControlador(contenedor) {
+      var tabla = contenedor.querySelector('table');
+      if (!tabla) return null;
+      var cuerpo = tabla.querySelector('tbody');
+      if (!cuerpo) return null;
+      var filas = Array.prototype.slice.call(cuerpo.querySelectorAll('tr[data-id]'));
+      if (!filas.length) return null;
+
+      var columnaFecha = -1;
+      if (filas[0]) {
+        for (var i = 0; i < filas[0].cells.length; i++) {
+          if (filas[0].cells[i].querySelector('input[data-fecha-original]')) {
+            columnaFecha = i;
+            break;
+          }
+        }
       }
 
-      for (var r = rango.r1; r <= rango.r2; r++) {
-        var fila = filas[r];
-        if (!fila) continue;
+      var ancla = null;
+      var rango = null;
+      var origen = null;
+      var pendiente = false;
+      var arrastrando = false;
+      var celdasMarcadas = [];
 
+      function rectangulo(a, b) {
+        return {
+          r1: Math.min(a.r, b.r), r2: Math.max(a.r, b.r),
+          c1: Math.min(a.c, b.c), c2: Math.max(a.c, b.c)
+        };
+      }
+
+      function inputDe(fila, columna) {
+        if (!fila) return null;
+        var celda = fila.cells[columna];
+        return celda ? celda.querySelector('input') : null;
+      }
+
+      function columnaDe(fila, columna) {
+        var input = inputDe(fila, columna);
+        return input ? (input.dataset.col || '') : '';
+      }
+
+      function parseNumero(valor) {
+        if (valor === null || valor === undefined) return null;
+        var texto = String(valor).trim();
+        if (texto === '') return null;
+        if (texto.indexOf(',') !== -1 && texto.indexOf('.') !== -1) {
+          texto = texto.replace(/\./g, '').replace(',', '.');
+        } else if (texto.indexOf(',') !== -1) {
+          texto = texto.replace(',', '.');
+        } else if (/^-?\d{1,3}(\.\d{3})+$/.test(texto)) {
+          // Formato español de miles sin decimales, por ejemplo 12.345
+          texto = texto.replace(/\./g, '');
+        }
+        if (!/^-?\d+(\.\d+)?$/.test(texto)) return null;
+        var numero = parseFloat(texto);
+        return isFinite(numero) ? numero : null;
+      }
+
+      function formatear(numero) {
+        return numero.toLocaleString('es-CO', {
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 2
+        });
+      }
+
+      function inputFecha(fila) {
+        return fila ? fila.querySelector('input[data-fecha-original]') : null;
+      }
+
+      function fechaDeFila(fila) {
+        var input = inputFecha(fila);
+        var original = input ? (input.getAttribute('data-fecha-original') || '').trim() : '';
+        var partes = original.split('-');
+        if (partes.length < 3) return null;
+        var fecha = new Date(
+          parseInt(partes[0], 10),
+          parseInt(partes[1], 10) - 1,
+          parseInt(partes[2].slice(0, 2), 10)
+        );
+        return isNaN(fecha.getTime()) ? null : fecha;
+      }
+
+      function textoFecha(fecha) {
+        if (!fecha) return '';
+        return fecha.toLocaleDateString('es-CO', {
+          weekday: 'short', day: '2-digit', month: 'short'
+        }).replace(/\./g, '');
+      }
+
+      function fechaCrudaDe(fila) {
+        var input = inputFecha(fila);
+        if (!input) return '';
+        var original = (input.getAttribute('data-fecha-original') || '').trim();
+        return original ? original.split(' ')[0] : String(input.value || '');
+      }
+
+      function limpiarMarcas() {
+        celdasMarcadas.forEach(function (celda) {
+          celda.classList.remove('celda-seleccionada');
+          celda.classList.remove('celda-fecha-seleccionada');
+          celda.style.boxShadow = '';
+        });
+        celdasMarcadas = [];
+      }
+
+      function esRangoMultiple() {
+        return !!rango && !(rango.r1 === rango.r2 && rango.c1 === rango.c2);
+      }
+
+      function resumirColumna(columna, desde, hasta) {
+        var suma = 0;
+        var cuenta = 0;
+        for (var r = desde; r <= hasta; r++) {
+          var input = inputDe(filas[r], columna);
+          var valor = input ? parseNumero(input.value) : null;
+          if (valor !== null) {
+            suma += valor;
+            cuenta += 1;
+          }
+        }
+        if (cuenta === 0) return null;
+        return { suma: suma, cuenta: cuenta, promedio: suma / cuenta };
+      }
+
+      function datoHtml(etiqueta, valor) {
+        return '<span class="ps-seleccion-dato"><span class="ps-seleccion-etiqueta">' + etiqueta + ':</span>'
+          + '<span class="ps-seleccion-valor">' + valor + '</span></span>';
+      }
+
+      function actualizarPanel() {
+        if (!esRangoMultiple()) {
+          ocultarResultados();
+          return;
+        }
+
+        var primeraFila = filas[rango.r1];
+        var ultimaFila = filas[rango.r2];
+        var fechaInicio = textoFecha(fechaDeFila(primeraFila));
+        var fechaFin = textoFecha(fechaDeFila(ultimaFila));
+        var hayFechas = fechaInicio && fechaFin;
+        var prefijo = controlador.esDia2 ? 'Día 2 · ' : '';
+
+        rangoTexto.textContent = hayFechas ? prefijo + fechaInicio + ' a ' + fechaFin : (prefijo ? 'Día 2' : '');
+        rangoTexto.style.display = (hayFechas || prefijo) ? '' : 'none';
+
+        var gruposHtml = '';
         for (var c = rango.c1; c <= rango.c2; c++) {
-          var celda = fila.cells[c];
-          if (!celda) continue;
-          celda.classList.add('celda-seleccionada');
+          var columna = columnaDe(primeraFila, c);
+          if (!columna) continue;
 
-          var sombras = [];
-          if (r === rango.r1) sombras.push('inset 0 1px 0 0 var(--action-primary)');
-          if (r === rango.r2) sombras.push('inset 0 -1px 0 0 var(--action-primary)');
-          if (c === rango.c1) sombras.push('inset 1px 0 0 0 var(--action-primary)');
-          if (c === rango.c2) sombras.push('inset -1px 0 0 0 var(--action-primary)');
-          celda.style.boxShadow = sombras.join(', ');
+          var resumen = resumirColumna(c, rango.r1, rango.r2);
+          if (!resumen) continue;
 
-          celdasMarcadas.push(celda);
+          gruposHtml += '<span class="ps-seleccion-grupo">'
+            + '<span class="ps-seleccion-columna">' + etiquetaColumna(columna) + '</span>'
+            + datoHtml('Promedio', formatear(resumen.promedio))
+            + datoHtml('Recuento', resumen.cuenta)
+            + datoHtml('Suma', formatear(resumen.suma))
+            + '</span>';
         }
 
-        if (columnaFecha >= 0 && fila.cells[columnaFecha]) {
-          fila.cells[columnaFecha].classList.add('celda-fecha-seleccionada');
-          celdasMarcadas.push(fila.cells[columnaFecha]);
+        if (!gruposHtml) {
+          gruposHtml = '<span class="ps-seleccion-grupo">La selección no contiene valores numéricos</span>';
         }
+
+        resultados.innerHTML = gruposHtml;
+        datos.style.display = 'flex';
+        ajustarAltura();
       }
 
-      if (!arrastrando && !pendiente) actualizarPanel();
-    }
-
-    function resumirColumna(columna, desde, hasta) {
-      var suma = 0;
-      var cuenta = 0;
-      for (var r = desde; r <= hasta; r++) {
-        var input = inputDe(filas[r], columna);
-        var valor = input ? parseNumero(input.value) : null;
-        if (valor !== null) {
-          suma += valor;
-          cuenta += 1;
-        }
-      }
-      if (cuenta === 0) return null;
-      return { suma: suma, cuenta: cuenta, promedio: suma / cuenta };
-    }
-
-    function datoHtml(etiqueta, valor) {
-      return '<span class="ps-seleccion-dato"><span class="ps-seleccion-etiqueta">' + etiqueta + ':</span>'
-        + '<span class="ps-seleccion-valor">' + valor + '</span></span>';
-    }
-
-    function actualizarPanel() {
-      if (!esRangoMultiple()) {
-        ocultarResultados();
-        return;
-      }
-
-      var primeraFila = filas[rango.r1];
-      var ultimaFila = filas[rango.r2];
-      var fechaInicio = textoFecha(fechaDeFila(primeraFila));
-      var fechaFin = textoFecha(fechaDeFila(ultimaFila));
-      var hayFechas = fechaInicio && fechaFin;
-
-      rangoTexto.textContent = hayFechas ? fechaInicio + ' a ' + fechaFin : '';
-      rangoTexto.style.display = hayFechas ? '' : 'none';
-
-      var gruposHtml = '';
-      for (var c = rango.c1; c <= rango.c2; c++) {
-        var columna = columnaDe(primeraFila, c);
-        if (!columna) continue;
-
-        var resumen = resumirColumna(c, rango.r1, rango.r2);
-        if (!resumen) continue;
-
-        gruposHtml += '<span class="ps-seleccion-grupo">'
-          + '<span class="ps-seleccion-columna">' + etiquetaColumna(columna) + '</span>'
-          + datoHtml('Promedio', formatear(resumen.promedio))
-          + datoHtml('Recuento', resumen.cuenta)
-          + datoHtml('Suma', formatear(resumen.suma))
-          + '</span>';
-      }
-
-      if (!gruposHtml) {
-        gruposHtml = '<span class="ps-seleccion-grupo">La selección no contiene valores numéricos</span>';
-      }
-
-      resultados.innerHTML = gruposHtml;
-      datos.style.display = 'flex';
-      ajustarAltura();
-    }
-
-    function limpiarSeleccion() {
-      rango = null;
-      ancla = null;
-      pintar();
-    }
-
-    function celdaBajo(x, y) {
-      var elemento = document.elementFromPoint(x, y);
-      if (!elemento) return null;
-      var celda = elemento.closest('td');
-      if (!celda) return null;
-      var fila = celda.closest('tr[data-id]');
-      if (!fila || !cuerpo.contains(fila)) return null;
-      return { fila: filas.indexOf(fila), celda: celda };
-    }
-
-    function desplazarPorBorde(y) {
-      var rect = contenedor.getBoundingClientRect();
-      var margen = 32;
-      if (y - rect.top < margen) contenedor.scrollTop -= 45;
-      else if (rect.bottom - y < margen) contenedor.scrollTop += 45;
-    }
-
-    tabla.addEventListener('mousedown', function (e) {
-      if (e.button !== 0) return;
-      var celda = e.target.closest('td');
-      if (!celda) return;
-      var fila = celda.closest('tr[data-id]');
-      if (!fila || !cuerpo.contains(fila)) return;
-
-      var r = filas.indexOf(fila);
-      var c = celda.cellIndex;
-      if (r < 0) return;
-
-      if (e.shiftKey && ancla) {
+      function limpiarSeleccion() {
+        rango = null;
+        ancla = null;
         pendiente = false;
         arrastrando = false;
-        rango = rectangulo(ancla, { r: r, c: c });
-        pintar();
-        return;
+        contenedor.classList.remove('seleccion-activa');
+        limpiarMarcas();
+        if (activo === controlador) ocultarResultados();
       }
 
-      ancla = { r: r, c: c };
-      origen = { x: e.clientX, y: e.clientY };
-      pendiente = true;
-      arrastrando = false;
-      rango = { r1: r, c1: c, r2: r, c2: c };
-      pintar();
-    });
+      function pintar() {
+        limpiarMarcas();
 
-    document.addEventListener('mousemove', function (e) {
-      if (!pendiente && !arrastrando) return;
+        if (!rango) {
+          if (activo === controlador) ocultarResultados();
+          return;
+        }
 
-      if (!arrastrando) {
-        var distancia = Math.hypot(e.clientX - origen.x, e.clientY - origen.y);
-        if (distancia < 5) return;
+        for (var r = rango.r1; r <= rango.r2; r++) {
+          var fila = filas[r];
+          if (!fila) continue;
 
-        arrastrando = true;
-        pendiente = false;
-        contenedor.classList.add('seleccion-activa');
-        var seleccion = window.getSelection();
-        if (seleccion) seleccion.removeAllRanges();
-        if (document.activeElement && tabla.contains(document.activeElement)) {
-          document.activeElement.blur();
+          for (var c = rango.c1; c <= rango.c2; c++) {
+            var celda = fila.cells[c];
+            if (!celda) continue;
+            celda.classList.add('celda-seleccionada');
+
+            var sombras = [];
+            if (r === rango.r1) sombras.push('inset 0 1px 0 0 var(--action-primary)');
+            if (r === rango.r2) sombras.push('inset 0 -1px 0 0 var(--action-primary)');
+            if (c === rango.c1) sombras.push('inset 1px 0 0 0 var(--action-primary)');
+            if (c === rango.c2) sombras.push('inset -1px 0 0 0 var(--action-primary)');
+            celda.style.boxShadow = sombras.join(', ');
+
+            celdasMarcadas.push(celda);
+          }
+
+          if (columnaFecha >= 0 && fila.cells[columnaFecha]) {
+            fila.cells[columnaFecha].classList.add('celda-fecha-seleccionada');
+            celdasMarcadas.push(fila.cells[columnaFecha]);
+          }
+        }
+
+        if (!arrastrando && !pendiente && activo === controlador) actualizarPanel();
+      }
+
+      function celdaBajo(x, y) {
+        var elemento = document.elementFromPoint(x, y);
+        if (!elemento) return null;
+        var celda = elemento.closest('td');
+        if (!celda) return null;
+        var fila = celda.closest('tr[data-id]');
+        if (!fila || !cuerpo.contains(fila)) return null;
+        return { fila: filas.indexOf(fila), celda: celda };
+      }
+
+      function desplazarPorBorde(y) {
+        var rect = contenedor.getBoundingClientRect();
+        var margen = 32;
+        if (y - rect.top < margen) contenedor.scrollTop -= 45;
+        else if (rect.bottom - y < margen) contenedor.scrollTop += 45;
+      }
+
+      function manejarMovimiento(e) {
+        if (!pendiente && !arrastrando) return;
+
+        if (!arrastrando) {
+          var distancia = Math.hypot(e.clientX - origen.x, e.clientY - origen.y);
+          if (distancia < 5) return;
+
+          arrastrando = true;
+          pendiente = false;
+          contenedor.classList.add('seleccion-activa');
+          var seleccion = window.getSelection();
+          if (seleccion) seleccion.removeAllRanges();
+          if (document.activeElement && tabla.contains(document.activeElement)) {
+            document.activeElement.blur();
+          }
+        }
+
+        e.preventDefault();
+        desplazarPorBorde(e.clientY);
+
+        var destino = celdaBajo(e.clientX, e.clientY);
+        if (destino && destino.fila >= 0 && ancla) {
+          var siguiente = rectangulo(ancla, { r: destino.fila, c: destino.celda.cellIndex });
+          var cambio = !rango || siguiente.r1 !== rango.r1 || siguiente.r2 !== rango.r2 ||
+            siguiente.c1 !== rango.c1 || siguiente.c2 !== rango.c2;
+          if (cambio) {
+            rango = siguiente;
+            pintar();
+          }
         }
       }
 
-      e.preventDefault();
-      desplazarPorBorde(e.clientY);
-
-      var destino = celdaBajo(e.clientX, e.clientY);
-      if (destino && destino.fila >= 0 && ancla) {
-        var siguiente = rectangulo(ancla, { r: destino.fila, c: destino.celda.cellIndex });
-        var cambio = !rango || siguiente.r1 !== rango.r1 || siguiente.r2 !== rango.r2 ||
-          siguiente.c1 !== rango.c1 || siguiente.c2 !== rango.c2;
-        if (cambio) {
-          rango = siguiente;
+      function terminarArrastre() {
+        if (arrastrando) {
+          contenedor.classList.remove('seleccion-activa');
+          arrastrando = false;
           pintar();
         }
+        pendiente = false;
+        ajustarAltura();
       }
-    });
 
-    function terminarArrastre() {
-      if (arrastrando) {
-        contenedor.classList.remove('seleccion-activa');
+      var controlador = {
+        contenedor: contenedor,
+        esDia2: contenedor.getAttribute('data-tabla') === 'dia2',
+        get rango() { return rango; },
+        get filas() { return filas; },
+        resumirColumna: resumirColumna,
+        columnaDe: columnaDe,
+        fechaCrudaDe: fechaCrudaDe,
+        formatear: formatear,
+        limpiar: limpiarSeleccion,
+        manejarMovimiento: manejarMovimiento,
+        terminarArrastre: terminarArrastre
+      };
+
+      tabla.addEventListener('mousedown', function (e) {
+        if (e.button !== 0) return;
+        var celda = e.target.closest('td');
+        if (!celda) return;
+        var fila = celda.closest('tr[data-id]');
+        if (!fila || !cuerpo.contains(fila)) return;
+
+        var r = filas.indexOf(fila);
+        var c = celda.cellIndex;
+        if (r < 0) return;
+
+        activar(controlador);
+
+        if (e.shiftKey && ancla) {
+          pendiente = false;
+          arrastrando = false;
+          rango = rectangulo(ancla, { r: r, c: c });
+          pintar();
+          return;
+        }
+
+        ancla = { r: r, c: c };
+        origen = { x: e.clientX, y: e.clientY };
+        pendiente = true;
         arrastrando = false;
+        rango = { r1: r, c1: c, r2: r, c2: c };
         pintar();
-      }
-      pendiente = false;
-      ajustarAltura();
+      });
+
+      return controlador;
     }
 
-    document.addEventListener('mouseup', terminarArrastre);
-    window.addEventListener('blur', terminarArrastre);
+    contenedores.forEach(function (contenedor) {
+      var controlador = crearControlador(contenedor);
+      if (controlador) controladores.push(controlador);
+    });
+    if (!controladores.length) return;
+
+    document.addEventListener('mousemove', function (e) {
+      if (activo) activo.manejarMovimiento(e);
+    });
+
+    document.addEventListener('mouseup', function () {
+      if (activo) activo.terminarArrastre();
+    });
+
+    window.addEventListener('blur', function () {
+      if (activo) activo.terminarArrastre();
+    });
 
     document.addEventListener('mousedown', function (e) {
-      if (!rango) return;
+      if (!activo) return;
       if (e.target.closest('#panelSeleccion')) return;
-      if (tabla.contains(e.target)) return;
-      limpiarSeleccion();
+      if (activo.contenedor.contains(e.target)) return;
+      limpiarActivo();
     });
 
     document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape' && rango) limpiarSeleccion();
+      if (e.key === 'Escape' && activo) limpiarActivo();
     });
 
     function copiarConRespaldo(texto, alTerminar) {
@@ -477,60 +544,68 @@
       }
     }
 
-    document.getElementById('btnCopiarSeleccion').addEventListener('click', function () {
-      if (!rango) return;
+    var btnCopiar = document.getElementById('btnCopiarSeleccion');
+    if (btnCopiar) {
+      btnCopiar.addEventListener('click', function () {
+        if (!activo || !activo.rango) return;
 
-      var primeraFila = filas[rango.r1];
-      var fechaInicio = fechaCrudaDe(primeraFila);
-      var fechaFin = fechaCrudaDe(filas[rango.r2]);
-      var hayFechas = !!(fechaInicio || fechaFin);
-      var filasTexto = [hayFechas
-        ? ['Fecha inicio', 'Fecha fin', 'Columna', 'Promedio', 'Recuento', 'Suma']
-        : ['Columna', 'Promedio', 'Recuento', 'Suma']];
+        var rango = activo.rango;
+        var filas = activo.filas;
+        var primeraFila = filas[rango.r1];
+        var fechaInicio = activo.fechaCrudaDe(primeraFila);
+        var fechaFin = activo.fechaCrudaDe(filas[rango.r2]);
+        var hayFechas = !!(fechaInicio || fechaFin);
+        var filasTexto = [hayFechas
+          ? ['Fecha inicio', 'Fecha fin', 'Columna', 'Promedio', 'Recuento', 'Suma']
+          : ['Columna', 'Promedio', 'Recuento', 'Suma']];
 
-      for (var c = rango.c1; c <= rango.c2; c++) {
-        var columna = columnaDe(primeraFila, c);
-        if (!columna) continue;
+        for (var c = rango.c1; c <= rango.c2; c++) {
+          var columna = activo.columnaDe(primeraFila, c);
+          if (!columna) continue;
 
-        var resumen = resumirColumna(c, rango.r1, rango.r2);
-        if (!resumen) continue;
+          var resumen = activo.resumirColumna(c, rango.r1, rango.r2);
+          if (!resumen) continue;
 
-        if (hayFechas) {
-          filasTexto.push([
-            fechaInicio,
-            fechaFin,
-            etiquetaColumna(columna),
-            formatear(resumen.promedio),
-            String(resumen.cuenta),
-            formatear(resumen.suma)
-          ]);
-        } else {
-          filasTexto.push([
-            etiquetaColumna(columna),
-            formatear(resumen.promedio),
-            String(resumen.cuenta),
-            formatear(resumen.suma)
-          ]);
+          if (hayFechas) {
+            filasTexto.push([
+              fechaInicio,
+              fechaFin,
+              etiquetaColumna(columna),
+              activo.formatear(resumen.promedio),
+              String(resumen.cuenta),
+              activo.formatear(resumen.suma)
+            ]);
+          } else {
+            filasTexto.push([
+              etiquetaColumna(columna),
+              activo.formatear(resumen.promedio),
+              String(resumen.cuenta),
+              activo.formatear(resumen.suma)
+            ]);
+          }
         }
-      }
 
-      if (filasTexto.length < 2) return;
+        if (filasTexto.length < 2) return;
 
-      var anchos = filasTexto[0].map(function (_, i) {
-        return Math.max.apply(null, filasTexto.map(function (fila) {
-          return String(fila[i]).length;
-        }));
+        var anchos = filasTexto[0].map(function (_, i) {
+          return Math.max.apply(null, filasTexto.map(function (fila) {
+            return String(fila[i]).length;
+          }));
+        });
+        var lineas = filasTexto.map(function (fila) {
+          return fila.map(function (campo, i) {
+            return String(campo).padEnd(anchos[i], ' ');
+          }).join('   ').trimEnd();
+        });
+
+        copiarAlPortapapeles(lineas.join('\n'), this);
       });
-      var lineas = filasTexto.map(function (fila) {
-        return fila.map(function (campo, i) {
-          return String(campo).padEnd(anchos[i], ' ');
-        }).join('   ').trimEnd();
-      });
+    }
 
-      copiarAlPortapapeles(lineas.join('\n'), this);
-    });
-
-    document.getElementById('btnCerrarSeleccion').addEventListener('click', limpiarSeleccion);
+    var btnCerrar = document.getElementById('btnCerrarSeleccion');
+    if (btnCerrar) {
+      btnCerrar.addEventListener('click', limpiarActivo);
+    }
   }
 
   if (document.readyState === 'loading') {

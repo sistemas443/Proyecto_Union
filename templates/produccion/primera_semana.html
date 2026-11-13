@@ -205,6 +205,148 @@
     color: var(--border);
     margin-bottom: 0.5rem;
   }
+
+  /* Tabla visual del Día 2 */
+  .dia2-wrapper {
+    margin-top: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .tabla-dia-wrapper {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .tabla-dia-titulo {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--text-secondary);
+    background-color: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-bottom: none;
+    border-radius: 0.375rem 0.375rem 0 0;
+  }
+
+  .tabla-dia-acciones {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  .tabla-dia-acciones .btn {
+    min-height: 0;
+    padding: 0.1rem 0.45rem;
+    font-size: 0.68rem;
+    line-height: 1.2;
+  }
+
+  .tabla-activa-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.1rem 0.5rem;
+    border-radius: 999px;
+    background-color: var(--success);
+    color: #ffffff;
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+
+  .tabla-dia-wrapper .tabla-scroll,
+  .dia2-wrapper .tabla-scroll {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+  }
+
+  .tabla-scroll.tabla-activa {
+    border-color: var(--success) !important;
+    box-shadow: 0 0 0 1px var(--success) !important;
+  }
+
+  .dia2-subtitulo {
+    font-size: 0.66rem;
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--text-muted);
+  }
+
+  /* Compactar la vista para que las dos tablas quepan sin scroll vertical. */
+  html {
+    overflow: hidden !important;
+    height: 100%;
+  }
+
+  .page-header {
+    margin-bottom: 0.5rem !important;
+  }
+
+  .ps-info-lote .ps-info-titulo {
+    padding: 0.3rem 0.75rem !important;
+  }
+
+  .tabla-dia-titulo {
+    padding: 0.2rem 0.75rem !important;
+  }
+
+  .tabla-scroll thead th {
+    padding-top: 0.1rem !important;
+    padding-bottom: 0.1rem !important;
+    font-size: 0.7rem !important;
+    line-height: 1.1 !important;
+  }
+
+  .tabla-scroll .table-sm > :not(caption) > * > * {
+    padding-top: 0.05rem !important;
+    padding-bottom: 0.05rem !important;
+  }
+
+  .tabla-scroll td input.form-control,
+  .tabla-scroll td input.form-control-sm {
+    height: 21px !important;
+    min-height: 21px !important;
+    padding: 0 0.2rem !important;
+    font-size: 0.76rem !important;
+    line-height: 1.1 !important;
+  }
+
+  .dia2-wrapper {
+    margin-top: 0.5rem;
+  }
+
+  @media (max-width: 1023px), (max-height: 740px) {
+    html,
+    body {
+      overflow-y: auto !important;
+      overflow-x: hidden;
+      height: auto !important;
+    }
+
+    #tablaDia1Contenedor,
+    #tablaDia2Contenedor {
+      height: auto !important;
+      max-height: none !important;
+    }
+
+    .tabla-dia-wrapper,
+    .dia2-wrapper {
+      margin-top: 0.75rem;
+    }
+  }
 </style>
 
 <!-- ENCABEZADO: TÍTULO + FILTRO DE LOTE -->
@@ -220,6 +362,24 @@
   </div>
 
   <div class="d-flex flex-wrap align-items-center gap-2">
+    {% if lote_seleccionado and not comparar and puede_dia2 and filas %}
+      {% if dia2_existe %}
+      <button type="button" class="btn btn-outline-secondary btn-sm" id="btnToggleDia2"
+        title="Ocultar o mostrar la tabla del Día 2">
+        <i class="fas fa-eye-slash"></i> <span>Ocultar día 2</span>
+      </button>
+      <button type="button" class="btn btn-outline-danger btn-sm" id="btnEliminarDia2"
+        title="Eliminar la tabla del Día 2">
+        <i class="fas fa-trash"></i>
+      </button>
+      {% else %}
+      <button type="button" class="btn btn-primary btn-sm" id="btnGenerarDia2"
+        title="Generar la tabla del Día 2">
+        <i class="fas fa-plus"></i> <span>Día 2</span>
+      </button>
+      {% endif %}
+    {% endif %}
+
     {% if lote_seleccionado and not comparar %}
     <span class="badge-estado badge-neutro">Lote {{ lote_seleccionado }}</span>
     {% endif %}
@@ -380,9 +540,49 @@
   </div>
 </div>
 {% else %}
-{% with filas=filas, solo_lectura=False %}
+{% if dia2_existe %}
+<div class="tabla-dia-wrapper" id="wrapDia1">
+  <div class="tabla-dia-titulo" id="tituloDia1">
+    <span><i class="fas fa-table"></i> Día 1</span>
+    <span class="tabla-dia-acciones">
+      {% if tabla_activa == 'dia1' %}
+      <span class="tabla-activa-badge"><i class="fas fa-check"></i> Activa</span>
+      {% elif puede_editar_dia2 %}
+      <button type="button" class="btn btn-outline-success btn-sm js-usar-tabla" data-tabla="dia1">
+        <i class="fas fa-check-circle"></i> Usar esta tabla
+      </button>
+      {% endif %}
+    </span>
+  </div>
+  {% with filas=filas, solo_lectura=False, contenedor_id='tablaDia1Contenedor', activa=(tabla_activa == 'dia1') %}
+    {% include 'produccion/_tabla_primera_semana.html' %}
+  {% endwith %}
+</div>
+{% else %}
+{% with filas=filas, solo_lectura=False, contenedor_id='tablaDia1Contenedor' %}
   {% include 'produccion/_tabla_primera_semana.html' %}
 {% endwith %}
+{% endif %}
+
+{% if dia2_existe %}
+<div class="dia2-wrapper" id="wrapDia2">
+  <div class="tabla-dia-titulo" id="tituloDia2">
+    <span><i class="fas fa-table"></i> Día 2</span>
+    <span class="tabla-dia-acciones">
+      {% if tabla_activa == 'dia2' %}
+      <span class="tabla-activa-badge"><i class="fas fa-check"></i> Activa</span>
+      {% elif puede_editar_dia2 %}
+      <button type="button" class="btn btn-outline-success btn-sm js-usar-tabla" data-tabla="dia2">
+        <i class="fas fa-check-circle"></i> Usar esta tabla
+      </button>
+      {% endif %}
+    </span>
+  </div>
+  {% with filas=filas_dia2, solo_lectura=not puede_editar_dia2, dia2=True, contenedor_id='tablaDia2Contenedor', activa=(tabla_activa == 'dia2') %}
+    {% include 'produccion/_tabla_primera_semana.html' %}
+  {% endwith %}
+</div>
+{% endif %}
 {% endif %}
 
 <!-- Modal para Escribir/Expandir Observaciones -->
@@ -495,6 +695,9 @@
 
   // GUARDADO AUTOMÁTICO AJAX - SIN RECARGA DE PÁGINA
   document.querySelectorAll('.table-fixed input:not([readonly])').forEach(function (input) {
+    // La tabla del Día 2 tiene su propio guardado en primera_semana_dia2.js
+    if (input.closest('[data-tabla="dia2"]')) return;
+
     input.addEventListener('change', function () {
       const el = this;
       const fila = this.closest('tr');
@@ -543,9 +746,9 @@
   });
 
   // --- SISTEMA INTELIGENTE DE ALTURA PERFECTA (RESIZE OBSERVER) ---
-  // Aplica a la tabla normal y a cada panel del comparador.
+  // Aplica a la tabla normal, a la tabla del Día 2 y a cada panel del comparador.
   document.addEventListener("DOMContentLoaded", function () {
-    const tablas = document.querySelectorAll('.tabla-scroll');
+    const tablas = Array.from(document.querySelectorAll('.tabla-scroll'));
     if (!tablas.length) return;
 
     // Con 4 lotes el comparador se ve en 2 filas: se calcula la altura
@@ -554,6 +757,10 @@
     const tablasCuatro = gridCuatro
       ? Array.from(gridCuatro.querySelectorAll('.tabla-scroll'))
       : [];
+
+    const tablaDia1 = document.getElementById('tablaDia1Contenedor');
+    const tablaDia2 = document.getElementById('tablaDia2Contenedor');
+    const wrapDia2 = document.getElementById('wrapDia2');
 
     function ajustarCuatro() {
       if (!gridCuatro || !tablasCuatro.length) return;
@@ -572,8 +779,38 @@
       });
     }
 
-    const observer = new ResizeObserver(() => {
+    function ajustarAltura() {
       ajustarCuatro();
+
+      // En pantallas angostas o bajas se permite el scroll de la página
+      // y las tablas muestran todas sus filas sin scroll interno.
+      if (tablaDia1 && (window.innerWidth < 1024 || window.innerHeight < 740)) {
+        [tablaDia1, tablaDia2].forEach(function (tabla) {
+          if (!tabla) return;
+          tabla.style.height = '';
+          tabla.style.maxHeight = '';
+        });
+        return;
+      }
+
+      // Primera Semana con las dos tablas: repartir el alto disponible.
+      if (tablaDia1 && tablaDia2 && wrapDia2 && wrapDia2.style.display !== 'none') {
+        const rect = tablaDia1.getBoundingClientRect();
+        const disponible = window.innerHeight - rect.top - 10;
+        const titulo = document.getElementById('tituloDia2');
+        const altoTitulo = titulo ? titulo.getBoundingClientRect().height : 0;
+        const separacion = 8;
+        const altura = Math.max(170, Math.floor((disponible - altoTitulo - separacion) / 2));
+        [tablaDia1, tablaDia2].forEach(function (tabla) {
+          const valor = altura + "px";
+          if (tabla.style.height !== valor) {
+            tabla.style.height = valor;
+            tabla.style.maxHeight = valor;
+          }
+        });
+        return;
+      }
+
       tablas.forEach(function (tabla) {
         if (tablasCuatro.indexOf(tabla) !== -1) return;
         const rect = tabla.getBoundingClientRect();
@@ -585,10 +822,12 @@
           tabla.style.maxHeight = valor;
         }
       });
-    });
+    }
 
-    ajustarCuatro();
-    window.addEventListener('resize', ajustarCuatro);
+    window.ajustarAlturaPrimeraSemana = ajustarAltura;
+    const observer = new ResizeObserver(ajustarAltura);
+    ajustarAltura();
+    window.addEventListener('resize', ajustarAltura);
     observer.observe(document.body);
   });
 
@@ -604,5 +843,16 @@
 
   // La ficha del lote siempre inicia comprimida; el usuario la despliega si la necesita.
 </script>
+<script>
+  window.PRIMERA_DIA2 = {
+    lote: {{ (lote_seleccionado or '')|tojson }},
+    apiGenerar: "{{ url_for('primera_semana.generar_dia2') }}",
+    apiActualizar: "{{ url_for('primera_semana.actualizar_dia2') }}",
+    apiFecha: "{{ url_for('primera_semana.actualizar_fecha_dia2') }}",
+    apiActiva: "{{ url_for('primera_semana.seleccionar_tabla_activa') }}",
+    apiEliminar: "{{ url_for('primera_semana.eliminar_dia2') }}"
+  };
+</script>
+<script src="{{ url_for('static', filename='js/primera_semana_dia2.js') }}"></script>
 <script src="{{ url_for('static', filename='js/tabla_seleccion.js') }}"></script>
 {% endblock %}
