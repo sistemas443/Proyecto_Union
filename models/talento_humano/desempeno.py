@@ -36,13 +36,15 @@ class Desempeno:
                 criterios = [dict(r) for r in cur.fetchall()]
                 if area:
                     cur.execute("""
-                        SELECT id, criterio_id, descripcion, area FROM indicadores_evaluacion
+                        SELECT id, criterio_id, descripcion, area, descripcion_clara, pictograma
+                        FROM indicadores_evaluacion
                         WHERE area IS NULL OR area = %s
                         ORDER BY criterio_id, orden, id
                     """, (area,))
                 else:
                     cur.execute("""
-                        SELECT id, criterio_id, descripcion, area FROM indicadores_evaluacion
+                        SELECT id, criterio_id, descripcion, area, descripcion_clara, pictograma
+                        FROM indicadores_evaluacion
                         WHERE area IS NULL
                         ORDER BY criterio_id, orden, id
                     """)
@@ -78,7 +80,8 @@ class Desempeno:
                 cur.execute("SELECT id, nombre, orden, activa FROM criterios_evaluacion ORDER BY orden, id")
                 criterios = [dict(r) for r in cur.fetchall()]
                 cur.execute("""
-                    SELECT id, criterio_id, descripcion, area, orden
+                    SELECT id, criterio_id, descripcion, area, orden,
+                           descripcion_clara, pictograma, lsc_video_url
                     FROM indicadores_evaluacion ORDER BY criterio_id, orden, id
                 """)
                 indicadores = [dict(r) for r in cur.fetchall()]
@@ -132,6 +135,22 @@ class Desempeno:
             conn.close()
 
     @staticmethod
+    def actualizar_indicador_apoyos(indicador_id, descripcion_clara, pictograma):
+        """Guarda la versión en lenguaje claro y el pictograma de una pregunta."""
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    UPDATE indicadores_evaluacion
+                    SET descripcion_clara = %s, pictograma = %s
+                    WHERE id = %s
+                """, (descripcion_clara or None, pictograma or None, indicador_id))
+                conn.commit()
+                return cur.rowcount > 0
+        finally:
+            conn.close()
+
+    @staticmethod
     def eliminar_indicador(indicador_id):
         conn = get_db_connection()
         try:
@@ -154,43 +173,58 @@ class Desempeno:
             conn.close()
 
     @staticmethod
-    def get_colaboradores_activos():
-        """Lista simple de colaboradores activos para selects."""
+    def get_colaboradores_activos(area=None, solo_lideres=False):
+        """Lista simple de colaboradores activos para selects (con filtro por alcance)."""
         conn = get_db_connection()
         try:
             with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
-                cur.execute("""
+                sql = """
                     SELECT id, nombre_completo, cargo, area, num_doc
                     FROM colaboradores
                     WHERE eliminado_en IS NULL AND estado = 'Activo'
-                    ORDER BY nombre_completo
-                """)
+                """
+                params = []
+                if area:
+                    sql += " AND area = %s"
+                    params.append(area)
+                if solo_lideres:
+                    sql += " AND (cargo ILIKE 'lider%' OR cargo ILIKE 'líder%')"
+                sql += " ORDER BY nombre_completo"
+                cur.execute(sql, params or None)
                 return [dict(r) for r in cur.fetchall()]
         finally:
             conn.close()
 
     @staticmethod
-    def listar():
-        """Lista de evaluaciones con nombre del colaborador."""
+    def listar(area=None, solo_lideres=False):
+        """Lista de evaluaciones con nombre del colaborador (con filtro por alcance)."""
         conn = get_db_connection()
         try:
             with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
-                cur.execute("""
+                sql = """
                     SELECT e.id, e.colaborador_id, c.nombre_completo, c.cargo, c.area,
                            e.periodo_inicio, e.periodo_fin, e.fecha_evaluacion,
                            e.estado, e.resultado_final, e.aprobada
                     FROM evaluaciones_desempeno e
                     JOIN colaboradores c ON c.id = e.colaborador_id
-                    ORDER BY e.fecha_evaluacion DESC NULLS LAST, e.id DESC
-                """)
+                    WHERE 1=1
+                """
+                params = []
+                if area:
+                    sql += " AND c.area = %s"
+                    params.append(area)
+                if solo_lideres:
+                    sql += " AND (c.cargo ILIKE 'lider%' OR c.cargo ILIKE 'líder%')"
+                sql += " ORDER BY e.fecha_evaluacion DESC NULLS LAST, e.id DESC"
+                cur.execute(sql, params or None)
                 return [dict(r) for r in cur.fetchall()]
         finally:
             conn.close()
 
     @staticmethod
-    def listar_agrupado():
+    def listar_agrupado(area=None, solo_lideres=False):
         """Lista de evaluaciones agrupadas por área del colaborador."""
-        evs = Desempeno.listar()
+        evs = Desempeno.listar(area=area, solo_lideres=solo_lideres)
         grupos = {}
         for e in evs:
             area = (e.get('area') or '').strip() or 'Sin área'
@@ -275,8 +309,8 @@ class Desempeno:
                     INSERT INTO evaluaciones_desempeno
                     (colaborador_id, evaluador_id, evaluador_nombre, periodo_inicio, periodo_fin,
                      fecha_evaluacion, estado, aspectos_positivos, aspectos_fortalecer, objetivos,
-                     area, creado_por, actualizado_por)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                     area, creado_por, actualizado_por, ciclo_tipo, ciclo_numero)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     RETURNING id
                 """, (
                     data['colaborador_id'],
@@ -292,6 +326,8 @@ class Desempeno:
                     data.get('area'),
                     data.get('creado_por'),
                     data.get('creado_por'),
+                    data.get('ciclo_tipo'),
+                    data.get('ciclo_numero'),
                 ))
                 evaluacion_id = cur.fetchone()[0]
 

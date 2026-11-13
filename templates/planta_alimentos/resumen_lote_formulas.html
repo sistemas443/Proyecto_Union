@@ -154,6 +154,36 @@
     border-color: var(--border);
   }
 
+  /* Separador por mes de vencimiento */
+  .table-form tbody tr.fila-mes td {
+    background: #eaf2f9;
+    color: #344054;
+    font-size: 0.68rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-top: 1px solid #d9e2ec;
+    border-bottom: 1px solid #d9e2ec;
+    padding: 0.35rem 0.75rem;
+  }
+  .table-form tbody tr.fila-mes:hover td { background: #e3edf7; }
+  .table-form tbody tr.fila-mes-toggle { cursor: pointer; user-select: none; }
+  .fila-mes-chev {
+    display: inline-block;
+    font-size: 0.9rem;
+    margin-right: 0.15rem;
+    vertical-align: -2px;
+    transition: transform 0.2s ease;
+  }
+  .table-form tbody tr.fila-mes-toggle.abierto .fila-mes-chev { transform: rotate(90deg); }
+  .fila-mes-cuenta {
+    float: right;
+    font-weight: 600;
+    color: #667085;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
   /* Columna ITEM */
   .table-form .col-item {
     font-weight: 600;
@@ -171,6 +201,46 @@
   /* Columna Insumos */
   .table-form .col-insumos {
     text-align: center;
+  }
+  .ins-resumen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+  }
+  .ins-principal {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3rem;
+    white-space: nowrap;
+  }
+  .ins-version {
+    background: #1f3b5c;
+    color: #ffffff;
+    border-radius: 5px;
+    padding: 0.05rem 0.35rem;
+    font-size: 0.64rem;
+    font-weight: 800;
+    white-space: nowrap;
+  }
+  .ins-cantidad {
+    background: #eef2f7;
+    color: #344054;
+    border: 1px solid #d9e2ec;
+    border-radius: 20px;
+    padding: 0.05rem 0.5rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .ins-versiones {
+    color: #667085;
+    font-size: 0.6rem;
+    line-height: 1.1;
+    white-space: nowrap;
+    cursor: help;
   }
 
   /* Columna Peso */
@@ -325,8 +395,23 @@
                         </tr>
                     </thead>
                     <tbody>
+                        {% set ns = namespace(mes='') %}
                         {% for formula in formulas %}
-                        <tr class="align-middle">
+                        {% set mes_formula = formula['mes'] if formula['mes'] is defined and formula['mes'] else 'Sin fecha' %}
+                        {% if mes_formula != ns.mes %}
+                        {% set ns.mes = mes_formula %}
+                        <tr class="fila-mes fila-mes-toggle" data-mes="{{ mes_formula }}"
+                            role="button" tabindex="0" aria-expanded="false"
+                            title="Mostrar u ocultar las dietas de este mes">
+                            <td colspan="6">
+                                <i class='bx bx-chevron-right fila-mes-chev'></i>
+                                <i class="far fa-calendar-alt me-1"></i> Vencimiento: {{ mes_formula }}
+                                {% set cuenta_mes = formulas | selectattr('mes', 'defined') | selectattr('mes', 'equalto', mes_formula) | list | length %}
+                                <span class="fila-mes-cuenta">{{ cuenta_mes }} {{ 'dieta' if cuenta_mes == 1 else 'dietas' }}</span>
+                            </td>
+                        </tr>
+                        {% endif %}
+                        <tr class="align-middle fila-dieta" data-mes="{{ mes_formula }}" hidden>
                             <!-- 1. ITEM -->
                             <td class="col-item px-3">{{ formula['item_id'] }}</td>
 
@@ -334,14 +419,27 @@
                             <td class="col-nombre px-3">{{ formula['nombre_dieta'] }}</td>
 
                             <!-- 3. N° INSUMOS -->
-                            <td class="col-insumos">{{ formula['resumen_insumos_html'] | safe }}</td>
+                            <td class="col-insumos">
+                                <div class="ins-resumen">
+                                    <div class="ins-principal">
+                                        <span class="ins-version">V-{{ formula['ultima_version'] }}</span>
+                                        <span class="ins-cantidad"
+                                            title="{{ formula['insumos_ultima'] or 0 }} insumos">{{ formula['insumos_ultima'] or 0 }} insumos</span>
+                                    </div>
+                                    {% if (formula['num_versiones'] or 0) > 1 %}
+                                    <div class="ins-versiones" title="{{ formula['versiones_detalle'] }}">
+                                        {{ formula['num_versiones'] }} versiones
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </td>
 
                             <!-- 4. TOTAL PESO -->
-                            <td class="col-peso px-3">{{ "{:,.2f}".format(formula['total_peso'] | default(0) | float) }} kg</td>
+                            <td class="col-peso px-3">{{ "{:,.0f}".format(formula['total_peso'] | default(0) | float) }} kg</td>
 
                             <!-- 5. COSTO BACHE -->
                             <td class="col-costo px-3">
-                                $ {{ "{:,.2f}".format(formula['costo_bache'] | default(0) | float) }}
+                                $ {{ "{:,.0f}".format(formula['costo_bache'] | default(0) | float) }}
                             </td>
 
                             <!-- 6. ACCIONES -->
@@ -359,22 +457,14 @@
                                     {% endif %}
 
                                     <!-- Botón Editar -->
-                                    <a href="{{ url_for('planta_alimentos.recetario_formulas', item_id=formula['item_id'], lote_id=lote_id, version=formula['ultima_version']) }}"
+                                    <a href="{{ url_for('planta_alimentos.editar_receta', item_id=formula['item_id'], lote_id=lote_id, version=formula['ultima_version']) }}"
                                         class="btn btn-outline-primary btn-sm" title="Editar Fórmula">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-pencil-square" viewBox="0 0 16 16">
                                             <path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/>
                                             <path fill-rule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5z"/>
                                         </svg>
                                     </a>
-
-                                    <!-- Botón Costos -->
-                                    <a href="{{ url_for('planta_alimentos.consolidado_precios') }}"
-                                        class="btn btn-outline-success btn-sm" title="Ver Costos"
-                                        style="font-weight: 700; font-size: 0.75rem; padding: 0.2rem 0.5rem;">
-                                        $
-                                    </a>
-
-                                    <!-- Botón Borrar -->
+<!-- Botón Borrar -->
                                     <form action="{{ url_for('planta_alimentos.eliminar_formula_lote', item_id=formula['item_id'], lote_id=lote_id) }}" method="POST" class="d-inline"
                                         data-confirm="Vas a eliminar la fórmula <strong>{{ formula['nombre_dieta'] }}</strong> de este lote." data-confirm-title="¿Eliminar fórmula?" data-confirm-ok="Sí, eliminar">
                                         <button type="submit" class="btn btn-outline-danger btn-sm" title="Eliminar Fórmula">
@@ -395,4 +485,29 @@
     {% endif %}
 </div>
 {% include 'planta_alimentos/_modal_replicar.html' %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    document.querySelectorAll('tr.fila-mes-toggle').forEach(function (cabecera) {
+      function alternar() {
+        var mes = cabecera.getAttribute('data-mes') || '';
+        var abrir = cabecera.getAttribute('aria-expanded') !== 'true';
+        cabecera.setAttribute('aria-expanded', abrir ? 'true' : 'false');
+        cabecera.classList.toggle('abierto', abrir);
+        document.querySelectorAll('tr.fila-dieta').forEach(function (fila) {
+          if (fila.getAttribute('data-mes') === mes) fila.hidden = !abrir;
+        });
+      }
+      cabecera.addEventListener('click', alternar);
+      cabecera.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          alternar();
+        }
+      });
+    });
+  })();
+</script>
 {% endblock %}

@@ -247,6 +247,7 @@
 
 {% block scripts %}
 <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+<script src="{{ url_for('static', filename='js/graficas/eventualidades.js') }}"></script>
 <script src="{{ url_for('static', filename='js/graficas/pantalla_completa.js') }}"></script>
 
 <script id="datos-grafico" type="application/json">
@@ -339,6 +340,13 @@
             trazos.forEach(t => t.name = t.name + '    ');
 
             Plotly.newPlot('graficoPlotly', trazos, layout, config);
+
+            Eventualidades.iniciar({
+                lote: {{ lote_seleccionado | tojson }},
+                ambito: 'PRODUCCION',
+                plotId: 'graficoPlotly',
+                modo: 'semana'
+            });
         }
     });
 

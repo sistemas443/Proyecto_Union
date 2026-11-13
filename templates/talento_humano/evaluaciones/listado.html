@@ -28,9 +28,11 @@
             </div>
         </div>
         <div class="d-flex gap-2">
+            {% if session.get('user_rol') == 'Talento humano' %}
             <a href="{{ url_for('talento_humano.evaluacion_catalogo') }}" class="btn btn-outline-secondary shadow-sm text-nowrap">
                 <i class='bx bx-slider-alt'></i> Catálogo
             </a>
+            {% endif %}
             <a href="{{ url_for('talento_humano.evaluacion_nueva') }}" class="btn btn-nuevo shadow-sm text-nowrap">
                 <i class='bx bx-plus'></i> Nueva evaluación
             </a>
@@ -83,9 +85,11 @@
                                 </td>
                                 <td class="text-end">
                                     <a href="{{ url_for('talento_humano.evaluacion_detalle', id=e.id) }}" class="btn btn-sm btn-outline-primary py-0 px-2" title="Ver evaluación"><i class='bx bx-show'></i></a>
+                                    {% if session.get('user_rol') == 'Talento humano' %}
                                     <form method="post" action="{{ url_for('talento_humano.evaluacion_eliminar', id=e.id) }}" class="d-inline" onsubmit="return confirm('¿Eliminar esta evaluación?');">
                                         <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2" title="Eliminar"><i class='bx bx-trash'></i></button>
                                     </form>
+                                    {% endif %}
                                 </td>
                             </tr>
                             {% endfor %}

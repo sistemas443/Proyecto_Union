@@ -1,0 +1,320 @@
+{% extends 'generales/layout.html' %}
+
+{% block title %}Evaluaciones pendientes – Avícola San Martín{% endblock %}
+
+{% block head %}
+<style>
+  /* ============================================================
+     Jerarquía Año → Área → Mes (guías de indentación, sin cajas anidadas)
+     ============================================================ */
+  summary { list-style: none; }
+  summary::-webkit-details-marker { display: none; }
+
+  /* Nivel 1: Año */
+  .anio-grupo {
+    border-top: 2px solid #e7e9ee;
+    margin-bottom: .35rem;
+  }
+  .anio-grupo:first-of-type { border-top: none; }
+  .anio-grupo > summary {
+    cursor: pointer; display: flex; align-items: center; gap: .6rem; flex-wrap: wrap;
+    padding: .85rem .35rem; border-radius: 10px;
+    color: #1f2430;
+  }
+  .anio-grupo > summary:hover { background: #f7f8fa; }
+  .anio-grupo > summary .anio-num {
+    font-size: 1.35rem; font-weight: 800; letter-spacing: -.02em; line-height: 1;
+  }
+  .anio-grupo > summary .anio-ico { font-size: 1.3rem; color: #97271C; }
+  .anio-body {
+    margin: .1rem 0 .6rem .9rem;
+    padding-left: 1rem;
+    border-left: 2px solid #eef0f3;
+  }
+
+  /* Nivel 2: Área */
+  .area-grupo { margin: 0; }
+  .area-grupo > summary {
+    cursor: pointer; display: flex; align-items: center; gap: .6rem; flex-wrap: wrap;
+    padding: .55rem .55rem; border-radius: 8px;
+    color: #1f2430; font-size: .93rem; font-weight: 600;
+  }
+  .area-grupo > summary:hover { background: #f7f8fa; }
+  .area-grupo > summary .area-ico { color: #667085; }
+  .area-grupo-body {
+    margin: .1rem 0 .45rem 1.05rem;
+    padding-left: .85rem;
+    border-left: 1px dashed #e7e9ee;
+  }
+
+  /* Nivel 3: Mes (cerrado por defecto) */
+  .mes-bloque { margin: 0; }
+  .mes-bloque > summary {
+    cursor: pointer; display: flex; align-items: center; gap: .5rem; flex-wrap: wrap;
+    padding: .42rem .55rem; border-radius: 6px;
+    color: #344054; font-size: .86rem; font-weight: 600;
+  }
+  .mes-bloque > summary:hover { background: #f7f8fa; }
+  .mes-bloque > summary .mes-ico { color: #98a2b3; }
+  .mes-label { text-transform: capitalize; }
+  .mes-body { padding: .15rem 0 .55rem .35rem; }
+
+  /* Mini tabla de conteos (celdas) a la derecha de cada nivel */
+  .mini-tabla {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(50px, auto));
+    gap: 1px;
+    background: #e7e9ee;
+    border: 1px solid #e7e9ee;
+    border-radius: 7px;
+    overflow: hidden;
+    margin-left: auto;
+    flex: 0 0 auto;
+  }
+  .mini-tabla > span {
+    background: #fff;
+    padding: .2rem .45rem;
+    text-align: center;
+    line-height: 1.1;
+  }
+  .mini-tabla .mt-head {
+    background: #f8f9fb;
+    color: #667085;
+    font-size: .58rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .02em;
+    padding-top: .24rem;
+    padding-bottom: .24rem;
+  }
+  .mini-tabla .mt-val {
+    font-size: .82rem;
+    font-weight: 700;
+    color: #1f2430;
+  }
+  .mini-tabla .mt-danger { color: #b42318; }
+  .mini-tabla .mt-warning { color: #b54708; }
+  .mini-tabla .mt-muted { color: #667085; }
+
+  /* Chevron */
+  .chev { color: #98a2b3; font-size: 1.15rem; transition: transform .15s ease; }
+  .anio-grupo[open] > summary > .chev,
+  .area-grupo[open] > summary > .chev,
+  .mes-bloque[open] > summary > .chev { transform: rotate(180deg); }
+
+  /* Tabla */
+  .tabla-card {
+    border: 1px solid #eef0f3; border-radius: 8px; background: #fff; overflow: hidden;
+  }
+  .tabla-pendientes { margin-bottom: 0; }
+  .tabla-pendientes thead th {
+    background: #f9fafb; border-bottom: 1px solid #eef0f3;
+    font-size: .7rem; text-transform: uppercase; letter-spacing: .03em;
+    color: #667085; font-weight: 700; padding-top: .5rem; padding-bottom: .5rem;
+  }
+  .tabla-pendientes td { vertical-align: middle; }
+  .tabla-pendientes tbody tr:last-child td { border-bottom: 0; }
+  .fila-vencida { background: #fff5f5 !important; }
+  .estado-pill { font-size: .72rem; font-weight: 700; white-space: nowrap; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-3 pb-4">
+
+    <div class="d-flex justify-content-between align-items-end mb-3 flex-wrap gap-2 px-2">
+        <div class="d-flex align-items-center gap-2">
+            <span class="page-head-icon"><i class='bx bx-calendar-check'></i></span>
+            <div>
+                <h3 class="page-title mb-0">Evaluaciones pendientes</h3>
+                <p class="page-sub mb-0 mt-1">Por año, área y mes en que debe realizarse la evaluación</p>
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('talento_humano.evaluaciones') }}" class="btn btn-outline-secondary shadow-sm text-nowrap">
+                <i class='bx bx-arrow-back'></i> Ver evaluaciones
+            </a>
+            <a href="{{ url_for('talento_humano.evaluacion_nueva') }}" class="btn btn-nuevo shadow-sm text-nowrap">
+                <i class='bx bx-plus'></i> Nueva evaluación
+            </a>
+        </div>
+    </div>
+
+    <!-- RESUMEN -->
+    <div class="d-flex flex-wrap gap-2 mb-3 px-2">
+        <span class="count-chip">{{ total.total }} pendiente{% if total.total != 1 %}s{% endif %}</span>
+        <span class="count-chip"><span class="text-danger fw-bold">{{ total.vencidas }}</span> vencida{% if total.vencidas != 1 %}s{% endif %}</span>
+        <span class="count-chip"><span class="text-warning fw-bold">{{ total.en_ventana }}</span> en ventana</span>
+        <span class="count-chip"><span class="text-secondary fw-bold">{{ total.proximas }}</span> próxima{% if total.proximas != 1 %}s{% endif %}</span>
+    </div>
+
+    <!-- FILTROS -->
+    <form method="get" action="{{ url_for('talento_humano.evaluaciones_pendientes') }}"
+          class="d-flex flex-wrap gap-2 align-items-end mb-3 px-2">
+        {% if not es_lider %}
+        <div>
+            <label class="form-label small fw-semibold mb-1">Área</label>
+            <select name="area" class="form-select form-select-sm" style="min-width: 190px;">
+                <option value="">Todas</option>
+                {% for a in areas %}
+                <option value="{{ a }}" {{ 'selected' if area_f == a }}>{{ a }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% else %}
+        <div>
+            <label class="form-label small fw-semibold mb-1">Área</label>
+            <div class="form-control form-control-sm bg-light" style="min-width: 190px;">{{ mi_area or 'Sin área asignada' }}</div>
+        </div>
+        {% endif %}
+        <div>
+            <label class="form-label small fw-semibold mb-1">Estado</label>
+            <select name="estado" class="form-select form-select-sm" style="min-width: 150px;">
+                <option value="">Todos</option>
+                <option value="vencida" {{ 'selected' if estado_f == 'vencida' }}>Vencidas</option>
+                <option value="en_ventana" {{ 'selected' if estado_f == 'en_ventana' }}>En ventana</option>
+                <option value="proxima" {{ 'selected' if estado_f == 'proxima' }}>Próximas</option>
+            </select>
+        </div>
+        <div>
+            <label class="form-label small fw-semibold mb-1">Buscar</label>
+            <input type="text" name="q" value="{{ q }}" class="form-control form-control-sm"
+                   style="min-width: 200px;" placeholder="Nombre o documento">
+        </div>
+        <button type="submit" class="btn btn-sm btn-dark"><i class='bx bx-filter-alt'></i> Filtrar</button>
+        {% if area_f or estado_f or q %}
+        <a href="{{ url_for('talento_humano.evaluaciones_pendientes') }}" class="btn btn-sm btn-outline-secondary">Limpiar</a>
+        {% endif %}
+    </form>
+
+    {% if anios %}
+        {% for anio in anios %}
+        <details class="anio-grupo">
+            <summary>
+                <i class='bx bx-calendar anio-ico'></i>
+                <span class="anio-num">{{ anio.anio }}</span>
+                {% if anio.actual %}<span class="badge bg-primary">Actual</span>{% endif %}
+                <span class="mini-tabla" aria-hidden="true">
+                    <span class="mt-head">Total</span>
+                    <span class="mt-head">Vencidas</span>
+                    <span class="mt-head">En ventana</span>
+                    <span class="mt-head">Próximas</span>
+                    <span class="mt-val">{{ anio.totales.total }}</span>
+                    <span class="mt-val mt-danger">{{ anio.totales.vencidas }}</span>
+                    <span class="mt-val mt-warning">{{ anio.totales.en_ventana }}</span>
+                    <span class="mt-val mt-muted">{{ anio.totales.proximas }}</span>
+                </span>
+                <i class='bx bx-chevron-down chev'></i>
+            </summary>
+            <div class="anio-body">
+                {% for g in anio.areas %}
+                <details class="area-grupo">
+                    <summary>
+                        <i class='bx bx-buildings area-ico'></i>
+                        <span>{{ g.area }}</span>
+                        <span class="mini-tabla" aria-hidden="true">
+                            <span class="mt-head">Total</span>
+                            <span class="mt-head">Vencidas</span>
+                            <span class="mt-head">En ventana</span>
+                            <span class="mt-head">Próximas</span>
+                            <span class="mt-val">{{ g.totales.total }}</span>
+                            <span class="mt-val mt-danger">{{ g.totales.vencidas }}</span>
+                            <span class="mt-val mt-warning">{{ g.totales.en_ventana }}</span>
+                            <span class="mt-val mt-muted">{{ g.totales.proximas }}</span>
+                        </span>
+                        <i class='bx bx-chevron-down chev'></i>
+                    </summary>
+                    <div class="area-grupo-body">
+                        {% for mes in g.meses %}
+                        <details class="mes-bloque">
+                            <summary>
+                                <i class='bx bx-calendar-week mes-ico'></i>
+                                <span class="mes-label">{{ mes.label }}</span>
+                                <span class="mini-tabla" aria-hidden="true">
+                                    <span class="mt-head">Total</span>
+                                    <span class="mt-head">Vencidas</span>
+                                    <span class="mt-head">En ventana</span>
+                                    <span class="mt-head">Próximas</span>
+                                    <span class="mt-val">{{ mes.resumen.total }}</span>
+                                    <span class="mt-val mt-danger">{{ mes.resumen.vencidas }}</span>
+                                    <span class="mt-val mt-warning">{{ mes.resumen.en_ventana }}</span>
+                                    <span class="mt-val mt-muted">{{ mes.resumen.proximas }}</span>
+                                </span>
+                                <i class='bx bx-chevron-down chev'></i>
+                            </summary>
+                            <div class="mes-body">
+                                <div class="table-responsive tabla-card">
+                                    <table class="table table-sm table-hover align-middle tabla-pendientes">
+                                        <thead>
+                                            <tr>
+                                                <th class="ps-3">Colaborador</th>
+                                                <th>Cargo</th>
+                                                <th>Ciclo</th>
+                                                <th>Cumple</th>
+                                                <th>Estado</th>
+                                                <th class="text-end pe-3">Acción</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for it in mes.filas %}
+                                            <tr class="{{ 'fila-vencida' if it.estado == 'vencida' }}">
+                                                <td class="ps-3">
+                                                    <div class="fw-semibold">{{ it.nombre_completo }}</div>
+                                                    <div class="small text-muted">{{ it.num_doc }}</div>
+                                                </td>
+                                                <td class="small">{{ it.cargo or '—' }}</td>
+                                                <td><span class="badge bg-light text-dark border">{{ it.tipo_label }}</span></td>
+                                                <td class="small text-nowrap">{{ it.fecha_cumplimiento.strftime('%d/%m/%Y') }}</td>
+                                                <td>
+                                                    {% if it.estado == 'vencida' %}
+                                                    <span class="badge bg-danger estado-pill">Vencida · hace {{ it.dias }} d</span>
+                                                    {% elif it.estado == 'en_ventana' %}
+                                                    <span class="badge bg-warning text-dark estado-pill">En ventana · faltan {{ it.dias }} d</span>
+                                                    {% else %}
+                                                    <span class="badge bg-light text-dark border estado-pill">Próxima · abre {{ it.fecha_objetivo.strftime('%d/%m/%Y') }}</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td class="text-end pe-3">
+                                                    {% if it.estado == 'proxima' %}
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary" disabled
+                                                            title="La ventana abre el {{ it.fecha_objetivo.strftime('%d/%m/%Y') }}">
+                                                        <i class='bx bx-lock-alt'></i> Evaluar
+                                                    </button>
+                                                    {% else %}
+                                                    <a href="{{ url_for('talento_humano.evaluacion_nueva', colaborador_id=it.colaborador_id, ciclo_tipo=it.tipo, ciclo_numero=it.numero) }}"
+                                                       class="btn btn-sm btn-nuevo text-nowrap">
+                                                        <i class='bx bx-task'></i> Evaluar
+                                                    </a>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </details>
+                        {% endfor %}
+                    </div>
+                </details>
+                {% endfor %}
+            </div>
+        </details>
+        {% endfor %}
+    {% else %}
+    <div class="card shadow-sm border-0 px-2">
+        <div class="card-body text-center text-muted py-5">
+            <i class='bx bx-check-shield' style="font-size:2rem;"></i>
+            <div class="mt-2">
+                {% if area_f or estado_f or q %}
+                No hay colaboradores que coincidan con el filtro.
+                {% else %}
+                No hay evaluaciones pendientes en este momento.
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

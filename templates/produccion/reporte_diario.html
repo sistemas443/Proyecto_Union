@@ -1,0 +1,496 @@
+{% extends 'generales/layout.html' %}
+{% block title %}Reporte Diario — Avícola San Martín{% endblock %}
+
+{% block head %}
+{% include 'planta_alimentos/_design_system.html' %}
+{% endblock %}
+
+{% block content %}
+<style>
+  .rd-card{
+    --rd-border:#dfe4ec; --rd-head:#1f3b5c; --rd-head-text:#ffffff;
+    --rd-row:#ffffff; --rd-row-alt:#f7f9fc; --rd-vacia:#f4f6f9;
+    --rd-hoy:#fff4d6;
+    --rd-total-bg:#eef3f9; --rd-muted:#8b97a5; --rd-text:#1f2937;
+    --rd-focus:#ffffff;
+    background:var(--rd-row); border:1px solid var(--rd-border); border-radius:12px;
+    overflow:hidden;
+  }
+  html[data-bs-theme="dark"] .rd-card{
+    --rd-border:#38424d; --rd-head:#10151b; --rd-head-text:#f1f3f5;
+    --rd-row:#1e242b; --rd-row-alt:#232b34; --rd-vacia:#1a2027;
+    --rd-hoy:#332b1a;
+    --rd-total-bg:#242b34; --rd-muted:#8b97a5; --rd-text:#e8edf3;
+    --rd-focus:#2b333d;
+  }
+  .rd-scroll{ overflow-x:auto; }
+  .rd-tabla{
+    width:100%; border-collapse:separate; border-spacing:0;
+    font-size:.78rem; color:var(--rd-text); font-variant-numeric:tabular-nums;
+  }
+  .rd-tabla thead th{
+    position:sticky; top:0; z-index:3;
+    background:var(--rd-head); color:var(--rd-head-text);
+    font-size:.64rem; font-weight:700; letter-spacing:.04em; text-transform:uppercase;
+    padding:.5rem .35rem; text-align:center; white-space:nowrap;
+    border-bottom:1px solid var(--rd-border);
+  }
+  .rd-tabla thead th.rd-sep{ border-left:1px solid rgba(255,255,255,.18); }
+  .rd-tabla tbody td{
+    padding:.18rem .2rem; text-align:right; white-space:nowrap;
+    border-bottom:1px solid var(--rd-border); vertical-align:middle;
+  }
+  .rd-tabla tbody tr:nth-child(even) td{ background:var(--rd-row-alt); }
+  .rd-tabla tbody tr.rd-hoy td{ background:var(--rd-hoy); }
+  .rd-tabla td.rd-fecha, .rd-tabla th.rd-fecha{
+    position:sticky; left:0; z-index:2; text-align:center; font-weight:700;
+    background:var(--rd-row); border-right:1px solid var(--rd-border); width:64px;
+  }
+  .rd-tabla tbody tr:nth-child(even) td.rd-fecha{ background:var(--rd-row-alt); }
+  .rd-tabla tbody tr.rd-hoy td.rd-fecha{ background:var(--rd-hoy); }
+  .rd-tabla thead th.rd-fecha{ z-index:4; background:var(--rd-head); }
+  .rd-hoy-tag{
+    display:block; font-size:.52rem; font-weight:800; letter-spacing:.06em;
+    color:#8a5a00; margin-top:-2px;
+  }
+  html[data-bs-theme="dark"] .rd-hoy-tag{ color:#f0c26b; }
+
+  /* celdas editables */
+  .rd-in, .rd-sel{
+    width:100%; min-width:52px; border:1px solid transparent; background:transparent;
+    color:inherit; font:inherit; font-size:.78rem; font-weight:600;
+    padding:.22rem .25rem; border-radius:5px; text-align:right;
+    font-variant-numeric:tabular-nums;
+  }
+  .rd-sel{ text-align:left; font-size:.7rem; min-width:104px; }
+  .rd-in:hover, .rd-sel:hover{ background:rgba(31,78,121,.07); }
+  .rd-in:focus, .rd-sel:focus{
+    outline:none; background:var(--rd-focus);
+    border-color:#1f3b5c; box-shadow:0 0 0 2px rgba(31,78,121,.15);
+  }
+  html[data-bs-theme="dark"] .rd-in:focus, html[data-bs-theme="dark"] .rd-sel:focus{
+    border-color:#4d8ec4; box-shadow:0 0 0 2px rgba(77,142,196,.25);
+  }
+  .rd-in.rd-ok, .rd-sel.rd-ok{ background:#e3f4ea; border-color:#2f8f5b; }
+  .rd-in.rd-error, .rd-sel.rd-error{ background:#fdecec; border-color:#c0504d; }
+  html[data-bs-theme="dark"] .rd-in.rd-ok, html[data-bs-theme="dark"] .rd-sel.rd-ok{
+    background:#1d2f26; border-color:#4f9e73;
+  }
+  html[data-bs-theme="dark"] .rd-in.rd-error, html[data-bs-theme="dark"] .rd-sel.rd-error{
+    background:#33201f; border-color:#a35a57;
+  }
+  .rd-in.rd-guardando{ opacity:.55; }
+  .rd-in:disabled{
+    background:transparent; color:var(--rd-muted); cursor:not-allowed; opacity:.4;
+  }
+  .rd-tabla.rd-sin-prod .col-prod{ display:none; }
+
+  .rd-mod{ display:flex; align-items:center; gap:2px; }
+  .rd-mod .rd-in{ flex:1 1 auto; }
+  .rd-e{
+    flex:0 0 auto; width:17px; height:17px; padding:0; border-radius:4px;
+    border:1px solid var(--rd-border); background:transparent; color:var(--rd-muted);
+    font-size:.55rem; font-weight:800; line-height:1; cursor:pointer;
+  }
+  .rd-e:hover{ border-color:#1f3b5c; color:#1f3b5c; }
+  .rd-e.activo{
+    background:#1f4e79; border-color:#1f4e79; color:#fff;
+  }
+  html[data-bs-theme="dark"] .rd-e.activo{ background:#4d8ec4; border-color:#4d8ec4; color:#10222f; }
+
+  .rd-tabla td.rd-total{ font-weight:800; color:#8a5a00; text-align:right; padding-right:.45rem; }
+  html[data-bs-theme="dark"] .rd-tabla td.rd-total{ color:#f0c26b; }
+  .rd-tabla td.rd-saldo{ font-weight:700; text-align:right; padding-right:.45rem; }
+  .rd-tabla td.rd-fecha small{ color:var(--rd-muted); }
+
+  .rd-tabla tfoot td{
+    padding:.5rem .35rem; text-align:right; font-weight:800; font-size:.78rem;
+    background:var(--rd-total-bg); border-top:2px solid var(--rd-border);
+    white-space:nowrap;
+  }
+  .rd-tabla tfoot td.rd-fecha{ text-align:center; font-size:.68rem; letter-spacing:.05em; }
+
+  .rd-kpis{ display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:.7rem; margin-bottom:1rem; }
+  .rd-kpi{
+    background:var(--rd-row); border:1px solid var(--rd-border); border-radius:10px;
+    padding:.6rem .85rem; display:flex; flex-direction:column; gap:.12rem;
+  }
+  .rd-kpi .k{ font-size:.63rem; text-transform:uppercase; letter-spacing:.05em; color:var(--rd-muted); font-weight:700; }
+  .rd-kpi .v{ font-size:1.2rem; font-weight:800; color:var(--rd-text); font-variant-numeric:tabular-nums; }
+  .rd-kpi .v small{ font-size:.68rem; font-weight:600; color:var(--rd-muted); }
+</style>
+
+{% macro val(d, campo) -%}
+  {%- if d and d.get(campo) is not none -%}
+    {%- set v = d.get(campo) -%}
+    {%- if v is number and v == v|int -%}{{ v|int }}{%- else -%}{{ v }}{%- endif -%}
+  {%- endif -%}
+{%- endmacro %}
+
+{% macro opciones(d, campo, lista) -%}
+  {%- set actual = (d.get(campo) if d else none) -%}
+  <option value="" {% if not actual %}selected{% endif %}>—</option>
+  {%- for op in lista %}
+  <option value="{{ op }}" {% if actual == op %}selected{% endif %}>{{ op }}</option>
+  {%- endfor %}
+{%- endmacro %}
+
+<div class="page-header">
+  <div class="d-flex align-items-center gap-3">
+    <div class="page-icon">
+      <i class="fas fa-clipboard-list"></i>
+    </div>
+    <div>
+      <h2 class="page-title mb-0">Reporte Diario</h2>
+      <p class="page-subtitle mb-0">Producción, mortalidad por módulo y consumos del día</p>
+    </div>
+  </div>
+
+  <form method="POST" class="d-flex flex-wrap align-items-center gap-2 m-0">
+    <label for="lote" class="form-label-design">Lote</label>
+    <select name="lote" id="lote" class="form-select form-select-sm" style="width: 180px;">
+      <option value="">-- Seleccione --</option>
+      {% for l in lotes %}
+      <option value="{{ l }}" {% if lote_seleccionado == l %}selected{% endif %}>LOTE {{ l }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="mes" class="form-label-design">Mes</label>
+    <input type="month" name="mes" id="mes" class="form-control form-control-sm"
+           value="{{ mes_valor }}" style="width: 165px;">
+
+    <button type="submit" class="btn btn-primary btn-sm">
+      <i class="fas fa-rotate"></i> Cargar
+    </button>
+
+    {% if lote_seleccionado %}
+    <button type="button" class="btn btn-outline-secondary btn-sm" id="btnHoy" title="Ir al día de hoy">
+      <i class="fas fa-calendar-day"></i> Hoy
+    </button>
+    {% endif %}
+  </form>
+</div>
+
+{% if not hay_tabla %}
+<div class="alert alert-warning d-flex align-items-center gap-2">
+  <i class="fas fa-triangle-exclamation"></i>
+  <div>
+    Falta crear la tabla <code>reporte_diario</code>. Ejecuta
+    <code>migraciones/2026_11_11_reporte_diario.sql</code> y recarga esta página.
+  </div>
+</div>
+{% endif %}
+
+{% if lote_seleccionado %}
+{% if cabecera %}
+
+<div class="rd-kpis">
+  <div class="rd-kpi">
+    <span class="k">Lote</span>
+    <span class="v">{{ cabecera['lote'] }} <small>{{ cabecera['variedad'] or '' }}</small></span>
+  </div>
+  <div class="rd-kpi">
+    <span class="k">Aves encasetadas</span>
+    <span class="v">{{ "{:,.0f}".format(aves_encasetadas | float) }}</span>
+  </div>
+  <div class="rd-kpi">
+    <span class="k">Saldo al inicio del mes</span>
+    <span class="v">{{ "{:,.0f}".format(totales.get('saldo_apertura', 0) | float) }}</span>
+  </div>
+  <div class="rd-kpi">
+    <span class="k">Muertes del mes</span>
+    <span class="v"><span id="kpi-muertes">{{ "{:,.0f}".format(totales.get('total', 0) | float) }}</span>
+      <small id="kpi-muertes-dias">({{ totales.get('dias', 0) }} {{ 'día' if totales.get('dias', 0) == 1 else 'días' }})</small></span>
+  </div>
+  <div class="rd-kpi">
+    <span class="k">% Mortalidad acumulada</span>
+    <span class="v" id="kpi-porc">{{ "%.2f"|format(totales.get('porc_mort', 0) | float) }} %</span>
+  </div>
+  <div class="rd-kpi">
+    <span class="k">Saldo final del mes</span>
+    <span class="v" id="kpi-saldo-fin">{{ "{:,.0f}".format(totales.get('saldo_final', 0) | float) }}</span>
+  </div>
+</div>
+
+<div class="rd-card">
+  <div class="rd-scroll">
+    <table class="rd-tabla{% if not hay_desinfeccion %} rd-sin-prod{% endif %}" id="tablaRD">
+      <thead>
+        <tr>
+          <th class="rd-fecha" rowspan="2">Fecha</th>
+          <th rowspan="2">Producción</th>
+          <th rowspan="2">Alimento</th>
+          <th class="rd-sep" colspan="4">Mortalidad por módulo</th>
+          <th class="rd-sep" rowspan="2">Total</th>
+          <th rowspan="2">Otras</th>
+          <th rowspan="2">Motivo</th>
+          <th class="rd-sep" rowspan="2">Saldo aves</th>
+          <th class="rd-sep" rowspan="2">Agua</th>
+          <th rowspan="2">Silo</th>
+          <th class="rd-sep" rowspan="2">Desinf.</th>
+          <th class="col-prod" rowspan="2">Producto desinf.</th>
+          <th rowspan="2">Gallinaza</th>
+          <th rowspan="2">Cierra silo</th>
+        </tr>
+        <tr>
+          <th class="rd-sep">M1</th>
+          <th>M2</th>
+          <th>M3</th>
+          <th>M4</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for fila in filas %}
+        {% set d = fila.datos %}
+        <tr class="{% if fila.fecha == hoy %}rd-hoy{% endif %}">
+          <td class="rd-fecha">
+            {{ fila.dia }}
+            {% if fila.fecha == hoy %}<span class="rd-hoy-tag">HOY</span>{% endif %}
+          </td>
+
+          <td><input class="rd-in" data-tipo="int" data-fecha="{{ fila.fecha }}" data-campo="produccion"
+                     inputmode="numeric" placeholder="0" value="{{ val(d, 'produccion') }}"></td>
+          <td><input class="rd-in" data-tipo="dec" data-fecha="{{ fila.fecha }}" data-campo="alimento"
+                     inputmode="decimal" placeholder="0" value="{{ val(d, 'alimento') }}"></td>
+
+          {% for m in [1, 2, 3, 4] %}
+          <td{% if m == 1 %} class="rd-sep"{% endif %}>
+            <div class="rd-mod">
+              <input class="rd-in" data-tipo="int" data-fecha="{{ fila.fecha }}" data-campo="mort_m{{ m }}"
+                     inputmode="numeric" placeholder="0" value="{{ val(d, 'mort_m' ~ m) }}">
+              <button type="button"
+                      class="rd-e{% if d and d.get('modulo_entrada') == m %} activo{% endif %}"
+                      data-fecha="{{ fila.fecha }}" data-modulo="{{ m }}"
+                      title="Marcar módulo {{ m }} como la entrada del galpón">E</button>
+            </div>
+          </td>
+          {% endfor %}
+
+          <td class="rd-total rd-sep" data-fecha="{{ fila.fecha }}">{{ "{:,.0f}".format((d.get('mort_total') or 0) | float) if d else '0' }}</td>
+
+          <td><input class="rd-in" data-tipo="int" data-fecha="{{ fila.fecha }}" data-campo="otras"
+                     inputmode="numeric" placeholder="0" value="{{ val(d, 'otras') }}"></td>
+          <td>
+            <select class="rd-sel" data-fecha="{{ fila.fecha }}" data-campo="otras_motivo">
+              {{ opciones(d, 'otras_motivo', ['Venta', 'Necropsia', 'Otro']) }}
+            </select>
+          </td>
+
+          <td class="rd-saldo rd-sep" data-fecha="{{ fila.fecha }}">{{ "{:,.0f}".format(fila.saldo | float) }}</td>
+
+          <td class="rd-sep"><input class="rd-in" data-tipo="dec" data-fecha="{{ fila.fecha }}" data-campo="agua"
+                     inputmode="decimal" placeholder="0" value="{{ val(d, 'agua') }}"></td>
+          <td><input class="rd-in" data-tipo="dec" data-fecha="{{ fila.fecha }}" data-campo="silo"
+                     inputmode="decimal" placeholder="0" value="{{ val(d, 'silo') }}"></td>
+
+          <td class="rd-sep">
+            <select class="rd-sel" data-fecha="{{ fila.fecha }}" data-campo="desinfeccion">
+              {{ opciones(d, 'desinfeccion', ['Sí', 'No']) }}
+            </select>
+          </td>
+          <td class="col-prod">
+            <input class="rd-in" style="text-align:left;min-width:92px" data-fecha="{{ fila.fecha }}"
+                   data-campo="desinfeccion_producto" placeholder="Producto"
+                   value="{{ val(d, 'desinfeccion_producto') }}"
+                   {% if not (d and d.get('desinfeccion') == 'Sí') %}disabled{% endif %}>
+          </td>
+          <td>
+            <select class="rd-sel" data-fecha="{{ fila.fecha }}" data-campo="gallinaza">
+              {{ opciones(d, 'gallinaza', ['Hoy', 'No aplica']) }}
+            </select>
+          </td>
+          <td><input class="rd-in" style="text-align:left;min-width:70px" data-fecha="{{ fila.fecha }}"
+                     data-campo="cierra_silo" placeholder="—" value="{{ val(d, 'cierra_silo') }}"></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td class="rd-fecha">TOTAL</td>
+          <td id="tot-produccion">{{ "{:,.0f}".format(totales.get('produccion', 0) | float) }}</td>
+          <td id="tot-alimento">{{ "{:,.0f}".format(totales.get('alimento', 0) | float) }}</td>
+          <td class="rd-sep" id="tot-m1">{{ "{:,.0f}".format(totales.get('m1', 0) | float) }}</td>
+          <td id="tot-m2">{{ "{:,.0f}".format(totales.get('m2', 0) | float) }}</td>
+          <td id="tot-m3">{{ "{:,.0f}".format(totales.get('m3', 0) | float) }}</td>
+          <td id="tot-m4">{{ "{:,.0f}".format(totales.get('m4', 0) | float) }}</td>
+          <td class="rd-sep" id="tot-total">{{ "{:,.0f}".format(totales.get('total', 0) | float) }}</td>
+          <td id="tot-otras">{{ "{:,.0f}".format(totales.get('otras', 0) | float) }}</td>
+          <td></td>
+          <td class="rd-sep" id="tot-saldo">{{ "{:,.0f}".format(totales.get('saldo_final', 0) | float) }}</td>
+          <td class="rd-sep" id="tot-agua">{{ "{:,.0f}".format(totales.get('agua', 0) | float) }}</td>
+          <td id="tot-silo">{{ "{:,.0f}".format(totales.get('silo', 0) | float) }}</td>
+          <td class="rd-sep"></td>
+          <td class="col-prod"></td>
+          <td></td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+
+<p class="text-muted small mt-2 mb-0">
+  <i class="fas fa-circle-info"></i>
+  Escribe en cualquier celda y se guarda al salir del campo. El <strong>total del día</strong> y el
+  <strong>saldo de aves</strong> se calculan solos.
+</p>
+
+{% else %}
+<div class="alert alert-secondary d-flex align-items-center gap-2">
+  <i class="fas fa-circle-info"></i> No se encontró la cabecera del lote {{ lote_seleccionado }}.
+</div>
+{% endif %}
+
+{% else %}
+<div class="card card-clean d-flex flex-column align-items-center justify-content-center py-5">
+  <i class="fas fa-clipboard-list" style="font-size:2.5rem;color:#b6c2cf"></i>
+  <p class="mb-0 mt-3 text-muted">Selecciona un lote para ver su reporte diario.</p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const API = "{{ url_for('reporte_diario.guardar') }}";
+  const LOTE = "{{ lote_seleccionado }}";
+  const fmt = n => Number(n || 0).toLocaleString('en-US');
+
+  function set(id, valor) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = valor;
+  }
+
+  function actualizarProducto() {
+    const tabla = document.getElementById('tablaRD');
+    if (!tabla) return;
+    const selects = Array.from(document.querySelectorAll('select[data-campo="desinfeccion"]'));
+    const hay = selects.some(s => s.value === 'Sí');
+    tabla.classList.toggle('rd-sin-prod', !hay);
+    selects.forEach(s => {
+      const inp = document.querySelector(
+        'input[data-campo="desinfeccion_producto"][data-fecha="' + s.dataset.fecha + '"]'
+      );
+      if (inp) inp.disabled = (s.value !== 'Sí');
+    });
+  }
+
+  async function guardar(el) {
+    const fecha = el.dataset.fecha;
+    const campo = el.dataset.campo;
+    let valor = el.value;
+
+    if (el.dataset.tipo === 'int') valor = valor.replace(/[^\d]/g, '');
+    else if (el.dataset.tipo === 'dec') valor = valor.replace(/[^\d.]/g, '');
+
+    el.classList.add('rd-guardando');
+    el.classList.remove('rd-error');
+
+    try {
+      const res = await fetch(API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lote: LOTE, fecha: fecha, campo: campo, valor: valor })
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.ok) throw new Error(data.error || 'No se pudo guardar');
+
+      el.value = valor;
+      el.classList.add('rd-ok');
+      setTimeout(() => el.classList.remove('rd-ok'), 1200);
+
+      const celdaTotal = document.querySelector('td.rd-total[data-fecha="' + fecha + '"]');
+      if (celdaTotal) celdaTotal.textContent = fmt(data.mort_total);
+
+      Object.entries(data.saldos || {}).forEach(([f, s]) => {
+        const c = document.querySelector('td.rd-saldo[data-fecha="' + f + '"]');
+        if (c) c.textContent = fmt(s);
+      });
+
+      const t = data.totales || {};
+      set('kpi-muertes', fmt(t.total));
+      set('kpi-muertes-dias', '(' + (t.dias || 0) + ((t.dias === 1) ? ' día' : ' días') + ')');
+      set('kpi-porc', Number(t.porc_mort || 0).toFixed(2) + ' %');
+      set('kpi-saldo-fin', fmt(t.saldo_final));
+      set('tot-produccion', fmt(t.produccion));
+      set('tot-alimento', fmt(t.alimento));
+      set('tot-m1', fmt(t.m1));
+      set('tot-m2', fmt(t.m2));
+      set('tot-m3', fmt(t.m3));
+      set('tot-m4', fmt(t.m4));
+      set('tot-total', fmt(t.total));
+      set('tot-otras', fmt(t.otras));
+      set('tot-saldo', fmt(t.saldo_final));
+      set('tot-agua', fmt(t.agua));
+      set('tot-silo', fmt(t.silo));
+
+      if (campo === 'desinfeccion') {
+        actualizarProducto();
+        if (valor === 'Sí') {
+          const inp = document.querySelector(
+            'input[data-campo="desinfeccion_producto"][data-fecha="' + fecha + '"]'
+          );
+          if (inp) inp.focus();
+        }
+      }
+    } catch (e) {
+      el.classList.add('rd-error');
+      setTimeout(() => el.classList.remove('rd-error'), 3000);
+      alert(e.message);
+    } finally {
+      el.classList.remove('rd-guardando');
+    }
+  }
+
+  document.querySelectorAll('.rd-in, .rd-sel').forEach(el => {
+    el.addEventListener('change', () => guardar(el));
+    el.addEventListener('keydown', ev => {
+      if (ev.key === 'Enter') { ev.preventDefault(); el.blur(); }
+    });
+  });
+
+  actualizarProducto();
+
+  // Marcar el módulo de la entrada del galpón
+  document.querySelectorAll('.rd-e').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const fecha = btn.dataset.fecha;
+      const modulo = btn.dataset.modulo;
+      const yaActivo = btn.classList.contains('activo');
+
+      btn.classList.add('rd-guardando');
+      try {
+        const res = await fetch(API, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            lote: LOTE, fecha: fecha, campo: 'modulo_entrada',
+            valor: yaActivo ? '' : modulo
+          })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) throw new Error(data.error || 'No se pudo guardar');
+
+        document.querySelectorAll('.rd-e[data-fecha="' + fecha + '"]')
+          .forEach(b => b.classList.remove('activo'));
+        if (!yaActivo) btn.classList.add('activo');
+      } catch (e) {
+        alert(e.message);
+      } finally {
+        btn.classList.remove('rd-guardando');
+      }
+    });
+  });
+
+  // Señalar el día de hoy
+  const filaHoy = document.querySelector('tr.rd-hoy');
+  function irAHoy() {
+    if (filaHoy) filaHoy.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }
+  const btnHoy = document.getElementById('btnHoy');
+  if (btnHoy) btnHoy.addEventListener('click', irAHoy);
+  if (filaHoy) setTimeout(irAHoy, 250);
+})();
+</script>
+{% endblock %}

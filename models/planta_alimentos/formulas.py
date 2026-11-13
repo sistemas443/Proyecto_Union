@@ -703,7 +703,7 @@ class FormulaDetalle:
                 consulta = """
                     SELECT 
                         COALESCE(SUM(fd.cantidad_kg), 0) AS total_kg,
-                        COALESCE(SUM(fd.cantidad_kg * COALESCE(fd.precio_guardado, mp.precio_actual_kg)), 0) AS total_costo
+                        COALESCE(SUM(fd.cantidad_kg * COALESCE(NULLIF(fd.precio_guardado, 0), mp.precio_actual_kg)), 0) AS total_costo
                     FROM formula_detalle fd
                     JOIN materias_primas mp ON fd.materia_prima_id = mp.id
                     WHERE fd.item_id = %s AND fd.lote_id = %s AND fd.version = %s;
@@ -807,7 +807,8 @@ class FormulaDetalle:
                             fd.version,
                             COUNT(fd.materia_prima_id) AS num_insumos,
                             SUM(fd.cantidad_kg) AS peso_version,
-                            SUM(fd.cantidad_kg * mp.precio_actual_kg) AS costo_version
+                            SUM(fd.cantidad_kg * COALESCE(NULLIF(fd.precio_guardado, 0), mp.precio_actual_kg)) AS costo_version,
+                            MIN(fd.fecha_vencimiento) AS fecha_vencimiento
                         FROM formula_detalle fd
                         JOIN materias_primas mp ON fd.materia_prima_id = mp.id
                         WHERE fd.lote_id = %s
@@ -823,14 +824,14 @@ class FormulaDetalle:
                         uv.max_version AS ultima_version,
                         ca.nombre AS nombre_dieta,
                         
-                        STRING_AGG(
-                            '<span class="badge bg-primary me-1">V-' || rv.version || '</span>' ||
-                            '<span class="badge bg-secondary me-2">' || rv.num_insumos || ' insumos</span>',
-                            ' ' ORDER BY rv.version ASC
-                        ) AS resumen_insumos_html,
+                        MAX(CASE WHEN rv.version = uv.max_version THEN rv.num_insumos END) AS insumos_ultima,
+                        COUNT(*) AS num_versiones,
+                        STRING_AGG('V-' || rv.version || ': ' || rv.num_insumos || ' insumos',
+                                   ' · ' ORDER BY rv.version ASC) AS versiones_detalle,
                         
                         MAX(CASE WHEN rv.version = uv.max_version THEN rv.peso_version ELSE 0 END) AS total_peso,
-                        MAX(CASE WHEN rv.version = uv.max_version THEN rv.costo_version ELSE 0 END) AS costo_bache
+                        MAX(CASE WHEN rv.version = uv.max_version THEN rv.costo_version ELSE 0 END) AS costo_bache,
+                        MAX(CASE WHEN rv.version = uv.max_version THEN rv.fecha_vencimiento ELSE NULL END) AS fecha_vencimiento
 
                     FROM ResumenVersiones rv
                     JOIN UltimaVersion uv ON rv.item_id = uv.item_id
@@ -839,7 +840,29 @@ class FormulaDetalle:
                 """
                 cur.execute(consulta, (lote_id,))
                 columnas = [desc[0] for desc in cur.description]
-                return [dict(zip(columnas, fila)) for fila in cur.fetchall()]
+                filas = [dict(zip(columnas, fila)) for fila in cur.fetchall()]
+
+                meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+                         'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+                for fila in filas:
+                    vencimiento = fila.get('fecha_vencimiento')
+                    if vencimiento:
+                        fila['mes'] = f"{meses[vencimiento.month - 1]} {vencimiento.year}"
+                    else:
+                        fila['mes'] = 'Sin fecha'
+
+                    # Las cantidades de la receta estan en gramos por tonelada:
+                    # el peso del bache se muestra en kg (1.000.000 g = 1.000 kg)
+                    # y el costo queda a escala de una tonelada.
+                    fila['total_peso'] = float(fila.get('total_peso') or 0) / 1000.0
+                    fila['costo_bache'] = float(fila.get('costo_bache') or 0) / 1000.0
+
+                # Agrupación por mes de vencimiento: más reciente primero.
+                filas.sort(key=lambda f: (
+                    f.get('fecha_vencimiento') is None,
+                    -(f['fecha_vencimiento'].toordinal()) if f.get('fecha_vencimiento') else 0,
+                ))
+                return filas
         except Exception as e:
             print(f"Error al obtener resumen de fórmulas por lote: {e}")
             return []

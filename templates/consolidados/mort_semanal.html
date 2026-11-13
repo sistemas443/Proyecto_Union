@@ -58,7 +58,40 @@
       </tbody>
     </table>
   </div>
+
+  <!-- Gráfico histórico de mortalidad semanal -->
+  <div class="card shadow-sm border rounded mt-3 card-pantalla-completa" id="cardGraficoMortSem">
+    <div class="card-body py-2">
+      <div class="d-flex flex-wrap align-items-end gap-3 mb-1">
+        <div class="flex-grow-1" style="min-width: 300px;">
+          <label class="form-label small fw-bold text-uppercase text-muted mb-1" for="selLotesGrafico">
+            Lotes a graficar
+          </label>
+          <select id="selLotesGrafico" multiple></select>
+        </div>
+        <div class="form-check mb-2">
+          <input class="form-check-input" type="checkbox" id="chkTablaGenetica" checked>
+          <label class="form-check-label small" for="chkTablaGenetica">Mostrar tabla genética</label>
+        </div>
+        <div class="mb-2 d-flex gap-2">
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="btnTodosLotes">Todos</button>
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="btnNingunLote">Ninguno</button>
+          <button type="button" class="btn btn-sm btn-outline-primary" id="btnPantallaMortSem"
+                  title="Ver en pantalla completa">
+            <i class="fas fa-expand"></i>
+          </button>
+        </div>
+      </div>
+      <div id="graficoMortSem" class="grafico-fs" style="height: 330px;"></div>
+    </div>
+  </div>
 </div>
+
+<script id="datos-mort-sem" type="application/json">
+  {{ {'semanas': datos.semanas, 'lotes': datos.lotes, 'matriz': datos.matriz, 'tabla': datos.tabla} | tojson }}
+</script>
+<script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+<script src="{{ url_for('static', filename='js/consolidados_pantalla_completa.js') }}"></script>
 <script>
   document.addEventListener("DOMContentLoaded", function () {
     const tabla = document.getElementById('tablaMortSem');
@@ -97,13 +130,129 @@
     };
     ajustarSticky();
     window.addEventListener('resize', ajustarSticky);
+    // ---------- Gráfico histórico de mortalidad semanal ----------
+    const datosMort = JSON.parse(document.getElementById('datos-mort-sem').textContent);
+    const selLotes = document.getElementById('selLotesGrafico');
+    const chkTabla = document.getElementById('chkTablaGenetica');
+    const contGrafico = document.getElementById('graficoMortSem');
+    const nombresLotes = (datosMort.lotes || []).map(l => l.nombre);
+
+    nombresLotes.forEach(function (nombre) {
+      const opt = document.createElement('option');
+      opt.value = nombre;
+      opt.textContent = nombre;
+      selLotes.appendChild(opt);
+    });
+
+    const iniciales = nombresLotes.slice(0, 5);
+    Array.from(selLotes.options).forEach(function (opt) {
+      opt.selected = iniciales.indexOf(opt.value) !== -1;
+    });
+
+    let tomLotes = null;
+    if (window.TomSelect) {
+      tomLotes = new TomSelect(selLotes, {
+        plugins: ['remove_button'],
+        placeholder: 'Selecciona uno o varios lotes…',
+        onChange: function () { dibujarMortSem(); }
+      });
+    }
+
+    function lotesSeleccionados() {
+      if (tomLotes) return tomLotes.getValue();
+      return Array.from(selLotes.selectedOptions).map(function (o) { return o.value; });
+    }
+
+    function dibujarMortSem() {
+      if (!window.Plotly || !contGrafico) return;
+
+      const semanas = datosMort.semanas || [];
+      const seleccion = lotesSeleccionados();
+      const trazas = [];
+
+      seleccion.forEach(function (nombre) {
+        trazas.push({
+          x: semanas,
+          y: semanas.map(function (s) {
+            const fila = datosMort.matriz[String(s)];
+            const valor = fila ? fila[nombre] : null;
+            return (valor === null || valor === undefined) ? null : valor * 100;
+          }),
+          type: 'scatter',
+          mode: 'lines',
+          name: nombre,
+          connectgaps: false,
+          hovertemplate: '<b>%{fullData.name}</b><br>Semana %{x}: %{y:.2f} %<extra></extra>'
+        });
+      });
+
+      if (chkTabla.checked) {
+        trazas.push({
+          x: semanas,
+          y: semanas.map(function (s) {
+            const valor = datosMort.tabla[String(s)];
+            return (valor === null || valor === undefined) ? null : valor;
+          }),
+          type: 'scatter',
+          mode: 'lines',
+          name: 'TABLA',
+          line: { color: '#c00000', dash: 'dash', width: 2 },
+          hovertemplate: '<b>TABLA</b><br>Semana %{x}: %{y:.1f} %<extra></extra>'
+        });
+      }
+
+      const layout = {
+        margin: { l: 58, r: 20, t: 8, b: 72 },
+        xaxis: { title: { text: 'Semana' }, tickmode: 'linear', dtick: 5, gridcolor: '#e9ecef', zeroline: false },
+        yaxis: { title: { text: '% mortalidad semanal' }, gridcolor: '#e9ecef', rangemode: 'tozero' },
+        hovermode: 'closest',
+        legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.22, font: { size: 10 } },
+        paper_bgcolor: '#ffffff',
+        plot_bgcolor: '#ffffff'
+      };
+
+      if (!trazas.length) {
+        layout.annotations = [{
+          text: 'Selecciona al menos un lote',
+          xref: 'paper', yref: 'paper', x: 0.5, y: 0.5,
+          showarrow: false, font: { size: 13, color: '#6c757d' }
+        }];
+      }
+
+      Plotly.react(contGrafico, trazas, layout, {
+        responsive: true, displaylogo: false, displayModeBar: false
+      });
+    }
+
+    document.getElementById('btnTodosLotes').addEventListener('click', function () {
+      if (tomLotes) tomLotes.setValue(nombresLotes, true);
+      else Array.from(selLotes.options).forEach(function (o) { o.selected = true; });
+      dibujarMortSem();
+    });
+
+    document.getElementById('btnNingunLote').addEventListener('click', function () {
+      if (tomLotes) tomLotes.clear(true);
+      else Array.from(selLotes.options).forEach(function (o) { o.selected = false; });
+      dibujarMortSem();
+    });
+
+    chkTabla.addEventListener('change', dibujarMortSem);
+    dibujarMortSem();
+
+    document.getElementById('btnPantallaMortSem').addEventListener('click', function () {
+      pantallaCompletaGrafico('cardGraficoMortSem', 'graficoMortSem', 'btnPantallaMortSem');
+    });
+
     const cont = document.getElementById('contenedorMortSem');
+    const cardGrafico = document.getElementById('cardGraficoMortSem');
     if (cont && window.ResizeObserver) {
       const ajustar = () => {
         const rect = cont.getBoundingClientRect();
-        cont.style.height = Math.max(window.innerHeight - rect.top - 15, 300) + 'px';
+        const extra = cardGrafico ? cardGrafico.offsetHeight + 16 : 0;
+        cont.style.height = Math.max(window.innerHeight - rect.top - extra - 15, 260) + 'px';
       };
       new ResizeObserver(ajustar).observe(document.body);
+      if (cardGrafico) new ResizeObserver(ajustar).observe(cardGrafico);
       ajustar();
     }
   });
