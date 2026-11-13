@@ -250,24 +250,6 @@
         display: inline-block;
     }
 
-    .drop-zone.has-error {
-        border-style: solid;
-        border-color: var(--danger);
-        background: #fdf1f2;
-        color: var(--text-primary);
-    }
-
-    .has-error .drop-icon {
-        color: var(--danger);
-        border-color: #f5c2c7;
-        background: #ffffff;
-    }
-
-    .has-error .drop-file {
-        color: var(--danger);
-        border-color: #f5c2c7;
-    }
-
     .carga-actions {
         display: flex;
         align-items: center;
@@ -330,21 +312,6 @@
 
     .carga-hint.is-ready {
         color: var(--success);
-    }
-
-    .carga-error {
-        display: flex;
-        align-items: flex-start;
-        gap: 0.4rem;
-        margin: 0.55rem 0 0;
-        font-size: 0.78rem;
-        line-height: 1.35;
-        color: var(--danger);
-    }
-
-    .carga-error i {
-        margin-top: 0.05rem;
-        font-size: 0.95rem;
     }
 
     #archivo_excel {
@@ -578,19 +545,13 @@
                             <div class="drop-help">o haz clic para seleccionar · .xlsx, .xls, .xlsm</div>
                             <div class="drop-file" id="fileNameDisplay" aria-live="polite"></div>
                         </div>
-
-                        <p class="carga-error" id="cargaErrorLote" role="alert" aria-live="assertive"
-                           style="display: none;">
-                            <i class='bx bx-error-circle'></i>
-                            <span id="cargaErrorLoteTexto"></span>
-                        </p>
                     </div>
                 </div>
 
                 <div class="carga-actions">
                     <p class="carga-verificacion">
-                        <i class='bx bx-lock-alt'></i>
-                        <span>El sistema verificará que el lote del archivo coincida con el lote seleccionado.</span>
+                        <i class='bx bx-info-circle'></i>
+                        <span>Revisa que el archivo corresponda al lote seleccionado.</span>
                     </p>
                     <button type="submit" class="btn btn-primary carga-submit" id="btnProcesar" disabled>
                         <i class='bx bx-check-circle'></i>
@@ -629,17 +590,10 @@
         const overlay = document.getElementById('fullPageOverlay');
         const bloqueTabla = document.getElementById('bloqueTablaPrimera');
         const selectTabla = document.getElementById('tabla_dia');
-        const errorLote = document.getElementById('cargaErrorLote');
-        const errorLoteTexto = document.getElementById('cargaErrorLoteTexto');
         const lotesConDia2 = new Set({{ lotes_con_dia2|tojson }});
-
-        let loteArchivoEstado = 'pendiente';
-        let loteArchivoMensaje = '';
-        let verificacionLoteId = 0;
 
         if (!form || !modulo || !lote || !fileInput || !dropZone || !btnProcesar) return;
 
-        // --- SELECTOR DÍA 1 / DÍA 2 PARA PRIMERA SEMANA ---
         function actualizarSelectorTabla() {
             const mostrar = modulo.value === 'primera_semana' && lotesConDia2.has(lote.value);
             bloqueTabla.style.display = mostrar ? '' : 'none';
@@ -647,273 +601,37 @@
             if (!mostrar) selectTabla.value = 'dia1';
         }
 
-        // --- VALIDACIÓN DEL FORMULARIO Y DEL LOTE DEL ARCHIVO ---
-        function mostrarErrorLote(mensaje) {
-            if (!errorLote || !errorLoteTexto) return;
-            errorLoteTexto.textContent = mensaje || '';
-            errorLote.style.display = mensaje ? 'flex' : 'none';
-        }
-
-        function marcarDropZoneError() {
-            dropZone.classList.add('has-error');
-            dropZone.querySelector('.drop-icon i').className = 'bx bx-error-circle';
-            dropZone.querySelector('.drop-title').textContent = 'Archivo no corresponde';
-            dropZone.querySelector('.drop-help').textContent =
-                'Selecciona el archivo del lote ' + (lote.value || 'seleccionado') + ' o cambia el lote.';
-        }
-
-        function limpiarDropZoneError() {
-            dropZone.classList.remove('has-error');
-            if (fileInput.files.length > 0) {
-                dropZone.querySelector('.drop-icon i').className = 'bx bx-check-circle';
-                dropZone.querySelector('.drop-title').textContent = 'Archivo listo';
-                dropZone.querySelector('.drop-help').textContent = 'Haz clic para cambiar el archivo';
-            }
-        }
-
         function actualizarEstadoBoton() {
-            const baseOk = Boolean(
+            const listo = Boolean(
                 modulo.value &&
                 lote.value &&
                 fileInput.files.length > 0
             );
-            const listo = baseOk && loteArchivoEstado === 'ok';
 
             btnProcesar.disabled = !listo;
+            estadoCarga.textContent = listo ? 'Listo' : 'Pendiente';
+            estadoCarga.className = 'badge-estado ' + (listo ? 'badge-ok' : 'badge-pendiente');
+            cargaHint.textContent = listo
+                ? 'Todo listo. Puedes procesar la carga.'
+                : 'Selecciona el tipo de informe, el lote y el archivo para continuar.';
             cargaHint.classList.toggle('is-ready', listo);
-
-            if (loteArchivoEstado === 'error') {
-                marcarDropZoneError();
-                mostrarErrorLote(loteArchivoMensaje);
-                estadoCarga.textContent = 'Revisar';
-                estadoCarga.className = 'badge-estado badge-critica';
-                cargaHint.textContent = 'Corrige el archivo o el lote para continuar.';
-                return false;
-            }
-
-            mostrarErrorLote('');
-            limpiarDropZoneError();
-
-            if (loteArchivoEstado === 'verificando') {
-                estadoCarga.textContent = 'Verificando';
-                estadoCarga.className = 'badge-estado badge-pendiente';
-                cargaHint.textContent = 'Verificando el lote del archivo...';
-                return false;
-            }
-
-            if (listo) {
-                estadoCarga.textContent = 'Listo';
-                estadoCarga.className = 'badge-estado badge-ok';
-                cargaHint.textContent = 'Todo listo. Puedes procesar la carga.';
-                return true;
-            }
-
-            estadoCarga.textContent = 'Pendiente';
-            estadoCarga.className = 'badge-estado badge-pendiente';
-            cargaHint.textContent = 'Selecciona el tipo de informe, el lote y el archivo para continuar.';
-            return false;
+            return listo;
         }
 
-        function normalizarHojaJS(nombre) {
-            return String(nombre || '')
-                .normalize('NFD')
-                .replace(/[\u0300-\u036f]/g, '')
-                .toLowerCase()
-                .replace(/[^a-z0-9]/g, '');
-        }
-
-        function extraerLoteJS(valor) {
-            if (valor === null || valor === undefined) return null;
-            if (typeof valor === 'number') {
-                return isFinite(valor) && valor > 0 ? String(Math.trunc(valor)) : null;
-            }
-            const texto = String(valor).trim();
-            if (!texto || /^(nan|none|lote:?)$/i.test(texto)) return null;
-            const coincidencia = texto.toUpperCase().match(/(\d{1,4}(?:-\d{1,4})?)/);
-            return coincidencia ? coincidencia[1] : null;
-        }
-
-        function extraerLoteDeNombre(nombre) {
-            const base = String(nombre || '').replace(/\.[^.]+$/, '');
-            const completo = base.match(/(\d{1,3}-\d{1,3})/);
-            if (completo) return completo[1];
-            const simple = base.match(/(\d{1,3})/);
-            return simple ? simple[1] : null;
-        }
-
-        function validarLoteEnLibroJS(buffer, loteSeleccionado, nombreArchivo) {
-            if (typeof XLSX === 'undefined') {
-                // Si la librería no está disponible, el servidor hará la validación.
-                return { ok: true, msg: '' };
-            }
-
-            let libro;
-            try {
-                libro = XLSX.read(new Uint8Array(buffer), { type: 'array' });
-            } catch (error) {
-                return { ok: false, msg: 'No se pudo leer el archivo Excel.' };
-            }
-
-            const completos = new Set();
-            const bases = new Set();
-            const ignoradas = new Set(['tabvariablesfinales', 'etiquetadatos']);
-            const celdasConocidas = {
-                semlevante: ['H8'],
-                semprod: ['P5'],
-                clasificacion: ['P5'],
-                diario: ['K2']
-            };
-
-            function agregar(valor) {
-                const encontrado = extraerLoteJS(valor);
-                if (!encontrado) return;
-                if (encontrado.indexOf('-') !== -1) completos.add(encontrado);
-                else bases.add(encontrado);
-            }
-
-            (libro.SheetNames || []).forEach(function (nombreHoja) {
-                const normal = normalizarHojaJS(nombreHoja);
-                if (!normal || ignoradas.has(normal) || normal.indexOf('grafico') === 0) return;
-
-                const hoja = libro.Sheets[nombreHoja];
-                if (!hoja) return;
-
-                const celdas = (celdasConocidas[normal] || []).slice();
-                if (normal.indexOf('1rasemana') === 0 || normal.indexOf('primera') === 0) {
-                    celdas.push('C4');
-                }
-                celdas.forEach(function (ref) {
-                    if (hoja[ref]) agregar(hoja[ref].v);
-                });
-
-                let filas;
-                try {
-                    filas = XLSX.utils.sheet_to_json(hoja, {
-                        header: 1, raw: true, defval: null, blankrows: false
-                    });
-                } catch (error) {
-                    return;
-                }
-
-                const maxFilas = Math.min(filas.length, 40);
-                for (let f = 0; f < maxFilas; f++) {
-                    const fila = filas[f] || [];
-                    const maxColumnas = Math.min(fila.length, 60);
-                    for (let c = 0; c < maxColumnas; c++) {
-                        const valor = fila[c];
-                        if (typeof valor === 'string' && valor.toLowerCase().indexOf('lote') !== -1) {
-                            agregar(valor);
-                            if (c + 1 < fila.length) agregar(fila[c + 1]);
-                        }
-                    }
-                }
-            });
-
-            const seleccionado = extraerLoteJS(loteSeleccionado);
-            if (!seleccionado) {
-                return { ok: false, msg: 'No se pudo interpretar el lote seleccionado.' };
-            }
-
-            if (completos.size === 1) {
-                const detectado = Array.from(completos)[0];
-                return detectado === seleccionado
-                    ? { ok: true, msg: '' }
-                    : { ok: false, msg: 'El archivo corresponde al lote ' + detectado + ', pero seleccionaste el lote ' + seleccionado + '.' };
-            }
-
-            if (completos.size > 1) {
-                return {
-                    ok: false,
-                    msg: 'El archivo contiene varios lotes (' + Array.from(completos).join(', ') + '). Sube un archivo de un solo lote.'
-                };
-            }
-
-            // Si el contenido solo trae el lote base, el nombre del archivo
-            // puede aportar la variante completa (por ejemplo, Lote 69-10.xlsm).
-            const loteNombre = extraerLoteDeNombre(nombreArchivo);
-            const baseSeleccionada = seleccionado.split('-')[0];
-            if (loteNombre && loteNombre.indexOf('-') !== -1) {
-                if (bases.size && !bases.has(baseSeleccionada)) {
-                    return {
-                        ok: false,
-                        msg: 'El contenido del archivo indica el lote base ' + Array.from(bases).join(', ') + ', pero seleccionaste el lote ' + seleccionado + '.'
-                    };
-                }
-                if (loteNombre === seleccionado) {
-                    return { ok: true, msg: '' };
-                }
-                return {
-                    ok: false,
-                    msg: 'El nombre del archivo indica el lote ' + loteNombre + ', pero seleccionaste el lote ' + seleccionado + '. Verifica el archivo o cambia el lote.'
-                };
-            }
-
-            if (bases.size === 1 && seleccionado.indexOf('-') === -1) {
-                const detectado = Array.from(bases)[0];
-                return detectado === seleccionado
-                    ? { ok: true, msg: '' }
-                    : { ok: false, msg: 'El archivo corresponde al lote ' + detectado + ', pero seleccionaste el lote ' + seleccionado + '.' };
-            }
-
-            if (bases.size) {
-                return {
-                    ok: false,
-                    msg: 'No se pudo verificar el lote completo dentro del archivo. Se encontró solo el lote base ' + Array.from(bases).join(', ') + '. El archivo debe incluir el lote completo, por ejemplo 69-10.'
-                };
-            }
-
-            return {
-                ok: false,
-                msg: 'No se pudo detectar el lote dentro del archivo. Verifica que sea el archivo correcto.'
-            };
-        }
-
-        async function verificarLoteArchivo() {
-            const idVerificacion = ++verificacionLoteId;
-
-            if (!fileInput.files.length || !lote.value) {
-                loteArchivoEstado = 'pendiente';
-                loteArchivoMensaje = '';
-                actualizarEstadoBoton();
-                return;
-            }
-
-            loteArchivoEstado = 'verificando';
-            loteArchivoMensaje = '';
-            actualizarEstadoBoton();
-
-            try {
-                const archivo = fileInput.files[0];
-                const buffer = await archivo.arrayBuffer();
-                if (idVerificacion !== verificacionLoteId) return;
-
-                const resultado = validarLoteEnLibroJS(buffer, lote.value, archivo.name);
-                if (idVerificacion !== verificacionLoteId) return;
-
-                if (resultado.ok) {
-                    loteArchivoEstado = 'ok';
-                    loteArchivoMensaje = '';
-                } else {
-                    loteArchivoEstado = 'error';
-                    loteArchivoMensaje = resultado.msg;
-                }
-            } catch (error) {
-                if (idVerificacion !== verificacionLoteId) return;
-                console.error('No se pudo verificar el lote del archivo:', error);
-                loteArchivoEstado = 'error';
-                loteArchivoMensaje = 'No se pudo leer el archivo para verificar el lote.';
-            }
-
-            actualizarEstadoBoton();
-        }
-
-        // --- ARCHIVO: SELECCIÓN, ARRASTRE Y NOMBRE ---
         function actualizarNombreArchivo(nombre) {
             fileNameDisplay.textContent = nombre;
             dropZone.classList.add('has-file');
             dropZone.querySelector('.drop-icon i').className = 'bx bx-check-circle';
             dropZone.querySelector('.drop-title').textContent = 'Archivo listo';
             dropZone.querySelector('.drop-help').textContent = 'Haz clic para cambiar el archivo';
+        }
+
+        function limpiarArchivo() {
+            fileNameDisplay.textContent = '';
+            dropZone.classList.remove('has-file');
+            dropZone.querySelector('.drop-icon i').className = 'bx bx-cloud-upload';
+            dropZone.querySelector('.drop-title').textContent = 'Arrastra tu archivo aquí';
+            dropZone.querySelector('.drop-help').textContent = 'o haz clic para seleccionar · .xlsx, .xls, .xlsm';
         }
 
         dropZone.addEventListener('click', function () {
@@ -931,20 +649,11 @@
             if (this.files.length > 0) {
                 actualizarNombreArchivo(this.files[0].name);
             } else {
-                dropZone.classList.remove('has-file');
-                fileNameDisplay.textContent = '';
-                dropZone.querySelector('.drop-icon i').className = 'bx bx-cloud-upload';
-                dropZone.querySelector('.drop-title').textContent = 'Arrastra tu archivo aquí';
-                dropZone.querySelector('.drop-help').textContent = 'o haz clic para seleccionar · .xlsx, .xls, .xlsm';
+                limpiarArchivo();
             }
-
-            loteArchivoEstado = 'pendiente';
-            loteArchivoMensaje = '';
             actualizarEstadoBoton();
-            verificarLoteArchivo();
         });
 
-        // Prevenir el comportamiento por defecto del navegador al arrastrar.
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(function (evento) {
             document.body.addEventListener(evento, function (e) {
                 e.preventDefault();
@@ -986,32 +695,24 @@
             if (nombre.endsWith('.xlsx') || nombre.endsWith('.xls') || nombre.endsWith('.xlsm')) {
                 fileInput.files = archivos;
                 actualizarNombreArchivo(archivo.name);
-                loteArchivoEstado = 'pendiente';
-                loteArchivoMensaje = '';
                 actualizarEstadoBoton();
-                verificarLoteArchivo();
             } else {
                 alert('Por favor, suelta solo archivos Excel (.xlsx, .xls o .xlsm).');
             }
         });
 
-        // --- EVENTOS DE VALIDACIÓN ---
         modulo.addEventListener('change', function () {
             actualizarSelectorTabla();
-            verificarLoteArchivo();
+            actualizarEstadoBoton();
         });
         lote.addEventListener('change', function () {
             actualizarSelectorTabla();
-            verificarLoteArchivo();
+            actualizarEstadoBoton();
         });
 
-        // --- ESTADO DE PROCESAMIENTO ---
         form.addEventListener('submit', function (evento) {
             if (!actualizarEstadoBoton()) {
                 evento.preventDefault();
-                if (loteArchivoEstado === 'pendiente' && fileInput.files.length && lote.value) {
-                    verificarLoteArchivo();
-                }
                 return;
             }
             btnProcesar.disabled = true;

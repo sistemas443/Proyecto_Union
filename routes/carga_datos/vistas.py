@@ -83,31 +83,6 @@ def procesar_carga():
         flash("Selecciona el lote al que pertenece el archivo.", "danger")
         return redirect(url_for('carga_datos.carga_datos_vista'), code=303)
 
-    # Candado de seguridad: el lote dentro del Excel debe coincidir con el seleccionado.
-    try:
-        from models.carga_datos.validador import validar_lote_archivo
-        ok_lote, msg_lote, lote_detectado = validar_lote_archivo(
-            archivo, lote_seleccionado, modulo_seleccionado
-        )
-    except Exception as e:
-        ok_lote = False
-        msg_lote = f"No se pudo verificar el lote del archivo: {e}"
-        lote_detectado = None
-
-    # El validador consume el stream del archivo; lo devolvemos al inicio para la importación.
-    try:
-        archivo.stream.seek(0)
-    except Exception:
-        pass
-
-    if not ok_lote:
-        _registrar_fallo(
-            'carga_datos', 'Validación de lote', msg_lote, lote_seleccionado,
-            session.get('user_id'), session.get('user_nombre')
-        )
-        flash(msg_lote, "danger")
-        return redirect(url_for('carga_datos.carga_datos_vista'), code=303)
-
     if modulo_seleccionado == 'diario':
         tabla_carga, contexto_carga = 'data_diario', 'Carga Excel de diario'
         try:
