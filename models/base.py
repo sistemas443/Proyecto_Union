@@ -69,6 +69,20 @@ PARAMETROS_SST = dict(
     keepalives_count=3,
 )
 
+PARAMETROS_GA = dict(
+    host=Config.GA_DB_HOST,
+    database=Config.GA_DB_NAME,
+    user=Config.GA_DB_USER,
+    password=Config.GA_DB_PASSWORD,
+    port=Config.GA_DB_PORT,
+    client_encoding='utf8',
+    connect_timeout=10,
+    keepalives=1,
+    keepalives_idle=30,
+    keepalives_interval=10,
+    keepalives_count=3,
+)
+
 
 class ConexionPool:
     """
@@ -261,6 +275,17 @@ def get_master_sst_connection():
     return psycopg2.connect(**PARAMETROS_SST)
 
 
+def get_ga_connection():
+    """
+    Conexion de solo lectura a la base de Gestion Ambiental (master_ga).
+
+    Alli viven las tablas migradas desde los aplicativos de AppSheet de las
+    sedes Lourdes y Vargas. Se abre una conexion por operacion y se cierra
+    con close(), igual que en el resto del proyecto.
+    """
+    return psycopg2.connect(**PARAMETROS_GA)
+
+
 def parse_empty(value):
     return value if value and str(value).strip() != '' else None
 
@@ -273,6 +298,65 @@ def to_float_safe(val):
         return float(val_str)
     except Exception:
         return 0.0
+
+
+def a_numero(valor):
+    """Convierte a float aceptando coma decimal; devuelve None si no es numérico."""
+    if valor is None or str(valor).strip() == '':
+        return None
+    try:
+        return float(str(valor).strip().replace(',', '.'))
+    except (TypeError, ValueError):
+        return None
+
+
+def redondear(valor, decimales=2):
+    """Redondea un valor numérico; conserva None para celdas vacías."""
+    numero = a_numero(valor)
+    return None if numero is None else round(numero, decimales)
+
+
+def formatear_decimal(valor, decimales=2):
+    """Devuelve el número como texto con los decimales fijos; None si está vacío."""
+    numero = a_numero(valor)
+    return None if numero is None else f'{numero:.{decimales}f}'
+
+
+def respaldar_tabla_lote(tabla, id_lote):
+    """Guarda un CSV con las filas actuales del lote antes de reemplazarlas.
+
+    Se usa antes de los borrados masivos de las cargas de Excel. Si el respaldo
+    falla no interrumpe la carga: solo deja el aviso en consola.
+    """
+    import csv
+    from datetime import datetime
+
+    conn = None
+    cur = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute('SELECT * FROM "%s" WHERE id_lote = %%s' % tabla, (id_lote,))
+        filas = cur.fetchall()
+        columnas = [desc[0] for desc in cur.description]
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        carpeta = os.path.join(base_dir, 'respaldos')
+        os.makedirs(carpeta, exist_ok=True)
+        nombre = f'{tabla}_{id_lote}_{datetime.now():%Y%m%d_%H%M%S}.csv'
+        ruta = os.path.join(carpeta, nombre)
+        with open(ruta, 'w', newline='', encoding='utf-8') as archivo:
+            escritor = csv.writer(archivo)
+            escritor.writerow(columnas)
+            escritor.writerows(filas)
+        return ruta
+    except Exception as e:
+        print(f'[RESPALDO] No se pudo respaldar {tabla} del lote {id_lote}: {e}')
+        return None
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
 
 
 # Traducción de errores técnicos a texto que el usuario entiende.

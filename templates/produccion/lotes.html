@@ -281,7 +281,7 @@
                         </td>
                         <td>{{ lote.granja_lev or '-' }}</td>
                         <td>{{ lote.granja_prod or '-' }}</td>
-                        <td class="text-center">{{ lote.no_aves_encasetadas or '-' }}</td>
+                        <td class="text-center">{{ lote.no_aves_encasetadas|miles(0) if lote.no_aves_encasetadas else '-' }}</td>
                         <td class="text-center pe-3">
                             <!-- El ojito siempre se ve -->
                             <button type="button" class="btn-icono-accion btn-ver"

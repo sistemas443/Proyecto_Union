@@ -1,6 +1,7 @@
 # models/semanal_levante/services.py
 from datetime import datetime, timedelta
-from models.base import get_db_connection, parse_empty, to_float_safe
+from models.base import (get_db_connection, parse_empty, to_float_safe,
+                         redondear, a_numero)
 from models.semanal_levante.schemas import COLUMNAS_PERMITIDAS
 from models.semanal_levante import model
 from models.cabecera.model import fetch_cabecera_by_lote
@@ -124,6 +125,14 @@ def update_semanal_field(id_semanal: int, columna: str, valor: str,
     from models.auditoria.services import registrar_cambio
 
     valor_db = parse_empty(valor)
+    if valor_db is not None and columna in DECIMALES_SEMANAL_LEVANTE:
+        try:
+            valor_db = round(
+                float(str(valor_db).replace(',', '.')),
+                DECIMALES_SEMANAL_LEVANTE[columna]
+            )
+        except (TypeError, ValueError):
+            pass
     campos_actualizados = {}
     conn = get_db_connection()
     cur = conn.cursor()
@@ -139,6 +148,9 @@ def update_semanal_field(id_semanal: int, columna: str, valor: str,
             'mort_select_sem', 'mort_venta', 'peso_ave_real', 'peso_real',
             'peso_ave_tab', 'peso_tab', 'ganancia_ave', 'conv_sem_tab'
         ]
+
+        # El valor anterior se usa en la auditoría. Debe existir para todas las columnas.
+        valor_anterior = None
 
         if id_lote and (columna in columnas_matematicas):
             # Obtiene la cantidad inicial de aves para hacer los cálculos de saldo
@@ -169,7 +181,7 @@ def update_semanal_field(id_semanal: int, columna: str, valor: str,
             valor_anterior = None
             try:
                 cur.execute("SAVEPOINT sp_select_previo")
-                cur.execute('SELECT "{}" FROM semanal_levante WHERE id = %s'.format(columna), (id_semanal,))
+                cur.execute('SELECT "{}" FROM semanal_levante WHERE id = %s'.format(col_db), (id_semanal,))
                 row = cur.fetchone()
                 valor_anterior = row[0] if row else None
                 cur.execute("RELEASE SAVEPOINT sp_select_previo")
@@ -187,7 +199,7 @@ def update_semanal_field(id_semanal: int, columna: str, valor: str,
             cur.execute("""
                 UPDATE semanal_levante sl
                 SET peso_real = ps.peso_real
-                FROM primera_semana ps
+                FROM primera_semana_activa ps
                 WHERE sl.id_lote = ps.id_lote
                   AND ps.semana = '0/7'
                   AND sl.sem = 1
@@ -247,7 +259,7 @@ def update_semanal_field(id_semanal: int, columna: str, valor: str,
                 if o_sem == 0:
                     cur.execute("SELECT COALESCE(SUM(otros), 0) FROM data_diario WHERE id_lote = %s AND dias BETWEEN %s AND %s", (id_lote, dia_inicio, dia_fin))
                     res = cur.fetchone()
-                    if res and res[0] > 0: o_sem = to_float_safe(res[0])
+                    if res and res[0] != 0: o_sem = to_float_safe(res[0])
 
                 # Actualiza variables acumuladoras
                 acum_kilos += c_k_real
@@ -257,7 +269,7 @@ def update_semanal_field(id_semanal: int, columna: str, valor: str,
                 acum_gr_ave_tab_exacto += (c_tab * 7.0)
 
                 # Cálculos de inventario de aves (mortalidad y saldos)
-                tiene_datos = (c_k_real > 0 or m_sem > 0 or s_sem > 0 or o_sem > 0 or c_tab > 0 or peso_real_val > 0)
+                tiene_datos = (c_k_real > 0 or m_sem > 0 or s_sem > 0 or o_sem != 0 or c_tab > 0 or peso_real_val > 0)
                 acu_val = acum_mort + acum_sel + acum_otros
                 acu_out = int(round(acu_val)) if tiene_datos else None
                 saldo_val = int(round(aves_iniciales - acu_val)) if (aves_iniciales > 0 and tiene_datos) else 0
@@ -355,7 +367,23 @@ def update_semanal_field(id_semanal: int, columna: str, valor: str,
                     WHERE id = %s                      
                 """, valores_update)
         else:
-            # Si no es una columna matemática, simplemente la guarda de forma aislada
+            # Si no es una columna matemática, simplemente la guarda de forma aislada.
+            # Antes se consulta el valor anterior para que la auditoría no falle.
+            col_db = columna
+            if columna == 'mort_sem': col_db = 'mort'
+            elif columna == 'mort_select_sem': col_db = 'sel'
+            elif columna == 'mort_venta': col_db = 'otros'
+            elif columna == 'mort_tab': col_db = 'porc_tab'
+            elif columna == 'peso_ave_real': col_db = 'peso_real'
+            elif columna == 'peso_ave_tab': col_db = 'peso_tab'
+            elif columna == 'cons_agua_real': col_db = 'agua_real'
+            elif columna == 'observaciones_lev': col_db = 'observaciones'
+            try:
+                cur.execute('SELECT "{}" FROM semanal_levante WHERE id = %s'.format(col_db), (id_semanal,))
+                row = cur.fetchone()
+                valor_anterior = row[0] if row else None
+            except Exception:
+                valor_anterior = None
             model.guardar_dato_simple(id_semanal, columna, valor_db, cur)
 
         # Registrar en auditoría
@@ -447,7 +475,7 @@ def recalcular_lote_semanal_levante_directo(id_lote, cur):
     cur.execute("""
         UPDATE semanal_levante sl
         SET peso_real = ps.peso_real
-        FROM primera_semana ps
+        FROM primera_semana_activa ps
         WHERE sl.id_lote = ps.id_lote
           AND ps.semana = '0/7'
           AND sl.sem = 1
@@ -506,7 +534,7 @@ def recalcular_lote_semanal_levante_directo(id_lote, cur):
 
         cur.execute("SELECT COALESCE(SUM(otros), 0) FROM data_diario WHERE id_lote = %s AND dias BETWEEN %s AND %s", (id_lote, dia_inicio, dia_fin))
         res = cur.fetchone()
-        o_sem = to_float_safe(res[0]) if (res and res[0] > 0) else o_sem_manual
+        o_sem = to_float_safe(res[0]) if (res and res[0] != 0) else o_sem_manual
 
         # Continúa el flujo matemático sumando a los acumuladores para usarse en la siguiente semana
         acum_kilos += c_k_real
@@ -517,7 +545,7 @@ def recalcular_lote_semanal_levante_directo(id_lote, cur):
         acum_gr_ave_tab_exacto += (c_tab * 7.0)
 
         # Re-calcula la viabilidad del inventario de animales
-        tiene_datos = (c_k_real > 0 or m_sem > 0 or s_sem > 0 or o_sem > 0 or c_tab > 0 or peso_real_val > 0)
+        tiene_datos = (c_k_real > 0 or m_sem > 0 or s_sem > 0 or o_sem != 0 or c_tab > 0 or peso_real_val > 0)
         acu_val = acum_mort + acum_sel + acum_otros
         acu_out = int(round(acu_val)) if tiene_datos else None
         saldo_val = int(round(aves_iniciales - acu_val)) if (aves_iniciales > 0 and tiene_datos) else 0
@@ -593,6 +621,23 @@ def recalcular_lote_semanal_levante_directo(id_lote, cur):
             WHERE id = %s                      
         """, valores_update)
         
+DECIMALES_SEMANAL_LEVANTE = {
+    'peso_real': 1,
+    'peso_tab': 2,
+    'cons_tab': 0,
+    'porc_tab': 1,
+    'unif_porc_unif': 1,
+    'unif_porc_uni': 2,
+    'unif_10_menos': 1,
+    'unif_10_mas': 1,
+    'unif_cv': 2,
+    't_tarso': 0,
+    't_tarso_r': 2,
+    'agua_real': 2,
+    'agua_tabla': 0,
+}
+
+
 def procesar_excel_semanal_levante(archivo_excel, lote_nombre, usuario_id=None, usuario_nombre=None):
     """
     Procesa el Excel para el módulo Semanal Levante.
@@ -749,6 +794,8 @@ def procesar_excel_semanal_levante(archivo_excel, lote_nombre, usuario_id=None, 
             return v
 
         # 7. Iterar sobre las 18 semanas y armar el UPDATE
+        semanas_vistas = set()
+        errores = []
         for _, row in df.iterrows():
             # --- LIMPIEZA ROBUSTA DEL VALOR DE SEMANA ---
             val_semana_raw = row[col_semana]
@@ -766,6 +813,10 @@ def procesar_excel_semanal_levante(archivo_excel, lote_nombre, usuario_id=None, 
             num_semana = int(val_semana_str)
             if not (1 <= num_semana <= 18):
                 continue
+            if num_semana in semanas_vistas:
+                errores.append(num_semana)
+                continue
+            semanas_vistas.add(num_semana)
 
             campos_a_actualizar = []
             valores = []
@@ -789,11 +840,20 @@ def procesar_excel_semanal_levante(archivo_excel, lote_nombre, usuario_id=None, 
                         columnas_ya_procesadas.add(col_db)
                     else:
                         try:
-                            num = to_float_safe(v) or 0.0
+                            num = a_numero(v)
+                            if num is None:
+                                continue
                             if por_cien and 0 < num <= 1:
-                                num = round(num * 100, 1)
+                                num *= 100
+                            if col_db in ('unif_porc_unif', 'unif_porc_uni',
+                                          'unif_10_menos', 'unif_10_mas', 'unif_cv'):
+                                if num < 0 or num > 100:
+                                    errores.append(
+                                        f'Semana {num_semana}: {col_db} fuera de rango ({num})')
+                                    continue
+                            decimales = DECIMALES_SEMANAL_LEVANTE.get(col_db, 2)
                             campos_a_actualizar.append(f'"{col_db}" = %s')
-                            valores.append(num)
+                            valores.append(round(num, decimales))
                             columnas_ya_procesadas.add(col_db)
                         except: pass
 
@@ -805,6 +865,12 @@ def procesar_excel_semanal_levante(archivo_excel, lote_nombre, usuario_id=None, 
                 filas_actualizadas += cur.rowcount
 
         # 8. Si el archivo no actualizó ninguna semana, no se guarda ni se registra como éxito
+        if errores:
+            conn.rollback()
+            cur.close()
+            conn.close()
+            return False, ("El archivo tiene errores y no se cargó: "
+                           + "; ".join(str(e) for e in errores[:5]))
         if filas_actualizadas == 0:
             conn.rollback()
             cur.close()

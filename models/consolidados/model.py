@@ -491,24 +491,38 @@ def fetch_primera_semana_levante() -> list:
     cur = conn.cursor()
     try:
         cur.execute("""
-            SELECT (p.fecha - c.fecha_recepcion) AS dia, p.lote,
-                   p.peso_real,
+            WITH base AS (
+                SELECT p.*,
+                       CASE p.semana
+                           WHEN '0' THEN 0
+                           WHEN '0/1' THEN 1
+                           WHEN '0/2' THEN 2
+                           WHEN '0/3' THEN 3
+                           WHEN '0/4' THEN 4
+                           WHEN '0/5' THEN 5
+                           WHEN '0/6' THEN 6
+                           WHEN '0/7' THEN 7
+                           ELSE NULL
+                       END AS dia
+                FROM primera_semana_activa p
+            )
+            SELECT b.dia, b.lote,
+                   b.peso_real,
                    sl.unif_porc_unif AS porc_uniformidad,
-                   p.consumo_gr_a_d, d.mortalidad,
+                   b.consumo_gr_a_d, d.mortalidad,
                    c.fecha_recepcion, c.no_pollitas_recibidas
-            FROM primera_semana p
-            LEFT JOIN cabecera_lotes c ON c.id = p.id_lote
-            LEFT JOIN data_diario d ON d.id_lote = p.id_lote
-                AND d.dias = (p.fecha - c.fecha_recepcion)
+            FROM base b
+            LEFT JOIN cabecera_lotes c ON c.id = b.id_lote
+            LEFT JOIN data_diario d ON d.id_lote = b.id_lote
+                AND d.dias = b.dia
             LEFT JOIN (
                 SELECT id_lote, sem, MAX(unif_porc_unif) AS unif_porc_unif
                 FROM semanal_levante
                 GROUP BY id_lote, sem
-            ) sl ON sl.id_lote = p.id_lote
-                AND sl.sem = (p.fecha - c.fecha_recepcion) + 1
-            WHERE c.fecha_recepcion IS NOT NULL
-              AND (p.fecha - c.fecha_recepcion) BETWEEN 0 AND 7
-            ORDER BY dia, p.lote
+            ) sl ON sl.id_lote = b.id_lote
+                AND sl.sem = b.dia + 1
+            WHERE b.dia IS NOT NULL
+            ORDER BY b.dia, b.lote
         """)
         return [
             {'dia': r[0], 'lote': r[1], 'peso_real': r[2],
@@ -597,7 +611,7 @@ def fetch_primera_semana_dia0(lotes: list) -> list:
     try:
         cur.execute("""
             SELECT lote, peso_real, porc_uniformidad, porc_mort_acum, saldo_aves
-            FROM primera_semana
+            FROM primera_semana_activa
             WHERE semana = '0' AND lote = ANY(%s)
             ORDER BY lote
         """, (lotes,))

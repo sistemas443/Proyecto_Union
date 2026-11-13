@@ -94,12 +94,31 @@
           </li>
         </ul>
 
+        <!-- ROL: GESTION AMBIENTAL - solo ve su modulo -->
+        {% elif session.get('user_rol') == 'Gestion Ambiental' %}
+        <ul class="navbar-nav app-nav me-auto mb-2 mb-lg-0">
+          <li class="nav-item">
+            <a class="nav-link{{ ' is-current' if ep.startswith('gestion_ambiental.') }}"
+               href="{{ url_for('gestion_ambiental.tablero') }}">
+              <i class='bx bx-leaf'></i> Gestión Ambiental
+            </a>
+          </li>
+        </ul>
+
         <!-- ROLES: SUPERADMIN, EDITOR, LECTOR - Ven módulos operativos + extras Superadmin -->
         {% else %}
         {% set en_produccion = ep.startswith('lotes.') or ep.startswith('calificacion_lotes.') or ep.startswith('diario.') or ep.startswith('semanal.') or ep.startswith('semanal_levante.') or ep.startswith('primera_semana.') or ep.startswith('reporte_diario.') %}
         {% set en_planta = ep.startswith('planta_alimentos.') or ep.startswith('tablas_nutricionales.') %}
         {% set en_clasificacion = ep.startswith('clasificacion.') %}
         <ul class="navbar-nav app-nav me-auto mb-2 mb-lg-0">
+
+          <!-- GESTIÓN AMBIENTAL (indicadores, solo lectura) -->
+          <li class="nav-item">
+            <a class="nav-link{{ ' is-current' if ep.startswith('gestion_ambiental.') }}"
+               href="{{ url_for('gestion_ambiental.tablero') }}">
+              <i class='bx bx-leaf'></i> Gestión Ambiental
+            </a>
+          </li>
 
           <!-- PRODUCCIÓN -->
           {% include 'generales/_menu_produccion.html' %}

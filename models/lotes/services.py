@@ -24,6 +24,7 @@ from models.primera_semana.services import (
     update_dia_0_desde_formulario,
     recalcular_primera_semana_cascada_interna,
 )
+from models.primera_semana.dia2_services import recalcular_dia2_si_existe
 
 
 def _auditar_cabecera(id_lote, campo, accion, usuario_id=None, usuario_nombre=None):
@@ -75,6 +76,7 @@ def recalcular_lote_completo(id_lote):
         recalcular_lote_semanal_completo_directo(id_lote, cur)
         recalcular_lote_semanal_levante_directo(id_lote, cur)
         recalcular_primera_semana_cascada_interna(lote, aves_iniciales, cur)
+        recalcular_dia2_si_existe(lote, aves_iniciales, cur)
 
         conn.commit()
         return True, "Recalculado."
@@ -145,7 +147,7 @@ def get_todos_los_lotes(cur=None):
                 porc_uniformidad AS dia0_porc_uniformidad,
                 unif_10_mas AS dia0_unif_10_mas, 
                 coef_variacion AS dia0_coef_variacion
-            FROM primera_semana 
+            FROM primera_semana_activa
             WHERE semana = '0'
         """)
         columnas_dia0 = [
@@ -305,6 +307,7 @@ def actualizar_lote(id_lote, datos, usuario_id=None, usuario_nombre=None):
             
             # Actualizamos las tablas que guardan el nombre como texto para no perder el enlace de datos
             cur.execute("UPDATE primera_semana SET lote = %s WHERE lote = %s", (lote_nuevo, lote_viejo))
+            cur.execute("UPDATE primera_semana_dia2 SET lote = %s WHERE lote = %s", (lote_nuevo, lote_viejo))
             
             # Actualizamos las tablas asociadas (si tienen columna 'lote' además del id_lote)
             cur.execute("UPDATE data_diario SET lote = %s WHERE id_lote = %s", (lote_nuevo, id_lote))
