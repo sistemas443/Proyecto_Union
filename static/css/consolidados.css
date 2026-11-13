@@ -97,3 +97,32 @@
 .tabla-compacta .col-congelada-fin {
   box-shadow: 2px 0 0 rgba(0, 0, 0, 0.16);
 }
+
+/* ============================================================
+   Gráficos de consolidados en pantalla completa
+   ============================================================ */
+.card-pantalla-completa.pantalla-completa-activa {
+  width: 100vw;
+  height: 100vh;
+  max-height: 100vh;
+  margin: 0;
+  padding: 0.7rem 1rem;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+.card-pantalla-completa.pantalla-completa-activa .card-body {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.card-pantalla-completa.pantalla-completa-activa .grafico-fs {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto !important;
+}

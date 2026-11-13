@@ -228,6 +228,7 @@
 {% endblock %}
 {% block scripts %}
 <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+<script src="{{ url_for('static', filename='js/graficas/eventualidades.js') }}"></script>
 <script src="{{ url_for('static', filename='js/graficas/pantalla_completa.js') }}"></script>
 <script id="datos-grafico" type="application/json">
     {{ datos_grafico | tojson | safe if datos_grafico else 'null' }}
@@ -384,6 +385,13 @@
             modeBarButtonsToAdd: window.botonPantallaCompleta ? [window.botonPantallaCompleta()] : []
         };
         Plotly.newPlot(graficoDiv, trazas, layout, config);
+
+        Eventualidades.iniciar({
+            lote: {{ lote_seleccionado | tojson }},
+            ambito: 'PRIMERA_SEMANA',
+            plotId: 'graficoPlotly',
+            modo: 'dia'
+        });
     }
     document.addEventListener("DOMContentLoaded", function() {
         const graficoDiv = document.getElementById('graficoPlotly');
