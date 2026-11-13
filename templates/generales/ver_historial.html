@@ -8,88 +8,290 @@
 {% block content %}
 <style>
   body {
-    overflow-y: hidden !important;
+    overflow-y: auto !important;
+    overflow-x: hidden;
   }
+
   main.container-fluid {
+    padding-bottom: 1.5rem !important;
+  }
+
+  .historial-page {
+    width: 100%;
+    max-width: 1500px;
+    margin: 0 auto;
+    padding: clamp(1rem, 2vw, 1.75rem);
+  }
+
+  .historial-header {
     display: flex;
-    flex-direction: column;
-    padding-bottom: 0px;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.25rem;
   }
-  .card-historial {
-    flex: 1 1 auto;
+
+  .historial-header-main {
     display: flex;
-    flex-direction: column;
-  }
-  .card-historial .card-body {
-    flex: 1 1 auto;
-    padding: 10px;
-  }
-  
-  /* Chips de filtro integrados con el estilo del proyecto */
-  .chip-filtro {
-    display: inline-flex;
     align-items: center;
-    gap: 0.25rem;
-    padding: 0.25rem 0.5rem;
-    font-size: 0.75rem;
-    font-weight: 600;
-    border-radius: 4px;
-    border: 1px solid #dee2e6;
-    background: #f8f9fa;
-    color: #495057;
-    cursor: pointer;
-    transition: all 0.2s ease;
+    gap: 0.85rem;
+    min-width: 0;
   }
-  .chip-filtro:hover {
-    background: #e9ecef;
-    border-color: #adb5bd;
+
+  .historial-header .page-title {
+    font-size: 1.15rem;
+    line-height: 1.2;
   }
-  .chip-filtro.activo {
-    background: #97271C;
-    color: #ffffff;
-    border-color: #97271C;
+
+  .historial-header .page-subtitle {
+    font-size: 0.8rem;
+    line-height: 1.35;
   }
-  .chip-filtro.disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    pointer-events: none;
-  }
-  .chip-filtro .bx {
-    font-size: 0.875rem;
-  }
-  .chip-filtro .btn-quitar {
-    background: none;
-    border: none;
-    color: inherit;
-    padding: 0;
-    margin-left: 0.25rem;
-    cursor: pointer;
-    font-size: 0.875rem;
-  }
-  .chip-filtro .btn-quitar:hover {
-    color: #ff6b6b;
-  }
-  
-  /* Dropdown de filtros */
-  .dropdown-menu-filtro {
-    max-height: 250px;
-    overflow-y: auto;
+
+  .historial-page .badge-estado {
+    font-size: 0.72rem;
   }
 
   /* ============================================================
-     PAGINACIÓN (design system)
+     FILTROS
+     ============================================================ */
+  .historial-filtros {
+    margin-bottom: 1rem;
+    overflow: visible;
+  }
+
+  .historial-card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    padding: 0.9rem 1.1rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .historial-card-title {
+    margin: 0;
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  .historial-card-sub {
+    margin: 0.15rem 0 0;
+    font-size: 0.76rem;
+    color: var(--text-muted);
+  }
+
+  .historial-filtros-body {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.85rem 1.1rem;
+  }
+
+  .chip-filtro {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    min-height: 34px;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 0.4rem;
+    border: 1px solid var(--border);
+    background: var(--surface-alt);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+  }
+
+  .chip-filtro:hover,
+  .chip-filtro:focus-visible {
+    background: #eef1f4;
+    border-color: #c7cfd6;
+    color: var(--text-primary);
+    outline: none;
+  }
+
+  .chip-filtro:focus-visible {
+    box-shadow: 0 0 0 2px rgba(44, 62, 80, 0.16);
+  }
+
+  .chip-filtro.activo {
+    background: var(--action-primary);
+    border-color: var(--action-primary);
+    color: #ffffff;
+  }
+
+  .chip-filtro.disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  .chip-filtro .bx {
+    font-size: 0.95rem;
+  }
+
+  .chip-filtro .btn-quitar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 0.1rem;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font-size: 0.95rem;
+    cursor: pointer;
+  }
+
+  .chip-filtro .btn-quitar:hover,
+  .chip-filtro .btn-quitar:focus-visible {
+    color: #ffb3b3;
+    outline: none;
+  }
+
+  .dropdown-menu-filtro {
+    max-height: 260px;
+    overflow-y: auto;
+    font-size: 0.8rem;
+  }
+
+  .dropdown-menu-filtro .dropdown-item {
+    font-size: 0.8rem;
+    padding-top: 0.35rem;
+    padding-bottom: 0.35rem;
+  }
+
+  .historial-menu-fecha {
+    min-width: 255px;
+    max-width: calc(100vw - 2rem);
+    padding: 0.85rem;
+  }
+
+  .historial-menu-fecha .form-label-design {
+    margin-bottom: 0.2rem;
+  }
+
+  .historial-aplicar {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-height: 34px;
+    margin-left: auto;
+    font-size: 0.78rem;
+    font-weight: 700;
+  }
+
+  /* ============================================================
+     TABLA
+     ============================================================ */
+  .historial-tabla-card {
+    overflow: hidden;
+  }
+
+  .historial-tabla-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    padding: 0.9rem 1.1rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .historial-tabla-wrap {
+    overflow: auto;
+  }
+
+  .historial-tabla {
+    min-width: 1180px;
+    margin-bottom: 0;
+  }
+
+  .historial-tabla thead th {
+    white-space: nowrap;
+  }
+
+  .historial-tabla tbody td {
+    vertical-align: middle;
+  }
+
+  .historial-tabla .badge-estado {
+    white-space: nowrap;
+  }
+
+  .historial-tabla .col-fecha {
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .historial-tabla .col-valor {
+    max-width: 260px;
+    word-break: break-word;
+  }
+
+  .historial-tabla .valor-anterior {
+    color: var(--danger);
+  }
+
+  .historial-tabla .valor-nuevo {
+    color: var(--success);
+  }
+
+  .historial-campo {
+    display: inline-block;
+    max-width: 160px;
+    padding: 0.12rem 0.4rem;
+    border: 1px solid var(--border);
+    border-radius: 0.3rem;
+    background: var(--surface-alt);
+    color: var(--text-secondary);
+    font-size: 0.76rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: middle;
+  }
+
+  .historial-vacio {
+    padding: 2.5rem 1rem !important;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    background: var(--surface) !important;
+  }
+
+  .historial-vacio i {
+    display: block;
+    margin-bottom: 0.4rem;
+    font-size: 1.8rem;
+    opacity: 0.6;
+  }
+
+  .historial-tabla-foot {
+    padding: 0.55rem 1rem 0.8rem;
+    border-top: 1px solid var(--border);
+  }
+
+  /* ============================================================
+     PAGINACIÓN
      ============================================================ */
   .paginacion-barra {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: var(--space-3);
-    margin-top: var(--space-3);
+    margin-top: 0;
     flex-wrap: wrap;
   }
 
   .pagina-info {
-    font-size: 0.72rem;
+    font-size: 0.78rem;
     color: var(--text-muted);
     font-variant-numeric: tabular-nums;
   }
@@ -118,7 +320,7 @@
     border-radius: 0.35rem;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
-    transition: background-color 0.15s ease, color 0.15s ease;
+    transition: background-color 150ms ease, color 150ms ease;
   }
 
   .pagination .page-item.active .page-link {
@@ -131,151 +333,239 @@
   }
 
   @media (max-width: 575.98px) {
-    .pagina-texto { display: none; }
+    .pagina-texto {
+      display: none;
+    }
+  }
+
+  @media (max-width: 767px) {
+    .historial-page {
+      padding: 0.85rem;
+    }
+
+    .historial-header {
+      margin-bottom: 1rem;
+    }
+
+    .historial-filtros-body {
+      padding: 0.75rem 0.9rem;
+    }
+
+    .chip-filtro {
+      flex: 1 1 auto;
+      justify-content: center;
+    }
+
+    .historial-aplicar {
+      width: 100%;
+      margin-left: 0;
+    }
+
+    .historial-card-head,
+    .historial-tabla-head {
+      padding: 0.8rem 0.9rem;
+    }
+  }
+
+  @media (max-width: 420px) {
+    .historial-page {
+      padding: 0.65rem;
+    }
+
+    .historial-header > .badge-estado {
+      display: none;
+    }
+
+    .chip-filtro {
+      font-size: 0.7rem;
+    }
+  }
+
+  @media (pointer: coarse) {
+    .chip-filtro,
+    .historial-aplicar {
+      min-height: 42px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 </style>
 
-<div class="container-fluid px-4 py-3">
-    <!-- Barra superior con título y chips de filtro -->
-    <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 px-3 py-2 rounded shadow-sm" style="background-color: #212529;">
-        <h5 class="mb-0 fw-bold text-uppercase text-white" style="letter-spacing: 0.5px;">
-            <i class='bx bx-history me-2'></i>HISTORIAL DE CAMBIOS
-        </h5>
-        
-        <div class="d-flex flex-wrap align-items-center gap-2">
-            <!-- Chip Usuario -->
-            <div class="dropdown">
-                <button class="chip-filtro" id="chip-usuario" type="button" data-bs-toggle="dropdown">
-                    <i class='bx bx-user'></i> <span class="chip-texto">Usuario</span> <i class='bx bx-chevron-down'></i>
-                </button>
-                <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-filtro">
-                    <li><a class="dropdown-item" href="#" data-filtro="usuario" data-valor="">Todos</a></li>
-                    {% for u in opciones.usuarios %}
-                    <li><a class="dropdown-item" href="#" data-filtro="usuario" data-valor="{{ u.id }}">{{ u.nombre }}</a></li>
-                    {% endfor %}
-                </ul>
-            </div>
-            
-            <!-- Chip Tabla -->
-            <div class="dropdown">
-                <button class="chip-filtro" id="chip-tabla" type="button" data-bs-toggle="dropdown">
-                    <i class='bx bx-table'></i> <span class="chip-texto">Tabla</span> <i class='bx bx-chevron-down'></i>
-                </button>
-                <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-filtro">
-                    <li><a class="dropdown-item" href="#" data-filtro="tabla" data-valor="">Todas</a></li>
-                    {% set nombres_tabla = {
-                        'bd_vargas': 'Producción semanal',
-                        'data_diario': 'Diario',
-                        'semanal_levante': 'Semanal levante',
-                        'primera_semana': 'Primera semana',
-                        'clasificacion_produccion': 'Clasificación',
-                        'cabecera_lotes': 'Lotes',
-                        'sistema': 'Errores del sistema'
-                    } %}
-                    {% for t in opciones.tablas %}
-                    <li><a class="dropdown-item" href="#" data-filtro="tabla" data-valor="{{ t }}">{{ nombres_tabla.get(t, t) }}</a></li>
-                    {% endfor %}
-                </ul>
-            </div>
-            
-            <!-- Chip Acción -->
-            <div class="dropdown">
-                <button class="chip-filtro" id="chip-accion" type="button" data-bs-toggle="dropdown">
-                    <i class='bx bx-check'></i> <span class="chip-texto">Acción</span> <i class='bx bx-chevron-down'></i>
-                </button>
-                <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-filtro">
-                    <li><a class="dropdown-item" href="#" data-filtro="accion" data-valor="">Todas</a></li>
-                    {% for a in opciones.acciones %}
-                    <li><a class="dropdown-item" href="#" data-filtro="accion" data-valor="{{ a }}">{{ a }}</a></li>
-                    {% endfor %}
-                </ul>
-            </div>
-            
-            <!-- Chip Campo -->
-            <div class="dropdown">
-                <button class="chip-filtro disabled" id="chip-campo" type="button" data-bs-toggle="dropdown" disabled title="Seleccione una tabla primero">
-                    <i class='bx bx-list-ul'></i> <span class="chip-texto">Campo</span> <i class='bx bx-chevron-down'></i>
-                </button>
-                <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-filtro" id="dropdown-campo">
-                    <li><span class="dropdown-item-text text-muted">Seleccione una tabla primero</span></li>
-                </ul>
-            </div>
-            
-            <!-- Chip Fecha -->
-            <div class="dropdown">
-                <button class="chip-filtro" id="chip-fecha" type="button" data-bs-toggle="dropdown">
-                    <i class='bx bx-calendar'></i> <span class="chip-texto">Fecha</span> <i class='bx bx-chevron-down'></i>
-                </button>
-                <div class="dropdown-menu dropdown-menu-dark p-3" style="min-width: 250px;">
-                    <div class="mb-2">
-                        <label class="form-label text-light small">Desde</label>
-                        <input type="date" class="form-control form-control-sm" id="filtro-fecha-desde">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label text-light small">Hasta</label>
-                        <input type="date" class="form-control form-control-sm" id="filtro-fecha-hasta">
-                    </div>
-                    <button class="btn btn-naranja btn-sm w-100" onclick="aplicarFiltros()">
-                        <i class='bx bx-check'></i> Aplicar
-                    </button>
-                </div>
-            </div>
-            
-            <!-- Chip Lote -->
-            <div class="dropdown">
-                <button class="chip-filtro" id="chip-lote" type="button" data-bs-toggle="dropdown">
-                    <i class='bx bx-layer'></i> <span class="chip-texto">Lote</span> <i class='bx bx-chevron-down'></i>
-                </button>
-                <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-filtro">
-                    <li><a class="dropdown-item" href="#" data-filtro="lote" data-valor="">Todos</a></li>
-                    {% for l in opciones.lotes %}
-                    <li><a class="dropdown-item" href="#" data-filtro="lote" data-valor="{{ l }}">{{ l }}</a></li>
-                    {% endfor %}
-                </ul>
-            </div>
-            
-            <!-- Botones -->
-            <button class="btn btn-naranja btn-sm" onclick="aplicarFiltros()">
-                <i class='bx bx-filter-alt'></i> Aplicar
-            </button>
-            <button class="btn btn-outline-light btn-sm" onclick="limpiarFiltros()">
-                <i class='bx bx-x'></i> Limpiar
-            </button>
-        </div>
+<div class="historial-page">
+  <header class="historial-header">
+    <div class="historial-header-main">
+      <div class="page-icon">
+        <i class='bx bx-history'></i>
+      </div>
+      <div>
+        <h1 class="page-title mb-0">Historial de cambios</h1>
+        <p class="page-subtitle mb-0">Auditoría de los movimientos registrados en el sistema.</p>
+      </div>
+    </div>
+    <span class="badge-estado badge-neutro">
+      <i class='bx bx-lock-alt me-1'></i> Solo Superadmin
+    </span>
+  </header>
+
+  <section class="card-clean historial-filtros" aria-labelledby="historialFiltrosTitle">
+    <div class="historial-card-head">
+      <div>
+        <h2 class="historial-card-title" id="historialFiltrosTitle">Filtros</h2>
+        <p class="historial-card-sub">Acota la búsqueda por usuario, tabla, acción, campo, fecha o lote.</p>
+      </div>
+      <button type="button" class="btn btn-outline-secondary btn-sm" onclick="limpiarFiltros()">
+        <i class='bx bx-x'></i> Limpiar
+      </button>
     </div>
 
-    <!-- Tabla -->
-    <div class="card shadow border-0">
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-sm table-hover mb-0">
-                    <thead class="table-dark">
-                        <tr>
-                            <th>Fecha</th>
-                            <th>Usuario</th>
-                            <th>Tabla</th>
-                            <th>Registro</th>
-                            <th>Campo</th>
-                            <th>Valor Anterior</th>
-                            <th>Valor Nuevo</th>
-                            <th>Acción</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tabla-historial">
-                        <!-- Se llena dinámicamente con JavaScript calculando el límite por pantalla -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <!-- Paginación -->
-    <nav aria-label="Paginación" class="paginacion-barra" id="paginacion" style="display: none;">
-        <span class="pagina-info" id="paginacion-info"></span>
-        <ul class="pagination mb-0" id="lista-paginacion">
-            <!-- Se llena dinámicamente con JavaScript -->
+    <div class="historial-filtros-body">
+      <div class="dropdown">
+        <button class="chip-filtro" id="chip-usuario" type="button" data-bs-toggle="dropdown">
+          <i class='bx bx-user'></i> <span class="chip-texto">Usuario</span> <i class='bx bx-chevron-down'></i>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-filtro">
+          <li><a class="dropdown-item" href="#" data-filtro="usuario" data-valor="">Todos</a></li>
+          {% for u in opciones.usuarios %}
+          <li><a class="dropdown-item" href="#" data-filtro="usuario" data-valor="{{ u.id }}">{{ u.nombre }}</a></li>
+          {% endfor %}
         </ul>
-    </nav>
+      </div>
+
+      <div class="dropdown">
+        <button class="chip-filtro" id="chip-tabla" type="button" data-bs-toggle="dropdown">
+          <i class='bx bx-table'></i> <span class="chip-texto">Tabla</span> <i class='bx bx-chevron-down'></i>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-filtro">
+          <li><a class="dropdown-item" href="#" data-filtro="tabla" data-valor="">Todas</a></li>
+          {% set nombres_tabla = {
+            'bd_vargas': 'Producción semanal',
+            'data_diario': 'Diario',
+            'semanal_levante': 'Semanal levante',
+            'primera_semana': 'Primera semana',
+            'primera_semana_dia2': '1era sem. Día 2',
+            'clasificacion_produccion': 'Clasificación',
+            'cabecera_lotes': 'Lotes',
+            'formula_detalle': 'Fórmula detalle',
+            'eventualidades_lote': 'Eventualidades',
+            'dieta_costos_extra': 'Costos extra',
+            'inventario_ajuste_mensual': 'Ajuste inventario',
+            'carga_datos': 'Carga de datos',
+            'sistema': 'Errores del sistema'
+          } %}
+          {% for t in opciones.tablas %}
+          <li><a class="dropdown-item" href="#" data-filtro="tabla" data-valor="{{ t }}">{{ nombres_tabla.get(t, t) }}</a></li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      <div class="dropdown">
+        <button class="chip-filtro" id="chip-accion" type="button" data-bs-toggle="dropdown">
+          <i class='bx bx-check'></i> <span class="chip-texto">Acción</span> <i class='bx bx-chevron-down'></i>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-filtro">
+          <li><a class="dropdown-item" href="#" data-filtro="accion" data-valor="">Todas</a></li>
+          {% for a in opciones.acciones %}
+          <li><a class="dropdown-item" href="#" data-filtro="accion" data-valor="{{ a }}">{{ a }}</a></li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      <div class="dropdown">
+        <button class="chip-filtro disabled" id="chip-campo" type="button" data-bs-toggle="dropdown"
+          disabled title="Seleccione una tabla primero">
+          <i class='bx bx-list-ul'></i> <span class="chip-texto">Campo</span> <i class='bx bx-chevron-down'></i>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-filtro" id="dropdown-campo">
+          <li><span class="dropdown-item-text text-muted">Seleccione una tabla primero</span></li>
+        </ul>
+      </div>
+
+      <div class="dropdown">
+        <button class="chip-filtro" id="chip-fecha" type="button" data-bs-toggle="dropdown"
+          data-bs-auto-close="outside">
+          <i class='bx bx-calendar'></i> <span class="chip-texto">Fecha</span> <i class='bx bx-chevron-down'></i>
+        </button>
+        <div class="dropdown-menu historial-menu-fecha">
+          <div class="mb-2">
+            <label class="form-label-design" for="filtro-fecha-desde">Desde</label>
+            <input type="date" class="form-control form-control-sm" id="filtro-fecha-desde">
+          </div>
+          <div class="mb-3">
+            <label class="form-label-design" for="filtro-fecha-hasta">Hasta</label>
+            <input type="date" class="form-control form-control-sm" id="filtro-fecha-hasta">
+          </div>
+          <button type="button" class="btn btn-primary btn-sm w-100" onclick="aplicarFiltros()">
+            <i class='bx bx-check'></i> Aplicar fecha
+          </button>
+        </div>
+      </div>
+
+      <div class="dropdown">
+        <button class="chip-filtro" id="chip-lote" type="button" data-bs-toggle="dropdown">
+          <i class='bx bx-layer'></i> <span class="chip-texto">Lote</span> <i class='bx bx-chevron-down'></i>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-filtro">
+          <li><a class="dropdown-item" href="#" data-filtro="lote" data-valor="">Todos</a></li>
+          {% for l in opciones.lotes %}
+          <li><a class="dropdown-item" href="#" data-filtro="lote" data-valor="{{ l }}">{{ l }}</a></li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      <button type="button" class="btn btn-primary btn-sm historial-aplicar" onclick="aplicarFiltros()">
+        <i class='bx bx-filter-alt'></i> Aplicar filtros
+      </button>
+    </div>
+  </section>
+
+  <section class="card-clean historial-tabla-card" aria-labelledby="historialTablaTitle">
+    <div class="historial-tabla-head">
+      <div>
+        <h2 class="historial-card-title" id="historialTablaTitle">Registros</h2>
+        <p class="historial-card-sub">Últimos movimientos guardados en la auditoría.</p>
+      </div>
+      <span class="badge-estado badge-neutro" id="totalHistorial">0 registros</span>
+    </div>
+
+    <div class="historial-tabla-wrap">
+      <table class="table table-sm table-design historial-tabla mb-0">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Usuario</th>
+            <th>Tabla</th>
+            <th>Registro</th>
+            <th>Campo</th>
+            <th>Valor anterior</th>
+            <th>Valor nuevo</th>
+            <th>Acción</th>
+          </tr>
+        </thead>
+        <tbody id="tabla-historial">
+          <tr>
+            <td colspan="8" class="historial-vacio">
+              <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+              Cargando historial...
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="historial-tabla-foot">
+      <nav aria-label="Paginación" class="paginacion-barra" id="paginacion" style="display: none;">
+        <span class="pagina-info" id="paginacion-info"></span>
+        <ul class="pagination mb-0" id="lista-paginacion"></ul>
+      </nav>
+    </div>
+  </section>
 </div>
 
 <script id="opciones-filtros" type="application/json">
@@ -283,9 +573,9 @@
 </script>
 <script>
     const API_URL = "{{ url_for('main.api_auditoria_filtrar') }}";
-    const API_OPCIONES = "{{ url_for('main.api_auditoria_opciones') }}";
     const API_CAMPOS = "{{ url_for('main.api_auditoria_campos') }}";
-    
+    const LIMITE_PAGINA = 15;
+
     let filtrosActuales = {
         usuario: '',
         tabla: '',
@@ -295,19 +585,37 @@
         fecha_hasta: '',
         lote: ''
     };
-    
-    // Opciones cargadas desde el template
+
     const opcionesFiltros = JSON.parse(document.getElementById('opciones-filtros').textContent || '{}');
 
-    // Función para calcular registros por pantalla
-    function obtenerLimiteDinamico() {
-        const espacioLibre = window.innerHeight - 180; 
-        const altoFila = 38;
-        let limite = Math.floor(espacioLibre / altoFila);
-        return limite < 5 ? 5 : limite; 
+    const NOMBRES_TABLA = {
+        'bd_vargas': 'Producción semanal',
+        'data_diario': 'Diario',
+        'semanal_levante': 'Semanal levante',
+        'primera_semana': 'Primera semana',
+        'primera_semana_dia2': '1era sem. Día 2',
+        'clasificacion_produccion': 'Clasificación',
+        'cabecera_lotes': 'Lotes',
+        'formula_detalle': 'Fórmula detalle',
+        'eventualidades_lote': 'Eventualidades',
+        'dieta_costos_extra': 'Costos extra',
+        'inventario_ajuste_mensual': 'Ajuste inventario',
+        'carga_datos': 'Carga de datos',
+        'sistema': 'Errores del sistema'
+    };
+
+    function esc(valor) {
+        return String(valor === null || valor === undefined ? '' : valor).replace(/[&<>"']/g, function (caracter) {
+            return {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            }[caracter];
+        });
     }
 
-    // Función para cargar campos de una tabla
     async function cargarCampos(tabla) {
         const dropdownCampo = document.getElementById('dropdown-campo');
         const chipCampo = document.getElementById('chip-campo');
@@ -332,13 +640,13 @@
 
             if (data.status === 'ok') {
                 let html = '<li><a class="dropdown-item" href="#" data-filtro="campo" data-valor="">Todos</a></li>';
-                data.campos.forEach(c => {
-                    html += `<li><a class="dropdown-item" href="#" data-filtro="campo" data-valor="${c}">${c}</a></li>`;
+                data.campos.forEach(campo => {
+                    html += `<li><a class="dropdown-item" href="#" data-filtro="campo" data-valor="${esc(campo)}">${esc(campo)}</a></li>`;
                 });
                 dropdownCampo.innerHTML = html;
 
                 dropdownCampo.querySelectorAll('[data-filtro="campo"]').forEach(item => {
-                    item.addEventListener('click', function(e) {
+                    item.addEventListener('click', function (e) {
                         e.preventDefault();
                         filtrosActuales.campo = this.dataset.valor;
                         actualizarChips();
@@ -351,11 +659,9 @@
         }
     }
 
-    // Cargar opciones de filtros al iniciar y aplicar búsqueda adaptativa
-    document.addEventListener('DOMContentLoaded', function() {
-        // Manejar clicks en items de dropdown
+    document.addEventListener('DOMContentLoaded', function () {
         document.querySelectorAll('[data-filtro]').forEach(item => {
-            item.addEventListener('click', function(e) {
+            item.addEventListener('click', function (e) {
                 e.preventDefault();
                 const filtro = this.dataset.filtro;
                 const valor = this.dataset.valor;
@@ -364,9 +670,8 @@
             });
         });
 
-        // Listener especial para el filtro "tabla" (cascada)
         document.querySelectorAll('[data-filtro="tabla"]').forEach(item => {
-            item.addEventListener('click', function(e) {
+            item.addEventListener('click', function (e) {
                 e.preventDefault();
                 const valor = this.dataset.valor;
                 filtrosActuales.tabla = valor;
@@ -376,17 +681,7 @@
             });
         });
 
-        // Carga inicial calculando la pantalla
         aplicarFiltros();
-    });
-    
-    // Recalcular si el usuario cambia el tamaño de la ventana
-    let timeoutResize;
-    window.addEventListener('resize', function() {
-        clearTimeout(timeoutResize);
-        timeoutResize = setTimeout(() => {
-            aplicarFiltros(); 
-        }, 300);
     });
 
     function actualizarChips() {
@@ -398,11 +693,11 @@
             { id: 'chip-fecha', filtro: 'fecha', nombre: 'Fecha', icono: 'bx-calendar' },
             { id: 'chip-lote', filtro: 'lote', nombre: 'Lote', icono: 'bx-layer' }
         ];
-        
+
         chips.forEach(chip => {
             const chipEl = document.getElementById(chip.id);
             const textoEl = chipEl.querySelector('.chip-texto');
-            
+
             let valor = '';
             if (chip.filtro === 'fecha') {
                 const desde = document.getElementById('filtro-fecha-desde').value;
@@ -413,7 +708,7 @@
             } else {
                 valor = filtrosActuales[chip.filtro];
             }
-            
+
             if (valor) {
                 chipEl.classList.add('activo');
                 let textoMostrar = valor;
@@ -424,29 +719,40 @@
                 if (chip.filtro === 'tabla') {
                     textoMostrar = NOMBRES_TABLA[valor] || valor;
                 }
-                
+
                 textoEl.textContent = textoMostrar;
-                
+
                 if (!chipEl.querySelector('.btn-quitar')) {
-                    const btnQuitar = document.createElement('button');
+                    const btnQuitar = document.createElement('span');
                     btnQuitar.className = 'btn-quitar';
+                    btnQuitar.setAttribute('role', 'button');
+                    btnQuitar.setAttribute('tabindex', '0');
+                    btnQuitar.setAttribute('aria-label', 'Quitar filtro');
                     btnQuitar.innerHTML = '<i class="bx bx-x"></i>';
-                    btnQuitar.onclick = function(e) {
+                    btnQuitar.onclick = function (e) {
                         e.stopPropagation();
+                        e.preventDefault();
                         quitarFiltro(chip.filtro);
+                    };
+                    btnQuitar.onkeydown = function (e) {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            quitarFiltro(chip.filtro);
+                        }
                     };
                     chipEl.appendChild(btnQuitar);
                 }
             } else {
                 chipEl.classList.remove('activo');
                 textoEl.textContent = chip.nombre;
-                
+
                 const btnQuitar = chipEl.querySelector('.btn-quitar');
                 if (btnQuitar) btnQuitar.remove();
             }
         });
     }
-    
+
     function quitarFiltro(filtro) {
         filtrosActuales[filtro] = '';
         if (filtro === 'fecha') {
@@ -456,19 +762,26 @@
         actualizarChips();
         aplicarFiltros();
     }
-    
+
+    function actualizarTotal(total) {
+        const el = document.getElementById('totalHistorial');
+        if (!el) return;
+        const numero = Number(total) || 0;
+        el.textContent = numero.toLocaleString('es-CO') + (numero === 1 ? ' registro' : ' registros');
+    }
+
     function aplicarFiltros() {
         filtrosActuales.fecha_desde = document.getElementById('filtro-fecha-desde').value;
         filtrosActuales.fecha_hasta = document.getElementById('filtro-fecha-hasta').value;
-        
+
         const params = new URLSearchParams();
         Object.entries(filtrosActuales).forEach(([key, value]) => {
             if (value) params.append(key, value);
         });
-        
+
         params.append('pagina', 1);
-        params.append('limite', obtenerLimiteDinamico());
-        
+        params.append('limite', LIMITE_PAGINA);
+
         fetch(`${API_URL}?${params}`, {
             method: 'GET',
             credentials: 'same-origin',
@@ -479,11 +792,17 @@
             if (data.status === 'ok') {
                 actualizarTabla(data.cambios);
                 actualizarPaginacion(data.pagina, data.total_paginas);
+                actualizarTotal(data.total);
             }
         })
-        .catch(err => console.error('Error:', err));
+        .catch(err => {
+            console.error('Error:', err);
+            const tbody = document.getElementById('tabla-historial');
+            tbody.innerHTML = '<tr><td colspan="8" class="historial-vacio">No se pudo cargar el historial. Intenta de nuevo.</td></tr>';
+            actualizarTotal(0);
+        });
     }
-    
+
     function limpiarFiltros() {
         filtrosActuales = {
             usuario: '', tabla: '', accion: '', campo: '',
@@ -494,70 +813,57 @@
         actualizarChips();
         aplicarFiltros();
     }
-    
+
     function actualizarTabla(cambios) {
         const tbody = document.getElementById('tabla-historial');
-        if (cambios.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No hay registros de cambios</td></tr>';
+        if (!cambios || cambios.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" class="historial-vacio"><i class="bx bx-search-alt"></i>No hay registros con estos filtros.</td></tr>';
             return;
         }
-        
+
         tbody.innerHTML = cambios.map(c => `
             <tr>
-                <td>${c[3] ? new Date(c[3]).toLocaleString('es-CO') : ''}</td>
-                <td>${c[2]}</td>
-                <td><span class="badge bg-secondary">${NOMBRES_TABLA[c[4]] || c[4]}</span></td>
-                <td>${formatearRegistro(c)}</td>
-                <td><code>${c[6] || '-'}</code></td>
-                <td class="text-danger">${c[7] || '-'}</td>
-                <td class="text-success">${c[8] || '-'}</td>
+                <td class="col-fecha">${c[3] ? new Date(c[3]).toLocaleString('es-CO') : ''}</td>
+                <td>${esc(c[2])}</td>
+                <td><span class="badge-estado badge-neutro">${esc(NOMBRES_TABLA[c[4]] || c[4])}</span></td>
+                <td>${esc(formatearRegistro(c))}</td>
+                <td><code class="historial-campo">${esc(c[6] || '-')}</code></td>
+                <td class="col-valor valor-anterior">${esc(c[7] || '-')}</td>
+                <td class="col-valor valor-nuevo">${esc(c[8] || '-')}</td>
                 <td>${getBadge(c[9])}</td>
             </tr>
         `).join('');
     }
-    
+
     function formatearRegistro(c) {
         const lote = c[10];
         const dia = c[11];
         if (lote) {
             return dia ? `Lote ${lote}, Día ${dia}` : `Lote ${lote}`;
         }
-        // Registros antiguos de carga guardaban el lote dentro del campo
         if (c[9] === 'IMPORT' && c[6]) {
             return c[6];
         }
         if (c[9] === 'DELETE') {
             return `Registro eliminado (ID: ${c[5]})`;
         }
-        // Los errores sin lote conocido no tienen a qué registro apuntar
         if (c[9] === 'ERROR') {
             return c[5] ? `${c[4]} ID: ${c[5]}` : '-';
         }
         return `${c[4]} ID: ${c[5] ?? '-'}`;
     }
 
-    const NOMBRES_TABLA = {
-        'bd_vargas': 'Producción semanal',
-        'data_diario': 'Diario',
-        'semanal_levante': 'Semanal levante',
-        'primera_semana': 'Primera semana',
-        'clasificacion_produccion': 'Clasificación',
-        'cabecera_lotes': 'Lotes',
-        'sistema': 'Errores del sistema'
-    };
-
     function getBadge(accion) {
         const badges = {
-            'UPDATE': '<span class="badge bg-warning text-dark">UPDATE</span>',
-            'INSERT': '<span class="badge bg-success">INSERT</span>',
-            'DELETE': '<span class="badge bg-danger">DELETE</span>',
-            'IMPORT': '<span class="badge bg-info">IMPORT</span>',
-            'ERROR': '<span class="badge bg-dark border border-danger text-white">ERROR</span>'
+            'UPDATE': '<span class="badge-estado badge-pendiente">UPDATE</span>',
+            'INSERT': '<span class="badge-estado badge-ok">INSERT</span>',
+            'DELETE': '<span class="badge-estado badge-critica">DELETE</span>',
+            'IMPORT': '<span class="badge-estado badge-neutro">IMPORT</span>',
+            'ERROR': '<span class="badge-estado badge-critica">ERROR</span>'
         };
-        return badges[accion] || accion;
+        return badges[accion] || esc(accion);
     }
-    
-    // Páginas a mostrar: primeras, últimas y las vecinas de la actual
+
     function paginasAMostrar(pagina, total) {
         if (total <= 7) {
             return Array.from({ length: total }, (_, i) => i + 1);
@@ -595,12 +901,10 @@
         const iconoDer = '<i class="fas fa-chevron-right"></i>';
         let html = '';
 
-        // Anterior (deshabilitado en la primera página)
         html += pagina > 1
             ? `<li class="page-item"><a class="page-link" href="#" aria-label="Página anterior" onclick="irAPagina(${pagina - 1}); return false;">${iconoIzq} <span class="pagina-texto">Anterior</span></a></li>`
             : `<li class="page-item disabled"><span class="page-link">${iconoIzq} <span class="pagina-texto">Anterior</span></span></li>`;
 
-        // Números de página
         paginasAMostrar(pagina, totalPaginas).forEach(p => {
             if (p === '...') {
                 html += '<li class="page-item disabled"><span class="page-link">…</span></li>';
@@ -611,23 +915,22 @@
             }
         });
 
-        // Siguiente (deshabilitado en la última página)
         html += pagina < totalPaginas
             ? `<li class="page-item"><a class="page-link" href="#" aria-label="Página siguiente" onclick="irAPagina(${pagina + 1}); return false;"><span class="pagina-texto">Siguiente</span> ${iconoDer}</a></li>`
             : `<li class="page-item disabled"><span class="page-link"><span class="pagina-texto">Siguiente</span> ${iconoDer}</span></li>`;
 
         lista.innerHTML = html;
     }
-    
+
     function irAPagina(pagina) {
         const params = new URLSearchParams();
         Object.entries(filtrosActuales).forEach(([key, value]) => {
             if (value) params.append(key, value);
         });
-        
+
         params.append('pagina', pagina);
-        params.append('limite', obtenerLimiteDinamico());
-        
+        params.append('limite', LIMITE_PAGINA);
+
         fetch(`${API_URL}?${params}`, {
             method: 'GET',
             credentials: 'same-origin',
@@ -638,9 +941,14 @@
             if (data.status === 'ok') {
                 actualizarTabla(data.cambios);
                 actualizarPaginacion(data.pagina, data.total_paginas);
+                actualizarTotal(data.total);
             }
         })
-        .catch(err => console.error('Error:', err));
+        .catch(err => {
+            console.error('Error:', err);
+            const tbody = document.getElementById('tabla-historial');
+            tbody.innerHTML = '<tr><td colspan="8" class="historial-vacio">No se pudo cargar el historial. Intenta de nuevo.</td></tr>';
+        });
     }
 </script>
 {% endblock %}

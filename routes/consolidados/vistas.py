@@ -64,7 +64,7 @@ def consolidados_version():
                 (SELECT COUNT(*)::text || ':' || COALESCE(MAX(fecha_fin_sem)::text, '') FROM bd_vargas),
                 (SELECT COUNT(*)::text || ':' || COALESCE(MAX(fecha_dia)::text, '') FROM data_diario),
                 (SELECT COUNT(*)::text FROM semanal_levante),
-                (SELECT COUNT(*)::text FROM primera_semana),
+                (SELECT COUNT(*)::text FROM primera_semana_activa),
                 (SELECT COUNT(*)::text FROM cabecera_lotes),
                 (SELECT COUNT(*)::text FROM clasificacion_produccion)
         """)

@@ -3,6 +3,7 @@
 
 {% block head %}
 {% include 'planta_alimentos/_design_system.html' %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tabla_seleccion.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -312,6 +313,7 @@
 <div class="card card-clean ps-info-lote">
   <div class="ps-info-titulo">
     <i class="fas fa-circle-info"></i> Información del lote
+    {% include 'produccion/_panel_seleccion.html' %}
   </div>
   <div class="collapse" id="collapseInfoGeneral">
     <div class="ps-info-grid">
@@ -481,31 +483,31 @@
           <input type="number" data-col="sv" value="{{ f['sv'] }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly>
         </td>
 
-        <td><input type="number" data-col="clas_jum" value="{{ f['clas_jum'] if f['clas_jum'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
-        <td><input type="number" data-col="clas_extra" value="{{ f['clas_extra'] if f['clas_extra'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
-        <td><input type="number" data-col="clas_aa" value="{{ f['clas_aa'] if f['clas_aa'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
-        <td><input type="number" data-col="clas_a" value="{{ f['clas_a'] if f['clas_a'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
-        <td><input type="number" data-col="clas_b" value="{{ f['clas_b'] if f['clas_b'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
-        <td><input type="number" data-col="clas_c" value="{{ f['clas_c'] if f['clas_c'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
-        <td><input type="number" data-col="clas_pipo" value="{{ f['clas_pipo'] if f['clas_pipo'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
-        <td><input type="number" data-col="clas_sucio" value="{{ f['clas_sucio'] if f['clas_sucio'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
-        <td><input type="number" data-col="clas_totiao" value="{{ f['clas_totiao'] if f['clas_totiao'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
-        <td><input type="number" data-col="clas_yema" value="{{ f['clas_yema'] if f['clas_yema'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
-        <td><input type="number" data-col="clas_segundas" value="{{ f['clas_segundas'] if f['clas_segundas'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
-        <td><input type="number" data-col="clas_ttl" value="{{ f['clas_ttl'] if f['clas_ttl'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
+        <td><input type="text" inputmode="numeric" data-miles="0" data-col="clas_jum" value="{{ f['clas_jum']|miles(0) if f['clas_jum'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="text" inputmode="numeric" data-miles="0" data-col="clas_extra" value="{{ f['clas_extra']|miles(0) if f['clas_extra'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="text" inputmode="numeric" data-miles="0" data-col="clas_aa" value="{{ f['clas_aa']|miles(0) if f['clas_aa'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="text" inputmode="numeric" data-miles="0" data-col="clas_a" value="{{ f['clas_a']|miles(0) if f['clas_a'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="text" inputmode="numeric" data-miles="0" data-col="clas_b" value="{{ f['clas_b']|miles(0) if f['clas_b'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="text" inputmode="numeric" data-miles="0" data-col="clas_c" value="{{ f['clas_c']|miles(0) if f['clas_c'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="text" inputmode="numeric" data-miles="0" data-col="clas_pipo" value="{{ f['clas_pipo']|miles(0) if f['clas_pipo'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="text" inputmode="numeric" data-miles="0" data-col="clas_sucio" value="{{ f['clas_sucio']|miles(0) if f['clas_sucio'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="text" inputmode="numeric" data-miles="0" data-col="clas_totiao" value="{{ f['clas_totiao']|miles(0) if f['clas_totiao'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="text" inputmode="numeric" data-miles="0" data-col="clas_yema" value="{{ f['clas_yema']|miles(0) if f['clas_yema'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+        <td><input type="text" inputmode="numeric" data-miles="0" data-col="clas_segundas" value="{{ f['clas_segundas']|miles(0) if f['clas_segundas'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
+        <td><input type="text" inputmode="numeric" data-miles="0" data-col="clas_ttl" value="{{ f['clas_ttl']|miles(0) if f['clas_ttl'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
 
-        <td><input type="text" data-col="acum_jum" value="{{ f['acum_jum'] | int if f['acum_jum'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
-        <td><input type="text" data-col="acum_extra" value="{{ f['acum_extra'] | int if f['acum_extra'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
-        <td><input type="text" data-col="acum_aa" value="{{ f['acum_aa'] | int if f['acum_aa'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
-        <td><input type="text" data-col="acum_a" value="{{ f['acum_a'] | int if f['acum_a'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
-        <td><input type="text" data-col="acum_b" value="{{ f['acum_b'] | int if f['acum_b'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
-        <td><input type="text" data-col="acum_c" value="{{ f['acum_c'] | int if f['acum_c'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
-        <td><input type="text" data-col="acum_pipo" value="{{ f['acum_pipo'] | int if f['acum_pipo'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
-        <td><input type="text" data-col="acum_sucio" value="{{ f['acum_sucio'] | int if f['acum_sucio'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
-        <td><input type="text" data-col="acum_totiao" value="{{ f['acum_totiao'] | int if f['acum_totiao'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
-        <td><input type="text" data-col="acum_yema" value="{{ f['acum_yema'] | int if f['acum_yema'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
-        <td><input type="text" data-col="acum_segundas" value="{{ f['acum_segundas'] | int if f['acum_segundas'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
-        <td><input type="text" data-col="acum_total" value="{{ f['acum_total'] | int if f['acum_total'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
+        <td><input type="text" data-col="acum_jum" value="{{ f['acum_jum'] | miles(0) if f['acum_jum'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
+        <td><input type="text" data-col="acum_extra" value="{{ f['acum_extra'] | miles(0) if f['acum_extra'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
+        <td><input type="text" data-col="acum_aa" value="{{ f['acum_aa'] | miles(0) if f['acum_aa'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
+        <td><input type="text" data-col="acum_a" value="{{ f['acum_a'] | miles(0) if f['acum_a'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
+        <td><input type="text" data-col="acum_b" value="{{ f['acum_b'] | miles(0) if f['acum_b'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
+        <td><input type="text" data-col="acum_c" value="{{ f['acum_c'] | miles(0) if f['acum_c'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
+        <td><input type="text" data-col="acum_pipo" value="{{ f['acum_pipo'] | miles(0) if f['acum_pipo'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
+        <td><input type="text" data-col="acum_sucio" value="{{ f['acum_sucio'] | miles(0) if f['acum_sucio'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
+        <td><input type="text" data-col="acum_totiao" value="{{ f['acum_totiao'] | miles(0) if f['acum_totiao'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
+        <td><input type="text" data-col="acum_yema" value="{{ f['acum_yema'] | miles(0) if f['acum_yema'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
+        <td><input type="text" data-col="acum_segundas" value="{{ f['acum_segundas'] | miles(0) if f['acum_segundas'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
+        <td><input type="text" data-col="acum_total" value="{{ f['acum_total'] | miles(0) if f['acum_total'] is not none else '' }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly></td>
 
         <td style="background-color: rgba(0,0,0,0.05);">
           <input type="text" value="{{ f['sv'] }}" class="form-control form-control-sm border-0 bg-transparent text-center fw-bold text-dark" readonly>
@@ -606,7 +608,10 @@
       const fila = this.closest('tr');
       const id = fila.dataset.id;
       const columna = this.dataset.col;
-      const valor = this.value;
+      let valor = this.value;
+      if (this.dataset.miles !== undefined) {
+        valor = window.limpiarMiles(valor);
+      }
       const el = this;
 
       fetch(API_URL_CLAS, {
@@ -689,4 +694,5 @@
   });
 
 </script>
+<script src="{{ url_for('static', filename='js/tabla_seleccion.js') }}"></script>
 {% endblock %}

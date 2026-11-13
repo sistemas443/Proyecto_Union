@@ -1,0 +1,882 @@
+/* ============================================================
+   GESTION AMBIENTAL - Tablero de indicadores
+   Tokens propios, acotados a .ga-page para no afectar al resto
+   del aplicativo. Respeta el modo noche via [data-bs-theme].
+   ============================================================ */
+
+.ga-page {
+  --ga-brand: #97271C;
+  --ga-brand-dark: #7a1f16;
+  --ga-brand-soft: #f6e9e7;
+
+  --ga-ink: #1b1f23;
+  --ga-ink-2: #4f5a63;
+  --ga-ink-3: #6a737c;
+
+  --ga-line: #e2e5e3;
+  --ga-line-strong: #cdd3cf;
+
+  --ga-ok: #1c7a4d;
+  --ga-ok-soft: #e6f3ec;
+  --ga-warn: #a3600a;
+  --ga-warn-soft: #fdf1e0;
+  --ga-bad: #b3261e;
+  --ga-bad-soft: #fbeae9;
+  --ga-none: #7c868f;
+  --ga-none-soft: #eef0f1;
+
+  --ga-radius: 14px;
+  --ga-radius-sm: 10px;
+
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 22px clamp(14px, 2.4vw, 34px) 64px;
+  color: var(--ga-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+[data-bs-theme="dark"] .ga-page {
+  --ga-brand: #d0574a;
+  --ga-brand-dark: #b3453a;
+  --ga-brand-soft: #2c1d1b;
+
+  --ga-ink: #e8edf3;
+  --ga-ink-2: #b6c0ca;
+  --ga-ink-3: #8d979f;
+
+  --ga-line: #313a44;
+  --ga-line-strong: #414c57;
+
+  --ga-ok: #52b98a;
+  --ga-ok-soft: #16301f;
+  --ga-warn: #e0a24a;
+  --ga-warn-soft: #322512;
+  --ga-bad: #e07a70;
+  --ga-bad-soft: #35191a;
+  --ga-none: #8d979f;
+  --ga-none-soft: #232a31;
+}
+
+/* ---------- Cabecera ---------- */
+.ga-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px 26px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--ga-line);
+}
+
+.ga-title {
+  margin: 0;
+  font-size: clamp(1.45rem, 2.3vw, 1.85rem);
+  font-weight: 650;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+  color: var(--ga-ink);
+}
+
+.ga-subtitle {
+  margin: 6px 0 0;
+  font-size: 0.9rem;
+  color: var(--ga-ink-2);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.ga-subtitle .ga-dot-sep {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--ga-ink-3);
+  display: inline-block;
+}
+
+.ga-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ---------- Control segmentado (sede) ---------- */
+.ga-segmented {
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  border: 1px solid var(--ga-line-strong);
+  border-radius: 999px;
+  background: transparent;
+}
+
+.ga-segmented button,
+.ga-segmented a {
+  border: 0;
+  background: transparent;
+  color: var(--ga-ink-2);
+  font-size: 0.83rem;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 999px;
+  line-height: 1;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ga-segmented a.is-active {
+  background: var(--ga-brand);
+  color: #fff;
+}
+
+.ga-segmented a:not(.is-active):hover {
+  background: var(--ga-brand-soft);
+  color: var(--ga-brand);
+}
+
+.ga-segmented a.is-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.ga-soon {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 1px 5px;
+  opacity: 0.75;
+}
+
+/* ---------- Select y campos ---------- */
+.ga-select,
+.ga-date {
+  height: 34px;
+  border: 1px solid var(--ga-line-strong);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ga-ink);
+  font-size: 0.83rem;
+  font-weight: 600;
+  padding: 0 14px;
+  appearance: none;
+}
+
+.ga-select {
+  padding-right: 32px;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: calc(100% - 16px) 15px, calc(100% - 11px) 15px;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+
+.ga-date {
+  padding: 0 10px;
+}
+
+.ga-select:focus-visible,
+.ga-date:focus-visible,
+.ga-btn:focus-visible,
+.ga-card:focus-visible,
+.ga-tick-btn:focus-visible {
+  outline: 2px solid var(--ga-brand);
+  outline-offset: 2px;
+}
+
+/* ---------- Botones ---------- */
+.ga-btn {
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid var(--ga-line-strong);
+  background: transparent;
+  color: var(--ga-ink);
+  font-size: 0.83rem;
+  font-weight: 600;
+  padding: 0 15px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+}
+
+.ga-btn:hover {
+  border-color: var(--ga-brand);
+  color: var(--ga-brand);
+}
+
+.ga-btn--primary {
+  background: var(--ga-brand);
+  border-color: var(--ga-brand);
+  color: #fff;
+}
+
+.ga-btn--primary:hover {
+  background: var(--ga-brand-dark);
+  border-color: var(--ga-brand-dark);
+  color: #fff;
+}
+
+/* ---------- Banda de estado ---------- */
+.ga-status {
+  margin-top: 22px;
+  padding: 16px 18px;
+  border: 1px solid var(--ga-line);
+  border-radius: var(--ga-radius);
+}
+
+.ga-status-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px 24px;
+}
+
+.ga-status-figures {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 26px;
+}
+
+.ga-figure {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+}
+
+.ga-figure strong {
+  font-size: 1.3rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.ga-figure span {
+  font-size: 0.78rem;
+  color: var(--ga-ink-3);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.ga-figure.is-ok strong { color: var(--ga-ok); }
+.ga-figure.is-bad strong { color: var(--ga-bad); }
+.ga-figure.is-none strong { color: var(--ga-none); }
+
+.ga-status-note {
+  font-size: 0.78rem;
+  color: var(--ga-ink-3);
+}
+
+/* Fichas de estado: nombre visible de cada indicador */
+.ga-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ga-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 9px 4px 8px;
+  border: 1px solid var(--ga-line);
+  border-radius: 999px;
+  font-size: 0.73rem;
+  font-weight: 600;
+  color: var(--ga-ink-2);
+  text-decoration: none;
+  line-height: 1.1;
+  white-space: nowrap;
+  transition: border-color 120ms ease, color 120ms ease, background 120ms ease;
+}
+
+.ga-chip:hover {
+  border-color: var(--ga-line-strong);
+  color: var(--ga-ink);
+}
+
+.ga-chip.is-current {
+  border-color: var(--ga-brand);
+  color: var(--ga-brand);
+  background: var(--ga-brand-soft);
+}
+
+.ga-chip-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  background: var(--ga-none);
+}
+
+.ga-chip-dot.is-ok { background: var(--ga-ok); }
+.ga-chip-dot.is-alerta { background: var(--ga-bad); }
+.ga-chip-dot.is-sin-datos { background: var(--ga-none); }
+
+/* ---------- Indicador enfocado ---------- */
+.ga-focus {
+  margin-top: 26px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 268px;
+  gap: 22px;
+}
+
+@media (max-width: 992px) {
+  .ga-focus { grid-template-columns: 1fr; }
+}
+
+.ga-focus-main {
+  border: 1px solid var(--ga-line);
+  border-radius: var(--ga-radius);
+  padding: 18px 18px 10px;
+  min-width: 0;
+}
+
+.ga-focus-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px 18px;
+  margin-bottom: 2px;
+}
+
+.ga-focus-tools {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ga-btn-sm {
+  height: 28px;
+  padding: 0 11px;
+  font-size: 0.75rem;
+  gap: 5px;
+}
+
+.ga-btn-sm i {
+  font-size: 0.95rem;
+}
+
+.ga-focus-title {
+  margin: 0;
+  font-size: 1.02rem;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  color: var(--ga-ink);
+}
+
+.ga-focus-limit {
+  font-size: 0.78rem;
+  color: var(--ga-ink-3);
+}
+
+.ga-focus-meta {
+  margin: 2px 0 10px;
+  font-size: 0.74rem;
+  color: var(--ga-ink-3);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+}
+
+.ga-chart-box {
+  position: relative;
+  height: 330px;
+}
+
+@media (max-width: 576px) {
+  .ga-chart-box { height: 230px; }
+}
+
+.ga-focus-side {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ga-metric {
+  border: 1px solid var(--ga-line);
+  border-radius: var(--ga-radius-sm);
+  padding: 11px 13px;
+}
+
+.ga-metric-label {
+  display: block;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ga-ink-3);
+  margin-bottom: 4px;
+}
+
+.ga-metric-value {
+  font-size: 1.12rem;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  line-height: 1.1;
+}
+
+.ga-metric-value small {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--ga-ink-3);
+  margin-left: 3px;
+}
+
+.ga-metric-note {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--ga-ink-3);
+  margin-top: 3px;
+}
+
+.ga-metric.is-ok .ga-metric-value { color: var(--ga-ok); }
+.ga-metric.is-alerta .ga-metric-value { color: var(--ga-bad); }
+
+/* ---------- Pestanas de grupo ---------- */
+.ga-group {
+  margin-top: 30px;
+}
+
+.ga-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--ga-line);
+  margin-bottom: 16px;
+}
+
+.ga-tab {
+  border: 0;
+  background: transparent;
+  color: var(--ga-ink-2);
+  font-size: 0.86rem;
+  font-weight: 600;
+  padding: 9px 12px;
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.ga-tab:hover { color: var(--ga-brand); }
+
+.ga-tab.is-active {
+  color: var(--ga-ink);
+  border-bottom-color: var(--ga-brand);
+}
+
+.ga-tab-count {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--ga-ink-3);
+  background: var(--ga-none-soft);
+  border-radius: 999px;
+  padding: 1px 7px;
+}
+
+/* ---------- Tarjetas de indicador ---------- */
+.ga-group-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 18px;
+  margin-bottom: 12px;
+}
+
+.ga-group-head h2 {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  color: var(--ga-ink);
+}
+
+.ga-group-head p {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--ga-ink-3);
+}
+
+.ga-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(228px, 1fr));
+  gap: 12px;
+}
+
+.ga-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 13px 14px 11px;
+  border: 1px solid var(--ga-line);
+  border-radius: var(--ga-radius-sm);
+  color: inherit;
+  text-decoration: none;
+  background: transparent;
+  text-align: left;
+  transition: border-color 130ms ease, background 130ms ease;
+}
+
+.ga-card:hover {
+  border-color: var(--ga-line-strong);
+  background: color-mix(in srgb, var(--ga-ink) 3%, transparent);
+}
+
+.ga-card.is-current {
+  border-color: var(--ga-brand);
+  background: var(--ga-brand-soft);
+}
+
+.ga-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ga-card-name {
+  font-size: 0.79rem;
+  font-weight: 600;
+  color: var(--ga-ink-2);
+  line-height: 1.25;
+}
+
+.ga-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  background: var(--ga-none);
+}
+
+.ga-dot.is-ok { background: var(--ga-ok); }
+.ga-dot.is-alerta { background: var(--ga-bad); }
+.ga-dot.is-sin-datos { background: var(--ga-none); }
+
+.ga-card-value {
+  font-size: 1.35rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+
+.ga-card-value small {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--ga-ink-3);
+  margin-left: 3px;
+  letter-spacing: 0;
+}
+
+.ga-spark {
+  display: block;
+  width: 100%;
+  height: 30px;
+  overflow: visible;
+}
+
+.ga-spark polyline {
+  fill: none;
+  stroke: var(--ga-ink-3);
+  stroke-width: 1.4;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.ga-card.is-alerta .ga-spark polyline { stroke: var(--ga-bad); }
+.ga-card.is-ok .ga-spark polyline { stroke: var(--ga-ok); }
+
+.ga-card-foot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.71rem;
+  color: var(--ga-ink-3);
+}
+
+.ga-card-foot .ga-card-pct {
+  font-weight: 600;
+  color: var(--ga-ink-2);
+}
+
+.ga-empty {
+  grid-column: 1 / -1;
+  border: 1px dashed var(--ga-line-strong);
+  border-radius: var(--ga-radius-sm);
+  padding: 26px;
+  text-align: center;
+  color: var(--ga-ink-3);
+  font-size: 0.85rem;
+}
+
+/* ---------- Tabla de registros ---------- */
+.ga-records {
+  margin-top: 26px;
+  border: 1px solid var(--ga-line);
+  border-radius: var(--ga-radius);
+  padding: 4px 18px 14px;
+}
+
+.ga-records summary {
+  cursor: pointer;
+  padding: 12px 0;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--ga-ink);
+  list-style: none;
+}
+
+.ga-records summary::-webkit-details-marker { display: none; }
+
+.ga-records summary::after {
+  content: '+';
+  float: right;
+  color: var(--ga-ink-3);
+  font-weight: 600;
+}
+
+.ga-records[open] summary::after { content: '–'; }
+
+.ga-table-wrap {
+  max-height: 320px;
+  overflow: auto;
+  border-top: 1px solid var(--ga-line);
+}
+
+.ga-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.ga-table th {
+  position: sticky;
+  top: 0;
+  background: var(--ga-page-bg, transparent);
+  backdrop-filter: blur(2px);
+  text-align: left;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ga-ink-3);
+  font-weight: 600;
+  padding: 9px 8px;
+  border-bottom: 1px solid var(--ga-line);
+}
+
+.ga-table td {
+  padding: 7px 8px;
+  border-bottom: 1px solid var(--ga-line);
+  color: var(--ga-ink-2);
+}
+
+.ga-table td:last-child,
+.ga-table th:last-child {
+  text-align: right;
+}
+
+.ga-table td.ga-num {
+  font-weight: 600;
+  color: var(--ga-ink);
+}
+
+/* ---------- Estado de error / vacio ---------- */
+.ga-alert {
+  margin-top: 24px;
+  border: 1px solid var(--ga-bad);
+  border-radius: var(--ga-radius);
+  padding: 18px 20px;
+  background: var(--ga-bad-soft);
+  color: var(--ga-ink);
+}
+
+.ga-alert strong {
+  display: block;
+  font-size: 0.95rem;
+  margin-bottom: 4px;
+}
+
+.ga-alert p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--ga-ink-2);
+}
+
+@media (max-width: 576px) {
+  .ga-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
+  }
+
+  .ga-card {
+    padding: 11px 11px 9px;
+  }
+
+  .ga-card-value {
+    font-size: 1.12rem;
+  }
+
+  .ga-card-name {
+    font-size: 0.73rem;
+  }
+
+  .ga-card-foot {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+
+  .ga-focus-side {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .ga-tabs {
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
+  .ga-tab {
+    white-space: nowrap;
+  }
+}
+
+.ga-chart-note {
+  margin: 6px 0 4px;
+  font-size: 0.72rem;
+  color: var(--ga-ink-3);
+  min-height: 1em;
+}
+
+/* ---------- Metricas opcionales ---------- */
+.ga-optional {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  margin: 0 0 10px;
+}
+
+.ga-optional-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ga-ink-3);
+}
+
+.ga-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--ga-ink-2);
+  cursor: pointer;
+  user-select: none;
+}
+
+.ga-check input {
+  width: 13px;
+  height: 13px;
+  accent-color: var(--ga-brand);
+  cursor: pointer;
+}
+
+.ga-check:hover {
+  color: var(--ga-ink);
+}
+
+/* ---------- Pantalla completa ---------- */
+.ga-focus:fullscreen,
+.ga-focus:-webkit-full-screen {
+  width: 100%;
+  height: 100%;
+  padding: 22px 26px 18px;
+  background: var(--bs-body-bg, #ffffff);
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  overflow: auto;
+}
+
+/* En pantalla completa se ocultan las fichas laterales de cifras. */
+.ga-focus:fullscreen .ga-focus-side,
+.ga-focus:-webkit-full-screen .ga-focus-side {
+  display: none;
+}
+
+.ga-focus:fullscreen .ga-focus-main,
+.ga-focus:-webkit-full-screen .ga-focus-main {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+}
+
+.ga-focus:fullscreen .ga-chart-box,
+.ga-focus:-webkit-full-screen .ga-chart-box {
+  height: calc(100vh - 170px);
+}
+
+@media (max-width: 900px) {
+  .ga-focus:fullscreen .ga-chart-box,
+  .ga-focus:-webkit-full-screen .ga-chart-box {
+    height: calc(100vh - 200px);
+  }
+}
+
+/* ---------- Impresion / PDF ---------- */
+@media print {
+  .app-navbar,
+  .sidebar-rapido,
+  .sidebar-th,
+  .ga-filters,
+  .ga-chips,
+  .ga-tabs,
+  footer {
+    display: none !important;
+  }
+
+  .ga-page {
+    max-width: none;
+    padding: 0;
+  }
+
+  .ga-focus,
+  .ga-cards {
+    break-inside: avoid;
+  }
+
+  .ga-card {
+    border-color: #bbb;
+  }
+
+  .ga-records {
+    border-color: #bbb;
+  }
+
+  .ga-chart-box { height: 260px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ga-tick-btn,
+  .ga-card {
+    transition: none;
+  }
+}

@@ -46,14 +46,15 @@ def registrar_cambio(usuario_id, usuario_nombre, tabla, id_registro,
             print(f"[AUDITORÍA ERROR CRÍTICO] {e2}")
 
 
-# Tablas que tienen una columna con el id de cabecera_lotes y permiten resolver el lote
-# de una fila que falló durante una edición en línea.
+# Tablas que tienen una columna con el id de cabecera_lotes y su llave primaria.
+# Permiten resolver el lote de una fila que falló durante una edición en línea.
 TABLAS_CON_ID_LOTE = {
-    'data_diario': 'id_lote',
-    'bd_vargas': 'id_lote',
-    'semanal_levante': 'id_lote',
-    'clasificacion_produccion': 'id_lote',
-    'primera_semana': 'id_lote',
+    'data_diario': ('id_diario', 'id_lote'),
+    'bd_vargas': ('id_sem_prod', 'id_lote'),
+    'semanal_levante': ('id', 'id_lote'),
+    'clasificacion_produccion': ('id', 'id_lote'),
+    'primera_semana': ('id', 'id_lote'),
+    'primera_semana_dia2': ('id', 'id_lote'),
 }
 
 
@@ -79,9 +80,10 @@ def registrar_error(tabla, contexto, mensaje, id_lote=None, id_fila=None,
         cur = conn.cursor()
         try:
             # Si solo se conoce la fila, se busca el id del lote con una tabla del catálogo
-            columna_lote = TABLAS_CON_ID_LOTE.get(tabla)
-            if id_lote is None and id_fila and columna_lote:
-                cur.execute(f'SELECT {columna_lote} FROM "{tabla}" WHERE id = %s', (id_fila,))
+            datos_tabla = TABLAS_CON_ID_LOTE.get(tabla)
+            if id_lote is None and id_fila and datos_tabla:
+                pk, columna_lote = datos_tabla
+                cur.execute(f'SELECT {columna_lote} FROM "{tabla}" WHERE {pk} = %s', (id_fila,))
                 fila = cur.fetchone()
                 id_lote = fila[0] if fila else None
 

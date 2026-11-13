@@ -1,4 +1,4 @@
-from flask import Flask, request
+from flask import Flask, request, redirect, url_for, session
 from config import Config
 import gzip
 import werkzeug.serving
@@ -18,6 +18,7 @@ from routes.catalogos.api import catalogos_bp
 from routes.consolidados.vistas import consolidados_bp
 from routes.carga_datos.vistas import carga_datos_bp
 from routes.talento_humano.vistas import talento_humano_bp  # NUEVO: Talento Humano
+from routes.gestion_ambiental.vistas import gestion_ambiental_bp  # NUEVO: Gestion Ambiental
 
 # --- INICIO DEL FILTRO INFALIBLE PARA OCULTAR GET ---
 class ManejadorSilencioso(werkzeug.serving.WSGIRequestHandler):
@@ -172,6 +173,30 @@ def create_app():
         return texto.replace(',', 'X').replace('.', ',').replace('X', '.')
 
     app.jinja_env.filters['numero_lat'] = numero_lat
+
+    def formato_decimal(valor, decimales=2):
+        """Devuelve el número con decimales fijos y punto decimal (para inputs)."""
+        if valor is None or str(valor).strip() == '':
+            return ''
+        try:
+            numero = float(str(valor).strip().replace(',', '.'))
+            return f'{numero:.{int(decimales)}f}'
+        except (TypeError, ValueError):
+            return ''
+
+    app.jinja_env.filters['formato_decimal'] = formato_decimal
+
+    def miles(valor, decimales=0):
+        """Formatea un número con separador de miles y decimales fijos."""
+        if valor is None or str(valor).strip() == '':
+            return ''
+        try:
+            numero = float(str(valor).strip().replace(',', ''))
+            return f'{numero:,.{int(decimales)}f}'
+        except (TypeError, ValueError):
+            return ''
+
+    app.jinja_env.filters['miles'] = miles
     # ---------------------------------------
 
     app.config.from_object(Config)
@@ -191,6 +216,20 @@ def create_app():
     app.register_blueprint(consolidados_bp)         # Blueprint de consolidados L+P
     app.register_blueprint(carga_datos_bp)         # Blueprint modular de carga masiva de datos
     app.register_blueprint(talento_humano_bp)      # NUEVO: Talento Humano
+    app.register_blueprint(gestion_ambiental_bp)   # NUEVO: Gestion Ambiental (master_ga)
+
+    # --- CANDADO GLOBAL: el rol Gestion Ambiental solo puede navegar su modulo ---
+    @app.before_request
+    def _restringir_rol_gestion_ambiental():
+        if session.get('user_rol') != 'Gestion Ambiental':
+            return None
+        endpoint = request.endpoint or ''
+        if endpoint.startswith('gestion_ambiental.') or endpoint.startswith('static'):
+            return None
+        if endpoint in ('main.logout', 'main.login', 'main.login_page', 'main.foto_usuario'):
+            return None
+        return redirect(url_for('gestion_ambiental.tablero'))
+    # ---------------------------------------------------------------------------
 
     # --- REGISTRO DE ERRORES NO ESPERADOS EN EL HISTORIAL DE AUDITORÍA ---
     registrar_errores_globales(app)

@@ -253,7 +253,7 @@ def update_registro_diario_field(id_reg: int, columna: str, valor: str) -> tuple
                     if int(f_id) == int(id_reg):
                         campos_diarios_actualizados = {
                             'produccion':          int(prod),
-                            'consumo_agua':        float(agua),
+                            'consumo_agua':        redondear(agua, 2),
                             'saldo_aves':          int(round(saldo_actual)),
                             'consumo_gr_a_d':      f"{real_gr_ave_exacto:.1f}" if real_gr_ave_exacto > 0 else '0.0',
                             'percent_diario_prod': f"{porc_prod_exacto:.1f}" if porc_prod_exacto > 0 else '0.0',
@@ -280,6 +280,28 @@ def update_registro_diario_field(id_reg: int, columna: str, valor: str) -> tuple
                 try:
                     cur_sync = conn.cursor()
                     recalcular_lote_semanal_completo_directo(id_lote, cur_sync)
+                    try:
+                        cur_sync.execute("SAVEPOINT sp_levante")
+                        from models.semanal_levante.services import recalcular_lote_semanal_levante_directo
+                        recalcular_lote_semanal_levante_directo(id_lote, cur_sync)
+                        cur_sync.execute("RELEASE SAVEPOINT sp_levante")
+                    except Exception as ex_lev:
+                        print(f"[DISPARADOR ADVERTENCIA] No se actualizó levante: {str(ex_lev)}")
+                        try:
+                            cur_sync.execute("ROLLBACK TO SAVEPOINT sp_levante")
+                        except Exception:
+                            pass
+                    try:
+                        cur_sync.execute("SAVEPOINT sp_primera")
+                        from models.primera_semana.services import sincronizar_primera_semana_desde_diario
+                        sincronizar_primera_semana_desde_diario(id_lote, cur_sync)
+                        cur_sync.execute("RELEASE SAVEPOINT sp_primera")
+                    except Exception as ex_pri:
+                        print(f"[DISPARADOR ADVERTENCIA] No se sincronizó primera semana: {str(ex_pri)}")
+                        try:
+                            cur_sync.execute("ROLLBACK TO SAVEPOINT sp_primera")
+                        except Exception:
+                            pass
                     cur_sync.close()
                 except Exception as ex_motor:
                     print(f"[DISPARADOR ADVERTENCIA] No se actualizo semanal: {str(ex_motor)}")
@@ -311,7 +333,7 @@ import io
 import pandas as pd
 import psycopg2.extras
 import numpy as np
-from models.base import get_db_connection
+from models.base import get_db_connection, redondear, respaldar_tabla_lote
 
 def procesar_excel_diario(archivo, lote_nombre, usuario_id=None, usuario_nombre=None):
     conn = get_db_connection()
@@ -370,7 +392,7 @@ def procesar_excel_diario(archivo, lote_nombre, usuario_id=None, usuario_nombre=
                 dias_valor,                                                           
                 semana_calculada, # Usamos el cálculo en lugar de leer el Excel directamente           
                 fila[3], fila[4], fila[5], fila[6], fila[7], fila[8], 
-                fila[9], fila[10], fila[11], fila[12], fila[13], fila[14], 
+                fila[9], fila[10], fila[11], fila[12], fila[13], redondear(fila[14], 2),
                 id_lote,
                 None, None, None, None, None, None, None, None, None, None, None
             )
@@ -400,6 +422,7 @@ def procesar_excel_diario(archivo, lote_nombre, usuario_id=None, usuario_nombre=
                            "No se modificó la información cargada.")
 
         # Barrido: se borran TODOS los registros previos del lote antes de insertar el archivo
+        respaldar_tabla_lote('data_diario', id_lote)
         cur.execute("DELETE FROM data_diario WHERE id_lote = %s", (id_lote,))
 
         # 4. Inserción Masiva
@@ -416,6 +439,33 @@ def procesar_excel_diario(archivo, lote_nombre, usuario_id=None, usuario_nombre=
         """
         
         psycopg2.extras.execute_values(cur, query_insert, valores_a_insertar)
+
+        # Refrescar semanal levante y primera semana con los datos recién cargados.
+        cur_sync = conn.cursor()
+        try:
+            cur_sync.execute("SAVEPOINT sp_levante")
+            from models.semanal_levante.services import recalcular_lote_semanal_levante_directo
+            recalcular_lote_semanal_levante_directo(id_lote, cur_sync)
+            cur_sync.execute("RELEASE SAVEPOINT sp_levante")
+        except Exception as e:
+            print(f"[AVISO] No se pudo recalcular semanal levante: {e}")
+            try:
+                cur_sync.execute("ROLLBACK TO SAVEPOINT sp_levante")
+            except Exception:
+                pass
+        try:
+            cur_sync.execute("SAVEPOINT sp_primera")
+            from models.primera_semana.services import sincronizar_primera_semana_desde_diario
+            sincronizar_primera_semana_desde_diario(id_lote, cur_sync)
+            cur_sync.execute("RELEASE SAVEPOINT sp_primera")
+        except Exception as e:
+            print(f"[AVISO] No se pudo sincronizar primera semana: {e}")
+            try:
+                cur_sync.execute("ROLLBACK TO SAVEPOINT sp_primera")
+            except Exception:
+                pass
+        finally:
+            cur_sync.close()
 
         # Registro en auditoría (1 solo registro por carga)
         from models.auditoria.services import registrar_cambio

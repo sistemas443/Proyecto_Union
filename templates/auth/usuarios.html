@@ -466,7 +466,7 @@
         Swal.fire({
             title: desactivar ? '¿Desactivar acceso?' : '¿Reactivar acceso?',
             html: (desactivar
-                ? 'El usuario <strong>' + escaparHtmlUsuario(nombre) + '</strong> dejará de poder ingresar al sistema.'
+                ? 'El usuario <strong>' + escaparHtmlUsuario(nombre) + '</strong> cerrará su sesión activa y no podrá volver a ingresar al sistema.'
                 : 'El usuario <strong>' + escaparHtmlUsuario(nombre) + '</strong> podrá volver a ingresar al sistema.'),
             icon: 'warning',
             showCancelButton: true,
@@ -538,8 +538,8 @@
     // --- SISTEMA DE SUPLANTACIÓN (LOGIN AS) ---
     function suplantarUsuario(id, nombre) {
         Swal.fire({
-            title: '¿Supervisar a ' + nombre + '?',
-            text: "Ingresarás a su cuenta en modo 'Solo Lectura' para proteger los datos.",
+            title: '¿Ingresar como ' + nombre + '?',
+            text: "Se abrirá la sesión con el usuario y el rol reales de esta cuenta. Para volver a tu cuenta de Superadmin usa el botón Salir del banner.",
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#212529',

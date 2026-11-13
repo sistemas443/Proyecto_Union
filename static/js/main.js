@@ -447,3 +447,41 @@ function setupBotonesLotes() {
         }
     });
 }
+
+// ==================== FORMATO VISUAL DE MILES ====================
+
+window.limpiarMiles = function (valor) {
+    if (valor === null || valor === undefined) return '';
+    return String(valor).replace(/,/g, '').trim();
+};
+
+window.formatearMiles = function (valor, decimales) {
+    if (valor === null || valor === undefined) return '';
+    const limpio = window.limpiarMiles(valor);
+    if (limpio === '') return '';
+    const numero = Number(limpio);
+    if (!isFinite(numero)) return limpio;
+    const dec = (decimales === undefined || decimales === null) ? 0 : parseInt(decimales, 10);
+    return numero.toLocaleString('en-US', {
+        minimumFractionDigits: dec,
+        maximumFractionDigits: dec
+    });
+};
+
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('input[data-miles]').forEach(function (input) {
+        const decimales = parseInt(input.dataset.miles || '0', 10);
+
+        const formatear = function () {
+            if (input.value === '') return;
+            input.value = window.formatearMiles(input.value, decimales);
+        };
+
+        input.addEventListener('focus', function () {
+            input.value = window.limpiarMiles(input.value);
+        });
+        input.addEventListener('blur', formatear);
+
+        formatear();
+    });
+});

@@ -1,0 +1,288 @@
+{% extends 'generales/layout.html' %}
+
+{% block title %}Gestión Ambiental — Avícola San Martín{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ga.css') }}">
+{% endblock %}
+
+{% macro tarjeta(k) %}
+{% set ind = k.indicador %}
+<a class="ga-card is-{{ k.estado }}{{ ' is-current' if ind.id == kpi_foco.indicador.id }}"
+   href="{{ url_indicador(k) }}"
+   aria-label="{{ ind.nombre }}: {{ k.ultimo_txt }} {{ ind.unidad }}, {{ 'en norma' if k.estado == 'ok' else ('fuera de norma' if k.estado == 'alerta' else 'sin datos') }}">
+  <span class="ga-card-top">
+    <span class="ga-card-name">{{ ind.corto }}</span>
+    <span class="ga-dot is-{{ k.estado }}" aria-hidden="true"></span>
+  </span>
+  <span class="ga-card-value">{{ k.ultimo_txt }}<small>{{ ind.unidad }}</small></span>
+  {% if k.sparkline %}
+  <svg class="ga-spark" viewBox="0 0 104 30" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+    <polyline points="{{ k.sparkline }}"></polyline>
+  </svg>
+  {% endif %}
+  <span class="ga-card-foot">
+    <span>{{ k.fecha_txt }}</span>
+    {% if ind.criterio == 'informativo' %}
+    <span class="ga-card-pct">{{ k.n }} registros</span>
+    {% else %}
+    <span class="ga-card-pct">{{ k.porc_txt }} en norma</span>
+    {% endif %}
+  </span>
+</a>
+{% endmacro %}
+
+{% block content %}
+<div class="ga-page">
+
+  <header class="ga-head">
+    <div>
+      <h1 class="ga-title">Gestión Ambiental</h1>
+      <p class="ga-subtitle">
+        <span>{{ sedes[sede].nombre }}</span>
+        <span class="ga-dot-sep" aria-hidden="true"></span>
+        <span>{{ rango_texto }}</span>
+        {% if historico and historico[0] %}
+        <span class="ga-dot-sep" aria-hidden="true"></span>
+        <span>Serie desde {{ historico[0].day }} de {{ ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'][historico[0].month - 1] }} de {{ historico[0].year }}</span>
+        {% endif %}
+      </p>
+    </div>
+
+    <div class="ga-filters">
+      <div class="ga-segmented" role="group" aria-label="Sede">
+        {% for clave, info in sedes.items() %}
+          {% if info.activa %}
+          <a href="{{ url_vista(clave, grupo_slug, kpi_foco.indicador.id) }}"
+             class="{{ 'is-active' if clave == sede }}">{{ info.nombre }}</a>
+          {% else %}
+          <a class="is-disabled" aria-disabled="true" tabindex="-1" title="Disponible próximamente">{{ info.nombre }} <span class="ga-soon">Pronto</span></a>
+          {% endif %}
+        {% endfor %}
+      </div>
+
+      <form method="get" class="ga-filters"
+            action="{{ url_for('gestion_ambiental.tablero', sede=sede, grupo=grupo_slug, indicador=kpi_foco.indicador.id) }}">
+        <label class="visually-hidden" for="ga-rango">Rango de fechas</label>
+        <select id="ga-rango" name="r" class="ga-select" onchange="this.form.submit()">
+          {% for codigo, etiqueta in rangos.items() %}
+          <option value="{{ codigo }}"{{ ' selected' if rango == codigo }}>{{ etiqueta }}</option>
+          {% endfor %}
+        </select>
+        {% if rango == 'p' %}
+        <label class="visually-hidden" for="ga-desde">Desde</label>
+        <input id="ga-desde" type="date" name="d" class="ga-date" value="{{ desde_iso }}">
+        <label class="visually-hidden" for="ga-hasta">Hasta</label>
+        <input id="ga-hasta" type="date" name="h" class="ga-date" value="{{ hasta_iso }}">
+        <button type="submit" class="ga-btn">Aplicar</button>
+        {% endif %}
+      </form>
+
+      <button type="button" class="ga-btn" id="ga-export-xlsx">
+        <i class='bx bx-spreadsheet' aria-hidden="true"></i> Excel
+      </button>
+      <button type="button" class="ga-btn" id="ga-export-pdf">
+        <i class='bx bxs-file-pdf' aria-hidden="true"></i> PDF
+      </button>
+    </div>
+  </header>
+
+  {% if error %}
+  <div class="ga-alert" role="alert">
+    <strong>No se pudo cargar el tablero</strong>
+    <p>{{ error }}</p>
+  </div>
+  {% else %}
+
+  <section class="ga-status" aria-label="Estado general de los indicadores">
+    <div class="ga-status-top">
+      <div class="ga-status-figures">
+        <div class="ga-figure is-ok"><strong>{{ resumen.en_ok }}</strong><span>en norma</span></div>
+        <div class="ga-figure is-bad"><strong>{{ resumen.en_alerta }}</strong><span>fuera de norma</span></div>
+        <div class="ga-figure is-none"><strong>{{ resumen.sin_datos }}</strong><span>sin datos</span></div>
+        <div class="ga-figure"><strong>{{ resumen.total_registros }}</strong><span>registros</span></div>
+      </div>
+      <p class="ga-status-note">
+        {% if resumen.total_excluidos == 1 %}
+        1 registro descartado por los filtros de calidad.
+        {% elif resumen.total_excluidos %}
+        {{ resumen.total_excluidos }} registros descartados por los filtros de calidad.
+        {% else %}
+        Ningún registro descartado por los filtros de calidad.
+        {% endif %}
+      </p>
+    </div>
+
+    <ul class="ga-chips" aria-label="Estado de cada indicador">
+      {% for k in grupos_datos.diario + grupos_datos.laboratorio %}
+      <li>
+        <a class="ga-chip is-{{ k.estado }}{{ ' is-current' if k.indicador.id == kpi_foco.indicador.id }}"
+           href="{{ url_indicador(k) }}"
+           title="{{ k.indicador.nombre }}: {{ k.ultimo_txt }} {{ k.indicador.unidad }}">
+          <span class="ga-chip-dot is-{{ k.estado }}" aria-hidden="true"></span>
+          <span class="ga-chip-name">{{ k.indicador.corto }}</span>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <nav class="ga-tabs" aria-label="Grupos de indicadores">
+    <a class="ga-tab{{ ' is-active' if grupo_actual == 'resumen' }}"
+       href="{{ url_vista(sede, 'todo', kpi_foco.indicador.id) }}">
+      Resumen <span class="ga-tab-count">{{ resumen.total_indicadores }}</span>
+    </a>
+    <a class="ga-tab{{ ' is-active' if grupo_actual == 'diario' }}"
+       href="{{ url_vista(sede, 'diario', kpi_foco.indicador.id) }}">
+      Mediciones diarias <span class="ga-tab-count">{{ grupos_datos.diario|length }}</span>
+    </a>
+    <a class="ga-tab{{ ' is-active' if grupo_actual == 'laboratorio' }}"
+       href="{{ url_vista(sede, 'lab', kpi_foco.indicador.id) }}">
+      Laboratorio <span class="ga-tab-count">{{ grupos_datos.laboratorio|length }}</span>
+    </a>
+  </nav>
+
+  <section class="ga-focus" aria-label="Indicador seleccionado">
+    <div class="ga-focus-main">
+      <div class="ga-focus-head">
+        <h2 class="ga-focus-title">{{ kpi_foco.indicador.nombre }}</h2>
+        <div class="ga-focus-tools">
+          {% if kpi_foco.indicador.criterio != 'informativo' %}
+          <span class="ga-focus-limit">Límite: {{ kpi_foco.limite }}</span>
+          {% endif %}
+          <button type="button" class="ga-btn ga-btn-sm" id="ga-fullscreen" aria-pressed="false">
+            <i class='bx bx-expand-alt' aria-hidden="true"></i>
+            <span class="ga-fullscreen-text">Pantalla completa</span>
+          </button>
+        </div>
+      </div>
+      <p class="ga-focus-meta">
+        Eje X: {% if grafico %}{{ grafico.eje_x|lower }}{% else %}fecha{% endif %}
+        {% if grafico and grafico.dimension %}
+        <span class="ga-dot-sep" aria-hidden="true"></span> Desglose: {{ grafico.dimension }}
+        {% endif %}
+        {% if grafico %}
+        <span class="ga-dot-sep" aria-hidden="true"></span> Eje Y: {{ grafico.eje_y }}
+        {% endif %}
+      </p>
+      {% if grafico and grafico.opcionales %}
+      <div class="ga-optional" role="group" aria-label="Métricas opcionales">
+        <span class="ga-optional-label">Métricas opcionales</span>
+        {% for op in grafico.opcionales %}
+        <label class="ga-check">
+          <input type="checkbox" data-serie-opcional="{{ loop.index0 }}">
+          <span>{{ op.nombre }}</span>
+        </label>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% if kpi_foco.n %}
+      <div class="ga-chart-box">
+        <canvas id="ga-chart" role="img"
+                aria-label="Serie mensual de {{ kpi_foco.indicador.nombre }} con {{ kpi_foco.n }} registros"></canvas>
+      </div>
+      <p class="ga-chart-note" id="ga-chart-note"></p>
+      {% else %}
+      <div class="ga-empty">Este indicador no tiene registros en el rango seleccionado.</div>
+      {% endif %}
+    </div>
+
+    <aside class="ga-focus-side" aria-label="Cifras del indicador">
+      <div class="ga-metric is-{{ kpi_foco.estado }}">
+        <span class="ga-metric-label">Último valor</span>
+        <span class="ga-metric-value">{{ kpi_foco.ultimo_txt }}<small>{{ kpi_foco.indicador.unidad }}</small></span>
+        <span class="ga-metric-note">{{ kpi_foco.fecha_txt }}</span>
+      </div>
+      <div class="ga-metric">
+        <span class="ga-metric-label">Promedio histórico</span>
+        <span class="ga-metric-value">{{ kpi_foco.promedio_txt }}<small>{{ kpi_foco.indicador.unidad }}</small></span>
+        <span class="ga-metric-note">{{ kpi_foco.n }} registros válidos</span>
+      </div>
+      <div class="ga-metric">
+        <span class="ga-metric-label">Rango observado</span>
+        <span class="ga-metric-value">{{ kpi_foco.minimo_txt }} – {{ kpi_foco.maximo_txt }}</span>
+        <span class="ga-metric-note">{{ kpi_foco.indicador.unidad }}</span>
+      </div>
+      {% if kpi_foco.indicador.criterio != 'informativo' %}
+      <div class="ga-metric is-{{ 'ok' if kpi_foco.porc_cumplimiento and kpi_foco.porc_cumplimiento >= 80 else 'alerta' }}">
+        <span class="ga-metric-label">Registros en norma</span>
+        <span class="ga-metric-value">{{ kpi_foco.porc_txt }}</span>
+        <span class="ga-metric-note">{{ kpi_foco.cumplen }} de {{ kpi_foco.n }}{% if kpi_foco.excluidos %} · {{ kpi_foco.excluidos }} descartados{% endif %}</span>
+      </div>
+      {% endif %}
+    </aside>
+  </section>
+
+  {% if grupo_actual == 'resumen' %}
+    {% for clave in ['diario', 'laboratorio'] %}
+    <section class="ga-group">
+      <div class="ga-group-head">
+        <h2>{{ grupos[clave].nombre }}</h2>
+        <p>{{ grupos[clave].descripcion }}</p>
+      </div>
+      <div class="ga-cards">
+        {% for k in grupos_datos[clave] %}
+          {{ tarjeta(k) }}
+        {% endfor %}
+      </div>
+    </section>
+    {% endfor %}
+  {% else %}
+    <section class="ga-group">
+      <div class="ga-group-head">
+        <h2>{{ grupos[grupo_actual].nombre }}</h2>
+        <p>{{ grupos[grupo_actual].descripcion }}</p>
+      </div>
+      <div class="ga-cards">
+        {% for k in grupos_datos[grupo_actual] %}
+          {{ tarjeta(k) }}
+        {% else %}
+        <p class="ga-empty">No hay indicadores en este grupo.</p>
+        {% endfor %}
+      </div>
+    </section>
+  {% endif %}
+
+  {% if registros %}
+  <details class="ga-records">
+    <summary>Registros de {{ kpi_foco.indicador.nombre }} ({{ registros|length }})</summary>
+    <div class="ga-table-wrap">
+      <table class="ga-table">
+        <thead>
+          <tr>
+            <th scope="col">Fecha</th>
+            {% if kpi_foco.indicador.col_tipo %}<th scope="col">Tipo de agua</th>{% endif %}
+            <th scope="col">Valor real</th>
+            <th scope="col">Unidad</th>
+            <th scope="col">Norma</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for fila in registros %}
+          <tr>
+            <td>{{ fila.fecha }}</td>
+            {% if kpi_foco.indicador.col_tipo %}<td>{{ fila.tipo }}</td>{% endif %}
+            <td class="ga-num">{{ fila.valor }}</td>
+            <td>{{ kpi_foco.indicador.unidad }}</td>
+            <td>{{ 'Cumple' if fila.cumple else 'No cumple' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </details>
+  {% endif %}
+
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if not error %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<script id="ga-chart-data" type="application/json">{{ grafico|tojson }}</script>
+<script id="ga-export-data" type="application/json">{{ export_data|tojson }}</script>
+<script src="{{ url_for('static', filename='js/ga.js') }}"></script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,92 @@
+/* Selección de celdas tipo Excel: recuento, suma y promedio */
+
+/* Resaltado del rectángulo seleccionado en la tabla */
+.tabla-scroll.seleccion-activa,
+.tabla-scroll.seleccion-activa * {
+  user-select: none !important;
+  cursor: cell;
+}
+
+td.celda-seleccionada,
+td.celda-seleccionada input {
+  background-color: rgba(44, 62, 80, 0.18) !important;
+}
+
+/* La fecha de cada día que queda dentro del rango, para ver qué días se incluyen */
+td.celda-fecha-seleccionada,
+td.celda-fecha-seleccionada input {
+  background-color: rgba(44, 62, 80, 0.08) !important;
+  font-weight: 700 !important;
+}
+
+/* Bloque de resultados al extremo derecho de la línea "Información del lote" */
+.ps-seleccion {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  scrollbar-width: thin;
+  color: var(--text-primary);
+}
+
+.ps-seleccion-datos {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.ps-seleccion-grupo {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: 0.72rem;
+}
+
+.ps-seleccion-columna {
+  font-weight: 700;
+  color: var(--action-primary);
+}
+
+.ps-seleccion-dato {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  padding-left: 0.5rem;
+  border-left: 1px solid var(--border);
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.ps-seleccion-etiqueta {
+  font-size: 0.63rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-muted);
+}
+
+.ps-seleccion-valor {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.ps-seleccion-rango {
+  font-size: 0.64rem;
+  letter-spacing: 0.3px;
+}
+
+.ps-seleccion-btn {
+  padding: 0.1rem 0.45rem;
+  font-size: 0.68rem;
+  line-height: 1.5;
+}
+
+.ps-seleccion-btn.ps-seleccion-ok {
+  background-color: var(--success) !important;
+  border-color: var(--success) !important;
+  color: #ffffff !important;
+}

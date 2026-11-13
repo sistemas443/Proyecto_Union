@@ -171,6 +171,7 @@ def delete_lote(id_lote):
         print(f"🗑️ [BORRADO PROFUNDO] Iniciando eliminación total del lote: {lote_nombre}")
 
         # 2. Destruimos los registros en TODAS las tablas secundarias (Cascada manual)
+        cur.execute("DELETE FROM primera_semana_dia2 WHERE id_lote = %s", (id_lote,))
         cur.execute("DELETE FROM primera_semana WHERE id_lote = %s", (id_lote,))
         cur.execute("DELETE FROM data_diario WHERE id_lote = %s OR lote = %s", (id_lote, lote_nombre))
         cur.execute("DELETE FROM bd_vargas WHERE id_lote = %s", (id_lote,))
