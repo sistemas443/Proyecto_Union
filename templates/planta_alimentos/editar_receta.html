@@ -214,29 +214,28 @@
         <div class="d-flex gap-2 flex-wrap align-items-center">
             <div class="d-flex align-items-center gap-2">
                 <label class="form-label-design mb-0" for="selectLote">Lote</label>
-                <select id="selectLote" class="form-select form-select-sm" style="min-width: 230px;"
-                    onchange="window.location.href=this.value">
-                    <option value="" {% if lote_id=='0' %}selected{% endif %} disabled>Seleccione un lote...</option>
-
-                    {% if not lotes %}
-                    <option value="" disabled>No se encontraron lotes</option>
-                    {% else %}
-                    {% for lote in lotes %}
-                    {% if lote is mapping %}
-                    <option
-                        value="{{ url_for('planta_alimentos.editar_receta', item_id=item_id, lote_id=lote.get('lote', '')) }}"
-                        {% if lote_id==lote.get('lote', '' )|string %}selected{% endif %}>
-                        {% if 'LOTE' not in lote.get('lote', '')|upper %}LOTE {% endif %}{{ lote.get('lote', '') }}
-                    </option>
-                    {% else %}
-                    <option value="{{ url_for('planta_alimentos.editar_receta', item_id=item_id, lote_id=lote) }}" {% if
-                        lote_id==lote|string %}selected{% endif %}>
-                        {% if 'LOTE' not in lote|upper %}LOTE {% endif %}{{ lote }}
-                    </option>
-                    {% endif %}
-                    {% endfor %}
-                    {% endif %}
-                </select>
+                <div class="lote-picker">
+                    <select id="selectLote" class="form-select form-select-sm" style="min-width: 230px;"
+                        data-lote-picker
+                        onchange="if (this.value) { window.location.href = this.value; }">
+                        <option value="">-- Seleccione --</option>
+                        {% for grupo in lotes_agrupados %}
+                        <optgroup label="{{ grupo.titulo }} ({{ grupo.lotes|length }})">
+                            {% for l in grupo.lotes %}
+                            <option
+                                value="{{ url_for('planta_alimentos.editar_receta', item_id=item_id, lote_id=l.nombre) }}"
+                                data-estado="{{ grupo.estado }}"
+                                data-prefijo="{{ grupo.prefijo }}"
+                                data-fecha="{{ l.fecha }}"
+                                data-variedad="{{ l.variedad }}"
+                                {% if lote_id == l.nombre|string %}selected{% endif %}>
+                                LOTE {{ l.nombre }}
+                            </option>
+                            {% endfor %}
+                        </optgroup>
+                        {% endfor %}
+                    </select>
+                </div>
             </div>
             {% if lote_id != '0' and session.get('user_rol') != 'Lector' %}
             <button type="button" class="btn btn-outline-secondary btn-sm"

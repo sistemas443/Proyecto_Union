@@ -3,7 +3,7 @@ import psycopg2.extras
 from flask import render_template, request, redirect, url_for, flash, jsonify, session
 from routes.planta_alimentos.catalogo_a import planta_bp
 from routes.routes import login_requerido
-from models.lotes.services import get_lotes_distintos
+from models.lotes.services import get_lotes_distintos, get_lotes_agrupados
 from models.planta_alimentos.maestros import MateriaPrima, CatalogoAlimento, Empresa
 from models.planta_alimentos.transacciones import RegistroProduccion
 from models.base import get_db_connection, traducir_error
@@ -344,6 +344,7 @@ def editar_receta(item_id, lote_id):
     # 0. CONSULTAS BASE
     # ==========================================
     lotes = get_lotes_distintos()
+    lotes_agrupados = get_lotes_agrupados(session.get('user_rol'))
     materias_primas = MateriaPrima.get_all()
 
     empresas = []
@@ -521,6 +522,7 @@ def editar_receta(item_id, lote_id):
         item_id=item_id,
         nombre_dieta=nombre_dieta,
         empresa_nombre=empresa_nombre,
+        lotes_agrupados=lotes_agrupados,
         lote_id=lote_id,
         version_actual=version_actual,
         lista_versiones=lista_versiones,
