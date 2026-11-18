@@ -167,6 +167,26 @@
     background-color: #fdecee;
     border-color: #f5c2c7;
   }
+
+  .badge-empresa {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    margin-left: .5rem;
+    padding: .12rem .55rem;
+    border: 1px solid var(--action-primary, #1f3b5c);
+    border-radius: 999px;
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--action-primary, #1f3b5c);
+    vertical-align: middle;
+  }
+  html[data-bs-theme="dark"] .badge-empresa {
+    border-color: #6ea8d8;
+    color: #9cc6e8;
+  }
 </style>
 {% endblock %}
 
@@ -180,6 +200,11 @@
             <div>
                 <h2 class="page-title mb-0">
                     {% if nombre_dieta %}{{ nombre_dieta }}{% else %}Formulación de dieta{% endif %}
+                    {% if empresa_nombre %}
+                    <span class="badge-empresa" title="Empresa a la que se le fabrica la dieta">
+                        <i class="fas fa-building"></i> {{ empresa_nombre }}
+                    </span>
+                    {% endif %}
                 </h2>
                 <p class="page-subtitle mb-0">
                     Ítem {{ item_id }}{% if lote_id == '0' %} · Selecciona un lote para cargar la formulación{% else %} · Lote {{ lote_id }} · Versión {{ version_actual }}{% endif %}
@@ -1332,7 +1357,7 @@
             const sub = filasPie[0].querySelectorAll('td');
             const tot = filasPie[1].querySelectorAll('td');
             if (sub[1]) sub[1].textContent = base.toLocaleString('en-US', { maximumFractionDigits: 0 });
-            if (tot[3]) tot[3].textContent = total.toLocaleString('en-US', { maximumFractionDigits: 0 });
+            if (tot[1]) tot[1].textContent = total.toLocaleString('en-US', { maximumFractionDigits: 0 });
         } else {
             const tds = filasPie[0].querySelectorAll('td');
             if (tds[1]) tds[1].textContent = base.toLocaleString('en-US', { maximumFractionDigits: 0 });

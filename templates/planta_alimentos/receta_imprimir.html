@@ -52,6 +52,19 @@
   .banda .doc h1{ margin:0; font-size:13pt; letter-spacing:.08em; font-weight:800; }
   .banda .doc span{ font-size:7.6pt; color:#a9c4de; letter-spacing:.04em; }
 
+  /* ---------- empresa cliente ---------- */
+  .cliente{
+    display:flex; align-items:baseline; gap:10px;
+    margin-top:9px; padding:7px 12px;
+    background:#f2f6fa; border:1px solid var(--line); border-left:5px solid var(--navy);
+    border-radius:0 6px 6px 0;
+  }
+  .cliente .k{
+    font-size:6.8pt; text-transform:uppercase; letter-spacing:.12em;
+    color:var(--muted); font-weight:800;
+  }
+  .cliente .v{ font-size:12pt; font-weight:800; color:var(--navy); letter-spacing:.01em; }
+
   /* ---------- metadatos ---------- */
   .meta{
     display:grid; grid-template-columns:1.5fr .55fr .65fr .55fr;
@@ -151,6 +164,13 @@
     </div>
   </div>
 
+  {% if empresa_nombre %}
+  <div class="cliente">
+    <span class="k">Empresa</span>
+    <span class="v">{{ empresa_nombre }}</span>
+  </div>
+  {% endif %}
+
   <div class="meta">
     <div>
       <span class="k">Dieta</span>
@@ -225,9 +245,8 @@
         <thead>
           <tr>
             <th>Insumo</th>
-            <th style="width:22%">kg / bache</th>
-            <th style="width:12%">Baches</th>
-            <th style="width:24%">Total kg</th>
+            <th style="width:30%">kg / bache</th>
+            <th style="width:16%">Baches</th>
           </tr>
         </thead>
         <tbody>
@@ -244,10 +263,9 @@
             <td class="{% if es_sal %}sal{% endif %}">{{ i['insumo'] }}</td>
             <td class="num">{{ "{:,.2f}".format(kg) }}</td>
             <td class="num">{{ "%g"|format(baches) }}</td>
-            <td class="num">{{ "{:,.2f}".format(total) }}</td>
           </tr>
           {% else %}
-          <tr><td colspan="4">Esta dieta no tiene insumos marcados como núcleo.</td></tr>
+          <tr><td colspan="3">Esta dieta no tiene insumos marcados como núcleo.</td></tr>
           {% endfor %}
         </tbody>
         <tfoot>
@@ -255,13 +273,10 @@
             <td>Total premezcla</td>
             <td class="num">{{ "{:,.3f}".format(tot_base.v) }}</td>
             <td></td>
-            <td></td>
           </tr>
           <tr class="f-tot">
             <td>Total núcleo</td>
-            <td></td>
-            <td></td>
-            <td class="num">{{ "{:,.3f}".format(tot_nucleo.v) }}</td>
+            <td class="num" colspan="2">{{ "{:,.3f}".format(tot_nucleo.v) }}</td>
           </tr>
         </tfoot>
       </table>

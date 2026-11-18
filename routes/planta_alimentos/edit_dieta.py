@@ -348,6 +348,7 @@ def editar_receta(item_id, lote_id):
 
     empresas = []
     nombre_dieta = None
+    empresa_nombre = None
     try:
         conn = get_db_connection()
         with conn.cursor() as cur:
@@ -359,6 +360,18 @@ def editar_receta(item_id, lote_id):
             fila_dieta = cur.fetchone()
             if fila_dieta and fila_dieta[0]:
                 nombre_dieta = str(fila_dieta[0]).strip()
+
+            # Empresa a la que pertenece el lote (cliente de la dieta)
+            cur.execute("""
+                SELECT e.nombre
+                FROM cabecera_lotes c
+                JOIN empresas e ON e.id = c.empresa_id
+                WHERE c.lote = %s
+                LIMIT 1
+            """, (lote_id,))
+            fila_empresa = cur.fetchone()
+            if fila_empresa and fila_empresa[0]:
+                empresa_nombre = str(fila_empresa[0]).strip()
         conn.close()
     except Exception as e:
         print(f"Error al cargar empresas: {e}")
@@ -491,6 +504,7 @@ def editar_receta(item_id, lote_id):
     if request.args.get('imprimir') == '1':
         return render_template(
             'planta_alimentos/receta_imprimir.html',
+            empresa_nombre=empresa_nombre,
             nombre_dieta=nombre_dieta,
             item_id=item_id,
             lote_id=lote_id,
@@ -506,6 +520,7 @@ def editar_receta(item_id, lote_id):
         'planta_alimentos/editar_receta.html',
         item_id=item_id,
         nombre_dieta=nombre_dieta,
+        empresa_nombre=empresa_nombre,
         lote_id=lote_id,
         version_actual=version_actual,
         lista_versiones=lista_versiones,
