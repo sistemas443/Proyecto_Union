@@ -19,6 +19,7 @@ MESES = [
 CAMPOS_NUMERICOS = {
     'produccion': 'int',
     'alimento': 'dec',
+    'muertas': 'int',
     'mort_m1': 'int',
     'mort_m2': 'int',
     'mort_m3': 'int',
@@ -29,6 +30,7 @@ CAMPOS_NUMERICOS = {
 }
 
 CAMPOS_TEXTO = (
+    'proceso',
     'otras_motivo',
     'entrada_tipo',
     'entrada_producto',
@@ -118,12 +120,11 @@ def _filas_del_mes(id_lote, anio, mes):
     try:
         cur.execute(
             """
-            SELECT id, fecha, produccion, alimento,
+            SELECT id, fecha, produccion, alimento, muertas,
                    mort_m1, mort_m2, mort_m3, mort_m4, mort_total,
-                   otras, otras_motivo, afecta_saldo, saldo_aves,
+                   otras, otras_motivo, proceso, afecta_saldo, saldo_aves,
                    agua, silo,
                    entrada_tipo, entrada_producto, desinfeccion, desinfeccion_producto,
-                   modulo_entrada,
                    gallinaza, cierra_silo, observaciones, registrado_por
             FROM reporte_diario
             WHERE id_lote = %s
@@ -169,7 +170,7 @@ def listar_mes(id_lote, anio, mes, saldo_apertura=0):
         datos = registros.get(fecha)
 
         if datos:
-            muertes = int(datos.get('mort_total') or 0)
+            muertes = int(datos.get('muertas') or 0)
             otras = int(datos.get('otras') or 0)
             descuenta = datos.get('afecta_saldo', True)
             saldo = saldo - muertes - (otras if descuenta else 0)
@@ -203,10 +204,7 @@ def guardar_campo(id_lote, lote, fecha, campo, valor):
     Solo acepta los campos de la lista blanca; el nombre de la columna nunca
     llega a la consulta sin haber sido validado.
     """
-    if campo == 'modulo_entrada':
-        texto = str(valor).strip() if valor is not None else ''
-        valor_db = int(texto) if texto.isdigit() and 1 <= int(texto) <= 4 else None
-    elif campo in CAMPOS_NUMERICOS:
+    if campo in CAMPOS_NUMERICOS:
         tipo = CAMPOS_NUMERICOS[campo]
         limpio = re.sub(r'[^0-9.\-]', '', str(valor if valor is not None else '') or '')
         if limpio in ('', '-', '.', '-.'):
@@ -258,6 +256,85 @@ def mort_total_de(id_lote, fecha):
     except Exception as e:
         print(f"[REPORTE DIARIO] No se pudo leer el total: {e}")
         return 0
+    finally:
+        cur.close()
+        conn.close()
+
+
+def modulos_entrada(id_lote):
+    """Módulos junto a los que está la puerta/entrada del galpón (1-4)."""
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            "SELECT modulos_entrada FROM reporte_diario_config WHERE id_lote = %s",
+            (id_lote,),
+        )
+        fila = cur.fetchone()
+        if not fila or not fila[0]:
+            return []
+        return [int(x) for x in str(fila[0]).split(',') if str(x).strip().isdigit()]
+    except Exception as e:
+        print(f"[REPORTE DIARIO] No se pudo leer la configuración: {e}")
+        return []
+    finally:
+        cur.close()
+        conn.close()
+
+
+def guardar_modulos_entrada(id_lote, modulos):
+    """Guarda el módulo donde está la puerta del galpón (solo uno)."""
+    limpios = sorted({
+        int(m) for m in modulos
+        if str(m).strip().isdigit() and 1 <= int(m) <= 4
+    })
+    texto = str(limpios[0]) if limpios else ''
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """
+            INSERT INTO reporte_diario_config (id_lote, modulos_entrada)
+            VALUES (%s, %s)
+            ON CONFLICT (id_lote)
+            DO UPDATE SET modulos_entrada = EXCLUDED.modulos_entrada,
+                          actualizado_en = now()
+            """,
+            (id_lote, texto),
+        )
+        conn.commit()
+    finally:
+        cur.close()
+        conn.close()
+
+    return [int(texto)] if texto else []
+
+
+def aplicar_modulos_entrada_a_todos(modulos):
+    """Aplica el mismo módulo de entrada a todos los lotes existentes."""
+    limpios = sorted({
+        int(m) for m in modulos
+        if str(m).strip().isdigit() and 1 <= int(m) <= 4
+    })
+    texto = str(limpios[0]) if limpios else ''
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """
+            INSERT INTO reporte_diario_config (id_lote, modulos_entrada)
+            SELECT id, %s FROM cabecera_lotes
+            ON CONFLICT (id_lote)
+            DO UPDATE SET modulos_entrada = EXCLUDED.modulos_entrada,
+                          actualizado_en = now()
+            """,
+            (texto,),
+        )
+        total = cur.rowcount
+        conn.commit()
+        return total
     finally:
         cur.close()
         conn.close()

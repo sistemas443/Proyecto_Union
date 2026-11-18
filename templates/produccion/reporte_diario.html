@@ -7,12 +7,21 @@
 
 {% block content %}
 <style>
+  :root{
+    --rd-door:#0f766e;
+    --rd-door-soft:rgba(15,118,110,.14);
+  }
+  html[data-bs-theme="dark"]{
+    --rd-door:#0b4f48;
+    --rd-door-soft:rgba(45,212,191,.10);
+  }
   .rd-card{
     --rd-border:#dfe4ec; --rd-head:#1f3b5c; --rd-head-text:#ffffff;
     --rd-row:#ffffff; --rd-row-alt:#f7f9fc; --rd-vacia:#f4f6f9;
     --rd-hoy:#fff4d6;
     --rd-total-bg:#eef3f9; --rd-muted:#8b97a5; --rd-text:#1f2937;
     --rd-focus:#ffffff;
+    --rd-door:#0f766e; --rd-door-soft:rgba(15,118,110,.14);
     background:var(--rd-row); border:1px solid var(--rd-border); border-radius:12px;
     overflow:hidden;
   }
@@ -22,6 +31,7 @@
     --rd-hoy:#332b1a;
     --rd-total-bg:#242b34; --rd-muted:#8b97a5; --rd-text:#e8edf3;
     --rd-focus:#2b333d;
+    --rd-door:#0b4f48; --rd-door-soft:rgba(45,212,191,.10);
   }
   .rd-scroll{ overflow-x:auto; }
   .rd-tabla{
@@ -31,8 +41,8 @@
   .rd-tabla thead th{
     position:sticky; top:0; z-index:3;
     background:var(--rd-head); color:var(--rd-head-text);
-    font-size:.64rem; font-weight:700; letter-spacing:.04em; text-transform:uppercase;
-    padding:.5rem .35rem; text-align:center; white-space:nowrap;
+    font-size:.74rem; font-weight:700; letter-spacing:.03em; text-transform:uppercase;
+    padding:.55rem .4rem; text-align:center; white-space:nowrap;
     border-bottom:1px solid var(--rd-border);
   }
   .rd-tabla thead th.rd-sep{ border-left:1px solid rgba(255,255,255,.18); }
@@ -55,7 +65,6 @@
   }
   html[data-bs-theme="dark"] .rd-hoy-tag{ color:#f0c26b; }
 
-  /* celdas editables */
   .rd-in, .rd-sel{
     width:100%; min-width:52px; border:1px solid transparent; background:transparent;
     color:inherit; font:inherit; font-size:.78rem; font-weight:600;
@@ -83,25 +92,46 @@
   .rd-in:disabled{
     background:transparent; color:var(--rd-muted); cursor:not-allowed; opacity:.4;
   }
+  /* aviso: los módulos no suman lo mismo que "muertas" */
+  .rd-in.rd-dif{
+    background:#fdf3d8; border-color:#e0b44a; color:#8a5a00;
+  }
+  html[data-bs-theme="dark"] .rd-in.rd-dif{
+    background:#332b1a; border-color:#c9a24a; color:#f0c26b;
+  }
+
   .rd-tabla.rd-sin-prod .col-prod{ display:none; }
 
-  .rd-mod{ display:flex; align-items:center; gap:2px; }
-  .rd-mod .rd-in{ flex:1 1 auto; }
-  .rd-e{
-    flex:0 0 auto; width:17px; height:17px; padding:0; border-radius:4px;
-    border:1px solid var(--rd-border); background:transparent; color:var(--rd-muted);
-    font-size:.55rem; font-weight:800; line-height:1; cursor:pointer;
+  /* --- Entrada del galpón --- */
+  .rd-config{ display:flex; align-items:center; gap:.45rem; flex-wrap:wrap; margin-bottom:.65rem; }
+  .rd-config-label{
+    font-size:.72rem; font-weight:800; letter-spacing:.05em; text-transform:uppercase;
+    color:var(--rd-muted); display:flex; align-items:center; gap:.35rem;
   }
-  .rd-e:hover{ border-color:#1f3b5c; color:#1f3b5c; }
-  .rd-e.activo{
-    background:#1f4e79; border-color:#1f4e79; color:#fff;
+  .rd-tog{
+    border:1px solid var(--rd-border); background:var(--rd-row); color:var(--rd-text);
+    font-size:.72rem; font-weight:800; padding:.18rem .6rem; border-radius:999px; cursor:pointer;
+    transition:all .15s ease;
   }
-  html[data-bs-theme="dark"] .rd-e.activo{ background:#4d8ec4; border-color:#4d8ec4; color:#10222f; }
+  .rd-tog:hover{ border-color:var(--rd-door); color:var(--rd-door); }
+  .rd-tog.activo{ background:var(--rd-door); border-color:var(--rd-door); color:#fff; }
+  html[data-bs-theme="dark"] .rd-tog.activo{ background:#2dd4bf; border-color:#2dd4bf; color:#04211d; }
+  .rd-config-hint{ font-size:.7rem; color:var(--rd-muted); }
+  .rd-tog-aplicar{
+    border:1px dashed var(--rd-border); background:transparent; color:var(--rd-muted);
+    font-size:.7rem; font-weight:700; padding:.18rem .6rem; border-radius:999px; cursor:pointer;
+  }
+  .rd-tog-aplicar:hover{ border-color:var(--rd-door); color:var(--rd-door); border-style:solid; }
 
-  .rd-tabla td.rd-total{ font-weight:800; color:#8a5a00; text-align:right; padding-right:.45rem; }
-  html[data-bs-theme="dark"] .rd-tabla td.rd-total{ color:#f0c26b; }
+  .rd-tabla th.rd-col-entrada{ background:var(--rd-door) !important; }
+  .rd-tabla tbody tr td.rd-col-entrada{ background:var(--rd-door-soft) !important; }
+  .rd-tabla tfoot td.rd-col-entrada{ background:var(--rd-door-soft) !important; }
+  .rd-door{
+    display:block; font-size:.58rem; font-weight:800; letter-spacing:.04em;
+    text-transform:uppercase; opacity:.95; margin-top:1px;
+  }
+
   .rd-tabla td.rd-saldo{ font-weight:700; text-align:right; padding-right:.45rem; }
-  .rd-tabla td.rd-fecha small{ color:var(--rd-muted); }
 
   .rd-tabla tfoot td{
     padding:.5rem .35rem; text-align:right; font-weight:800; font-size:.78rem;
@@ -109,6 +139,39 @@
     white-space:nowrap;
   }
   .rd-tabla tfoot td.rd-fecha{ text-align:center; font-size:.68rem; letter-spacing:.05em; }
+
+  /* --- Leyenda de procesos --- */
+  .rd-leyenda-wrap{ position:relative; height:104px; margin-bottom:.35rem; }
+  .rd-leyenda{
+    position:absolute; top:0; left:0;
+    border-collapse:collapse; font-size:.72rem;
+    box-shadow:0 2px 8px rgba(15,23,42,.10); border-radius:6px; overflow:hidden;
+  }
+  .rd-leyenda::after{
+    content:''; position:absolute; left:50%; bottom:-7px; transform:translateX(-50%);
+    border-left:7px solid transparent; border-right:7px solid transparent;
+    border-top:7px solid var(--rd-border);
+  }  .rd-leyenda th{
+    background:var(--rd-head); color:var(--rd-head-text);
+    font-size:.64rem; font-weight:700; letter-spacing:.05em; text-transform:uppercase;
+    padding:.28rem .7rem; border:1px solid var(--rd-border); text-align:left;
+  }
+  .rd-leyenda td{
+    border:1px solid var(--rd-border); padding:.22rem .7rem;
+    font-weight:700; color:var(--rd-text);
+  }
+  .rd-sw{ display:block; width:56px; height:14px; border-radius:3px; border:1px solid rgba(0,0,0,.12); }
+
+  .p-med{ background:#35c6ea; }
+  .p-fmed{ background:#ffe600; }
+  .p-iny{ background:#e8b8b8; }
+
+  .rd-tabla td.rd-proc-celda{ padding:.1rem .15rem; }
+  .rd-tabla td.rd-proc-celda.p-med{ background:#35c6ea !important; }
+  .rd-tabla td.rd-proc-celda.p-fmed{ background:#ffe600 !important; }
+  .rd-tabla td.rd-proc-celda.p-iny{ background:#e8b8b8 !important; }
+  .rd-tabla td.rd-proc-celda .rd-sel{ color:#1f2937; font-weight:700; min-width:140px; }
+  .rd-tabla td.rd-proc-celda .rd-sel option{ background:#fff; color:#1f2937; }
 
   .rd-kpis{ display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:.7rem; margin-bottom:1rem; }
   .rd-kpi{
@@ -212,6 +275,32 @@
   </div>
 </div>
 
+<div class="rd-config">
+  <span class="rd-config-label"><i class="fas fa-door-open"></i> Entrada del galpón</span>
+  {% for m in [1, 2, 3, 4] %}
+  <button type="button" class="rd-tog{% if m in mods_entrada %} activo{% endif %}"
+          data-modulo="{{ m }}" title="Módulo {{ m }}">M{{ m }}</button>
+  {% endfor %}
+  <button type="button" class="rd-tog-aplicar" id="btnAplicarTodos"
+          title="Aplicar este módulo como entrada a todos los lotes">
+    <i class="fas fa-copy"></i> Aplicar a todos
+  </button>
+  <span class="rd-config-hint">Solo un módulo puede ser la entrada. Marca el de este galpón.</span>
+</div>
+
+<div class="rd-leyenda-wrap" id="leyendaWrap">
+  <table class="rd-leyenda" id="leyendaProc">
+    <thead>
+      <tr><th>Color</th><th>Proceso</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><span class="rd-sw p-med"></span></td><td>I. MEDICACION</td></tr>
+      <tr><td><span class="rd-sw p-fmed"></span></td><td>F. MEDICACION</td></tr>
+      <tr><td><span class="rd-sw p-iny"></span></td><td>INYECCION</td></tr>
+    </tbody>
+  </table>
+</div>
+
 <div class="rd-card">
   <div class="rd-scroll">
     <table class="rd-tabla{% if not hay_desinfeccion %} rd-sin-prod{% endif %}" id="tablaRD">
@@ -220,23 +309,27 @@
           <th class="rd-fecha" rowspan="2">Fecha</th>
           <th rowspan="2">Producción</th>
           <th rowspan="2">Alimento</th>
-          <th class="rd-sep" colspan="4">Mortalidad por módulo</th>
-          <th class="rd-sep" rowspan="2">Total</th>
-          <th rowspan="2">Otras</th>
-          <th rowspan="2">Motivo</th>
+          <th class="rd-sep" rowspan="2">Muertas</th>
+          <th rowspan="2">Otros</th>
           <th class="rd-sep" rowspan="2">Saldo aves</th>
           <th class="rd-sep" rowspan="2">Agua</th>
           <th rowspan="2">Silo</th>
-          <th class="rd-sep" rowspan="2">Desinf.</th>
+          <th class="rd-sep" colspan="4">Mortalidad por módulo</th>
+          <th class="rd-sep rd-th-proceso" rowspan="2">Proceso</th>
+          <th rowspan="2">Desinf.</th>
           <th class="col-prod" rowspan="2">Producto desinf.</th>
           <th rowspan="2">Gallinaza</th>
           <th rowspan="2">Cierra silo</th>
         </tr>
         <tr>
-          <th class="rd-sep">M1</th>
-          <th>M2</th>
-          <th>M3</th>
-          <th>M4</th>
+          {% for m in [1, 2, 3, 4] %}
+          <th class="{% if m == 1 %}rd-sep {% endif %}{% if m in mods_entrada %}rd-col-entrada{% endif %}" data-mod="{{ m }}">
+            M{{ m }}
+            {% if m in mods_entrada %}
+            <span class="rd-door"><i class="fas fa-door-open"></i> Entrada</span>
+            {% endif %}
+          </th>
+          {% endfor %}
         </tr>
       </thead>
       <tbody>
@@ -253,28 +346,11 @@
           <td><input class="rd-in" data-tipo="dec" data-fecha="{{ fila.fecha }}" data-campo="alimento"
                      inputmode="decimal" placeholder="0" value="{{ val(d, 'alimento') }}"></td>
 
-          {% for m in [1, 2, 3, 4] %}
-          <td{% if m == 1 %} class="rd-sep"{% endif %}>
-            <div class="rd-mod">
-              <input class="rd-in" data-tipo="int" data-fecha="{{ fila.fecha }}" data-campo="mort_m{{ m }}"
-                     inputmode="numeric" placeholder="0" value="{{ val(d, 'mort_m' ~ m) }}">
-              <button type="button"
-                      class="rd-e{% if d and d.get('modulo_entrada') == m %} activo{% endif %}"
-                      data-fecha="{{ fila.fecha }}" data-modulo="{{ m }}"
-                      title="Marcar módulo {{ m }} como la entrada del galpón">E</button>
-            </div>
-          </td>
-          {% endfor %}
-
-          <td class="rd-total rd-sep" data-fecha="{{ fila.fecha }}">{{ "{:,.0f}".format((d.get('mort_total') or 0) | float) if d else '0' }}</td>
-
+          <td class="rd-sep"><input class="rd-in rd-muertas" data-tipo="int" data-fecha="{{ fila.fecha }}"
+                     data-campo="muertas" inputmode="numeric" placeholder="0"
+                     value="{{ val(d, 'muertas') }}"></td>
           <td><input class="rd-in" data-tipo="int" data-fecha="{{ fila.fecha }}" data-campo="otras"
                      inputmode="numeric" placeholder="0" value="{{ val(d, 'otras') }}"></td>
-          <td>
-            <select class="rd-sel" data-fecha="{{ fila.fecha }}" data-campo="otras_motivo">
-              {{ opciones(d, 'otras_motivo', ['Venta', 'Necropsia', 'Otro']) }}
-            </select>
-          </td>
 
           <td class="rd-saldo rd-sep" data-fecha="{{ fila.fecha }}">{{ "{:,.0f}".format(fila.saldo | float) }}</td>
 
@@ -283,7 +359,19 @@
           <td><input class="rd-in" data-tipo="dec" data-fecha="{{ fila.fecha }}" data-campo="silo"
                      inputmode="decimal" placeholder="0" value="{{ val(d, 'silo') }}"></td>
 
-          <td class="rd-sep">
+          {% for m in [1, 2, 3, 4] %}
+          <td class="{% if m == 1 %}rd-sep {% endif %}{% if m in mods_entrada %}rd-col-entrada{% endif %}" data-mod="{{ m }}">
+            <input class="rd-in" data-tipo="int" data-fecha="{{ fila.fecha }}" data-campo="mort_m{{ m }}"
+                   inputmode="numeric" placeholder="0" value="{{ val(d, 'mort_m' ~ m) }}">
+          </td>
+          {% endfor %}
+
+          <td class="rd-sep rd-proc-celda{% if d and d.get('proceso') == 'I. MEDICACION' %} p-med{% elif d and d.get('proceso') == 'F. MEDICACION' %} p-fmed{% elif d and d.get('proceso') == 'INYECCION' %} p-iny{% endif %}">
+            <select class="rd-sel" data-fecha="{{ fila.fecha }}" data-campo="proceso">
+              {{ opciones(d, 'proceso', ['I. MEDICACION', 'F. MEDICACION', 'INYECCION']) }}
+            </select>
+          </td>
+          <td>
             <select class="rd-sel" data-fecha="{{ fila.fecha }}" data-campo="desinfeccion">
               {{ opciones(d, 'desinfeccion', ['Sí', 'No']) }}
             </select>
@@ -309,17 +397,17 @@
           <td class="rd-fecha">TOTAL</td>
           <td id="tot-produccion">{{ "{:,.0f}".format(totales.get('produccion', 0) | float) }}</td>
           <td id="tot-alimento">{{ "{:,.0f}".format(totales.get('alimento', 0) | float) }}</td>
-          <td class="rd-sep" id="tot-m1">{{ "{:,.0f}".format(totales.get('m1', 0) | float) }}</td>
-          <td id="tot-m2">{{ "{:,.0f}".format(totales.get('m2', 0) | float) }}</td>
-          <td id="tot-m3">{{ "{:,.0f}".format(totales.get('m3', 0) | float) }}</td>
-          <td id="tot-m4">{{ "{:,.0f}".format(totales.get('m4', 0) | float) }}</td>
-          <td class="rd-sep" id="tot-total">{{ "{:,.0f}".format(totales.get('total', 0) | float) }}</td>
+          <td class="rd-sep" id="tot-muertas">{{ "{:,.0f}".format(totales.get('total', 0) | float) }}</td>
           <td id="tot-otras">{{ "{:,.0f}".format(totales.get('otras', 0) | float) }}</td>
-          <td></td>
           <td class="rd-sep" id="tot-saldo">{{ "{:,.0f}".format(totales.get('saldo_final', 0) | float) }}</td>
           <td class="rd-sep" id="tot-agua">{{ "{:,.0f}".format(totales.get('agua', 0) | float) }}</td>
           <td id="tot-silo">{{ "{:,.0f}".format(totales.get('silo', 0) | float) }}</td>
+          <td class="rd-sep{% if 1 in mods_entrada %} rd-col-entrada{% endif %}" id="tot-m1">{{ "{:,.0f}".format(totales.get('m1', 0) | float) }}</td>
+          <td class="{% if 2 in mods_entrada %}rd-col-entrada{% endif %}" id="tot-m2">{{ "{:,.0f}".format(totales.get('m2', 0) | float) }}</td>
+          <td class="{% if 3 in mods_entrada %}rd-col-entrada{% endif %}" id="tot-m3">{{ "{:,.0f}".format(totales.get('m3', 0) | float) }}</td>
+          <td class="{% if 4 in mods_entrada %}rd-col-entrada{% endif %}" id="tot-m4">{{ "{:,.0f}".format(totales.get('m4', 0) | float) }}</td>
           <td class="rd-sep"></td>
+          <td></td>
           <td class="col-prod"></td>
           <td></td>
           <td></td>
@@ -331,8 +419,9 @@
 
 <p class="text-muted small mt-2 mb-0">
   <i class="fas fa-circle-info"></i>
-  Escribe en cualquier celda y se guarda al salir del campo. El <strong>total del día</strong> y el
-  <strong>saldo de aves</strong> se calculan solos.
+  Escribe en cualquier celda y se guarda al salir del campo. El <strong>saldo de aves</strong> se
+  calcula con las <strong>muertas</strong> del día. Si los 4 módulos no suman lo mismo, la celda se
+  marca en ámbar para que lo revises.
 </p>
 
 {% else %}
@@ -375,6 +464,27 @@
     });
   }
 
+  // Aviso si la suma de módulos no coincide con "muertas"
+  function revisarModulos(inputMuertas) {
+    const tr = inputMuertas.closest('tr');
+    if (!tr) return;
+    const campos = ['mort_m1', 'mort_m2', 'mort_m3', 'mort_m4'];
+    const suma = campos.reduce((s, c) => {
+      const i = tr.querySelector('input[data-campo="' + c + '"]');
+      return s + (parseInt(i && i.value, 10) || 0);
+    }, 0);
+    const total = parseInt(inputMuertas.value, 10) || 0;
+    const difiere = suma > 0 && suma !== total;
+    inputMuertas.classList.toggle('rd-dif', difiere);
+    inputMuertas.title = difiere
+      ? 'Los módulos suman ' + suma + ' y las muertas dicen ' + total
+      : '';
+  }
+
+  function revisarTodas() {
+    document.querySelectorAll('input.rd-muertas').forEach(revisarModulos);
+  }
+
   async function guardar(el) {
     const fecha = el.dataset.fecha;
     const campo = el.dataset.campo;
@@ -400,9 +510,6 @@
       el.classList.add('rd-ok');
       setTimeout(() => el.classList.remove('rd-ok'), 1200);
 
-      const celdaTotal = document.querySelector('td.rd-total[data-fecha="' + fecha + '"]');
-      if (celdaTotal) celdaTotal.textContent = fmt(data.mort_total);
-
       Object.entries(data.saldos || {}).forEach(([f, s]) => {
         const c = document.querySelector('td.rd-saldo[data-fecha="' + f + '"]');
         if (c) c.textContent = fmt(s);
@@ -415,15 +522,15 @@
       set('kpi-saldo-fin', fmt(t.saldo_final));
       set('tot-produccion', fmt(t.produccion));
       set('tot-alimento', fmt(t.alimento));
-      set('tot-m1', fmt(t.m1));
-      set('tot-m2', fmt(t.m2));
-      set('tot-m3', fmt(t.m3));
-      set('tot-m4', fmt(t.m4));
-      set('tot-total', fmt(t.total));
+      set('tot-muertas', fmt(t.total));
       set('tot-otras', fmt(t.otras));
       set('tot-saldo', fmt(t.saldo_final));
       set('tot-agua', fmt(t.agua));
       set('tot-silo', fmt(t.silo));
+      set('tot-m1', fmt(t.m1));
+      set('tot-m2', fmt(t.m2));
+      set('tot-m3', fmt(t.m3));
+      set('tot-m4', fmt(t.m4));
 
       if (campo === 'desinfeccion') {
         actualizarProducto();
@@ -433,6 +540,26 @@
           );
           if (inp) inp.focus();
         }
+      }
+
+      if (campo === 'proceso') {
+        const td = el.closest('td');
+        if (td) {
+          td.classList.remove('p-med', 'p-fmed', 'p-iny');
+          const mapa = {
+            'I. MEDICACION': 'p-med',
+            'F. MEDICACION': 'p-fmed',
+            'INYECCION': 'p-iny'
+          };
+          if (mapa[valor]) td.classList.add(mapa[valor]);
+        }
+      }
+
+      if (['muertas', 'mort_m1', 'mort_m2', 'mort_m3', 'mort_m4'].includes(campo)) {
+        const inpMuertas = document.querySelector(
+          'input.rd-muertas[data-fecha="' + fecha + '"]'
+        );
+        if (inpMuertas) revisarModulos(inpMuertas);
       }
     } catch (e) {
       el.classList.add('rd-error');
@@ -451,37 +578,79 @@
   });
 
   actualizarProducto();
+  revisarTodas();
 
-  // Marcar el módulo de la entrada del galpón
-  document.querySelectorAll('.rd-e').forEach(btn => {
+  // Entrada del galpón: un solo módulo
+  const API_CFG = "{{ url_for('reporte_diario.config_entrada') }}";
+  const API_CFG_TODOS = "{{ url_for('reporte_diario.config_entrada_todos') }}";
+
+  document.querySelectorAll('.rd-tog').forEach(btn => {
     btn.addEventListener('click', async () => {
-      const fecha = btn.dataset.fecha;
-      const modulo = btn.dataset.modulo;
+      const m = btn.dataset.modulo;
       const yaActivo = btn.classList.contains('activo');
+      const lista = yaActivo ? [] : [m];
 
-      btn.classList.add('rd-guardando');
       try {
-        const res = await fetch(API, {
+        const res = await fetch(API_CFG, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            lote: LOTE, fecha: fecha, campo: 'modulo_entrada',
-            valor: yaActivo ? '' : modulo
-          })
+          body: JSON.stringify({ lote: LOTE, modulos: lista })
         });
         const data = await res.json();
         if (!res.ok || !data.ok) throw new Error(data.error || 'No se pudo guardar');
-
-        document.querySelectorAll('.rd-e[data-fecha="' + fecha + '"]')
-          .forEach(b => b.classList.remove('activo'));
-        if (!yaActivo) btn.classList.add('activo');
+        location.reload();
       } catch (e) {
         alert(e.message);
-      } finally {
-        btn.classList.remove('rd-guardando');
       }
     });
   });
+
+  const btnTodos = document.getElementById('btnAplicarTodos');
+  if (btnTodos) {
+    btnTodos.addEventListener('click', async () => {
+      const activo = document.querySelector('.rd-tog.activo');
+      if (!activo) {
+        alert('Marca primero el módulo de entrada de este galpón.');
+        return;
+      }
+      const m = activo.dataset.modulo;
+      if (!confirm('¿Aplicar M' + m + ' como entrada del galpón a TODOS los lotes?')) return;
+
+      try {
+        const res = await fetch(API_CFG_TODOS, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ modulos: [m] })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) throw new Error(data.error || 'No se pudo aplicar');
+        alert('Aplicado a ' + data.lotes_actualizados + ' lotes.');
+      } catch (e) {
+        alert(e.message);
+      }
+    });
+  }
+
+  // Ubicar la leyenda encima del encabezado PROCESO
+  function ubicarLeyenda() {
+    const th = document.querySelector('th.rd-th-proceso');
+    const tabla = document.getElementById('tablaRD');
+    const ley = document.getElementById('leyendaProc');
+    if (!th || !tabla || !ley) return;
+
+    const rTh = th.getBoundingClientRect();
+    const rTab = tabla.getBoundingClientRect();
+    const centro = (rTh.left - rTab.left) + (rTh.width / 2);
+    const ancho = ley.offsetWidth || 190;
+    ley.style.left = Math.max(0, centro - ancho / 2) + 'px';
+  }
+
+  const scrollTabla = document.querySelector('.rd-scroll');
+  if (scrollTabla) scrollTabla.addEventListener('scroll', ubicarLeyenda);
+  window.addEventListener('resize', ubicarLeyenda);
+  ubicarLeyenda();
+  setTimeout(ubicarLeyenda, 60);
+  setTimeout(ubicarLeyenda, 400);
 
   // Señalar el día de hoy
   const filaHoy = document.querySelector('tr.rd-hoy');

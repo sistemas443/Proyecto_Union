@@ -7,10 +7,13 @@ from routes.routes import login_requerido
 from models.lotes.services import get_lotes_distintos
 from models.reporte_diario import (
     MESES,
+    aplicar_modulos_entrada_a_todos,
     cabecera_lote,
     estado_mes,
     guardar_campo,
+    guardar_modulos_entrada,
     listar_mes,
+    modulos_entrada,
     mort_total_de,
     saldo_inicial,
     tabla_disponible,
@@ -54,6 +57,7 @@ def reporte_diario():
     totales = {}
     aves_encasetadas = 0
     hay_desinfeccion = False
+    mods_entrada = []
 
     if lote and lote != 'VACIO' and hay_tabla:
         cabecera = cabecera_lote(lote)
@@ -79,6 +83,7 @@ def reporte_diario():
             hay_desinfeccion = any(
                 (f['datos'] or {}).get('desinfeccion') == 'Sí' for f in filas
             )
+            mods_entrada = modulos_entrada(cabecera.get('id'))
 
     return render_template(
         'produccion/reporte_diario.html',
@@ -95,6 +100,7 @@ def reporte_diario():
         hay_tabla=hay_tabla,
         hoy=hoy,
         hay_desinfeccion=hay_desinfeccion,
+        mods_entrada=mods_entrada,
     )
 
 
@@ -134,24 +140,21 @@ def guardar():
     actual = filas[indice]['datos'] or {}
 
     # Validación: las muertes (y las "otras" que descuentan) no pueden superar el saldo
-    if campo in ('mort_m1', 'mort_m2', 'mort_m3', 'mort_m4', 'otras'):
+    if campo in ('muertas', 'otras'):
         def a_entero(v):
             limpio = ''.join(c for c in str(v if v is not None else '') if c.isdigit())
             return int(limpio) if limpio else 0
 
-        modulos = {
-            k: a_entero(actual.get(k))
-            for k in ('mort_m1', 'mort_m2', 'mort_m3', 'mort_m4')
-        }
+        muertas = a_entero(actual.get('muertas'))
         otras = a_entero(actual.get('otras'))
         afecta = actual.get('afecta_saldo', True)
 
-        if campo == 'otras':
-            otras = a_entero(valor)
+        if campo == 'muertas':
+            muertas = a_entero(valor)
         else:
-            modulos[campo] = a_entero(valor)
+            otras = a_entero(valor)
 
-        total = sum(modulos.values()) + (otras if afecta else 0)
+        total = muertas + (otras if afecta else 0)
         if total > saldo_previo:
             return jsonify(
                 ok=False,
@@ -175,3 +178,38 @@ def guardar():
         saldos=saldos,
         totales=totales,
     )
+
+
+@reporte_diario_bp.route('/reporte-diario/config-entrada', methods=['POST'])
+@login_requerido
+def config_entrada():
+    """Marca qué módulos tienen la puerta/entrada del galpón."""
+    datos = request.get_json(silent=True) or {}
+    lote = (datos.get('lote') or '').strip()
+    modulos = datos.get('modulos') or []
+
+    if not lote:
+        return jsonify(ok=False, error='Falta el lote'), 400
+    if not isinstance(modulos, list):
+        modulos = [modulos]
+
+    cabecera = cabecera_lote(lote)
+    if not cabecera:
+        return jsonify(ok=False, error='No se encontró el lote'), 404
+
+    limpios = guardar_modulos_entrada(cabecera['id'], modulos)
+    return jsonify(ok=True, modulos=limpios)
+
+
+@reporte_diario_bp.route('/reporte-diario/config-entrada-todos', methods=['POST'])
+@login_requerido
+def config_entrada_todos():
+    """Aplica la misma entrada del galpón a todos los lotes."""
+    datos = request.get_json(silent=True) or {}
+    modulos = datos.get('modulos') or []
+
+    if not isinstance(modulos, list):
+        modulos = [modulos]
+
+    total = aplicar_modulos_entrada_a_todos(modulos)
+    return jsonify(ok=True, lotes_actualizados=total)
