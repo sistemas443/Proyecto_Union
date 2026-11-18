@@ -10,6 +10,7 @@ from routes.planta_alimentos.catalogo_a import planta_bp  # O la ruta donde teng
 from routes.routes import login_requerido
 from models.planta_alimentos.maestros import MateriaPrima
 from models.planta_alimentos.formulas import FormulaDetalle
+from models.lotes.services import get_lotes_agrupados
 from models.auditoria.services import registrar_cambio
 
 ROLES_PRECIOS = ('Superadmin', 'Director de Planta')
@@ -321,7 +322,30 @@ def costos_por_dieta():
     lote = (request.args.get('lote') or '').strip()
     lotes = FormulaDetalle.lotes_con_formulas()
 
-    if lote and lote not in lotes:
+    # Mismo selector de lote que los modulos de produccion (activos / concluidos),
+    # limitado a los lotes que tienen formulas registradas.
+    permitidos = set(lotes)
+    lotes_agrupados = []
+    for g in get_lotes_agrupados(session.get('user_rol')):
+        filtrados = [l for l in g['lotes'] if l['nombre'] in permitidos]
+        if filtrados:
+            grupo = dict(g)
+            grupo['lotes'] = filtrados
+            lotes_agrupados.append(grupo)
+
+    vistos = {l['nombre'] for g in lotes_agrupados for l in g['lotes']}
+    faltantes = [x for x in lotes if x not in vistos]
+    if faltantes:
+        lotes_agrupados.append({
+            'id': 'SIN-CLASIFICAR',
+            'titulo': 'SIN CLASIFICAR',
+            'estado': 'ACTIVO',
+            'prefijo': 'Otros',
+            'lotes': [{'nombre': x, 'fecha': '', 'variedad': ''} for x in faltantes],
+        })
+    nombres = {l['nombre'] for g in lotes_agrupados for l in g['lotes']}
+
+    if lote and lote not in nombres:
         lote = ''
 
     dietas = FormulaDetalle.costos_por_lote(lote) if lote else []
@@ -376,6 +400,7 @@ def costos_por_dieta():
     return render_template(
         'planta_alimentos/costos_por_dieta.html',
         lotes=lotes,
+        lotes_agrupados=lotes_agrupados,
         lote=lote,
         dietas=dietas,
         grupos=grupos

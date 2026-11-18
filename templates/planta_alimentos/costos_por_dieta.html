@@ -205,13 +205,24 @@
       class="d-flex align-items-end gap-2">
       <div>
         <label class="form-label-design" for="lote">Lote</label>
-        <select name="lote" id="lote" class="form-select form-select-sm" style="min-width: 190px;"
-          onchange="this.form.submit()">
-          <option value="">Seleccione un lote…</option>
-          {% for l in lotes %}
-          <option value="{{ l }}" {% if l == lote %}selected{% endif %}>{{ l }}</option>
-          {% endfor %}
-        </select>
+        <div class="lote-picker">
+          <select name="lote" id="lote" class="form-select form-select-sm" style="min-width: 190px;"
+            data-lote-picker onchange="this.form.submit()">
+            <option value="">Seleccione un lote…</option>
+            {% for grupo in lotes_agrupados %}
+            <optgroup label="{{ grupo.titulo }} ({{ grupo.lotes|length }})">
+              {% for l in grupo.lotes %}
+              <option value="{{ l.nombre }}"
+                data-estado="{{ grupo.estado }}"
+                data-prefijo="{{ grupo.prefijo }}"
+                data-fecha="{{ l.fecha }}"
+                data-variedad="{{ l.variedad }}"
+                {% if l.nombre == lote %}selected{% endif %}>LOTE {{ l.nombre }}</option>
+              {% endfor %}
+            </optgroup>
+            {% endfor %}
+          </select>
+        </div>
       </div>
       <button type="submit" class="btn btn-primary btn-sm">Cargar Datos</button>
     </form>
