@@ -243,14 +243,20 @@
     <span class="badge-estado badge-neutro">Lote {{ lote_seleccionado }}</span>
     {% endif %}
 
-    <form method="POST" class="ps-filtro-lote d-flex flex-wrap align-items-center gap-2 m-0">
+    <form method="POST" class="ps-filtro-lote lot-filter-bar d-flex flex-wrap align-items-center gap-2 m-0">
       <label for="lote" class="form-label-design">Seleccione un lote</label>
-      <select name="lote" id="lote" class="form-select form-select-sm" style="width: 200px;">
-        <option value="">-- Seleccione --</option>
-        {% for l in lotes %}
-        <option value="{{ l }}" {% if lote_seleccionado==l %}selected{% endif %}>LOTE {{ l }}</option>
-        {% endfor %}
-      </select>
+      <div class="lote-picker">
+        <select name="lote" id="lote" class="form-select form-select-sm" style="width: 200px;" data-lote-picker>
+          <option value="">-- Seleccione --</option>
+          {% for grupo in lotes_agrupados %}
+          <optgroup label="{{ grupo.titulo }} ({{ grupo.lotes|length }})">
+            {% for l in grupo.lotes %}
+            <option value="{{ l.nombre }}" data-estado="{{ grupo.estado }}" data-prefijo="{{ grupo.prefijo }}" data-fecha="{{ l.fecha }}" data-variedad="{{ l.variedad }}" {% if lote_seleccionado==l.nombre %}selected{% endif %}>LOTE {{ l.nombre }}</option>
+            {% endfor %}
+          </optgroup>
+          {% endfor %}
+        </select>
+      </div>
       <button type="submit" class="btn btn-primary btn-sm">Cargar Datos</button>
     </form>
 
@@ -522,7 +528,8 @@
 
   document.addEventListener("DOMContentLoaded", function() {
     if(typeof bootstrap !== 'undefined') {
-      modalObservacion = new bootstrap.Modal(document.getElementById('modalObs'));
+      const _modalObs = document.getElementById('modalObs');
+      if (_modalObs) modalObservacion = new bootstrap.Modal(_modalObs);
     }
   });
 
@@ -550,7 +557,8 @@
     modalObservacion.hide();
   }
 
-  document.getElementById('modalObs').addEventListener('hidden.bs.modal', function () {
+  const _modalObsCierre = document.getElementById('modalObs');
+  if (_modalObsCierre) _modalObsCierre.addEventListener('hidden.bs.modal', function () {
       const input = document.getElementById('obs-activa-temp');
       if(input) input.removeAttribute('id');
   });

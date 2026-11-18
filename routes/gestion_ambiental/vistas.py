@@ -1,20 +1,16 @@
 """
 Vistas del modulo de Gestion Ambiental.
 
+Navegacion en tres niveles:
+    /ga                         portada con las dos sedes
+    /ga/<sede>                  temas de la sede
+    /ga/<sede>/agua             tablero de indicadores (sidebar + grafico)
+
 El modulo es de solo lectura: lee los indicadores migrados desde los
-aplicativos de AppSheet (base `master_ga`) y los presenta en un tablero.
-
-Las URL son cortas y validadas contra listas blancas:
-    /ga/<sede>/<grupo>/<indicador>?r=<rango>&d=<desde>&h=<hasta>
-
-    sede      lourdes | vargas
-    grupo     todo | diario | lab
-    indicador id del catalogo (ej. nitratos)
-    rango     h (historico) | a (ano actual) | 12 (12 meses) | m (mes) | p
-    d, h      fechas compactas AAAAMMDD, solo con rango p
+aplicativos de AppSheet (base `master_ga`).
 """
 
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from functools import wraps
 
 from flask import (
@@ -30,13 +26,8 @@ from flask import (
 from models.gestion_ambiental import services
 from models.gestion_ambiental.consultas import rango_historico
 from models.gestion_ambiental.indicadores import (
-    GRUPO_A_SLUG,
-    GRUPO_POR_DEFECTO,
-    GRUPOS,
-    SEDE_POR_DEFECTO,
     SEDES,
-    SLUG_A_GRUPO,
-    indicadores_del_grupo,
+    indicadores_de_sede,
     obtener_indicador,
 )
 from routes.routes import login_requerido
@@ -44,6 +35,17 @@ from routes.routes import login_requerido
 gestion_ambiental_bp = Blueprint('gestion_ambiental', __name__)
 
 ROLES_CON_ACCESO = ('Gestion Ambiental', 'Superadmin')
+
+# Temas disponibles por sede. Por ahora solo agua; se ampliara cuando
+# se migren los demas aplicativos.
+TEMAS = {
+    'agua': {
+        'nombre': 'Parámetros del agua',
+        'descripcion': 'Cloro, pH, hierro PTAP y análisis de laboratorio.',
+        'icono': 'bx-water',
+    },
+}
+TEMA_POR_DEFECTO = 'agua'
 
 # Codigos cortos de rango para la URL.
 RANGOS = {
@@ -107,52 +109,79 @@ def _texto_rango(desde, hasta):
     return 'Hasta %s' % services.formatear_fecha(hasta)
 
 
+def _sede_valida(sede):
+    return sede in SEDES and SEDES[sede]['activa']
+
+
 @gestion_ambiental_bp.route('/gestion-ambiental')
 @login_requerido
 def tablero_largo():
-    """Compatibilidad: la URL larga redirige a la corta."""
-    return redirect(url_for('gestion_ambiental.tablero'), code=301)
+    """Compatibilidad: la URL larga redirige a la portada."""
+    return redirect(url_for('gestion_ambiental.inicio'), code=301)
 
 
 @gestion_ambiental_bp.route('/ga')
-@gestion_ambiental_bp.route('/ga/<sede>')
-@gestion_ambiental_bp.route('/ga/<sede>/<grupo>')
-@gestion_ambiental_bp.route('/ga/<sede>/<grupo>/<indicador>')
 @login_requerido
 @gestion_ambiental_requerido
-def tablero(sede=None, grupo=None, indicador=None):
-    """Tablero de indicadores ambientales de la sede seleccionada."""
-    # --- Sede: solo slugs conocidos y activos ---
-    sede_actual = (sede or SEDE_POR_DEFECTO).strip().lower()
-    if sede_actual not in SEDES or not SEDES[sede_actual]['activa']:
-        return redirect(url_for('gestion_ambiental.tablero'), code=302)
+def inicio():
+    """Portada: una tarjeta por sede activa."""
+    conteos = {clave: len(indicadores_de_sede(clave)) for clave in SEDES}
+    return render_template(
+        'gestion_ambiental/inicio.html',
+        sedes=SEDES,
+        conteos=conteos,
+    )
 
-    # --- Grupo: slug corto a nombre interno ---
-    grupo_actual = SLUG_A_GRUPO.get((grupo or 'todo').strip().lower())
-    if not grupo_actual:
-        return redirect(url_for('gestion_ambiental.tablero', sede=sede_actual), code=302)
 
-    # --- Indicador: debe existir en el catalogo ---
+@gestion_ambiental_bp.route('/ga/<sede>')
+@login_requerido
+@gestion_ambiental_requerido
+def temas(sede):
+    """Temas disponibles en la sede (por ahora solo Parámetros del agua)."""
+    sede_actual = (sede or '').strip().lower()
+    if not _sede_valida(sede_actual):
+        return redirect(url_for('gestion_ambiental.inicio'), code=302)
+
+    conteos = {clave: len(indicadores_de_sede(clave)) for clave in SEDES}
+    return render_template(
+        'gestion_ambiental/temas.html',
+        sedes=SEDES,
+        sede=sede_actual,
+        temas=TEMAS,
+        indicadores=conteos[sede_actual],
+    )
+
+
+@gestion_ambiental_bp.route('/ga/<sede>/<tema>')
+@gestion_ambiental_bp.route('/ga/<sede>/<tema>/<indicador>')
+@login_requerido
+@gestion_ambiental_requerido
+def tablero(sede, tema, indicador=None):
+    """Tablero de indicadores de la sede y tema seleccionados."""
+    sede_actual = (sede or '').strip().lower()
+    if not _sede_valida(sede_actual):
+        return redirect(url_for('gestion_ambiental.inicio'), code=302)
+
+    tema_actual = (tema or '').strip().lower()
+
+    # Compatibilidad con las URL anteriores (/ga/<sede>/<grupo>/<indicador>).
+    if tema_actual in ('todo', 'diario', 'lab'):
+        return redirect(
+            url_for('gestion_ambiental.tablero', sede=sede_actual,
+                    tema=TEMA_POR_DEFECTO, indicador=indicador),
+            code=301,
+        )
+
+    if tema_actual not in TEMAS:
+        return redirect(url_for('gestion_ambiental.temas', sede=sede_actual), code=302)
+
+    # --- Indicador: debe existir y pertenecer a la sede ---
     ind_foco = None
     if indicador:
         ind_foco = obtener_indicador(indicador.strip().lower())
-        if not ind_foco:
+        if not ind_foco or sede_actual not in ind_foco.get('sedes', ('lourdes', 'vargas')):
             return redirect(
-                url_for('gestion_ambiental.tablero', sede=sede_actual,
-                        grupo=GRUPO_A_SLUG[grupo_actual]),
-                code=302,
-            )
-        if sede_actual not in ind_foco.get('sedes', ('lourdes', 'vargas')):
-            return redirect(
-                url_for('gestion_ambiental.tablero', sede=sede_actual,
-                        grupo=GRUPO_A_SLUG[grupo_actual]),
-                code=302,
-            )
-        # Si el indicador pertenece a otro grupo, se corrige la URL
-        if grupo_actual not in ('resumen', ind_foco['grupo']):
-            return redirect(
-                url_for('gestion_ambiental.tablero', sede=sede_actual,
-                        grupo=GRUPO_A_SLUG[ind_foco['grupo']], indicador=ind_foco['id']),
+                url_for('gestion_ambiental.tablero', sede=sede_actual, tema=tema_actual),
                 code=302,
             )
 
@@ -160,55 +189,39 @@ def tablero(sede=None, grupo=None, indicador=None):
     codigo_rango = request.args.get('r', RANGO_POR_DEFECTO)
     if codigo_rango not in RANGOS:
         codigo_rango = RANGO_POR_DEFECTO
-    desde_txt = request.args.get('d', '')
-    hasta_txt = request.args.get('h', '')
-    desde, hasta = _rango(codigo_rango, desde_txt, hasta_txt)
+    desde, hasta = _rango(codigo_rango, request.args.get('d', ''), request.args.get('h', ''))
 
-    grupo_slug = GRUPO_A_SLUG[grupo_actual]
-
-    def url_vista(sede_, grupo_, indicador_):
-        """URL corta conservando el rango activo."""
-        argumentos = {'sede': sede_, 'r': codigo_rango}
+    def url_vista(sede_, indicador_=None):
+        """URL del tablero conservando el rango activo."""
+        argumentos = {'sede': sede_, 'tema': TEMA_POR_DEFECTO, 'r': codigo_rango}
         if codigo_rango == 'p':
             if desde:
                 argumentos['d'] = desde.strftime('%Y%m%d')
             if hasta:
                 argumentos['h'] = hasta.strftime('%Y%m%d')
-        if grupo_:
-            argumentos['grupo'] = grupo_
         if indicador_:
             argumentos['indicador'] = indicador_
         return url_for('gestion_ambiental.tablero', **argumentos)
 
-    def url_indicador(kpi):
-        """URL del indicador en su grupo real (o en Resumen si estamos ahí)."""
-        if grupo_actual == 'resumen':
-            slug = 'todo'
-        else:
-            slug = GRUPO_A_SLUG[kpi['indicador']['grupo']]
-        return url_vista(sede_actual, slug, kpi['indicador']['id'])
-
     contexto = {
         'sedes': SEDES,
         'sede': sede_actual,
-        'grupo_slug': grupo_slug,
-        'grupos': GRUPOS,
+        'tema': TEMAS[tema_actual],
+        'tema_slug': tema_actual,
+        'temas': TEMAS,
         'rangos': RANGOS,
         'rango': codigo_rango,
-        'desde_txt': desde.strftime('%Y%m%d') if desde else '',
-        'hasta_txt': hasta.strftime('%Y%m%d') if hasta else '',
         'desde_iso': desde.isoformat() if desde else '',
         'hasta_iso': hasta.isoformat() if hasta else '',
         'rango_texto': _texto_rango(desde, hasta),
         'url_vista': url_vista,
-        'url_indicador': url_indicador,
         'error': None,
     }
 
     try:
         tablero_datos = services.construir_tablero(
             sede_actual, desde=desde, hasta=hasta,
-            grupo=grupo_actual,
+            grupo='resumen',
             indicador_id=ind_foco['id'] if ind_foco else None,
         )
     except Exception as error:
@@ -218,16 +231,29 @@ def tablero(sede=None, grupo=None, indicador=None):
             'Verifica la conexión e inténtalo de nuevo.'
         )
         contexto.update({
-            'grupo_actual': grupo_actual,
             'kpi_foco': None,
-            'grupos_datos': {'diario': [], 'laboratorio': []},
+            'lista': [],
             'resumen': None,
             'grafico': None,
-            'registros': [],
+            'tabla_detalle': {'columnas': [], 'filas': []},
             'export_data': None,
             'historico': (None, None),
         })
         return render_template('gestion_ambiental/tablero.html', **contexto), 503
+
+    # Lista plana para la barra lateral: todos los indicadores de la sede.
+    lista = []
+    for ind in indicadores_de_sede(sede_actual):
+        kpi = tablero_datos['kpis'].get(ind['id'])
+        if not kpi:
+            continue
+        lista.append({
+            'id': ind['id'],
+            'nombre': ind['nombre'],
+            'unidad': ind['unidad'],
+            'estado': kpi['estado'],
+            'ultimo_txt': kpi['ultimo_txt'],
+        })
 
     grafico = services.serie_para_grafico(tablero_datos['kpi_foco'])
     grafico['opcionales'] = services.opcionales_para_grafico(
@@ -239,17 +265,19 @@ def tablero(sede=None, grupo=None, indicador=None):
     )
 
     contexto.update({
-        'grupo_actual': tablero_datos['grupo_actual'],
-        'grupos_datos': tablero_datos['grupos'],
         'kpi_foco': tablero_datos['kpi_foco'],
         'resumen': tablero_datos['resumen'],
         'grafico': grafico,
-        'registros': services.registros_tabla(tablero_datos['kpi_foco']),
+        'tabla_detalle': services.registros_detalle(
+            tablero_datos['kpi_foco'], sede_actual, desde, hasta,
+        ),
         'export_data': services.datos_exportacion(
             tablero_datos,
             SEDES[sede_actual]['nombre'],
             contexto['rango_texto'],
         ),
-        'historico': rango_historico(sede_actual),
+        'historico': (tablero_datos['resumen']['primera_fecha'],
+                      tablero_datos['resumen']['ultima_fecha']),
+        'lista': lista,
     })
     return render_template('gestion_ambiental/tablero.html', **contexto)

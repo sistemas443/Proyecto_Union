@@ -222,9 +222,16 @@ def api_borrar_lote(id):
 
 @lotes_bp.route('/api/lotes/<int:id>/estado-manual', methods=['POST'])
 @login_requerido
-@superadmin_requerido
 def cambiar_estado_manual(id):
-    """Cambia manualmente un lote entre ACTIVO y CONCLUIDO (solo Superadmin)."""
+    """Cambia manualmente un lote entre ACTIVO y CONCLUIDO.
+
+    Permitido a Superadmin y Director de Planta; el resto recibe 403.
+    """
+    if session.get('user_rol') not in ('Superadmin', 'Director de Planta'):
+        return jsonify({
+            'status': 'error',
+            'msg': 'No tienes permisos para cambiar el estado del lote.',
+        }), 403
     data = request.get_json(silent=True) or {}
     estado = (data.get('estado') or '').strip().upper()
     if estado not in ('ACTIVO', 'CONCLUIDO'):

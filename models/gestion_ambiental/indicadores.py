@@ -52,7 +52,8 @@ def _ind(id_, nombre, corto, grupo, tabla, col_fecha, col_valor, unidad,
          nota='', expresion=None, etiqueta_y='Valor real',
          tipo_grafico='line', granularidad='mes',
          etiqueta_limite_min=None, etiqueta_limite_max=None, mapa_sedes=None,
-         vistas=None, sedes=('lourdes', 'vargas'), opcionales=None):
+         vistas=None, sedes=('lourdes', 'vargas'), opcionales=None,
+         columnas_tabla=None):
     """
     Construye el diccionario de un indicador con los valores por defecto.
 
@@ -107,6 +108,7 @@ def _ind(id_, nombre, corto, grupo, tabla, col_fecha, col_valor, unidad,
         'mostrar_valores': grupo != 'diario',
         'sedes': tuple(sedes),
         'opcionales': dict(opcionales or {}),
+        'columnas_tabla': dict(columnas_tabla or {}),
     }
 
 
@@ -198,6 +200,19 @@ INDICADORES = [
                 ('Cloro PTAP', 'cloro_ptap'),
             ],
         },
+        columnas_tabla={
+            'lourdes': [
+                ('Año', 'anio'),
+                ('Promedio ponderado cloro', 'prom_ponderado_cloro'),
+            ],
+            'vargas': [
+                ('Año', 'anio'),
+                ('Cloro PTAP', 'cloro_ptap'),
+                ('Cloro galpón intermedio', 'cloro_galpon_intermedio'),
+                ('Cloro galpón final', 'cloro_galpon_final'),
+                ('Promedio ponderado cloro', 'promedio_ponderado_cloro'),
+            ],
+        },
         mapa_sedes={
             'vargas': {'col_valor': 'cloro_galpon_final', 'expresion': None},
         },
@@ -218,6 +233,19 @@ INDICADORES = [
         granularidad='dia',
         etiqueta_limite_min='MIN (5)',
         etiqueta_limite_max='MAX (5,5)',
+        columnas_tabla={
+            'lourdes': [
+                ('Año', 'anio'),
+                ('Promedio ponderado pH', 'promedio_ponderado_ph'),
+            ],
+            'vargas': [
+                ('Año', 'anio'),
+                ('pH PTAP', 'ptap'),
+                ('pH galpón intermedio', 'prom_galpon_intermedio'),
+                ('pH galpón final', 'prom_galpon_final'),
+                ('Promedio ponderado pH', 'promedio_ponderado_ph'),
+            ],
+        },
         vistas={
             'lourdes': ('indicador_ph_lev', 'promedio_ponderado_ph', 'fecha_registro'),
             'vargas': ('indicador_ph_prod', 'promedio_ponderado_ph', 'fecha'),
@@ -349,7 +377,13 @@ INDICADORES = [
          etiqueta_y='Hierro PTAP',
          tipo_grafico='line', granularidad='dia',
          sedes=('vargas',),
-         vistas={'vargas': ('indicador_hierro_prod', 'hierro_ptap', 'fecha')}),
+         vistas={'vargas': ('indicador_hierro_prod', 'hierro_ptap', 'fecha')},
+         columnas_tabla={
+             'vargas': [
+                 ('Año', 'anio'),
+                 ('Hierro PTAP', 'hierro_ptap'),
+             ],
+         }),
     _ind('calcio', 'Calcio (Ca)', 'Calcio',
          'laboratorio', _T_LAB, _F_LAB, 'calcio_numerico',
          'mg/L', 2, (0, 1000), 'maximo', None, 60,
@@ -453,6 +487,9 @@ def indicador_para_sede(indicador, sede):
             copia[campo] = override[campo]
 
     if copia.get('agregacion') == 'ctd':
+        # La tabla de registros sigue mostrando el valor real, asi que se
+        # conserva la referencia normativa aunque el grafico sea un recuento.
+        copia['referencia_tabla'] = indicador.get('limite_max')
         copia['criterio'] = 'informativo'
         copia['limite_min'] = None
         copia['limite_max'] = None

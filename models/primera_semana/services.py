@@ -15,6 +15,11 @@ def generar_estructura_primera_semana(lote_nombre, fecha_recepcion, datos_dia_0=
     if not lote_nombre: 
         return
 
+    # Sin fecha de recepcion no se genera la primera semana: los lotes
+    # registrados sin gestion esperan a que se complete la fecha.
+    if not fecha_recepcion or str(fecha_recepcion).strip().lower() in ('', 'none'):
+        return
+
     conn = get_db_connection()
     cur = conn.cursor()
 

@@ -841,6 +841,295 @@
   }
 }
 
+/* ---------- Portada de sedes ---------- */
+.ga-sedes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+  margin-top: 26px;
+}
+
+.ga-sede-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 22px;
+  border: 1px solid var(--ga-line);
+  border-radius: var(--ga-radius);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 140ms ease, background 140ms ease;
+}
+
+.ga-sede-card:hover {
+  border-color: var(--ga-brand);
+  background: var(--ga-brand-soft);
+}
+
+.ga-sede-card.is-disabled {
+  opacity: 0.55;
+}
+
+.ga-sede-icon {
+  width: 54px;
+  height: 54px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  background: var(--ga-brand-soft);
+  color: var(--ga-brand);
+  font-size: 1.7rem;
+  flex: 0 0 auto;
+}
+
+.ga-sede-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+
+.ga-sede-name {
+  font-size: 1.15rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.ga-sede-meta {
+  font-size: 0.8rem;
+  color: var(--ga-ink-3);
+}
+
+.ga-sede-go {
+  font-size: 1.5rem;
+  color: var(--ga-ink-3);
+}
+
+.ga-sede-card:hover .ga-sede-go {
+  color: var(--ga-brand);
+}
+
+/* ---------- Tarjetas de tema ---------- */
+.ga-temas {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 14px;
+  margin-top: 24px;
+}
+
+.ga-tema-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid var(--ga-line);
+  border-radius: var(--ga-radius);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 140ms ease, background 140ms ease;
+}
+
+.ga-tema-card:hover {
+  border-color: var(--ga-brand);
+  background: var(--ga-brand-soft);
+}
+
+.ga-tema-card.is-disabled {
+  opacity: 0.55;
+}
+
+.ga-tema-art {
+  height: 104px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  font-size: 3rem;
+  color: var(--ga-brand);
+  background: color-mix(in srgb, var(--ga-brand) 8%, transparent);
+}
+
+.ga-tema-name {
+  font-size: 0.95rem;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  color: var(--ga-ink);
+}
+
+.ga-tema-desc {
+  font-size: 0.8rem;
+  color: var(--ga-ink-2);
+  flex: 1;
+}
+
+.ga-tema-meta {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ga-ink-3);
+}
+
+/* ---------- Enlace volver ---------- */
+.ga-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 8px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ga-ink-3);
+  text-decoration: none;
+}
+
+.ga-back:hover {
+  color: var(--ga-brand);
+}
+
+/* ---------- Tablero con barra lateral ---------- */
+.ga-layout {
+  display: grid;
+  grid-template-columns: 270px minmax(0, 1fr);
+  gap: 20px;
+  margin-top: 22px;
+  align-items: start;
+}
+
+.ga-layout.is-collapsed {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.ga-layout.is-collapsed .ga-side {
+  display: none;
+}
+
+.ga-side {
+  position: sticky;
+  top: 84px;
+  max-height: calc(100vh - 120px);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--ga-line);
+  border-radius: var(--ga-radius);
+  overflow: hidden;
+}
+
+.ga-side-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--ga-line);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ga-ink-3);
+}
+
+.ga-side-toggle {
+  border: 0;
+  background: transparent;
+  color: var(--ga-ink-3);
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  padding: 0;
+}
+
+.ga-side-toggle:hover {
+  background: var(--ga-none-soft);
+  color: var(--ga-ink);
+}
+
+.ga-side-list {
+  overflow-y: auto;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ga-side-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 9px;
+  border-radius: 8px;
+  text-decoration: none;
+  color: var(--ga-ink-2);
+  font-size: 0.8rem;
+  line-height: 1.25;
+}
+
+.ga-side-item:hover {
+  background: color-mix(in srgb, var(--ga-ink) 5%, transparent);
+  color: var(--ga-ink);
+}
+
+.ga-side-item.is-current {
+  background: var(--ga-brand-soft);
+  color: var(--ga-brand);
+  font-weight: 600;
+}
+
+.ga-side-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ga-side-value {
+  flex: 0 0 auto;
+  font-size: 0.7rem;
+  color: var(--ga-ink-3);
+}
+
+.ga-layout .ga-focus {
+  margin-top: 0;
+}
+
+.ga-main {
+  min-width: 0;
+}
+
+.ga-side-open {
+  display: none;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 10px;
+  border: 1px solid var(--ga-line-strong);
+  background: transparent;
+  color: var(--ga-ink-2);
+  border-radius: 999px;
+  padding: 5px 12px 5px 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.ga-side-open:hover {
+  border-color: var(--ga-brand);
+  color: var(--ga-brand);
+}
+
+.ga-layout.is-collapsed .ga-side-open {
+  display: inline-flex;
+}
+
+@media (max-width: 900px) {
+  .ga-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ga-side {
+    position: static;
+    max-height: 260px;
+  }
+}
+
 /* ---------- Impresion / PDF ---------- */
 @media print {
   .app-navbar,

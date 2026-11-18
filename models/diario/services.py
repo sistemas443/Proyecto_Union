@@ -69,6 +69,11 @@ def generar_estructura_diario(lote_nombre, id_lote, fecha_recepcion):
     if model.count_diario_lote(id_lote) > 0: 
         return
 
+    # Sin fecha de recepcion no se genera la matriz: los lotes de terceros sin
+    # levante externo se registran sin estructuras hasta completar la fecha.
+    if not fecha_recepcion or str(fecha_recepcion).strip().lower() in ('', 'none'):
+        return
+
     fecha_base = None
     if fecha_recepcion and str(fecha_recepcion).strip() != '' and str(fecha_recepcion).strip().lower() != 'none':
         try: 

@@ -77,5 +77,59 @@ document.addEventListener('DOMContentLoaded', function () {
             limpiar();
             celdaActual = null;
         });
+
+        // Marca fija al hacer clic: la fila y la columna quedan resaltadas
+        // aunque se haga scroll o se mueva el mouse.
+        function limpiarMarca() {
+            tabla.querySelectorAll('.marca-fila, .marca-columna, .marca-celda').forEach(function (c) {
+                c.classList.remove('marca-fila', 'marca-columna', 'marca-celda');
+            });
+        }
+
+        function marcarCelda(celda) {
+            limpiarMarca();
+            const tr = celda.parentElement;
+            const idx = celda.cellIndex;
+            Array.from(tr.cells).forEach(function (c, i) {
+                if (i <= idx) c.classList.add('marca-fila');
+            });
+            const tbody = celda.closest('tbody');
+            const filas = Array.from(tbody.rows);
+            const indiceFila = filas.indexOf(tr);
+            for (let i = 0; i <= indiceFila; i++) {
+                const c = filas[i].cells[idx];
+                if (c) c.classList.add('marca-columna');
+            }
+            celda.classList.add('marca-celda');
+        }
+
+        tabla.addEventListener('click', function (e) {
+            const celda = e.target.closest('tbody td');
+            if (!celda || !tabla.contains(celda)) return;
+            marcarCelda(celda);
+        });
+    });
+
+    // Encabezados fijos al hacer scroll vertical: cada fila del thead se pega
+    // debajo de la anterior usando su altura real.
+    function ajustarEncabezados() {
+        document.querySelectorAll('table.tabla-compacta, table.serie-tabla').forEach(function (tabla) {
+            let acumulado = 0;
+            tabla.querySelectorAll('thead tr').forEach(function (tr) {
+                tr.querySelectorAll('th').forEach(function (th) {
+                    th.style.top = acumulado + 'px';
+                });
+                acumulado += tr.offsetHeight;
+            });
+        });
+    }
+
+    ajustarEncabezados();
+    window.addEventListener('load', ajustarEncabezados);
+
+    let temporizadorEncabezados;
+    window.addEventListener('resize', function () {
+        clearTimeout(temporizadorEncabezados);
+        temporizadorEncabezados = setTimeout(ajustarEncabezados, 150);
     });
 });

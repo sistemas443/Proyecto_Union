@@ -9,7 +9,7 @@ from models.primera_semana.dia2_services import (
     puede_editar_dia2,
 )
 from models.cabecera.services import get_cabecera_info
-from models.lotes.services import get_lotes_distintos
+from models.lotes.services import get_lotes_distintos, get_lotes_agrupados
 from models.catalogos import services as catalogos_services
 from models.comparador_lotes import construir_paneles, datos_lotes
 
@@ -126,6 +126,7 @@ def primera_semana():
         'produccion/primera_semana.html',
         filas=filas,
         lotes=get_lotes_distintos(),
+        lotes_agrupados=get_lotes_agrupados(session.get('user_rol')),
         lote_seleccionado=lote_seleccionado,
         cabecera=cabecera,
         comparador_activo=COMPARADOR_LOTES_ACTIVO,
@@ -167,6 +168,7 @@ def grafico_primera_semana():
             paneles=paneles,
             cantidad=cantidad,
             lotes=lotes,
+            lotes_agrupados=get_lotes_agrupados(session.get('user_rol')),
             datos_lotes=datos_lotes(lotes),
             endpoint=request.endpoint,
             titulo='Gráfico 1era semana',
@@ -182,6 +184,7 @@ def grafico_primera_semana():
     return render_template(
         'graficas/grafico_primera_semana.html',
         lotes=get_lotes_distintos(),
+        lotes_agrupados=get_lotes_agrupados(session.get('user_rol')),
         lote_seleccionado=lote_seleccionado,
         datos_grafico=datos_grafico,
         info_lote=info_lote

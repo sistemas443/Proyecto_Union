@@ -4,9 +4,26 @@ from models.clasificacion.schemas import COLUMNAS_PERMITIDAS
 from models.clasificacion import model
 from models.cabecera.model import fetch_cabecera_by_lote
 
+def _lote_tiene_fecha(id_lote):
+    """True si el lote ya tiene fecha de recepción (se puede generar estructura)."""
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute('SELECT fecha_recepcion FROM cabecera_lotes WHERE id = %s', (id_lote,))
+        fila = cur.fetchone()
+        return bool(fila and fila[0])
+    except Exception:
+        conn.rollback()
+        return False
+    finally:
+        cur.close()
+        conn.close()
+
+
 def generar_estructura_clasificacion(lote_nombre, id_lote):
     if not id_lote or not lote_nombre: return
     if model.count_clasificacion(id_lote) > 0: return
+    if not _lote_tiene_fecha(id_lote): return
 
     valores = [(lote_nombre, id_lote, sv) for sv in range(18, 110)]
     model.insert_estructura(valores)

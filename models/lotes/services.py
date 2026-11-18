@@ -110,6 +110,53 @@ def get_lotes_distintos():
     return model.fetch_lotes_distintos()
 
 
+def get_lotes_agrupados(rol=None):
+    """Lotes agrupados en ACTIVOS y CONCLUIDOS, del más joven al más viejo.
+
+    Con el rol PRODUCCION se aplica la misma visibilidad de /lotes: solo lotes
+    de SAN MARTIN o externos con levante externo = SI.
+    """
+    from models.lotes.clasificacion import fetch_clasificacion_lotes
+
+    info = fetch_clasificacion_lotes()
+    es_produccion = (rol or '').strip().upper() == 'PRODUCCION'
+    grupos = {'ACTIVO': [], 'CONCLUIDO': []}
+    for lote, datos in info.items():
+        empresa = (datos.get('empresa') or '').strip().upper()
+        visible = (not es_produccion) or empresa == 'SAN MARTIN' or bool(datos.get('levante_externo'))
+        if not visible:
+            continue
+        fecha = datos.get('fecha_recepcion')
+        fecha_iso = fecha.isoformat() if hasattr(fecha, 'isoformat') else (str(fecha) if fecha else '')
+        estado = datos.get('estado') or 'ACTIVO'
+        grupos.setdefault(estado, []).append({
+            'nombre': lote,
+            'fecha': fecha_iso,
+            'variedad': datos.get('variedad') or '',
+        })
+
+    for lista in grupos.values():
+        lista.sort(key=lambda l: l['fecha'], reverse=True)
+
+    # Dentro de cada estado, subgrupos por abreviatura (69, 70, 72...).
+    resultado = []
+    for estado, titulo in (('ACTIVO', 'ACTIVOS'), ('CONCLUIDO', 'CONCLUIDOS')):
+        subgrupos = {}
+        for lote in grupos.get(estado, []):
+            nombre = lote['nombre']
+            prefijo = nombre.split('-')[0] if '-' in nombre else 'Otros'
+            subgrupos.setdefault(prefijo, []).append(lote)
+        for prefijo, lotes in subgrupos.items():
+            resultado.append({
+                'id': f'{estado}-{prefijo}',
+                'titulo': f'{titulo} · {prefijo}',
+                'estado': estado,
+                'prefijo': prefijo,
+                'lotes': lotes,
+            })
+    return resultado
+
+
 def get_todos_los_lotes(cur=None):
     """
     Obtiene la lista completa de lotes y realiza una "inyección" inteligente de datos.
@@ -180,6 +227,62 @@ def get_todos_los_lotes(cur=None):
         
     return lotes
 
+def requiere_datos_encasetamiento(datos) -> bool:
+    """
+    Indica si el lote exige fecha de recepción, pollitas y aves encasetadas.
+
+    Solo se eximen cuando la empresa es distinta de SAN MARTIN y el levante
+    externo está en NO. Sin empresa asignada se mantienen obligatorios.
+    """
+    levante = str(datos.get('levante_externo') or 'NO').strip().upper()
+    if levante == 'SI':
+        return True
+
+    empresa_id = parse_empty(datos.get('empresa_id'))
+    if empresa_id is None:
+        return True
+
+    nombre = model.nombre_empresa(empresa_id)
+    if not nombre:
+        return True
+
+    return nombre.strip().upper() == 'SAN MARTIN'
+
+
+def generar_estructuras_pendientes(lote_nombre, id_lote):
+    """
+    Genera las estructuras que falten cuando el lote ya tiene fecha de recepción.
+
+    Se usa al editar: un lote registrado sin gestión (terceros sin levante) nace
+    solo con la cabecera y completa sus tablas cuando se llena la fecha.
+    Cada generador es idempotente: si ya existen filas, no hace nada.
+    """
+    if not lote_nombre or not id_lote:
+        return
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            "SELECT fecha_recepcion, fecha_encasetamiento FROM cabecera_lotes WHERE id = %s",
+            (id_lote,),
+        )
+        fila = cur.fetchone()
+    finally:
+        cur.close()
+        conn.close()
+
+    if not fila or not fila[0]:
+        return
+
+    fecha_recepcion, fecha_encasetamiento = fila
+    generar_estructura_diario(lote_nombre, id_lote, fecha_recepcion)
+    generar_estructura_semanal_unificada(lote_nombre, fecha_encasetamiento, id_lote)
+    generar_estructura_clasificacion(lote_nombre, id_lote)
+    generar_estructura_primera_semana(lote_nombre, fecha_recepcion)
+    generar_estructura_semanal_levante(lote_nombre, fecha_recepcion, id_lote)
+
+
 def guardar_nuevo_lote(datos, usuario_id=None, usuario_nombre=None):
     """
     Orquesta la creación de un lote completamente nuevo en el sistema.
@@ -191,12 +294,18 @@ def guardar_nuevo_lote(datos, usuario_id=None, usuario_nombre=None):
 
     lote_nombre = parse_empty(datos.get('lote'))
 
-    # Campos obligatorios para poder crear el lote
-    campos_requeridos = {
-        'fecha_recepcion': 'Fecha de recepción',
-        'no_pollitas_recibidas': 'Número de pollitas recibidas',
-        'no_aves_encasetadas': 'Número de aves encasetadas',
-    }
+    # Campos obligatorios para poder crear el lote. Los lotes de terceros sin
+    # levante externo (empresa distinta de SAN MARTIN y levante_externo = NO)
+    # no exigen datos de encasetamiento.
+    if requiere_datos_encasetamiento(datos):
+        campos_requeridos = {
+            'fecha_recepcion': 'Fecha de recepción',
+            'no_pollitas_recibidas': 'Número de pollitas recibidas',
+            'no_aves_encasetadas': 'Número de aves encasetadas',
+        }
+    else:
+        campos_requeridos = {}
+
     faltantes = [etiqueta for campo, etiqueta in campos_requeridos.items()
                  if parse_empty(datos.get(campo)) is None]
 
@@ -221,6 +330,15 @@ def guardar_nuevo_lote(datos, usuario_id=None, usuario_nombre=None):
     try:
         # 1. Guardar en BD (Cabecera) y obtener el ID recién creado
         id_lote = model.insert_lote(datos, lote_nombre, parse_empty)
+
+        # Lote de terceros sin levante externo: se registra solo la cabecera.
+        # Las estructuras se generan cuando se complete la fecha de recepción.
+        if not requiere_datos_encasetamiento(datos):
+            _auditar_cabecera(id_lote, 'formulario', 'INSERT', usuario_id, usuario_nombre)
+            return True, (
+                "Lote registrado. Complete la fecha de recepción desde Editar "
+                "para generar las tablas de producción."
+            )
         
         # 2. Empaquetamos los datos del Día 0 recibidos del formulario HTML
         # Esto sirve para enviarlos directamente a la tabla de Primera Semana
@@ -329,6 +447,10 @@ def actualizar_lote(id_lote, datos, usuario_id=None, usuario_nombre=None):
         # PASO 3: Ejecutamos la actualización normal de los demás campos 
         # (Granjas, fechas, cantidades, etc.) usando el modelo habitual
         model.update_lote(id_lote, datos, parse_empty)
+
+        # Si el lote acaba de completar su fecha de recepcion, se crean las
+        # estructuras que faltaban (lotes registrados sin gestion).
+        generar_estructuras_pendientes(lote_nuevo or lote_viejo, id_lote)
         
         # PASO 4: MAGIA FINAL - Mandamos los datos nuevos a la tabla Primera Semana (Día 0)
         if lote_nuevo:

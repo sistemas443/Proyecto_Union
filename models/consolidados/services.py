@@ -100,14 +100,27 @@ def _a_fecha(valor):
 # ---------------------------------------------------------------------------
 
 def _meta_todos_los_lotes() -> dict:
-    """Metadata de todos los lotes registrados, tengan o no datos."""
+    """Metadata de todos los lotes visibles en consolidados.
+
+    Solo se incluyen lotes de SAN MARTIN o externos con levante externo = SI,
+    igual que la regla de visibilidad de /lotes.
+    """
+    estados = lotes_clasificacion.fetch_clasificacion_lotes()
     meta = {}
     for f in model.fetch_todos_los_lotes():
+        info = estados.get(f['lote'], {})
+        empresa = (info.get('empresa') or '').strip().upper()
+        if empresa != 'SAN MARTIN' and not info.get('levante_externo'):
+            continue
         fecha = f['fecha_recepcion']
+        fecha_iso = fecha.isoformat() if hasattr(fecha, 'isoformat') else (str(fecha) if fecha else '')
         meta[f['lote']] = {
             'nombre': f['lote'],
-            'fecha_enc': fecha.isoformat() if hasattr(fecha, 'isoformat') else (str(fecha) if fecha else ''),
+            'fecha_enc': fecha_iso,
+            'fecha': fecha_iso,
             'aves_enc': f['aves_enc'],
+            'estado': info.get('estado', 'ACTIVO'),
+            'variedad': info.get('variedad') or '',
         }
     return meta
 
@@ -148,12 +161,24 @@ def _depurar(datos: dict, cortes: dict = None, eje: str = 'semanas') -> dict:
 
     cortes = cortes or {}
 
-    # 1. Todos los lotes
+    # 1. Todos los lotes (con estado, variedad y fecha para el panel de selección)
     meta_cabecera = _meta_todos_los_lotes()
-    meta = {l['nombre']: l for l in datos['lotes']}
-    for nombre, datos_lote in meta_cabecera.items():
-        meta.setdefault(nombre, datos_lote)
-    nombres = sorted(meta.keys())
+    meta = {}
+    for lote in datos['lotes']:
+        nombre = lote['nombre']
+        if nombre not in meta_cabecera:
+            continue
+        base = dict(meta_cabecera.get(nombre, {}))
+        base.update({k: v for k, v in lote.items() if v is not None})
+        meta[nombre] = base
+    for nombre, info in meta_cabecera.items():
+        meta.setdefault(nombre, info)
+
+    def _orden_lote(nombre):
+        return (meta[nombre].get('fecha') or '', nombre)
+
+    # Del lote más viejo al más nuevo (columnas: viejos a la izquierda).
+    nombres = sorted(meta.keys(), key=_orden_lote)
     datos['lotes'] = [meta[n] for n in nombres]
 
     # 2. Matrices: la principal y las anidadas de primera semana
@@ -680,8 +705,11 @@ def get_porc_produccion_detalle() -> dict:
 def get_mort_acumulada_detalle() -> dict:
     """Arma la matriz Semana x Lote de % mortalidad acumulada.
 
-    Celda = percent_mort_acum / 100 (fraccion). PROM = promedio
-    aritmetico de incluidos (calculado por JS). TABLA = guia estatica.
+    Celda = fraccion de mortalidad acumulada con la misma base del Consolidado
+    L+P: muertes acumuladas / (aves encasetadas - muertes acumuladas).
+    En `bd_vargas` el porcentaje se guarda sobre las aves encasetadas, por lo
+    que se convierte con p / (1 - p). PROM = promedio aritmetico de incluidos
+    (calculado por JS). TABLA = guia estatica.
     """
     filas = model.fetch_mort_acumulada()
     filas = _aplicar_aves_enc_semana17(filas)
@@ -703,7 +731,12 @@ def get_mort_acumulada_detalle() -> dict:
         if f['sem_prod'] is None or not f['lote']:
             continue
         v = _a_num(f['percent_mort_acum'])
-        matriz[f['sem_prod']][f['lote']] = (v / 100.0) if v is not None else None
+        if v is None:
+            matriz[f['sem_prod']][f['lote']] = None
+        else:
+            fraccion = v / 100.0
+            # Misma base que el Excel: muertes / aves vivas (encasetadas - muertes).
+            matriz[f['sem_prod']][f['lote']] = (fraccion / (1.0 - fraccion)) if fraccion < 1.0 else None
 
     return {
         'lotes': [meta[l] for l in lotes],
@@ -717,9 +750,12 @@ def get_mort_acumulada_detalle() -> dict:
 
 
 def get_mort_semanal_detalle() -> dict:
-    """Arma la matriz Semana x Lote de mortalidad semanal.
+    """Arma la matriz Semana x Lote de % mortalidad semanal.
 
-    Celda = mort_sem de bd_vargas (numero de aves muertas, NO porcentaje).
+    Celda = fraccion de mortalidad de la semana con la misma base del
+    Consolidado L+P: muertes de la semana / aves vivas (aves encasetadas -
+    muertes acumuladas). Las aves vivas se reconstruyen con la base de la
+    cabecera y el % de mortalidad acumulada de `bd_vargas`.
     PROM = promedio aritmetico de incluidos (calculado por JS). TABLA = serie estatica.
     """
     filas = model.fetch_mort_semanal()
@@ -741,6 +777,16 @@ def get_mort_semanal_detalle() -> dict:
     for f in filas:
         if f['sem_prod'] is None or not f['lote']:
             continue
+
+        mort = _a_num(f.get('mort_sem'))
+        acum = _a_num(f.get('percent_mort_acum'))
+        aves = _a_num(f.get('aves_enc'))
+        if mort is not None and aves and acum is not None and acum < 100.0:
+            base_viva = aves * (1.0 - (acum / 100.0))
+            matriz[f['sem_prod']][f['lote']] = (mort / base_viva) if base_viva > 0 else None
+            continue
+
+        # Sin los datos para reconstruir la base, se conserva la semanal guardada.
         v = _a_num(f['percent_mort_sem'])
         matriz[f['sem_prod']][f['lote']] = (v / 100.0) if v is not None else None
 
@@ -1141,6 +1187,8 @@ VARIABLES_LEVANTE = (
      'decimales': 2, 'tabla': {}},
     {'id': 'aves', 'titulo': 'N.° aves', 'clave': 'aves',
      'decimales': 0, 'tabla': {}},
+    {'id': 'cons_acum', 'titulo': 'Consumo Acumulado', 'clave': 'cons_acum',
+     'decimales': 0, 'tabla': {}},
 )
 
 
@@ -1151,12 +1199,15 @@ def get_datos_levante(variables_param=None, lotes_param=None) -> dict:
     lotes_param: lotes de la matriz de consumo (None = todos).
     La serie semanal siempre muestra todos los lotes como columnas.
     """
-    todos = model.fetch_levante_lotes()
+    meta_lotes = _meta_todos_los_lotes()
+    permitidos = set(meta_lotes.keys())
+
+    todos = [t for t in model.fetch_levante_lotes() if t['lote'] in permitidos]
 
     # Se agregan los lotes registrados que todavía no tienen datos de levante,
     # para que aparezcan como columnas aunque estén vacíos.
     existentes = {t['lote'] for t in todos}
-    for nombre, meta in _meta_todos_los_lotes().items():
+    for nombre, meta in meta_lotes.items():
         if nombre not in existentes:
             todos.append({
                 'lote': nombre,
@@ -1191,6 +1242,7 @@ def get_datos_levante(variables_param=None, lotes_param=None) -> dict:
                 'mort_acum': _sin_cero(_a_num(dia0['mort_acum'])),
                 'mort_sem': None,
                 'aves': _sin_cero(_a_num(dia0['saldo'])),
+                'cons_acum': None,
             })
 
         # La mortalidad semanal sale de la diferencia del % acumulado:
@@ -1220,10 +1272,11 @@ def get_datos_levante(variables_param=None, lotes_param=None) -> dict:
                 'mort_acum': _sin_cero(acum),
                 'mort_sem': _sin_cero(mort_sem),
                 'aves': _sin_cero(_a_num(f['saldo'])),
+                'cons_acum': _sin_cero(_a_num(f.get('cons_acum'))),
             })
 
         # Se recortan las semanas del final que quedaron sin ningún dato
-        claves = ('grad_real', 'peso_real', 'unif', 'mort_acum', 'aves')
+        claves = ('grad_real', 'peso_real', 'unif', 'mort_acum', 'aves', 'cons_acum')
         ultima = None
         for i, fila in enumerate(filas):
             if any(fila[k] is not None for k in claves):
@@ -1279,6 +1332,15 @@ def get_datos_levante(variables_param=None, lotes_param=None) -> dict:
             'aves_enc': t.get('aves_enc'),
         })
 
+    # Estado, variedad y fecha para el panel de lotes (columnas: viejo a nuevo).
+    estados = lotes_clasificacion.fetch_clasificacion_lotes(nombres)
+    for lote in lotes_meta:
+        info = estados.get(lote['nombre'], {})
+        lote['estado'] = info.get('estado', 'ACTIVO')
+        lote['variedad'] = info.get('variedad') or ''
+        lote['fecha'] = lote['fecha_enc']
+    lotes_meta.sort(key=lambda l: (l.get('fecha') or '', l['nombre']))
+
     return {
         'todas_variables': [
             {'id': v['id'], 'titulo': v['titulo'], 'activo': v['id'] in seleccion}
@@ -1287,7 +1349,7 @@ def get_datos_levante(variables_param=None, lotes_param=None) -> dict:
         'activas': seleccion,
         'variables': variables,
         'semanas': semanas,
-        'lotes': lotes_consumo,
+        'lotes': lotes_meta,
         'lotes_meta': lotes_meta,
         'consumo': {'semanas': semanas_consumo, 'matriz': matriz_consumo},
     }

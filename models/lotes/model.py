@@ -13,6 +13,25 @@ def parse_empresa_id(valor):
         return None
 
 
+def nombre_empresa(empresa_id):
+    """Devuelve el nombre de la empresa o None si no existe."""
+    empresa_id = parse_empresa_id(empresa_id)
+    if empresa_id is None:
+        return None
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute('SELECT nombre FROM empresas WHERE id = %s', (empresa_id,))
+        fila = cur.fetchone()
+        return fila[0] if fila else None
+    except Exception:
+        conn.rollback()
+        return None
+    finally:
+        cur.close()
+        conn.close()
+
+
 def parse_levante_externo(valor):
     """Convierte SI/NO en booleano. Solo SI (o variantes) es True."""
     return str(valor or '').strip().upper() in ('SI', 'SÍ', 'TRUE', '1')

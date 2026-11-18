@@ -54,7 +54,8 @@ def fetch_clasificacion_lotes(nombres=None):
                       FROM bd_vargas b
                      WHERE b.id_lote = c.id AND b.sem_prod = 82
                      ORDER BY b.id_sem_prod DESC
-                     LIMIT 1)
+                     LIMIT 1),
+                   c.fecha_recepcion, c.no_aves_encasetadas
               FROM cabecera_lotes c
               LEFT JOIN empresas e ON e.id = c.empresa_id
         """
@@ -66,13 +67,15 @@ def fetch_clasificacion_lotes(nombres=None):
         cur.execute(sql, params)
 
         resultado = {}
-        for lote, empresa, levante_externo, variedad, estado_manual, fecha in cur.fetchall():
+        for lote, empresa, levante_externo, variedad, estado_manual, fecha, fecha_recepcion, aves in cur.fetchall():
             resultado[lote] = {
                 'empresa': empresa,
                 'levante_externo': bool(levante_externo),
                 'variedad': variedad,
                 'estado_manual': estado_manual,
                 'fecha_sem82': fecha,
+                'fecha_recepcion': fecha_recepcion,
+                'aves_enc': aves,
                 'estado': clasificar_lote(
                     empresa, levante_externo, fecha, estado_manual
                 ),

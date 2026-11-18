@@ -161,120 +161,77 @@
     </div>
   </div>
 
-  <ul class="nav nav-pills mb-3" role="tablist">
-    <li class="nav-item" role="presentation">
-      <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tab-serie" type="button" role="tab">
-        <i class="fas fa-table-list me-1"></i>Serie semanal
-      </button>
-    </li>
-    <li class="nav-item" role="presentation">
-      <button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-consumo" type="button" role="tab">
-        <i class="fas fa-wheat-awn me-1"></i>Consumo en granja
-      </button>
-    </li>
-  </ul>
-
-  <div class="tab-content">
-    <div class="tab-pane fade show active" id="tab-serie" role="tabpanel">
-      {% if not datos.variables %}
-      <div class="card card-clean">
-        <div class="card-body text-center py-5">
-          <i class="fas fa-hand-pointer d-block mb-2" style="font-size: 1.7rem; color: var(--border);"></i>
-          <p class="mb-1 fw-semibold" style="color: var(--text-secondary);">Selecciona al menos una variable</p>
-          <p class="mb-0" style="font-size: 0.8rem; color: var(--text-muted);">
-            Marca las variables de arriba y pulsa Aplicar para ver la serie semanal.
-          </p>
-        </div>
-      </div>
-      {% endif %}
-
-      {% for var in datos.variables %}
-      <h6 class="fw-bold text-secondary text-uppercase mt-3">{{ var.titulo }}</h6>
-      <div class="contenedor-matriz shadow-sm border rounded mt-2 mb-4" id="contenedor-{{ var.id }}">
-        <table class="table table-sm table-bordered mb-0 tabla-compacta tabla-variable"
-               id="tabla-{{ var.id }}" data-variable="{{ var.id }}" data-decimales="{{ var.decimales }}">
-          <thead>
-            <tr>
-              <th class="col-semana">FECHA ENC</th>
-              <th class="col-prom">&nbsp;</th>
-              <th class="col-tabla">&nbsp;</th>
-              {% for l in datos.lotes_meta %}
-              <th class="col-lote">{{ l.fecha_enc if l.fecha_enc else '' }}</th>
-              {% endfor %}
-            </tr>
-            <tr>
-              <th class="col-semana">AVES ENC</th>
-              <th class="col-prom">&nbsp;</th>
-              <th class="col-tabla">&nbsp;</th>
-              {% for l in datos.lotes_meta %}
-              <th class="col-lote">{{ '{:,.0f}'.format(l.aves_enc).replace(',', '.') if l.aves_enc is not none else '' }}</th>
-              {% endfor %}
-            </tr>
-            <tr>
-              <th class="col-semana">SEMANA</th>
-              <th class="col-prom">PROM</th>
-              <th class="col-tabla">TABLA</th>
-              {% for l in datos.lotes_meta %}
-              <th class="col-lote">
-                <input type="checkbox" class="chk-incluir form-check-input me-1"
-                       data-lote="{{ l.nombre }}" data-variable="{{ var.id }}">
-                {{ l.nombre }}
-              </th>
-              {% endfor %}
-            </tr>
-          </thead>
-          <tbody>
-            {% for s in datos.semanas %}
-            <tr data-semana="{{ s }}">
-              <td class="col-semana fw-bold">{{ s }}</td>
-              <td class="col-prom num" data-prom></td>
-              <td class="col-tabla num">{{ num(var.tabla.get(s), var.decimales) }}</td>
-              {% for l in datos.lotes_meta %}
-              {% set v = var.matriz.get(s, {}).get(l.nombre) %}
-              <td class="num" data-lote="{{ l.nombre }}" data-valor="{{ v if v is not none else '' }}">{{ num(v, var.decimales) }}</td>
-              {% endfor %}
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-      {% endfor %}
+  {% if not datos.variables %}
+  <div class="card card-clean">
+    <div class="card-body text-center py-5">
+      <i class="fas fa-hand-pointer d-block mb-2" style="font-size: 1.7rem; color: var(--border);"></i>
+      <p class="mb-1 fw-semibold" style="color: var(--text-secondary);">Selecciona al menos una variable</p>
+      <p class="mb-0" style="font-size: 0.8rem; color: var(--text-muted);">
+        Marca las variables de arriba y pulsa Aplicar para ver las tablas.
+      </p>
     </div>
+  </div>
+  {% endif %}
 
-    <div class="tab-pane fade" id="tab-consumo" role="tabpanel">
-      <div class="card card-clean">
-        <div class="card-body p-0">
-          <div class="contenedor-matriz">
-            <table class="table table-sm table-bordered mb-0 tabla-compacta" id="tablaConsumoLev">
-              <thead>
-                <tr>
-                  <th class="col-fija">SEM</th>
-                  {% for l in datos.lotes %}
-                  <th class="col-lote">
-                    <input type="checkbox" class="chk-incluir form-check-input me-1" data-lote="{{ l }}" checked>
-                    {{ l }}
-                  </th>
-                  {% endfor %}
-                </tr>
-              </thead>
-              <tbody>
-                {% for s in datos.consumo.semanas %}
-                <tr data-semana="{{ s }}">
-                  <td class="col-fija fw-bold">{{ s }}</td>
-                  {% for l in datos.lotes %}
-                  {% set v = datos.consumo.matriz.get(s, {}).get(l) %}
-                  <td class="num" data-lote="{{ l }}" data-valor="{{ v if v is not none else '' }}">
-                    {{- '{:,.1f}'.format(v).replace(',', 'X').replace('.', ',').replace('X', '.') if v is not none else '' -}}
-                  </td>
-                  {% endfor %}
-                </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
+  {% include 'consolidados/_panel_lotes.html' %}
+
+  {% for var in datos.variables %}
+  <h6 class="fw-bold text-secondary text-uppercase mt-3">{{ var.titulo }}</h6>
+
+  <div class="cons-tabla-barra">
+    <button type="button" class="cons-fs js-tabla-fs" title="Ver la tabla en pantalla completa">
+      <i class="fas fa-expand" aria-hidden="true"></i><span>Pantalla completa</span>
+    </button>
+  </div>
+  <div class="contenedor-matriz shadow-sm border rounded mt-2 mb-4" id="contenedor-{{ var.id }}">
+    <table class="table table-sm table-bordered mb-0 tabla-compacta tabla-variable"
+           id="tabla-{{ var.id }}" data-variable="{{ var.id }}" data-decimales="{{ var.decimales }}">
+      <thead>
+        <tr>
+          <th class="col-semana col-titulo">FECHA ENCACETAMIENTO</th>
+          <th class="col-prom">&nbsp;</th>
+          <th class="col-tabla">&nbsp;</th>
+          {% for l in datos.lotes_meta %}
+          <th class="col-lote">{{ l.fecha_enc if l.fecha_enc else '' }}</th>
+          {% endfor %}
+        </tr>
+        <tr>
+          <th class="col-semana col-titulo">AVES ENCACETADAS</th>
+          <th class="col-prom">&nbsp;</th>
+          <th class="col-tabla">&nbsp;</th>
+          {% for l in datos.lotes_meta %}
+          <th class="col-lote">{{ '{:,.0f}'.format(l.aves_enc).replace(',', '.') if l.aves_enc is not none else '' }}</th>
+          {% endfor %}
+        </tr>
+        <tr>
+          <th class="col-semana">SEMANA</th>
+          <th class="col-prom">PROM</th>
+          <th class="col-tabla">TABLA</th>
+          {% for l in datos.lotes_meta %}
+          <th class="col-lote">
+            <input type="checkbox" class="chk-incluir form-check-input me-1"
+                   data-lote="{{ l.nombre }}" data-variable="{{ var.id }}">
+            {{ l.nombre }}
+          </th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in datos.semanas %}
+        <tr data-semana="{{ s }}">
+          <td class="col-semana fw-bold">{{ s }}</td>
+          <td class="col-prom num" data-prom></td>
+          <td class="col-tabla num">{{ num(var.tabla.get(s), var.decimales) }}</td>
+          {% for l in datos.lotes_meta %}
+          {% set v = var.matriz.get(s, {}).get(l.nombre) %}
+          <td class="num" data-lote="{{ l.nombre }}" data-valor="{{ v if v is not none else '' }}">{{ num(v, var.decimales) }}</td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endfor %}
   </div>
 </div>
 
@@ -378,17 +335,6 @@
       ajustarSticky();
       window.addEventListener('resize', ajustarSticky);
     });
-
-    // ===== Matriz de consumo =====
-    const tabla = document.getElementById('tablaConsumoLev');
-    if (tabla) {
-      tabla.querySelectorAll('.chk-incluir').forEach(function (chk) {
-        chk.addEventListener('change', function () {
-          const th = chk.closest('th');
-          if (th) th.classList.toggle('col-excluida', !chk.checked);
-        });
-      });
-    }
   });
 </script>
 <script src="{{ url_for('static', filename='js/consolidados_tabla.js') }}"></script>

@@ -55,6 +55,15 @@
   .celda-cerca-90pct { background-color: #C6EFCE !important; color: #000; font-weight: 700; }
   .hover-fila { background-color: rgba(180, 180, 180, 0.5) !important; }
   .hover-columna { background-color: rgba(180, 180, 180, 0.5) !important; }
+
+  /* Marca fija al hacer clic */
+  #tablaMatrizPrimerHuevo td.marca-fila,
+  #tablaMatrizPrimerHuevo td.marca-columna,
+  #tablaMatrizPrimerHuevo th.marca-columna { background-color: rgba(150, 150, 150, 0.45) !important; }
+  #tablaMatrizPrimerHuevo td.marca-celda { box-shadow: inset 0 0 0 1px #97271c; }
+
+  /* Separación entre semanas */
+  #tablaMatrizPrimerHuevo tbody tr.fila-semana > td { border-top: 2px solid #9aa5b1 !important; }
   .valor-mouse { font-size: 0.8rem; color: #666; margin-left: 0.75rem; font-weight: 500; }
   .badge-primer {
     background-color: #97271C;
@@ -77,6 +86,11 @@
   </div>
 
   <h6 class="fw-bold text-secondary text-uppercase">Indicadores por lote (último dato válido)</h6>
+  <div class="cons-tabla-barra">
+    <button type="button" class="cons-fs js-tabla-fs" title="Ver la tabla en pantalla completa">
+      <i class="fas fa-expand" aria-hidden="true"></i><span>Pantalla completa</span>
+    </button>
+  </div>
   <div class="contenedor-matriz shadow-sm border rounded mb-3">
     <table class="table table-sm table-bordered mb-0 tabla-compacta">
       <thead>
@@ -101,6 +115,11 @@
   </div>
 
   <h6 class="fw-bold text-secondary text-uppercase d-flex align-items-center">Matriz Semana / Día x Lote (días {{ matriz.rango.min }}–{{ matriz.rango.max }})<span id="valorCampoMouse" class="valor-mouse"></span></h6>
+  <div class="cons-tabla-barra">
+    <button type="button" class="cons-fs js-tabla-fs" title="Ver la tabla en pantalla completa">
+      <i class="fas fa-expand" aria-hidden="true"></i><span>Pantalla completa</span>
+    </button>
+  </div>
   <div class="contenedor-matriz shadow-sm border rounded">
     <table id="tablaMatrizPrimerHuevo" class="table table-sm table-bordered mb-0 tabla-compacta">
       <thead>
@@ -114,7 +133,7 @@
       </thead>
       <tbody>
         {% for fila in matriz.filas %}
-        <tr>
+        <tr{% if fila.span_sem is defined %} class="fila-semana"{% endif %}>
           {% if fila.span_sem is defined %}
           <td class="col-semana fw-bold" rowspan="{{ fila.span_sem }}">{{ fila.sem_num }}</td>
           {% endif %}
@@ -210,6 +229,38 @@
       celda.addEventListener('mouseleave', function () {
         resaltar.call(this, this.dataset.dia, this.dataset.lote, false);
       });
+    });
+
+    // Marca fija al hacer clic: queda resaltada aunque se haga scroll.
+    function limpiarMarca() {
+      tabla.querySelectorAll('.marca-fila, .marca-columna, .marca-celda').forEach(function (c) {
+        c.classList.remove('marca-fila', 'marca-columna', 'marca-celda');
+      });
+    }
+
+    function marcarCelda(celda) {
+      limpiarMarca();
+      const fila = celda.parentElement;
+      const idx = celda.cellIndex;
+      // Fila: desde la primera celda hasta la celda clicada.
+      Array.from(fila.cells).forEach(function (c, i) {
+        if (i <= idx) c.classList.add('marca-fila');
+      });
+      // Columna: desde la primera fila hasta la fila de la celda clicada.
+      const lote = celda.dataset.lote;
+      const filas = Array.from(tabla.querySelectorAll('tbody tr'));
+      const indiceFila = filas.indexOf(fila);
+      for (let i = 0; i <= indiceFila; i++) {
+        const c = filas[i].querySelector('td[data-lote="' + lote + '"]');
+        if (c) c.classList.add('marca-columna');
+      }
+      celda.classList.add('marca-celda');
+    }
+
+    tabla.addEventListener('click', function (e) {
+      const celda = e.target.closest('tbody td');
+      if (!celda || !tabla.contains(celda)) return;
+      marcarCelda(celda);
     });
   });
 </script>

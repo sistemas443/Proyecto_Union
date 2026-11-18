@@ -29,18 +29,25 @@
   <div class="alert alert-warning py-1 aviso-datos">Sin datos para {{ datos.categoria }}.</div>
   {% endif %}
 
+  {% include 'consolidados/_panel_lotes.html' %}
+
+  <div class="cons-tabla-barra">
+    <button type="button" class="cons-fs js-tabla-fs" title="Ver la tabla en pantalla completa">
+      <i class="fas fa-expand" aria-hidden="true"></i><span>Pantalla completa</span>
+    </button>
+  </div>
   <div class="contenedor-matriz shadow-sm border rounded mt-3" id="contenedorAcum">
     <table class="table table-sm table-bordered mb-0 tabla-compacta" id="tablaAcum">
       <thead>
         <tr>
-          <th class="col-semana">FECHA ENC</th>
+          <th class="col-semana col-titulo">FECHA ENCACETAMIENTO</th>
           <th class="col-prom"></th>
           {% for l in datos.lotes %}
           <th class="col-lote">{{ l.fecha_enc if l.fecha_enc else '' }}</th>
           {% endfor %}
         </tr>
         <tr>
-          <th class="col-semana">AVES ENC</th>
+          <th class="col-semana col-titulo">AVES ENCACETADAS</th>
           <th class="col-prom"></th>
           {% for l in datos.lotes %}
           <th class="col-lote">{{ '{:,.0f}'.format(l.aves_enc).replace(',', '.') if l.aves_enc is not none else '' }}</th>

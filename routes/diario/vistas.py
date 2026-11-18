@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, session
 from routes.routes import login_requerido
 from models.diario.services import get_diario_all, generar_estructura_diario
 from models.cabecera.services import get_cabecera_info
-from models.lotes.services import get_lotes_distintos
+from models.lotes.services import get_lotes_distintos, get_lotes_agrupados
 from models.comparador_lotes import construir_paneles, datos_lotes
 
 diario_bp = Blueprint('diario', __name__)
@@ -33,6 +33,7 @@ def diario():
             paneles=paneles,
             cantidad=cantidad,
             lotes=lotes,
+            lotes_agrupados=get_lotes_agrupados(session.get('user_rol')),
             datos_lotes=datos_lotes(lotes),
             endpoint=request.endpoint,
             titulo='Informe diario',
@@ -50,6 +51,7 @@ def diario():
         'produccion/diario.html',
         filas=filas,
         lotes=get_lotes_distintos(),
+        lotes_agrupados=get_lotes_agrupados(session.get('user_rol')),
         lote_seleccionado=lote_seleccionado,
         cabecera=cabecera
     )

@@ -284,20 +284,21 @@ def fetch_mort_acumulada() -> list:
 
 
 def fetch_mort_semanal() -> list:
-    """Devuelve sem_prod, lote, percent_mort_sem y metadata de cabecera."""
+    """Devuelve sem_prod, lote, percent_mort_sem, percent_mort_acum y metadata."""
     conn = get_db_connection()
     cur = conn.cursor()
     try:
         cur.execute("""
-            SELECT b.sem_prod, b.lote, b.percent_mort_sem,
-                   c.fecha_recepcion, c.no_pollitas_recibidas
+            SELECT b.sem_prod, b.lote, b.percent_mort_sem, b.percent_mort_acum,
+                   b.mort_sem, c.fecha_recepcion, c.no_pollitas_recibidas
             FROM bd_vargas b
             LEFT JOIN cabecera_lotes c ON c.id = b.id_lote
             ORDER BY b.sem_prod, b.lote
         """)
         return [
             {'sem_prod': r[0], 'lote': r[1], 'percent_mort_sem': r[2],
-             'fecha_recepcion': r[3], 'aves_enc': r[4]}
+             'percent_mort_acum': r[3], 'mort_sem': r[4],
+             'fecha_recepcion': r[5], 'aves_enc': r[6]}
             for r in cur.fetchall()
         ]
     finally:
@@ -590,12 +591,12 @@ def fetch_levante_por_lote(lotes: list) -> list:
     try:
         cur.execute("""
             SELECT lote, sem, peso_real, unif_porc_unif, cons_real,
-                   saldo_aves, porc_ms_acu
+                   saldo_aves, porc_ms_acu, cons_gr_ave_ao
             FROM semanal_levante
             WHERE lote = ANY(%s)
             ORDER BY lote, sem
         """, (lotes,))
-        cols = ['lote', 'sem', 'peso_real', 'unif', 'grad_real', 'saldo', 'mort_acum']
+        cols = ['lote', 'sem', 'peso_real', 'unif', 'grad_real', 'saldo', 'mort_acum', 'cons_acum']
         return [dict(zip(cols, r)) for r in cur.fetchall()]
     finally:
         cur.close()

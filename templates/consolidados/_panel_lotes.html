@@ -1,0 +1,60 @@
+{% if datos is defined and datos.lotes %}
+{% set meta_lotes = [] %}
+{% for l in datos.lotes %}
+{% set _ = meta_lotes.append({
+    'nombre': l.nombre,
+    'estado': l.estado|default('ACTIVO'),
+    'variedad': l.variedad|default(''),
+    'fecha': l.fecha|default(l.fecha_enc|default(''))
+}) %}
+{% endfor %}
+<div class="cl-lotes" id="clLotes">
+  <div class="cl-barra">
+    <div class="cl-resumen">
+      <strong>Lotes incluidos</strong>
+      <span class="cl-contador" id="clContador">0 de 0</span>
+    </div>
+    <div class="cl-acciones">
+      <button type="button" class="cl-filtro" data-variedad="TODAS">TODAS</button>
+      <button type="button" class="cl-filtro" data-variedad="HY LINE">HY LINE</button>
+      <button type="button" class="cl-filtro" data-variedad="LOHMANN">LOHMANN</button>
+      <button type="button" class="cl-ninguno" id="clNingunoBar">Ninguno</button>
+      <span class="cl-divisor" aria-hidden="true"></span>
+      <button type="button" class="cl-btn-ver" id="clVer" aria-expanded="false" aria-controls="clPanel">
+        Ver lotes <span class="cl-flecha">▾</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="cl-panel" id="clPanel">
+    <div class="cl-panel-head">
+      <strong>Selecciona los lotes</strong>
+      <span class="cl-contador" id="clContadorPanel">0 de 0</span>
+    </div>
+    <div class="cl-tabs">
+      <button type="button" class="cl-tab activo" data-categoria="ACTIVO">
+        ACTIVOS <span class="cl-cuenta" id="clCuentaActivo">0</span>
+      </button>
+      <button type="button" class="cl-tab" data-categoria="CONCLUIDO">
+        CONCLUIDOS <span class="cl-cuenta" id="clCuentaConcluido">0</span>
+      </button>
+    </div>
+    <div class="cl-tools">
+      <div class="cl-buscar">
+        <i class='bx bx-search' aria-hidden="true"></i>
+        <input type="search" id="clBuscar" placeholder="Buscar lote…" autocomplete="off">
+      </div>
+      <button type="button" id="clTodosPanel">Todos</button>
+      <button type="button" id="clNingunoPanel">Ninguno</button>
+    </div>
+    <div class="cl-lista" id="clLista"></div>
+    <div class="cl-pie">
+      <span>La selección define los lotes incluidos en el PROM.</span>
+      <button type="button" id="clListo">Listo</button>
+    </div>
+  </div>
+
+  <script type="application/json" id="clLotesMeta">{{ meta_lotes | tojson }}</script>
+</div>
+<script src="{{ url_for('static', filename='js/consolidados_lotes.js') }}"></script>
+{% endif %}

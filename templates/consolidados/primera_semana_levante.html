@@ -621,6 +621,21 @@
       boton.classList.add('activo');
     }
 
+    function visibilidadVariedad(termino) {
+      document.querySelectorAll('table.tabla-seccion').forEach(function (tabla) {
+        LOTES.forEach(function (lote, posicion) {
+          const info = LOTES_INFO.find(function (x) { return x.nombre === lote; }) || {};
+          const variedad = (info.variedad || '').toUpperCase();
+          const oculto = termino !== 'TODAS' && variedad.indexOf(termino) === -1;
+          const indice = 3 + posicion;
+          tabla.querySelectorAll('tr').forEach(function (tr) {
+            const celda = tr.children[indice];
+            if (celda) celda.classList.toggle('cl-oculto', oculto);
+          });
+        });
+      });
+    }
+
     function filtrarVariedad(termino) {
       const buscado = termino.toUpperCase();
       LOTES_INFO.forEach(function (l) {
@@ -633,6 +648,7 @@
       panelLista.querySelectorAll('.psl-chk-lote').forEach(function (chk) {
         chk.checked = incluidos.has(chk.value);
       });
+      visibilidadVariedad(termino);
       actualizar();
     }
 
@@ -693,6 +709,7 @@
       if (valor) {
         marcarFiltroActivo(document.getElementById('pslTodasBar'));
       }
+      visibilidadVariedad('TODAS');
       actualizar();
     }
 

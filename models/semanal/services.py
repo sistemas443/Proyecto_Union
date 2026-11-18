@@ -129,6 +129,10 @@ def generar_estructura_semanal_unificada(lote_nombre, fecha_encasetamiento, id_l
         return
     if model.count_semanal(id_lote) > 0:
         return
+
+    # Sin fecha de encasetamiento no se generan semanas (lote registrado sin gestion).
+    if not fecha_encasetamiento or str(fecha_encasetamiento).strip().lower() in ('', 'none'):
+        return
         
     fecha_base = None
     if fecha_encasetamiento and str(fecha_encasetamiento).strip() != '':

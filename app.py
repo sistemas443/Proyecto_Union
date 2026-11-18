@@ -230,9 +230,14 @@ def create_app():
         endpoint = request.endpoint or ''
         if endpoint.startswith('gestion_ambiental.') or endpoint.startswith('static'):
             return None
-        if endpoint in ('main.logout', 'main.login', 'main.login_page', 'main.foto_usuario'):
+        if endpoint in ('main.logout', 'main.login', 'main.login_page',
+                        'main.foto_usuario', 'main.estado_sesion'):
             return None
-        return redirect(url_for('gestion_ambiental.tablero'))
+        if request.path == '/favicon.ico':
+            return None
+        if request.path.startswith('/api/'):
+            return {'status': 'error', 'msg': 'Acceso restringido.'}, 403
+        return redirect(url_for('gestion_ambiental.inicio'))
     # ---------------------------------------------------------------------------
 
     # --- REGISTRO DE ERRORES NO ESPERADOS EN EL HISTORIAL DE AUDITORÍA ---

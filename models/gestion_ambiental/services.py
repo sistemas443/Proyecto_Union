@@ -7,7 +7,11 @@ orquestan y las plantillas solo pintan.
 """
 
 from datetime import date
+import time
 
+import psycopg2.extras
+
+from models.base import get_ga_connection
 from models.gestion_ambiental.indicadores import (
     INDICADORES,
     indicador_para_sede,
@@ -16,6 +20,10 @@ from models.gestion_ambiental.indicadores import (
     obtener_indicador,
 )
 from models.gestion_ambiental.consultas import cargar_series
+
+# Cache de las tablas de registros diarios (cloro, pH, hierro).
+_CACHE_TABLA = {}
+_CACHE_TABLA_TTL = 60.0
 
 MESES = (
     'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
@@ -434,6 +442,158 @@ def serie_para_grafico(kpi):
         'fechas': fechas,
         'series': series,
     }
+
+
+def _texto_referencia(indicador):
+    """Valor de referencia que se muestra en la tabla de registros."""
+    criterio = indicador.get('criterio')
+    decimales = min(indicador.get('decimales', 2), 2)
+
+    referencia = indicador.get('referencia_tabla')
+    if referencia is not None:
+        return formatear_valor(referencia, decimales)
+
+    if criterio == 'maximo' and indicador.get('limite_max') is not None:
+        return formatear_valor(indicador['limite_max'], decimales)
+    if criterio == 'cero':
+        return '0'
+    if criterio == 'rango' and indicador.get('limite_max') is not None:
+        return '%s – %s' % (
+            formatear_valor(indicador.get('limite_min'), decimales),
+            formatear_valor(indicador.get('limite_max'), decimales),
+        )
+    return '\u2014'
+
+
+def registros_detalle(kpi, sede, desde=None, hasta=None):
+    """
+    Tabla de registros del indicador con las columnas que le corresponden.
+
+    - Diarios: fecha, año y las columnas propias de la vista (cloro, pH, hierro).
+    - Laboratorio: fecha, valor de referencia, valor real y tipo de agua.
+
+    Para laboratorio se arma con la serie ya cargada (sin consultar la base).
+    Para los diarios se consulta la vista una vez y se guarda en cache.
+    """
+    from models.gestion_ambiental.indicadores import normalizar_tipo
+
+    indicador = kpi['indicador']
+    vista = (indicador.get('vistas') or {}).get(sede)
+    if not vista:
+        return {'columnas': [], 'filas': []}
+
+    decimales = indicador.get('decimales', 2)
+    fisico_min, fisico_max = indicador.get('fisico', (None, None))
+    definidas = (indicador.get('columnas_tabla') or {}).get(sede)
+
+    # --- Laboratorio: se arma desde la serie ya cargada, sin consultar ---
+    if not definidas:
+        columnas = ['Fecha', 'Valor referencia', 'Valor real', 'Tipo de agua']
+        referencia = _texto_referencia(indicador)
+        puntos = list(kpi.get('serie', []))
+
+        if sede == 'vargas':
+            puntos.sort(key=lambda p: p['fecha'])
+        else:
+            puntos.sort(key=lambda p: p['valor'], reverse=True)
+
+        filas = []
+        for punto in puntos:
+            if punto['valor'] == 0:
+                continue
+            filas.append([
+                formatear_fecha(punto['fecha']),
+                referencia,
+                formatear_valor(punto['valor'], decimales),
+                normalizar_tipo(punto.get('tipo')),
+            ])
+        return {'columnas': columnas, 'filas': filas}
+
+    # --- Diarios: consulta a la vista con cache ---
+    clave = (sede, indicador['id'], str(desde), str(hasta))
+    ahora = time.monotonic()
+    guardado = _CACHE_TABLA.get(clave)
+    if guardado and (ahora - guardado[0]) < _CACHE_TABLA_TTL:
+        return guardado[1]
+
+    nombre_vista, _col, col_fecha = vista[0], vista[1], vista[2]
+    col_principal = definidas[-1][1]
+    columnas = ['Fecha'] + [titulo for titulo, _c in definidas]
+    seleccion = ['"%s"' % c for _t, c in definidas if c]
+
+    condiciones = ['"%s" IS NOT NULL' % col_fecha,
+                   '"%s" <= CURRENT_DATE' % col_fecha,
+                   '"%s" IS NOT NULL' % col_principal,
+                   '"%s" <> 0' % col_principal]
+    parametros = []
+    if desde:
+        condiciones.append('"%s" >= %%s' % col_fecha)
+        parametros.append(desde)
+    if hasta:
+        condiciones.append('"%s" <= %%s' % col_fecha)
+        parametros.append(hasta)
+
+    sql = ('SELECT "%s" AS fecha, %s FROM %s WHERE %s '
+           'ORDER BY "%s" DESC NULLS LAST, "%s" DESC') % (
+        col_fecha, ', '.join(seleccion), nombre_vista,
+        ' AND '.join(condiciones), col_principal, col_fecha,
+    )
+
+    conn = None
+    cur = None
+    try:
+        conn = get_ga_connection()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute(sql, tuple(parametros))
+        filas_sql = cur.fetchall()
+    except Exception:
+        if conn is not None:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+        return {'columnas': columnas, 'filas': []}
+    finally:
+        if cur is not None:
+            try:
+                cur.close()
+            except Exception:
+                pass
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+    filas = []
+    for fila in filas_sql:
+        principal = fila.get(col_principal)
+        if principal is None or float(principal) == 0:
+            continue
+        if fisico_min is not None and fisico_max is not None:
+            if not (fisico_min <= float(principal) <= fisico_max):
+                continue
+        celdas = [formatear_fecha(fila['fecha'])]
+        for _titulo, col in definidas:
+            if not col:
+                continue
+            valor = fila.get(col)
+            if col == 'anio':
+                celdas.append('' if valor is None else str(valor))
+            elif valor is None:
+                celdas.append('\u2014')
+            elif float(valor) == 0:
+                celdas.append('\u2014')
+            else:
+                celdas.append(formatear_valor(float(valor), decimales))
+        filas.append(celdas)
+
+    salida = {'columnas': columnas, 'filas': filas}
+    _CACHE_TABLA[clave] = (ahora, salida)
+    if len(_CACHE_TABLA) > 64:
+        for vieja in list(_CACHE_TABLA)[:32]:
+            _CACHE_TABLA.pop(vieja, None)
+    return salida
 
 
 def registros_tabla(kpi):

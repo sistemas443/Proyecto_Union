@@ -12,11 +12,18 @@
     </h5>
   </div>
 
+  {% include 'consolidados/_panel_lotes.html' %}
+
+  <div class="cons-tabla-barra">
+    <button type="button" class="cons-fs js-tabla-fs" title="Ver la tabla en pantalla completa">
+      <i class="fas fa-expand" aria-hidden="true"></i><span>Pantalla completa</span>
+    </button>
+  </div>
   <div class="contenedor-matriz shadow-sm border rounded mt-3" id="contenedorSaldo">
     <table class="table table-sm table-bordered mb-0 tabla-compacta" id="tablaSaldo">
       <thead>
         <tr>
-          <th class="col-semana">FECHA ENC</th>
+          <th class="col-semana col-titulo">FECHA ENCACETAMIENTO</th>
           <th class="col-total"></th>
           <th class="col-nro"></th>
           {% for l in datos.lotes %}
@@ -24,7 +31,7 @@
           {% endfor %}
         </tr>
         <tr>
-          <th class="col-semana">AVES ENC</th>
+          <th class="col-semana col-titulo">AVES ENCACETADAS</th>
           <th class="col-total"></th>
           <th class="col-nro"></th>
           {% for l in datos.lotes %}

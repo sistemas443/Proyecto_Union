@@ -1,0 +1,45 @@
+{% extends 'generales/layout.html' %}
+
+{% block title %}Gestión Ambiental — Avícola San Martín{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ga.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="ga-page">
+
+  <header class="ga-head">
+    <div>
+      <h1 class="ga-title">Gestión Ambiental</h1>
+      <p class="ga-subtitle">
+        Selecciona la sede para consultar sus indicadores
+      </p>
+    </div>
+  </header>
+
+  <div class="ga-sedes">
+    {% for clave, info in sedes.items() %}
+      {% if info.activa %}
+      <a class="ga-sede-card" href="{{ url_for('gestion_ambiental.temas', sede=clave) }}">
+        <span class="ga-sede-icon" aria-hidden="true"><i class='bx bx-buildings'></i></span>
+        <span class="ga-sede-body">
+          <span class="ga-sede-name">{{ info.nombre }}</span>
+          <span class="ga-sede-meta">{{ conteos[clave] }} indicadores ambientales</span>
+        </span>
+        <span class="ga-sede-go" aria-hidden="true"><i class='bx bx-right-arrow-alt'></i></span>
+      </a>
+      {% else %}
+      <span class="ga-sede-card is-disabled" aria-disabled="true">
+        <span class="ga-sede-icon" aria-hidden="true"><i class='bx bx-buildings'></i></span>
+        <span class="ga-sede-body">
+          <span class="ga-sede-name">{{ info.nombre }}</span>
+          <span class="ga-sede-meta">Disponible próximamente</span>
+        </span>
+      </span>
+      {% endif %}
+    {% endfor %}
+  </div>
+
+</div>
+{% endblock %}

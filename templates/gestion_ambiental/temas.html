@@ -1,0 +1,51 @@
+{% extends 'generales/layout.html' %}
+
+{% block title %}{{ sedes[sede].nombre }} — Gestión Ambiental{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ga.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="ga-page">
+
+  <header class="ga-head">
+    <div>
+      <a class="ga-back" href="{{ url_for('gestion_ambiental.inicio') }}">
+        <i class='bx bx-left-arrow-alt' aria-hidden="true"></i> Sedes
+      </a>
+      <h1 class="ga-title">{{ sedes[sede].nombre }}</h1>
+      <p class="ga-subtitle">
+        <span>{{ indicadores }} indicadores ambientales</span>
+        <span class="ga-dot-sep" aria-hidden="true"></span>
+        <span>Selecciona un tema para ver el detalle</span>
+      </p>
+    </div>
+
+    <div class="ga-filters">
+      <div class="ga-segmented" role="group" aria-label="Sede">
+        {% for clave, info in sedes.items() %}
+          {% if info.activa %}
+          <a href="{{ url_for('gestion_ambiental.temas', sede=clave) }}"
+             class="{{ 'is-active' if clave == sede }}">{{ info.nombre }}</a>
+          {% else %}
+          <a class="is-disabled" aria-disabled="true" tabindex="-1" title="Disponible próximamente">{{ info.nombre }} <span class="ga-soon">Pronto</span></a>
+          {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+  </header>
+
+  <div class="ga-temas">
+    {% for clave, tema in temas.items() %}
+    <a class="ga-tema-card" href="{{ url_for('gestion_ambiental.tablero', sede=sede, tema=clave) }}">
+      <span class="ga-tema-art" aria-hidden="true"><i class='bx {{ tema.icono }}'></i></span>
+      <span class="ga-tema-name">{{ tema.nombre }}</span>
+      <span class="ga-tema-desc">{{ tema.descripcion }}</span>
+      <span class="ga-tema-meta">{{ indicadores }} indicadores</span>
+    </a>
+    {% endfor %}
+  </div>
+
+</div>
+{% endblock %}

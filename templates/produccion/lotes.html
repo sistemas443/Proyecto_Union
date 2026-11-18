@@ -296,12 +296,14 @@
                                 <i class='bx bx-edit'></i>
                             </button>
                             {% endif %}
-                            {% if session.get('user_rol') == 'Superadmin' %}
+                            {% if session.get('user_rol') in ['Superadmin', 'Director de Planta'] %}
                             <button type="button" class="btn-icono-accion btn-estado"
                                 data-id="{{ lote.id }}" data-estado="{{ lote.estado }}"
                                 title="{{ 'Concluir lote' if lote.estado == 'ACTIVO' else 'Activar lote' }}">
                                 <i class='bx {{ "bx-check-circle" if lote.estado == "ACTIVO" else "bx-play-circle" }}'></i>
                             </button>
+                            {% endif %}
+                            {% if session.get('user_rol') == 'Superadmin' %}
                             <button type="button" class="btn-icono-accion btn-icono-eliminar btn-borrar"
                                 data-id="{{ lote.id }}" data-nombre="{{ lote.lote }}" title="Borrar lote">
                                 <i class='bx bx-trash'></i>
@@ -382,7 +384,7 @@
                                 <i class="fas fa-circle-info me-1"></i>Para empresas distintas a SAN MARTIN
                             </div>
                         </div>
-                        <div class="col-md-3 mb-2">
+                        <div class="col-md-3 mb-2" id="colCiudad">
                             <label class="form-label-design">Ciudad</label>
                             <select name="ciudad" id="f_ciudad" class="form-select creatable-select"
                                 placeholder="Seleccione o escriba...">
@@ -394,6 +396,7 @@
                             </select>
                         </div>
                     </div>
+                    <div id="bloqueCamposLote">
                     <div class="row mb-4">
                         <div class="col-md-4 mb-2">
                             <label class="form-label-design">Clima</label>
@@ -578,7 +581,7 @@
                             </select>
                         </div>
                         <div class="col-md-4 mb-2">
-                            <label class="form-label-design">Fecha Encasetamiento</label>
+                            <label class="form-label-design">Fecha Encasetamiento <span class="text-danger">*</span></label>
                             <!-- Este campo se llenará automáticamente vía JavaScript al cambiar Fecha Recepción -->
                             <input type="date" name="fecha_encasetamiento" id="f_fecha_enc" class="form-control">
                         </div>
@@ -622,6 +625,7 @@
                             <input type="text" name="unidad_medida" id="f_unidad_med" class="form-control">
                         </div>
                     </div>
+                    </div><!-- /bloqueCamposLote -->
 
                 </div>
 
@@ -725,6 +729,8 @@
             const campo = document.getElementById('f_levante_externo');
             if (campo) campo.value = 'NO';
         }
+
+        actualizarObligatoriosLote();
     }
 
     function prepararEmpresaNueva() {
@@ -788,15 +794,71 @@
 
     // 2. Función para limpiar el modal al crear y resetear bloqueos
     // Campos que solo son obligatorios cuando se crea un lote nuevo
-    const CAMPOS_REQUERIDOS_NUEVO = ['f_fecha_rec', 'f_pollitas', 'f_aves_enc'];
+    // Campos que dependen de la empresa y del levante externo
+    const CAMPOS_CONDICIONALES = ['f_fecha_rec', 'f_fecha_enc', 'f_pollitas', 'f_aves_enc'];
 
-    function marcarCamposObligatorios(obligatorios) {
-        CAMPOS_REQUERIDOS_NUEVO.forEach(id => {
+    // Los datos de encasetamiento solo se exigen para SAN MARTIN o para
+    // lotes externos con levante externo = SI. Sin empresa, se exigen.
+    function requiereDatosEncasetamiento() {
+        const sel = document.getElementById('f_empresa');
+        if (!sel) return true;
+        const opt = sel.options[sel.selectedIndex];
+        if (!opt || opt.value === '') return true;
+
+        const esSanMartin = opt.text.trim().toUpperCase() === 'SAN MARTIN';
+        const campoLevante = document.getElementById('f_levante_externo');
+        const levante = (campoLevante && campoLevante.value ? campoLevante.value : 'NO').toUpperCase();
+        return esSanMartin || levante === 'SI';
+    }
+
+    function actualizarObligatoriosLote() {
+        const crear = window.LOTE_MODO_CREACION === true;
+        const obligatorio = crear && requiereDatosEncasetamiento();
+
+        CAMPOS_CONDICIONALES.forEach(function (id) {
             const el = document.getElementById(id);
             if (!el) return;
-            if (obligatorios) el.setAttribute('required', 'required');
+            if (obligatorio) el.setAttribute('required', 'required');
             else el.removeAttribute('required');
+
+            const contenedor = el.closest('.col-md-3, .col-md-4');
+            const marca = contenedor ? contenedor.querySelector('.text-danger') : null;
+            if (marca) marca.style.display = obligatorio ? '' : 'none';
         });
+
+        actualizarVistaLoteMinimo(crear && !requiereDatosEncasetamiento());
+    }
+
+    // Lote de terceros sin levante externo: solo LOTE, EMPRESA y LEVANTE EXTERNO.
+    function actualizarVistaLoteMinimo(minimo) {
+        const bloque = document.getElementById('bloqueCamposLote');
+        const ciudad = document.getElementById('colCiudad');
+        if (bloque) bloque.style.display = minimo ? 'none' : '';
+        if (ciudad) ciudad.style.display = minimo ? 'none' : '';
+
+        if (!minimo) return;
+
+        if (bloque) {
+            bloque.querySelectorAll('input:not([type="hidden"])').forEach(function (el) {
+                el.value = '';
+            });
+            bloque.querySelectorAll('select').forEach(function (el) {
+                el.value = '';
+                el.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+        }
+        if (ciudad) {
+            const sel = ciudad.querySelector('select');
+            if (sel) {
+                sel.value = '';
+                sel.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        }
+    }
+
+    function marcarCamposObligatorios(obligatorios) {
+        window.LOTE_MODO_CREACION = obligatorios === true;
+        actualizarObligatoriosLote();
     }
 
     function configurarModalLote(accion) {
@@ -833,6 +895,11 @@
     const selectEmpresaForm = document.getElementById('f_empresa');
     if (selectEmpresaForm) {
         selectEmpresaForm.addEventListener('change', actualizarLevanteExterno);
+    }
+
+    const selectLevanteForm = document.getElementById('f_levante_externo');
+    if (selectLevanteForm) {
+        selectLevanteForm.addEventListener('change', actualizarObligatoriosLote);
     }
 
     // 3. Capturador de clics en Editar y Ver

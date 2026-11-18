@@ -4,9 +4,14 @@ Acceso a la base `master_ga` para los indicadores de Gestion Ambiental.
 Solo lectura. Las tablas de origen siguen el patron `<sede>_<sufijo>`, por
 ejemplo `lourdes_mediciones_in_situ_agua`. Los nombres se validan contra una
 lista blanca antes de interpolarlos en el SQL.
+
+Para reducir llamadas a la base:
+- Todas las vistas de una sede se leen en una sola consulta (UNION ALL).
+- Las series se guardan en un cache en memoria con vencimiento corto.
 """
 
 import re
+import time
 
 import psycopg2
 import psycopg2.extras
@@ -15,6 +20,12 @@ from models.base import get_ga_connection
 from models.gestion_ambiental.indicadores import SEDES
 
 _PATRON_TABLA = re.compile(r'^[a-z0-9_]+$')
+
+# Cache en memoria de las series, por proceso. Evita repetir consultas al
+# cambiar de indicador o recargar la pagina.
+_CACHE_SERIES = {}
+_CACHE_OPCIONALES = {}
+_CACHE_TTL = 60.0
 
 
 def nombre_tabla(sede, sufijo):
@@ -101,18 +112,252 @@ def _fuente(indicador, sede):
     }
 
 
+def cargar_series(sede, indicadores, desde=None, hasta=None):
+    """
+    Devuelve las series con cache en memoria para no repetir consultas.
+
+    La clave incluye sede, rango e indicadores, de modo que al cambiar de
+    indicador dentro del mismo rango no se vuelve a consultar la base.
+    """
+    clave = (sede, str(desde), str(hasta), tuple(i['id'] for i in indicadores))
+    ahora = time.monotonic()
+    guardado = _CACHE_SERIES.get(clave)
+    if guardado and (ahora - guardado[0]) < _CACHE_TTL:
+        return guardado[1]
+
+    resultado = _cargar_series_sin_cache(sede, indicadores, desde, hasta)
+    _CACHE_SERIES[clave] = (ahora, resultado)
+
+    # Poda simple para que el cache no crezca sin control.
+    if len(_CACHE_SERIES) > 64:
+        for vieja in list(_CACHE_SERIES)[:32]:
+            _CACHE_SERIES.pop(vieja, None)
+    return resultado
+
+
+def _cargar_series_sin_cache(sede, indicadores, desde=None, hasta=None):
+    """
+    Carga las series historicas de los indicadores solicitados.
+
+    Devuelve un diccionario {id_indicador: [{'fecha', 'valor', 'tipo'}, ...]}
+    ordenado por fecha. Las filas sin valor y las fechas futuras se descartan,
+    igual que los registros en cero (salvo los indicadores cuyo valor conforme
+    es precisamente cero).
+    """
+    resultado = {i['id']: [] for i in indicadores}
+    if not indicadores:
+        return resultado
+
+    directos = []
+    con_vista = []
+    for ind in indicadores:
+        if (ind.get('vistas') or {}).get(sede):
+            con_vista.append(ind)
+        else:
+            directos.append(ind)
+
+    conn = None
+    cur = None
+    try:
+        conn = get_ga_connection()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+        # --- Indicadores que leen de una tabla propia ---
+        grupos = {}
+        for ind in directos:
+            try:
+                fuente = _fuente(ind, sede)
+            except ValueError:
+                continue
+            clave = (fuente['relacion'], fuente['col_fecha'])
+            grupos.setdefault(clave, []).append((ind, fuente))
+
+        for (relacion, col_fecha), pares in grupos.items():
+            lista = [ind for ind, _ in pares]
+
+            try:
+                cur.execute("""
+                    SELECT column_name FROM information_schema.columns
+                    WHERE table_schema = 'public' AND table_name = %s
+                """, (relacion,))
+                existentes = {fila['column_name'] for fila in cur.fetchall()}
+            except Exception:
+                conn.rollback()
+                existentes = set()
+
+            partes = []
+            for ind in lista:
+                fuente = _fuente(ind, sede)
+                columna = fuente['col_valor']
+                expresion = fuente['expresion']
+                if expresion:
+                    partes.append('(%s) AS "%s"' % (expresion, ind['id']))
+                elif columna and columna in existentes:
+                    partes.append('"%s" AS "%s"' % (columna, ind['id']))
+                else:
+                    partes.append('NULL AS "%s"' % ind['id'])
+
+            col_tipo = next((i['col_tipo'] for i in lista if i.get('col_tipo')), None)
+            if col_tipo:
+                partes.append('"%s" AS "__tipo"' % col_tipo)
+
+            condiciones = ['"%s" IS NOT NULL' % col_fecha,
+                           '"%s" <= CURRENT_DATE' % col_fecha]
+            parametros = []
+            if desde:
+                condiciones.append('"%s" >= %%s' % col_fecha)
+                parametros.append(desde)
+            if hasta:
+                condiciones.append('"%s" <= %%s' % col_fecha)
+                parametros.append(hasta)
+
+            sql = 'SELECT "%s" AS fecha, %s FROM %s WHERE %s ORDER BY "%s"' % (
+                col_fecha, ', '.join(partes), relacion,
+                ' AND '.join(condiciones), col_fecha,
+            )
+
+            try:
+                cur.execute(sql, tuple(parametros))
+                filas = cur.fetchall()
+            except Exception:
+                conn.rollback()
+                filas = []
+
+            for fila in filas:
+                fecha = fila['fecha']
+                tipo = fila.get('__tipo') if col_tipo else None
+                for ind in lista:
+                    valor = fila.get(ind['id'])
+                    if valor is None:
+                        continue
+                    resultado[ind['id']].append({
+                        'fecha': fecha,
+                        'valor': float(valor),
+                        'tipo': tipo,
+                    })
+
+        # --- Indicadores que leen de una vista (una sola consulta) ---
+        if con_vista:
+            _cargar_desde_vistas(cur, conn, sede, con_vista, resultado, desde, hasta)
+
+        # Filtro pedido: no mostrar registros en cero. Se exceptuan los
+        # indicadores cuyo valor conforme es precisamente 0 (microbiologicos),
+        # porque ahi el cero es un dato valido.
+        for ind in indicadores:
+            if ind.get('criterio') == 'cero':
+                continue
+            resultado[ind['id']] = [
+                punto for punto in resultado[ind['id']] if punto['valor'] != 0
+            ]
+
+        return resultado
+    finally:
+        if cur is not None:
+            try:
+                cur.close()
+            except Exception:
+                pass
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+
+def _cargar_desde_vistas(cur, conn, sede, indicadores, resultado, desde, hasta):
+    """
+    Carga en una sola consulta todos los indicadores que leen de vistas.
+
+    Se arma un UNION ALL con todas las vistas de la sede. Las vistas que no
+    existan se omiten: el resto sigue funcionando.
+    """
+    nombres = []
+    ramas_por_vista = []
+    for ind in indicadores:
+        vista = (ind.get('vistas') or {}).get(sede)
+        if not vista:
+            continue
+        nombres.append(vista[0])
+        ramas_por_vista.append((ind, vista))
+
+    if not ramas_por_vista:
+        return
+
+    try:
+        cur.execute("""
+            SELECT table_name FROM information_schema.views
+            WHERE table_schema = 'public' AND table_name = ANY(%s)
+        """, (nombres,))
+        disponibles = {fila['table_name'] for fila in cur.fetchall()}
+    except Exception:
+        conn.rollback()
+        disponibles = set()
+
+    ramas = []
+    for ind, vista in ramas_por_vista:
+        nombre_vista, col_valor, col_fecha = vista[0], vista[1], vista[2]
+        if nombre_vista not in disponibles:
+            continue
+        col_tipo = ind.get('col_tipo')
+        tipo_sql = '"%s"' % col_tipo if col_tipo else 'NULL::text'
+        ramas.append(
+            "SELECT '%s'::text AS indicador, \"%s\" AS fecha, %s AS tipo, "
+            "\"%s\"::numeric AS valor FROM %s"
+            % (ind['id'], col_fecha, tipo_sql, col_valor, nombre_vista)
+        )
+
+    if not ramas:
+        return
+
+    condiciones = ['fecha IS NOT NULL', 'fecha <= CURRENT_DATE']
+    parametros = []
+    if desde:
+        condiciones.append('fecha >= %s')
+        parametros.append(desde)
+    if hasta:
+        condiciones.append('fecha <= %s')
+        parametros.append(hasta)
+
+    sql = 'SELECT indicador, fecha, tipo, valor FROM (%s) t WHERE %s ORDER BY fecha' % (
+        ' UNION ALL '.join(ramas), ' AND '.join(condiciones),
+    )
+
+    try:
+        cur.execute(sql, tuple(parametros))
+        filas = cur.fetchall()
+    except Exception:
+        conn.rollback()
+        return
+
+    for fila in filas:
+        valor = fila['valor']
+        if valor is None:
+            continue
+        resultado[fila['indicador']].append({
+            'fecha': fila['fecha'],
+            'valor': float(valor),
+            'tipo': fila['tipo'],
+        })
+
+
 def cargar_opcionales(sede, indicador, desde=None, hasta=None):
     """
     Lee las metricas opcionales de un indicador desde su vista.
 
     Devuelve una lista de {'nombre': etiqueta, 'valores': {fecha_iso: valor}}.
     Se usa, por ejemplo, para las series de cloro PTAP y galpones del
-    indicador de cloro de Vargas.
+    indicador de cloro de Vargas. Tambien usa cache en memoria.
     """
     definicion = (indicador.get('opcionales') or {}).get(sede) or []
     vista = (indicador.get('vistas') or {}).get(sede)
     if not definicion or not vista:
         return []
+
+    clave = (sede, indicador['id'], str(desde), str(hasta))
+    ahora = time.monotonic()
+    guardado = _CACHE_OPCIONALES.get(clave)
+    if guardado and (ahora - guardado[0]) < _CACHE_TTL:
+        return guardado[1]
 
     nombre_vista, _col_valor, col_fecha = vista[0], vista[1], vista[2]
     columnas = [col for _etiqueta, col in definicion]
@@ -164,131 +409,21 @@ def cargar_opcionales(sede, indicador, desde=None, hasta=None):
         valores = {}
         for fila in filas:
             valor = fila.get(columna)
-            if valor is None:
+            if valor is None or float(valor) == 0:
                 continue
             valores[fila['fecha'].isoformat()] = float(valor)
         salida.append({'nombre': etiqueta, 'valores': valores})
+
+    _CACHE_OPCIONALES[clave] = (ahora, salida)
+    if len(_CACHE_OPCIONALES) > 32:
+        for vieja in list(_CACHE_OPCIONALES)[:16]:
+            _CACHE_OPCIONALES.pop(vieja, None)
     return salida
-
-
-def cargar_series(sede, indicadores, desde=None, hasta=None):
-    """
-    Carga las series historicas de los indicadores solicitados.
-
-    Devuelve un diccionario {id_indicador: [{'fecha': date, 'valor': float}, ...]}
-    con los puntos ordenados por fecha. Las filas sin valor se omiten y las
-    fechas posteriores a hoy (filas pre-creadas por AppSheet) se descartan.
-
-    El filtro por rango fisico de cada indicador se aplica despues, en
-    services.py, para poder informar cuantos registros se excluyeron.
-    """
-    resultado = {i['id']: [] for i in indicadores}
-    if not indicadores:
-        return resultado
-
-    # Agrupa por relacion (tabla o vista) + columna de fecha para hacer una
-    # sola consulta por grupo.
-    grupos = {}
-    for ind in indicadores:
-        try:
-            fuente = _fuente(ind, sede)
-        except ValueError:
-            continue
-        clave = (fuente['relacion'], fuente['col_fecha'])
-        grupos.setdefault(clave, []).append((ind, fuente))
-
-    conn = None
-    cur = None
-    try:
-        conn = get_ga_connection()
-        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-
-        for (relacion, col_fecha), pares in grupos.items():
-            lista = [ind for ind, _ in pares]
-
-            # Si una columna no existe en esta sede, se devuelve NULL para ese
-            # indicador en lugar de romper toda la consulta del grupo.
-            try:
-                cur.execute("""
-                    SELECT column_name FROM information_schema.columns
-                    WHERE table_schema = 'public' AND table_name = %s
-                """, (relacion,))
-                existentes = {fila['column_name'] for fila in cur.fetchall()}
-            except Exception:
-                conn.rollback()
-                existentes = set()
-
-            partes = []
-            for ind in lista:
-                fuente = _fuente(ind, sede)
-                columna = fuente['col_valor']
-                expresion = fuente['expresion']
-                if expresion:
-                    partes.append('(%s) AS "%s"' % (expresion, ind['id']))
-                elif columna and columna in existentes:
-                    partes.append('"%s" AS "%s"' % (columna, ind['id']))
-                else:
-                    partes.append('NULL AS "%s"' % ind['id'])
-
-            col_tipo = next((i['col_tipo'] for i in lista if i.get('col_tipo')), None)
-            if col_tipo:
-                partes.append('"%s" AS "__tipo"' % col_tipo)
-
-            select_cols = ', '.join(partes)
-
-            condiciones = ['"%s" IS NOT NULL' % col_fecha,
-                           '"%s" <= CURRENT_DATE' % col_fecha]
-            parametros = []
-            if desde:
-                condiciones.append('"%s" >= %s' % (col_fecha, '%s'))
-                parametros.append(desde)
-            if hasta:
-                condiciones.append('"%s" <= %s' % (col_fecha, '%s'))
-                parametros.append(hasta)
-
-            sql = 'SELECT "%s" AS fecha, %s FROM %s WHERE %s ORDER BY "%s"' % (
-                col_fecha, select_cols, relacion,
-                ' AND '.join(condiciones), col_fecha,
-            )
-
-            try:
-                cur.execute(sql, tuple(parametros))
-                filas = cur.fetchall()
-            except Exception:
-                conn.rollback()
-                filas = []
-
-            for fila in filas:
-                fecha = fila['fecha']
-                tipo = fila.get('__tipo') if col_tipo else None
-                for ind in lista:
-                    valor = fila.get(ind['id'])
-                    if valor is None:
-                        continue
-                    resultado[ind['id']].append({
-                        'fecha': fecha,
-                        'valor': float(valor),
-                        'tipo': tipo,
-                    })
-
-        return resultado
-    finally:
-        if conn is not None:
-            try:
-                cur.close()
-            except Exception:
-                pass
-            try:
-                conn.close()
-            except Exception:
-                pass
 
 
 def rango_historico(sede):
     """
     Devuelve (primera_fecha, ultima_fecha) con datos reales de la sede.
-
-    Se apoya en las dos tablas del modulo y descarta fechas futuras.
     """
     primeras, ultimas = [], []
     conn = None
@@ -315,11 +450,12 @@ def rango_historico(sede):
     except Exception:
         return None, None
     finally:
-        if conn is not None:
+        if cur is not None:
             try:
                 cur.close()
             except Exception:
                 pass
+        if conn is not None:
             try:
                 conn.close()
             except Exception:

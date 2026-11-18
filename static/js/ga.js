@@ -296,7 +296,10 @@
               font: { size: 11 },
               filter: function (item) {
                 var conjunto = conjuntos[item.datasetIndex];
-                return !(conjunto && conjunto._limite);
+                if (!conjunto) return true;
+                if (conjunto._limite) return false;
+                if (conjunto._opcional && item.hidden) return false;
+                return true;
               }
             }
           },
@@ -427,7 +430,7 @@
       if (texto) texto.textContent = activo ? 'Salir' : 'Pantalla completa';
 
       var icono = boton.querySelector('i');
-      if (icono) icono.className = activo ? 'bx bx-collapse-alt' : 'bx bx-expand-alt';
+      if (icono) icono.className = activo ? 'bx bx-collapse' : 'bx bx-expand-alt';
 
       window.setTimeout(function () {
         if (grafico) grafico.resize();

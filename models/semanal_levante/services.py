@@ -11,6 +11,10 @@ def generar_estructura_semanal_levante(lote_nombre, fecha_recepcion, id_lote):
     if not id_lote or not lote_nombre:
         return
 
+    # Sin fecha de recepcion no se generan semanas (lote registrado sin gestion).
+    if not fecha_recepcion or str(fecha_recepcion).strip().lower() in ('', 'none'):
+        return
+
     # Evita duplicar la estructura si el lote ya tiene semanas registradas
     if model.count_semanal(id_lote) > 0:
         return
