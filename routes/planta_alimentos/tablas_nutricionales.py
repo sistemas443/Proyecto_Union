@@ -5,6 +5,7 @@ import os
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
 
 from routes.routes import login_requerido
+from models.lotes.services import get_lotes_agrupados
 from models.planta_alimentos.tablas_nutricionales import (
     TablaNutricional, columnas_nutrientes, SUBS_EDITABLES, CORE_EDITABLES, GRAFICOS,
 )
@@ -17,6 +18,19 @@ tn_bp = Blueprint('tablas_nutricionales', __name__, url_prefix='/tablas-nutricio
 def vista():
     lotes = TablaNutricional.lotes_disponibles()
     disponibles = [l['lote'] for l in lotes]
+
+    # Mismo selector de lote que los modulos de produccion (activos / concluidos)
+    lotes_agrupados = get_lotes_agrupados(session.get('user_rol'))
+    vistos = {x['nombre'] for g in lotes_agrupados for x in g['lotes']}
+    faltantes = sorted(set(disponibles) - vistos)
+    if faltantes:
+        lotes_agrupados.append({
+            'id': 'SIN-CLASIFICAR',
+            'titulo': 'SIN CLASIFICAR',
+            'estado': 'ACTIVO',
+            'prefijo': 'Otros',
+            'lotes': [{'nombre': x, 'fecha': '', 'variedad': ''} for x in faltantes],
+        })
 
     lote = (request.args.get('lote') or '').strip()
     if not lote or lote not in disponibles:
@@ -38,6 +52,7 @@ def vista():
     return render_template(
         'planta_alimentos/tablas_nutricionales.html',
         lotes=lotes,
+        lotes_agrupados=lotes_agrupados,
         lote=lote,
         datos=datos,
         columnas=columnas_nutrientes(),

@@ -517,14 +517,24 @@
     <div class="d-flex align-items-center gap-2 flex-wrap">
       <form method="GET" action="{{ url_for('tablas_nutricionales.vista') }}" class="d-flex align-items-center gap-2">
         <label class="form-label-design mb-0" for="lote">Lote</label>
-        <select name="lote" id="lote" class="form-select form-select-sm" style="min-width: 170px;"
-          onchange="this.form.submit()">
-          {% for l in lotes %}
-          <option value="{{ l.lote }}" {% if l.lote == lote %}selected{% endif %}>
-            {{ l.lote }}{% if l.tiene_datos %} · con tabla{% endif %}
-          </option>
-          {% endfor %}
-        </select>
+        <div class="lote-picker">
+          <select name="lote" id="lote" class="form-select form-select-sm" style="min-width: 170px;"
+            data-lote-picker onchange="this.form.submit()">
+            <option value="">-- Seleccione --</option>
+            {% for grupo in lotes_agrupados %}
+            <optgroup label="{{ grupo.titulo }} ({{ grupo.lotes|length }})">
+              {% for l in grupo.lotes %}
+              <option value="{{ l.nombre }}"
+                data-estado="{{ grupo.estado }}"
+                data-prefijo="{{ grupo.prefijo }}"
+                data-fecha="{{ l.fecha }}"
+                data-variedad="{{ l.variedad }}"
+                {% if l.nombre|string == lote|string %}selected{% endif %}>LOTE {{ l.nombre }}</option>
+              {% endfor %}
+            </optgroup>
+            {% endfor %}
+          </select>
+        </div>
       </form>
       {% if session.get('user_rol') != 'Lector' %}
       <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalImportarTN">
