@@ -339,23 +339,25 @@
         <div class="d-flex align-items-center gap-2">
             <label class="fw-semibold text-muted small mb-0">Seleccionar Lote:</label>
             <form method="GET" action="{{ url_for('planta_alimentos.resumen_lote_formulas') }}" class="d-inline-block">
-                <select name="lote_id" class="form-select form-select-sm fw-semibold" style="color: var(--action-primary);"
-                    onchange="this.form.submit()">
-                    <option value="0" {% if lote_id=='0' or not lote_id %}selected{% endif %} disabled>Seleccione un
-                        lote...</option>
-
-                    {% if not lotes %}
-                    <option value="" disabled>⚠️ No se encontraron lotes</option>
-                    {% else %}
-                    {% for l in lotes %}
-                    {% set valor_lote = l.get('lote', l) if l is mapping else l %}
-
-                    <option value="{{ valor_lote }}" {% if valor_lote|string==lote_id|string %}selected{% endif %}>
-                        {% if 'LOTE' not in valor_lote|string|upper %}LOTE {% endif %}{{ valor_lote }}
-                    </option>
-                    {% endfor %}
-                    {% endif %}
-                </select>
+                <div class="lote-picker">
+                    <select name="lote_id" class="form-select form-select-sm fw-semibold"
+                        style="color: var(--action-primary); min-width: 210px;"
+                        data-lote-picker onchange="this.form.submit()">
+                        <option value="">-- Seleccione --</option>
+                        {% for grupo in lotes_agrupados %}
+                        <optgroup label="{{ grupo.titulo }} ({{ grupo.lotes|length }})">
+                            {% for l in grupo.lotes %}
+                            <option value="{{ l.nombre }}"
+                                data-estado="{{ grupo.estado }}"
+                                data-prefijo="{{ grupo.prefijo }}"
+                                data-fecha="{{ l.fecha }}"
+                                data-variedad="{{ l.variedad }}"
+                                {% if l.nombre|string == lote_id|string %}selected{% endif %}>LOTE {{ l.nombre }}</option>
+                            {% endfor %}
+                        </optgroup>
+                        {% endfor %}
+                    </select>
+                </div>
             </form>
         </div>
     </div>
