@@ -245,8 +245,9 @@
         <thead>
           <tr>
             <th>Insumo</th>
-            <th style="width:30%">g / bache</th>
-            <th style="width:16%">Baches</th>
+            <th style="width:24%">g / bache</th>
+            <th style="width:12%">Baches</th>
+            <th style="width:24%">Total núcleo</th>
           </tr>
         </thead>
         <tbody>
@@ -255,16 +256,18 @@
           {% for i in insumos_nucleo %}
           {% set gramos = i['cantidad_kg']|float %}
           {% set baches = i['baches_nucleo']|float %}
-          {% set tot_nucleo.v = tot_nucleo.v + (gramos * baches) %}
+          {% set subtotal = gramos * baches %}
+          {% set tot_nucleo.v = tot_nucleo.v + subtotal %}
           {% set tot_base.v = tot_base.v + gramos %}
           {% set es_sal = (i['insumo']|upper == 'SAL DE MAR') %}
           <tr>
             <td class="{% if es_sal %}sal{% endif %}">{{ i['insumo'] }}</td>
             <td class="num">{{ "{:,.0f}".format(gramos) }}</td>
             <td class="num">{{ "%g"|format(baches) }}</td>
+            <td class="num">{{ "{:,.0f}".format(subtotal) }}</td>
           </tr>
           {% else %}
-          <tr><td colspan="3">Esta dieta no tiene insumos marcados como núcleo.</td></tr>
+          <tr><td colspan="4">Esta dieta no tiene insumos marcados como núcleo.</td></tr>
           {% endfor %}
         </tbody>
         <tfoot>
@@ -272,10 +275,13 @@
             <td>Total premezcla</td>
             <td class="num">{{ "{:,.0f}".format(tot_base.v) }}</td>
             <td></td>
+            <td></td>
           </tr>
           <tr class="f-tot">
             <td>Total núcleo</td>
-            <td class="num" colspan="2">{{ "{:,.0f}".format(tot_nucleo.v) }}</td>
+            <td></td>
+            <td></td>
+            <td class="num">{{ "{:,.0f}".format(tot_nucleo.v) }}</td>
           </tr>
         </tfoot>
       </table>
