@@ -603,10 +603,21 @@ def consolidado_precios():
     dietas_country = [d for d in costos_dietas if d['nombre_empresa'] == 'COUNTRY']
     dietas_dos_crestas = [d for d in costos_dietas if d['nombre_empresa'] == 'DOS CRESTAS SANTUARIO']
 
-    # 4. Dietas que no se pueden ubicar en ninguna empresa (se perderían en silencio)
+    # Otras empresas registradas en la tabla empresas (SERRANIA, DOS CRESTAS GUARNE, ...)
+    _otras = {}
+    for d in costos_dietas:
+        _nombre = (d.get('nombre_empresa') or '').strip()
+        if _nombre and _nombre not in EMPRESAS_ASIGNADAS:
+            _otras.setdefault(_nombre, []).append(d)
+    dietas_otras_empresas = [
+        {'nombre': n, 'dietas': v} for n, v in sorted(_otras.items())
+    ]
+
+    # 4. Dietas que no se pueden ubicar en ninguna empresa (se perderian en silencio)
+    #    Solo cuando el lote realmente no tiene empresa asignada.
     dietas_sin_asignar = [
         d for d in costos_dietas
-        if (d.get('nombre_empresa') or '') not in EMPRESAS_ASIGNADAS
+        if not (d.get('nombre_empresa') or '').strip()
     ]
 
     return render_template(
@@ -616,6 +627,7 @@ def consolidado_precios():
         dietas_san_martin=dietas_san_martin,
         dietas_country=dietas_country,
         dietas_dos_crestas=dietas_dos_crestas,
+        dietas_otras_empresas=dietas_otras_empresas,
         dietas_sin_asignar=dietas_sin_asignar,
         desde=desde,
         hasta=hasta,

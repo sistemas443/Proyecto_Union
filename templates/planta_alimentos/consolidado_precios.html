@@ -933,7 +933,7 @@
         <!-- TABLA DERECHA: 3 TABLAS FIJAS POR EMPRESA -->
         <div class="col-12 col-xl-7">
 
-            {% if not dietas_sin_asignar and not dietas_san_martin and not dietas_country and not dietas_dos_crestas %}
+            {% if not dietas_sin_asignar and not dietas_san_martin and not dietas_country and not dietas_dos_crestas and not dietas_otras_empresas %}
             <div class="card card-cons mb-4">
                 <div class="card-body text-center py-5">
                     <i class="fas fa-calendar-xmark mb-2" style="font-size: 1.8rem; color: var(--text-muted);"></i>
@@ -1211,6 +1211,69 @@
                 </div>
             </div>
             {% endif %}
+
+            {# =============================================
+                 TABLAS PARA EL RESTO DE EMPRESAS REGISTRADAS
+                 ============================================= #}
+            {% for empresa in dietas_otras_empresas %}
+            <div class="card card-cons mb-4">
+                <div class="card-header text-white text-center fw-bold">
+                    COSTO DIETAS {{ empresa.nombre }}
+                </div>
+                <div class="card-body p-0 table-responsive">
+                    <table class="table table-bordered table-hover mb-0 table-cons" style="font-size: 0.8rem;">
+                        <thead>
+                            <tr>
+                                <th style="width: 34%;">LOTE / DIETA</th>
+                                <th style="width: 10%;">MAQUILA</th>
+                                <th class="col-precio-emp" style="width: 17%;">PRECIO + IVA</th>
+                                <th class="col-precio-emp" style="width: 17%;">PRECIO + FLETE</th>
+                                <th class="col-total-emp" style="width: 22%;">PRECIO + FLETE + IVA</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for dieta in empresa.dietas %}
+                            <tr>
+                                {% if loop.index0 % 2 == 0 %}
+                                <td class="col-lote-etapa" rowspan="2">
+                                    <div class="d-flex align-items-start justify-content-between gap-2">
+                                        <div>
+                                            <span class="lote-etapa-lote">{{ dieta['lote'] }}</span>
+                                            <span class="lote-etapa-nombre">{{ dieta['etapa'] }}</span>
+                                            {% if dieta['n_ensayos'] %}
+                                            <div class="chip-ensayo"
+                                                title="Incluye los insumos de ensayo vigentes a la fecha consultada">
+                                                {{ dieta['n_ensayos'] }} ensayo(s) · +{{ "{:,.2f}".format(dieta['kg_ensayo']|float).replace(',', 'X').replace('.', ',').replace('X', '.') }} kg · +$ {{ "{:,.0f}".format(dieta['total_ensayo_iva']|float).replace(',', '.') }}
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                        {% if session.get('user_rol') in ('Superadmin', 'Director de Planta') %}
+                                        <button type="button" class="btn-dieta-costos"
+                                            data-item="{{ dieta['item_id'] }}"
+                                            data-lote="{{ dieta['lote'] }}"
+                                            data-version="{{ dieta['version'] }}"
+                                            data-maquila="{{ dieta['maquila_ton'] | default(0) | float }}"
+                                            data-flete="{{ dieta['flete_ton'] | default(0) | float }}"
+                                            title="Editar maquila y flete de esta dieta">
+                                            <i class="fas fa-pen"></i>
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                {% endif %}
+                                <td style="text-align: center;">
+                                    <span class="badge-maquila {{ 'con' if dieta['tipo_maquila'] == 'Con maquila' else 'sin' }}">{{ dieta['tipo_maquila'] }}</span>
+                                </td>
+                                <td class="col-precio-emp">$ {{ "{:,.0f}".format(dieta['precio_iva_maquila'] | default(0) | float) }}</td>
+                                <td class="col-precio-emp">$ {{ "{:,.0f}".format(dieta['precio_flete_maquila'] | default(0) | float) }}</td>
+                                <td class="col-total-emp">$ {{ "{:,.0f}".format(dieta['precio_flete_iva_maquila'] | default(0) | float) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endfor %}
 
         </div>
     </div>
