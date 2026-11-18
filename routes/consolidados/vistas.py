@@ -84,8 +84,35 @@ def consolidados_version():
 def primer_huevo():
     """Renderiza la vista Primer Huevo con indicadores y matriz por dia."""
     from models.consolidados import services as consolidados_services
+    from models.consolidados.primer_huevo_grafico import get_series_primer_huevo
+
     matriz = consolidados_services.get_matriz_primer_huevo()
-    return render_template('consolidados/primer_huevo.html', matriz=matriz)
+    grafico = get_series_primer_huevo(matriz)
+
+    # Metadatos de los lotes para el selector compartido de graficos
+    panel_lotes = []
+    try:
+        from models.lotes.clasificacion import fetch_clasificacion_lotes
+        info = fetch_clasificacion_lotes()
+    except Exception:
+        info = {}
+
+    for lote in (matriz.get('lotes') or []):
+        datos = info.get(lote) or {}
+        fecha = datos.get('fecha_recepcion')
+        panel_lotes.append({
+            'nombre': lote,
+            'estado': datos.get('estado') or 'ACTIVO',
+            'variedad': datos.get('variedad') or '',
+            'fecha': fecha.isoformat() if hasattr(fecha, 'isoformat') else (str(fecha) if fecha else ''),
+        })
+
+    return render_template(
+        'consolidados/primer_huevo.html',
+        matriz=matriz,
+        grafico=grafico,
+        panel_lotes=panel_lotes,
+    )
 
 
 @consolidados_bp.route('/consolidados/huevos-semanal')

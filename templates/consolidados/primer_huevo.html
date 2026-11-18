@@ -1,6 +1,7 @@
 {% extends 'generales/layout.html' %}
 {% block title %}Primer Huevo – Avícola San Martín{% endblock %}
 {% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/consolidados.css') }}">
 <style>
   .tabla-compacta th, .tabla-compacta td {
     width: 60px;
@@ -153,6 +154,28 @@
       </tbody>
     </table>
   </div>
+
+  <!-- Grafico: % de produccion vs dia -->
+  <div class="mt-4">
+    <h6 class="fw-bold text-secondary text-uppercase d-flex flex-wrap align-items-center mb-2">
+      Diagrama de dispersion % produccion · primer huevo
+      <span class="ms-2 text-muted fw-normal text-lowercase" style="font-size:.75rem;">
+        (días para alcanzar 1% · 5% · 20% · 50% · 90%)
+      </span>
+    </h6>
+
+    {% set datos = {'lotes': panel_lotes} %}
+    {% include 'consolidados/_panel_lotes.html' %}
+
+    <div class="d-none">
+      {% for l in panel_lotes %}
+      <input type="checkbox" class="chk-incluir" data-lote="{{ l.nombre }}" checked>
+      {% endfor %}
+    </div>
+
+    <div class="shadow-sm border rounded" id="grafPrimerHuevo" style="height: 480px; min-height: 380px;"></div>
+    <div class="text-muted mt-1" id="grafPrimerHuevoNota" style="font-size:.72rem;"></div>
+  </div>
 </div>
 <script>
   document.addEventListener('DOMContentLoaded', function () {
@@ -263,5 +286,125 @@
       marcarCelda(celda);
     });
   });
+</script>
+
+<script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+<script>
+(function () {
+  const SERIES = {{ grafico | tojson }};
+  const PALETA = ['#d62728', '#9467bd', '#1f77b4', '#2ca02c', '#ff7f0e', '#17becf', '#8c564b', '#e377c2', '#bcbd22', '#7f7f7f'];
+
+  const cont = document.getElementById('grafPrimerHuevo');
+  if (!cont) return;
+
+  if (!SERIES.length) {
+    cont.innerHTML = '<div class="p-4 text-center text-muted">Sin datos de producción para graficar.</div>';
+    return;
+  }
+
+  const colorDe = i => PALETA[i % PALETA.length];
+
+  function incluidas() {
+    const marcados = {};
+    document.querySelectorAll('.chk-incluir[data-lote]').forEach(function (chk) {
+      marcados[chk.dataset.lote] = chk.checked;
+    });
+    return marcados;
+  }
+
+  function render() {
+    const marcados = incluidas();
+    const oscuro = (document.documentElement.getAttribute('data-bs-theme') || '') === 'dark';
+    const colorTexto = oscuro ? '#dbe3ea' : '#212529';
+    const colorGrid = oscuro ? 'rgba(255,255,255,.12)' : 'rgba(0,0,0,.08)';
+
+    const visibles = SERIES.filter(function (s) { return marcados[s.lote] !== false; }).length;
+    const mostrarLeyenda = visibles <= 10;
+    const mostrarHitos = visibles <= 6;
+
+    const trazas = [];
+    const anotaciones = [];
+
+    SERIES.forEach(function (s, i) {
+      if (marcados[s.lote] === false) return;
+      const color = colorDe(i);
+
+      trazas.push({
+        x: s.dias,
+        y: s.valores,
+        type: 'scatter',
+        mode: 'lines+markers',
+        name: s.lote,
+        line: { color: color, width: 1.8 },
+        marker: { size: 3.5, color: color },
+        hovertemplate: 'Día %{x}<br>%{y:.2f}%<extra>' + s.lote + '</extra>'
+      });
+
+      trazas.push({
+        x: s.dias,
+        y: s.media,
+        type: 'scatter',
+        mode: 'lines',
+        name: '2 per. med. móv. (' + s.lote + ')',
+        line: { color: color, width: 1.8, dash: 'dash' },
+        hoverinfo: 'skip',
+        showlegend: false
+      });
+
+      if (!mostrarHitos) return;
+
+      (s.hitos || []).forEach(function (h) {
+        anotaciones.push({
+          x: h.dia,
+          y: h.valor,
+          text: h.dia + ': ' + Number(h.valor).toFixed(2) + '%',
+          showarrow: true,
+          arrowhead: 0,
+          ax: 0,
+          ay: -20,
+          bgcolor: color,
+          bordercolor: color,
+          borderwidth: 1,
+          borderpad: 3,
+          font: { color: '#ffffff', size: 10 },
+          opacity: 0.95
+        });
+      });
+    });
+
+    const layout = {
+      margin: { l: 72, r: mostrarLeyenda ? 190 : 24, t: 16, b: 56 },
+      paper_bgcolor: 'rgba(0,0,0,0)',
+      plot_bgcolor: 'rgba(0,0,0,0)',
+      font: { color: colorTexto, size: 11 },
+      xaxis: { title: { text: 'DÍAS' }, gridcolor: colorGrid, zeroline: false },
+      yaxis: { title: { text: '% DE PRODUCCIÓN' }, range: [0, 100], ticksuffix: '%', gridcolor: colorGrid },
+      legend: {
+        orientation: 'v', x: 1.01, y: 1, xanchor: 'left',
+        font: { size: 10 }, tracegroupgap: 2
+      },
+      showlegend: mostrarLeyenda,
+      annotations: anotaciones,
+      hovermode: 'closest'
+    };
+
+    Plotly.react(cont, trazas, layout, { responsive: true, displaylogo: false });
+
+    const nota = document.getElementById('grafPrimerHuevoNota');
+    if (nota) {
+      nota.textContent = mostrarHitos
+        ? 'Línea punteada = media móvil de 2 periodos · etiquetas = día en que alcanzó 1%, 5%, 20%, 50% y 90%.'
+        : 'Línea punteada = media móvil de 2 periodos · selecciona 6 lotes o menos para ver las etiquetas de los hitos.';
+    }
+  }
+
+  render();
+
+  document.querySelectorAll('.chk-incluir[data-lote]').forEach(function (chk) {
+    chk.addEventListener('change', render);
+  });
+
+  window.addEventListener('resize', function () { Plotly.Plots.resize(cont); });
+})();
 </script>
 {% endblock %}
