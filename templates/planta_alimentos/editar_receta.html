@@ -226,6 +226,7 @@
                                 value="{{ url_for('planta_alimentos.editar_receta', item_id=item_id, lote_id=l.nombre) }}"
                                 data-estado="{{ grupo.estado }}"
                                 data-prefijo="{{ grupo.prefijo }}"
+                                data-etiqueta="{{ l.nombre }}"
                                 data-fecha="{{ l.fecha }}"
                                 data-variedad="{{ l.variedad }}"
                                 {% if lote_id == l.nombre|string %}selected{% endif %}>

@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', function () {
       if (!opt.value) return;
       opciones.push({
         valor: opt.value,
+        etiqueta: opt.dataset.etiqueta || opt.value,
         estado: opt.dataset.estado || 'ACTIVO',
         prefijo: opt.dataset.prefijo || 'Otros',
         fecha: opt.dataset.fecha || '',
@@ -87,11 +88,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function actualizarValor() {
       const valor = select.value;
-      valorEl.textContent = valor ? 'LOTE ' + valor : '-- Seleccione --';
+      const opcion = opciones.find(function (o) { return o.valor === valor; });
+      valorEl.textContent = valor ? 'LOTE ' + (opcion ? opcion.etiqueta : valor) : '-- Seleccione --';
       valorEl.classList.toggle('lp-placeholder', !valor);
 
       if (dotEl) {
-        const opcion = opciones.find(function (o) { return o.valor === valor; });
         dotEl.hidden = !opcion;
         dotEl.className = 'lp-dot lp-dot-trigger ' +
           claseVariedad(opcion ? opcion.variedad : '');
@@ -108,7 +109,7 @@ document.addEventListener('DOMContentLoaded', function () {
       const termino = busqueda.trim().toUpperCase();
       const items = opciones.filter(function (o) {
         if (o.estado !== estado) return false;
-        return !termino || o.valor.toUpperCase().indexOf(termino) !== -1;
+        return !termino || o.etiqueta.toUpperCase().indexOf(termino) !== -1;
       });
 
       const grupos = [];
@@ -138,7 +139,7 @@ document.addEventListener('DOMContentLoaded', function () {
           html += '<button type="button" class="lp-opcion' +
             (seleccionada ? ' seleccionada' : '') + '" role="option" aria-selected="' +
             (seleccionada ? 'true' : 'false') + '" data-valor="' + o.valor + '">' +
-            '<span class="lp-opcion-nombre">' + o.valor + '</span>' +
+            '<span class="lp-opcion-nombre">' + o.etiqueta + '</span>' +
             '<span class="lp-opcion-fecha">' + formatearFecha(o.fecha) + '</span>' +
             '<span class="lp-dot ' + claseVariedad(o.variedad) + '" title="' +
             (o.variedad || 'Sin variedad') + '"></span>' +
