@@ -77,14 +77,25 @@
   .contenedor-matriz { overflow: auto; max-height: 65vh; }
 
   /* Grafico en pantalla completa */
-  #grafPrimerHuevo:fullscreen,
-  #grafPrimerHuevo:-webkit-full-screen {
+  #fsGrafico:fullscreen,
+  #fsGrafico:-webkit-full-screen {
     width: 100vw !important;
     height: 100vh !important;
-    padding: 14px;
-    border: 0 !important;
-    border-radius: 0 !important;
+    padding: 14px 18px;
     background: var(--bs-body-bg, #ffffff);
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+  }
+  #fsGrafico:fullscreen #grafPrimerHuevo,
+  #fsGrafico:-webkit-full-screen #grafPrimerHuevo {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto !important;
+  }
+  #fsGrafico:fullscreen .cons-tabla-barra,
+  #fsGrafico:-webkit-full-screen .cons-tabla-barra {
+    margin-top: 4px;
   }
 </style>
 <div class="container-fluid px-4 py-3 h-100 d-flex flex-column">
@@ -167,7 +178,7 @@
   </div>
 
   <!-- Grafico: % de produccion vs dia -->
-  <div class="mt-4">
+  <div class="mt-4 graf-fs-wrap" id="fsGrafico">
     <h6 class="fw-bold text-secondary text-uppercase d-flex flex-wrap align-items-center mb-2">
       Diagrama de dispersion % produccion · primer huevo
       <span class="ms-2 text-muted fw-normal text-lowercase" style="font-size:.75rem;">
@@ -421,13 +432,14 @@
     chk.addEventListener('change', render);
   });
 
-  // Pantalla completa del grafico
+  // Pantalla completa del grafico (incluye titulo y selector de lotes)
+  const fsWrap = document.getElementById('fsGrafico');
   const btnFs = document.getElementById('btnFsGrafico');
-  if (btnFs) {
+  if (btnFs && fsWrap) {
     btnFs.addEventListener('click', function () {
       if (!document.fullscreenElement) {
-        if (cont.requestFullscreen) {
-          cont.requestFullscreen().catch(function () {});
+        if (fsWrap.requestFullscreen) {
+          fsWrap.requestFullscreen().catch(function () {});
         }
       } else {
         document.exitFullscreen();
@@ -436,14 +448,14 @@
   }
 
   document.addEventListener('fullscreenchange', function () {
-    const activo = document.fullscreenElement === cont;
+    const activo = document.fullscreenElement === fsWrap;
     if (btnFs) {
       const icono = btnFs.querySelector('i');
       const texto = btnFs.querySelector('span');
       if (icono) icono.className = activo ? 'fas fa-compress' : 'fas fa-expand';
       if (texto) texto.textContent = activo ? 'Salir' : 'Pantalla completa';
     }
-    setTimeout(function () { Plotly.Plots.resize(cont); }, 120);
+    setTimeout(function () { Plotly.Plots.resize(cont); }, 150);
   });
 
   window.addEventListener('resize', function () { Plotly.Plots.resize(cont); });
