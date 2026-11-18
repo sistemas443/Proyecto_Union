@@ -75,6 +75,17 @@
     font-weight: 700;
   }
   .contenedor-matriz { overflow: auto; max-height: 65vh; }
+
+  /* Grafico en pantalla completa */
+  #grafPrimerHuevo:fullscreen,
+  #grafPrimerHuevo:-webkit-full-screen {
+    width: 100vw !important;
+    height: 100vh !important;
+    padding: 14px;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: var(--bs-body-bg, #ffffff);
+  }
 </style>
 <div class="container-fluid px-4 py-3 h-100 d-flex flex-column">
   <div class="d-flex flex-wrap align-items-center mb-3 px-3 py-2 rounded shadow-sm" style="background-color: #212529;">
@@ -171,6 +182,12 @@
       {% for l in panel_lotes %}
       <input type="checkbox" class="chk-incluir" data-lote="{{ l.nombre }}" checked>
       {% endfor %}
+    </div>
+
+    <div class="cons-tabla-barra">
+      <button type="button" class="cons-fs" id="btnFsGrafico" title="Ver el gráfico en pantalla completa">
+        <i class="fas fa-expand" aria-hidden="true"></i><span>Pantalla completa</span>
+      </button>
     </div>
 
     <div class="shadow-sm border rounded" id="grafPrimerHuevo" style="height: 480px; min-height: 380px;"></div>
@@ -402,6 +419,31 @@
 
   document.querySelectorAll('.chk-incluir[data-lote]').forEach(function (chk) {
     chk.addEventListener('change', render);
+  });
+
+  // Pantalla completa del grafico
+  const btnFs = document.getElementById('btnFsGrafico');
+  if (btnFs) {
+    btnFs.addEventListener('click', function () {
+      if (!document.fullscreenElement) {
+        if (cont.requestFullscreen) {
+          cont.requestFullscreen().catch(function () {});
+        }
+      } else {
+        document.exitFullscreen();
+      }
+    });
+  }
+
+  document.addEventListener('fullscreenchange', function () {
+    const activo = document.fullscreenElement === cont;
+    if (btnFs) {
+      const icono = btnFs.querySelector('i');
+      const texto = btnFs.querySelector('span');
+      if (icono) icono.className = activo ? 'fas fa-compress' : 'fas fa-expand';
+      if (texto) texto.textContent = activo ? 'Salir' : 'Pantalla completa';
+    }
+    setTimeout(function () { Plotly.Plots.resize(cont); }, 120);
   });
 
   window.addEventListener('resize', function () { Plotly.Plots.resize(cont); });
