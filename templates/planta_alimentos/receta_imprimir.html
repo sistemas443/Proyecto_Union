@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Dieta {{ item_id }} · Lote {{ lote_id }} · v{{ version_actual }}</title>
+<style>
+  @page { size: A4 portrait; margin: 11mm 11mm 11mm 11mm; }
+
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    font-family:"Segoe UI", Arial, Helvetica, sans-serif;
+    color:#16202b; font-size:10pt; line-height:1.3;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  body.medio{ font-size:9.3pt; }
+  body.denso{ font-size:8.6pt; }
+
+  :root{
+    --navy:#1f3b5c;
+    --navy-soft:#eef3f9;
+    --line:#d7dee8;
+    --muted:#6b7785;
+  }
+
+  /* ---------- barra de acciones (no se imprime) ---------- */
+  .barra{
+    position:sticky; top:0; z-index:5; display:flex; gap:8px; align-items:center;
+    padding:9px 14px; background:var(--navy); color:#fff;
+  }
+  .barra b{ font-size:10pt; margin-right:auto; font-weight:600; }
+  .barra button{
+    border:0; border-radius:6px; padding:7px 16px; font-size:9pt; font-weight:700;
+    background:#fff; color:var(--navy); cursor:pointer;
+  }
+  .barra .sec{ background:transparent; color:#cfe0f2; border:1px solid #4a6a8c; }
+
+  .hoja{ padding:6px 2px 0; }
+
+  /* ---------- cabecera ---------- */
+  .banda{
+    background:var(--navy); color:#fff;
+    padding:11px 14px; border-radius:6px;
+    display:flex; justify-content:space-between; align-items:center;
+  }
+  .banda .emp{ font-size:13pt; font-weight:800; letter-spacing:.02em; line-height:1.1; }
+  .banda .emp small{
+    display:block; font-size:7.4pt; font-weight:600; letter-spacing:.14em;
+    color:#a9c4de; margin-top:2px;
+  }
+  .banda .doc{ text-align:right; }
+  .banda .doc h1{ margin:0; font-size:13pt; letter-spacing:.08em; font-weight:800; }
+  .banda .doc span{ font-size:7.6pt; color:#a9c4de; letter-spacing:.04em; }
+
+  /* ---------- metadatos ---------- */
+  .meta{
+    display:grid; grid-template-columns:1.5fr .55fr .65fr .55fr;
+    border:1px solid var(--line); border-top:0; border-radius:0 0 6px 6px;
+    overflow:hidden; margin-bottom:12px;
+  }
+  .meta div{ padding:6px 10px; border-right:1px solid var(--line); }
+  .meta div:last-child{ border-right:0; }
+  .meta .k{
+    display:block; font-size:6.6pt; text-transform:uppercase; letter-spacing:.09em;
+    color:var(--muted); font-weight:700; margin-bottom:1px;
+  }
+  .meta .v{ font-size:10pt; font-weight:700; color:#16202b; }
+  .meta .v small{ font-weight:600; color:var(--muted); font-size:8pt; }
+
+  /* ---------- columnas ---------- */
+  .grid{ display:grid; grid-template-columns:1.04fr .96fr; gap:14px; align-items:start; }
+
+  .panel{ border:1px solid var(--line); border-radius:6px; overflow:hidden; }
+  .panel h2{
+    margin:0; padding:6px 10px; background:var(--navy-soft);
+    border-bottom:2px solid var(--navy);
+    font-size:8.6pt; text-transform:uppercase; letter-spacing:.09em; color:var(--navy);
+    display:flex; justify-content:space-between; align-items:baseline;
+  }
+  .panel h2 span{ font-size:7pt; font-weight:600; text-transform:none; letter-spacing:0; color:var(--muted); }
+
+  table{ width:100%; border-collapse:collapse; }
+  thead th{
+    background:#f7f9fc; color:var(--navy);
+    font-size:6.9pt; text-transform:uppercase; letter-spacing:.06em;
+    padding:5px 8px; text-align:right; font-weight:800;
+    border-bottom:1px solid var(--line);
+  }
+  thead th:first-child{ text-align:left; }
+
+  tbody td{ padding:3.2px 8px; border-bottom:1px solid #edf1f6; text-align:right; }
+  tbody td:first-child{ text-align:left; }
+  tbody tr:nth-child(even) td{ background:#fafbfd; }
+  tbody tr:last-child td{ border-bottom:0; }
+
+  tfoot td{
+    padding:6px 8px; border-top:2px solid var(--navy);
+    background:var(--navy-soft); font-weight:800; font-size:9.6pt; text-align:right;
+  }
+  tfoot td:first-child{ text-align:left; text-transform:uppercase; letter-spacing:.05em; font-size:8.4pt; }
+
+  .num{ font-variant-numeric:tabular-nums; }
+  .sal{ color:#b3261e; font-weight:700; }
+  .nota{
+    margin-top:6px; padding:5px 9px; border-left:3px solid #b3261e; background:#fdf3f2;
+    font-size:7.6pt; color:#b3261e; font-weight:700;
+  }
+
+  /* ---------- pie ---------- */
+  .pie{
+    margin-top:14px; padding-top:6px; border-top:1px solid var(--line);
+    display:flex; justify-content:space-between; align-items:center;
+    font-size:7.2pt; color:var(--muted);
+  }
+  .pie b{ color:var(--navy); }
+
+  @media print{
+    .barra{ display:none !important; }
+    .hoja{ padding:0; }
+  }
+</style>
+</head>
+
+{% set total_bache = (totales.total_kg | float) if totales and totales.total_kg else 0 %}
+{% set filas_max = [insumos_receta|length, insumos_nucleo|length]|max %}
+
+<body class="{% if filas_max > 26 %}denso{% elif filas_max > 20 %}medio{% endif %}">
+
+<div class="barra">
+  <b>Reporte de fórmula · Dieta {{ item_id }} · Lote {{ lote_id }}</b>
+  <button onclick="window.print()">Imprimir / Guardar PDF</button>
+  <button class="sec" onclick="window.close()">Cerrar</button>
+</div>
+
+<div class="hoja">
+
+  <div class="banda">
+    <div class="emp">
+      AVÍCOLA SAN MARTÍN S.A.S
+      <small>PLANTA DE ALIMENTOS</small>
+    </div>
+    <div class="doc">
+      <h1>DIETA Y NÚCLEO</h1>
+      <span>Formulación para producción</span>
+    </div>
+  </div>
+
+  <div class="meta">
+    <div>
+      <span class="k">Dieta</span>
+      <span class="v">{{ nombre_dieta or ('Ítem ' ~ item_id) }}</span>
+    </div>
+    <div>
+      <span class="k">Ítem</span>
+      <span class="v">{{ item_id }}</span>
+    </div>
+    <div>
+      <span class="k">Lote</span>
+      <span class="v">{{ lote_id }}</span>
+    </div>
+    <div>
+      <span class="k">Versión</span>
+      <span class="v">{{ version_actual }}</span>
+    </div>
+    <div>
+      <span class="k">Vence</span>
+      <span class="v">{{ fecha_vencimiento.strftime('%d/%m/%Y') if fecha_vencimiento else '—' }}</span>
+    </div>
+    <div>
+      <span class="k">Baches</span>
+      <span class="v">{{ "%g"|format(insumos_nucleo[0]['baches_nucleo']|float) if insumos_nucleo else '—' }}</span>
+    </div>
+    <div>
+      <span class="k">Base</span>
+      <span class="v">1.000 <small>kg</small></span>
+    </div>
+    <div>
+      <span class="k">Impreso</span>
+      <span class="v">{{ hoy.strftime('%d/%m/%Y') if hoy.strftime is defined else hoy }}</span>
+    </div>
+  </div>
+
+  <div class="grid">
+
+    <!-- ================= DIETA ================= -->
+    <div class="panel">
+      <h2>Dieta <span>kg por bache</span></h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Insumo</th>
+            <th style="width:34%">kg / bache</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for i in insumos_receta %}
+          {% set kg = (i['cantidad_kg']|float) / 1000 %}
+          <tr>
+            <td>{{ i['insumo'] }}</td>
+            <td class="num">{{ "{:,.2f}".format(kg) }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="2">Sin insumos registrados.</td></tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td>Total</td>
+            <td class="num">{{ "{:,.2f}".format(total_bache / 1000) }}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+
+    <!-- ================= NÚCLEO ================= -->
+    <div class="panel">
+      <h2>Núcleo <span>total a preparar</span></h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Insumo</th>
+            <th style="width:22%">kg / bache</th>
+            <th style="width:12%">Baches</th>
+            <th style="width:24%">Total kg</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% set tot_nucleo = namespace(v=0) %}
+          {% for i in insumos_nucleo %}
+          {% set kg = (i['cantidad_kg']|float) / 1000 %}
+          {% set baches = i['baches_nucleo']|float %}
+          {% set total = kg * baches %}
+          {% set tot_nucleo.v = tot_nucleo.v + total %}
+          {% set es_sal = (i['insumo']|upper == 'SAL DE MAR') %}
+          <tr>
+            <td class="{% if es_sal %}sal{% endif %}">{{ i['insumo'] }}</td>
+            <td class="num">{{ "{:,.2f}".format(kg) }}</td>
+            <td class="num">{{ "%g"|format(baches) }}</td>
+            <td class="num">{{ "{:,.2f}".format(total) }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="4">Esta dieta no tiene insumos marcados como núcleo.</td></tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td>Total núcleo</td>
+            <td></td>
+            <td></td>
+            <td class="num">{{ "{:,.2f}".format(tot_nucleo.v) }}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+
+  </div>
+
+  {% if insumos_nucleo | selectattr('insumo', 'equalto', 'SAL DE MAR') | list %}
+  <div class="nota">La SAL DE MAR se agrega al final de la preparación, no se mezcla con el núcleo.</div>
+  {% endif %}
+
+  <div class="pie">
+    <span>Sistema de formulación · <b>Avícola San Martín</b></span>
+    <span>Generado el {{ hoy.strftime('%d/%m/%Y') if hoy.strftime is defined else hoy }}</span>
+  </div>
+
+</div>
+
+<script>
+  window.addEventListener('load', function () {
+    setTimeout(function () { window.print(); }, 350);
+  });
+</script>
+</body>
+</html>

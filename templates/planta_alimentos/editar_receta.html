@@ -324,6 +324,12 @@
                         data-bs-target="#modalAgregarInsumo">
                         <i class="fas fa-plus me-1"></i> Insumo
                     </button>
+                    <a class="btn btn-sm btn-outline-secondary"
+                        href="{{ url_for('planta_alimentos.editar_receta', item_id=item_id, lote_id=lote_id, version=version_actual, imprimir=1) }}"
+                        target="_blank" rel="noopener"
+                        title="Imprimir dieta y núcleo (una hoja)">
+                        <i class="fas fa-file-pdf"></i>
+                    </a>
                     {% if lote_id != '0' and session.get('user_rol') != 'Lector' %}
                     <button type="button" class="btn btn-sm btn-outline-secondary"
                         onclick="abrirModalImportar({{ item_id }}, '{{ lote_id }}', {{ version_actual }})"
@@ -1299,6 +1305,33 @@
 </script>
 
 <script>
+    // Recalcula los totales del núcleo a partir de las filas visibles
+    function recalcularNucleo() {
+        const tabla = document.getElementById('tablaNucleo');
+        if (!tabla) return;
+
+        let base = 0;
+        let total = 0;
+
+        tabla.querySelectorAll('tbody tr').forEach(tr => {
+            const celdas = tr.querySelectorAll('td');
+            if (celdas.length < 4) return; // fila de "sin insumos"
+
+            const kg = parseFloat((celdas[1].textContent || '').replace(/[^\d.-]/g, '')) || 0;
+            const inputBaches = tr.querySelector('input[name="baches_nucleo"]');
+            const baches = parseFloat(inputBaches ? inputBaches.value : 0) || 0;
+
+            base += kg;
+            total += kg * baches;
+        });
+
+        const pie = tabla.querySelector('tfoot tr');
+        if (!pie) return;
+        const tds = pie.querySelectorAll('td');
+        if (tds[1]) tds[1].textContent = base.toLocaleString('en-US', { maximumFractionDigits: 0 });
+        if (tds[3]) tds[3].textContent = total.toLocaleString('en-US', { maximumFractionDigits: 0 });
+    }
+
     // Función para quitar sin recargar la página
     function quitarDelNucleo(event, idRegistro, btnElement) {
         event.preventDefault();
@@ -1315,6 +1348,7 @@
 
                     setTimeout(() => {
                         fila.remove();
+                        recalcularNucleo();
                     }, 300);
                 } else {
                     alert('Hubo un error al quitar el insumo.');

@@ -485,6 +485,23 @@ def editar_receta(item_id, lote_id):
 
     insumos_nucleo = [i for i in receta_calculada if i['es_nucleo']]
 
+    # ------------------------------------------------------------------
+    # Vista de impresión: dieta + núcleo en una sola hoja (PDF)
+    # ------------------------------------------------------------------
+    if request.args.get('imprimir') == '1':
+        return render_template(
+            'planta_alimentos/receta_imprimir.html',
+            nombre_dieta=nombre_dieta,
+            item_id=item_id,
+            lote_id=lote_id,
+            version_actual=version_actual,
+            fecha_vencimiento=fecha_vencimiento,
+            insumos_receta=receta_calculada,
+            insumos_nucleo=insumos_nucleo,
+            totales=resumen_totales,
+            hoy=hoy,
+        )
+
     return render_template(
         'planta_alimentos/editar_receta.html',
         item_id=item_id,
