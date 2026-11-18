@@ -1,5 +1,6 @@
 from flask import render_template, request, redirect, url_for, flash, session
-from datetime import datetime
+from datetime import datetime, date
+import calendar
 from collections import Counter
 import psycopg2.extras
 from models.base import get_db_connection, traducir_error
@@ -27,9 +28,34 @@ def ingreso_diario():
 @planta_bp.route('/compras/guardar-ingreso-diario', methods=['POST'])
 @login_requerido
 def guardar_ingreso_diario():
-    dia_numero = request.form.get('dia_numero')
-    fecha_registro = request.form.get('fecha_registro')
+    dia_numero = (request.form.get('dia_numero') or '').strip()
+    fecha_registro = (request.form.get('fecha_registro') or '').strip()
     observacion_general = request.form.get('observacion_general') or f'Ingreso Día {dia_numero}'
+
+    # ------------------------------------------------------------------
+    # La fecha del registro solo aporta el MES y el AÑO del periodo.
+    # El DÍA que cuenta es el que el usuario elige en "Día del Periodo".
+    # ------------------------------------------------------------------
+    try:
+        base = datetime.strptime(fecha_registro, '%Y-%m-%d').date()
+    except (ValueError, TypeError):
+        base = date.today()
+
+    try:
+        dia = int(dia_numero)
+    except (ValueError, TypeError):
+        dia = base.day
+
+    ultimo_dia = calendar.monthrange(base.year, base.month)[1]
+    dia_ajustado = min(max(dia, 1), ultimo_dia)
+    fecha_periodo = date(base.year, base.month, dia_ajustado)
+
+    if dia_ajustado != dia:
+        flash(
+            f'El día {dia} no existe en {base.strftime("%m/%Y")}; '
+            f'se registró el día {dia_ajustado}.',
+            'warning',
+        )
     
     # Obtener las listas enviadas desde las filas dinámicas
     materias_primas_ids = request.form.getlist('materia_prima_id[]')
@@ -61,17 +87,17 @@ def guardar_ingreso_diario():
 
                 # 1. Guardar en tabla de compras/recepciones
                 cursor.execute("""
-                    INSERT INTO recepciones_compra 
-                    (fecha_recepcion, materia_prima_id, lote_ingreso, cantidad_ingresada, costo_unitario, observaciones)
-                    VALUES (%s, %s, %s, %s, %s, %s);
-                """, (fecha_registro, mp_id, lote, cantidad, costo_unitario, f'Día {dia_numero} - {observacion_general}'))
+                    INSERT INTO recepciones_compra
+                    (fecha_recepcion, materia_prima_id, lote_ingreso, cantidad_ingresada, costo_unitario, observaciones, creado_en)
+                    VALUES (%s, %s, %s, %s, %s, %s, NOW());
+                """, (fecha_periodo, mp_id, lote, cantidad, costo_unitario, f'Día {dia_numero} - {observacion_general}'))
 
                 # 2. Registrar el movimiento en Kárdex
                 cursor.execute("""
                     INSERT INTO movimientos_inventario 
                     (materia_prima_id, tipo_movimiento, cantidad, fecha, observacion)
                     VALUES (%s, 'ENTRADA_COMPRA', %s, %s, %s);
-                """, (mp_id, cantidad, fecha_registro, f'Factura/Lote: {lote}'))
+                """, (mp_id, cantidad, fecha_periodo, f'Factura/Lote: {lote}'))
 
                 registros_guardados += 1
 
@@ -1159,6 +1185,99 @@ def recepcion_compras():
     # Lógica de recepción individual...
     return render_template('planta_alimentos/recepcion.html')
 
+def _ajustar_celda(cursor, fecha, mp_id, nuevo, costo, lote, dia):
+    """
+    Deja el total de la celda (fecha, materia prima) exactamente en `nuevo`.
+
+    - Si la celda tiene un solo registro, se actualiza ese registro.
+    - Si tiene varios, se ajusta por diferencia (alta o baja).
+    El kárdex se mantiene cuadrado con la misma lógica.
+    """
+    cursor.execute("""
+        SELECT id, cantidad_ingresada FROM recepciones_compra
+        WHERE fecha_recepcion = %s AND materia_prima_id = %s
+        ORDER BY id
+    """, (fecha, mp_id))
+    receps = cursor.fetchall()
+    actual = sum(float(r[1] or 0) for r in receps)
+
+    cursor.execute("""
+        SELECT id, cantidad FROM movimientos_inventario
+        WHERE fecha = %s AND materia_prima_id = %s AND tipo_movimiento = 'ENTRADA_COMPRA'
+        ORDER BY id
+    """, (fecha, mp_id))
+    movs = cursor.fetchall()
+
+    # --- Caso simple: un único registro ---
+    if len(receps) == 1 and len(movs) <= 1:
+        if nuevo <= 0:
+            cursor.execute("DELETE FROM recepciones_compra WHERE id = %s", (receps[0][0],))
+            for m in movs:
+                cursor.execute("DELETE FROM movimientos_inventario WHERE id = %s", (m[0],))
+            return
+
+        cursor.execute("""
+            UPDATE recepciones_compra
+               SET cantidad_ingresada = %s,
+                   costo_unitario = CASE WHEN %s > 0 THEN %s ELSE costo_unitario END,
+                   lote_ingreso = CASE WHEN %s <> '' THEN %s ELSE lote_ingreso END
+             WHERE id = %s
+        """, (nuevo, costo, costo, lote, lote, receps[0][0]))
+
+        if movs:
+            cursor.execute(
+                "UPDATE movimientos_inventario SET cantidad = %s WHERE id = %s",
+                (nuevo, movs[0][0]),
+            )
+        else:
+            cursor.execute("""
+                INSERT INTO movimientos_inventario
+                (materia_prima_id, tipo_movimiento, cantidad, fecha, observacion)
+                VALUES (%s, 'ENTRADA_COMPRA', %s, %s, %s)
+            """, (mp_id, nuevo, fecha, 'Ajuste desde Matriz'))
+        return
+
+    # --- Caso general: ajustar por diferencia ---
+    delta = nuevo - actual
+    if abs(delta) < 0.005:
+        return
+
+    if delta > 0:
+        cursor.execute("""
+            INSERT INTO recepciones_compra
+            (fecha_recepcion, materia_prima_id, lote_ingreso, cantidad_ingresada, costo_unitario, observaciones, creado_en)
+            VALUES (%s, %s, %s, %s, %s, %s, NOW())
+        """, (fecha, mp_id, lote or f'AJUSTE-{dia}', delta, costo,
+              f'Ajuste al alza desde Matriz (Día {dia})'))
+        cursor.execute("""
+            INSERT INTO movimientos_inventario
+            (materia_prima_id, tipo_movimiento, cantidad, fecha, observacion)
+            VALUES (%s, 'ENTRADA_COMPRA', %s, %s, %s)
+        """, (mp_id, delta, fecha, 'Ajuste al alza (Matriz)'))
+    else:
+        restante = -delta
+        for r in reversed(receps):
+            if restante <= 0:
+                break
+            cant = float(r[1] or 0)
+            quitar = min(cant, restante)
+            nueva = cant - quitar
+            if nueva <= 0:
+                cursor.execute("DELETE FROM recepciones_compra WHERE id = %s", (r[0],))
+            else:
+                cursor.execute(
+                    "UPDATE recepciones_compra SET cantidad_ingresada = %s WHERE id = %s",
+                    (nueva, r[0]),
+                )
+            restante -= quitar
+
+        cursor.execute("""
+            INSERT INTO movimientos_inventario
+            (materia_prima_id, tipo_movimiento, cantidad, fecha, observacion)
+            VALUES (%s, 'AJUSTE', %s, %s, %s)
+        """, (mp_id, delta, fecha, 'Ajuste a la baja (Matriz)'))
+
+
 @planta_bp.route('/compras/guardar-celda', methods=['POST'])
 @login_requerido
 def guardar_celda_matriz():
@@ -1168,14 +1287,11 @@ def guardar_celda_matriz():
     anio = request.form.get('anio')
     mp_id = request.form.get('materia_prima_id')
     mp_nombre = request.form.get('materia_prima_nombre')
-    
+    modo = (request.form.get('modo') or 'nuevo').strip()
+
     cantidad = float(request.form.get('cantidad') or 0)
     costo = float(request.form.get('costo') or 0)
-    lote = request.form.get('lote') or f'DIA-{dia}'
-
-    if cantidad <= 0:
-        flash('La cantidad debe ser mayor a cero.', 'warning')
-        return redirect(url_for('planta_alimentos.matriz_mensual_compras', mes=mes, anio=anio))
+    lote = (request.form.get('lote') or '').strip()
 
     # Formatear la fecha basada en la celda seleccionada
     fecha_registro = f"{anio}-{int(mes):02d}-{int(dia):02d}"
@@ -1184,22 +1300,32 @@ def guardar_celda_matriz():
     cursor = conn.cursor()
 
     try:
-        # 1. Guardar Recepción
-        cursor.execute("""
-            INSERT INTO recepciones_compra 
-            (fecha_recepcion, materia_prima_id, lote_ingreso, cantidad_ingresada, costo_unitario, observaciones)
-            VALUES (%s, %s, %s, %s, %s, %s);
-        """, (fecha_registro, mp_id, lote, cantidad, costo, f'Ingreso rápido desde Matriz'))
+        if modo == 'editar':
+            _ajustar_celda(cursor, fecha_registro, int(mp_id), cantidad, costo, lote, dia)
+            conn.commit()
+            if cantidad > 0:
+                flash(f'Celda actualizada: {cantidad:,.0f} gr de {mp_nombre}.', 'success')
+            else:
+                flash(f'Registro del día {dia} eliminado para {mp_nombre}.', 'success')
+        else:
+            if cantidad <= 0:
+                flash('La cantidad debe ser mayor a cero.', 'warning')
+            else:
+                cursor.execute("""
+                    INSERT INTO recepciones_compra
+                    (fecha_recepcion, materia_prima_id, lote_ingreso, cantidad_ingresada, costo_unitario, observaciones, creado_en)
+                    VALUES (%s, %s, %s, %s, %s, %s, NOW());
+                """, (fecha_registro, mp_id, lote or f'DIA-{dia}', cantidad, costo,
+                      'Ingreso rápido desde Matriz'))
 
-        # 2. Afectar Kárdex
-        cursor.execute("""
-            INSERT INTO movimientos_inventario 
-            (materia_prima_id, tipo_movimiento, cantidad, fecha, observacion)
-            VALUES (%s, 'ENTRADA_COMPRA', %s, %s, %s);
-        """, (mp_id, cantidad, fecha_registro, f'Lote: {lote} (Matriz)'))
+                cursor.execute("""
+                    INSERT INTO movimientos_inventario
+                    (materia_prima_id, tipo_movimiento, cantidad, fecha, observacion)
+                    VALUES (%s, 'ENTRADA_COMPRA', %s, %s, %s);
+                """, (mp_id, cantidad, fecha_registro, f'Lote: {lote or "DIA-" + str(dia)} (Matriz)'))
 
-        conn.commit()
-        flash(f'Ingreso de {cantidad}gr de {mp_nombre} guardado correctamente.', 'success')
+                conn.commit()
+                flash(f'Ingreso de {cantidad:,.0f} gr de {mp_nombre} guardado correctamente.', 'success')
     except Exception as e:
         conn.rollback()
         flash(f'Error al guardar en celda: {traducir_error(str(e))}', 'danger')

@@ -355,7 +355,8 @@
                                 data-dia="{{ dia }}" 
                                 data-mp-id="{{ mp['id'] }}" 
                                 data-mp-nombre="{{ mp['nombre'] }}"
-                                title="Clic para registrar ingreso de {{ mp['nombre'] }} el día {{ dia }}">
+                                data-cantidad="{{ cant }}"
+                                title="{% if cant > 0 %}Día {{ dia }} · {{ mp['nombre'] }}: {{ '{:,.0f}'.format(cant) }} gr — clic para editar{% else %}Clic para registrar ingreso de {{ mp['nombre'] }} el día {{ dia }}{% endif %}">
                                 {% if cant > 0 %}
                                 {{ "{:,.0f}".format(cant) }}
                                 {% else %}
@@ -403,6 +404,7 @@
                     
                     <!-- Campos Ocultos -->
                     <input type="hidden" name="dia" id="input-dia">
+                    <input type="hidden" name="modo" id="input-modo" value="nuevo">
                     <input type="hidden" name="mes" value="{{ mes }}">
                     <input type="hidden" name="anio" value="{{ anio }}">
                     <input type="hidden" name="materia_prima_id" id="input-mp-id">
@@ -414,7 +416,9 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-semibold" style="color: var(--success);">Cantidad Recibida (gr) *</label>
-                        <input type="number" step="0.01" name="cantidad" class="form-control form-control-lg text-end" required placeholder="Ej: 50000">
+                        <input type="number" step="0.01" min="0" name="cantidad" id="modal-cantidad"
+                               class="form-control form-control-lg text-end" required placeholder="Ej: 50000">
+                        <div class="form-text" id="modal-aviso"></div>
                     </div>
                     <div class="row">
                         <div class="col-6 mb-3">
@@ -449,6 +453,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const dia = this.getAttribute('data-dia');
             const mpId = this.getAttribute('data-mp-id');
             const mpNombre = this.getAttribute('data-mp-nombre');
+            const cant = parseFloat(this.getAttribute('data-cantidad') || '0') || 0;
 
             // Textos visuales
             document.getElementById('modal-dia-txt').textContent = dia;
@@ -459,9 +464,24 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('input-mp-id').value = mpId;
             document.getElementById('input-mp-nombre').value = mpNombre;
 
+            const esEdicion = cant > 0;
+            document.getElementById('input-modo').value = esEdicion ? 'editar' : 'nuevo';
+
+            const inputCant = document.getElementById('modal-cantidad');
+            inputCant.value = esEdicion ? cant : '';
+
+            const aviso = document.getElementById('modal-aviso');
+            if (aviso) {
+                aviso.textContent = esEdicion
+                    ? 'Valor actual: ' + cant.toLocaleString('es-CO') + ' gr. Si lo cambias, se ajusta el total del día.'
+                    : 'Se sumará al total del día.';
+            }
+
             const modalEl = document.getElementById('modalIngresoCelda');
             const modalInstance = bootstrap.Modal.getOrCreateInstance(modalEl);
             modalInstance.show();
+
+            setTimeout(() => { inputCant.focus(); inputCant.select(); }, 300);
         });
     });
 });
