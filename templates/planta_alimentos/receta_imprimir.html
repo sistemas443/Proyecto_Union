@@ -99,6 +99,12 @@
   }
   tfoot td:first-child{ text-align:left; text-transform:uppercase; letter-spacing:.05em; font-size:8.4pt; }
 
+  tfoot tr.f-sub td{
+    border-top:1px solid var(--line); background:#f7f9fc;
+    font-size:8.6pt; font-weight:700;
+  }
+  tfoot tr.f-tot td{ border-top:2px solid var(--navy); }
+
   .num{ font-variant-numeric:tabular-nums; }
   .sal{ color:#b3261e; font-weight:700; }
   .nota{
@@ -226,11 +232,13 @@
         </thead>
         <tbody>
           {% set tot_nucleo = namespace(v=0) %}
+          {% set tot_base = namespace(v=0) %}
           {% for i in insumos_nucleo %}
           {% set kg = (i['cantidad_kg']|float) / 1000 %}
           {% set baches = i['baches_nucleo']|float %}
           {% set total = kg * baches %}
           {% set tot_nucleo.v = tot_nucleo.v + total %}
+          {% set tot_base.v = tot_base.v + kg %}
           {% set es_sal = (i['insumo']|upper == 'SAL DE MAR') %}
           <tr>
             <td class="{% if es_sal %}sal{% endif %}">{{ i['insumo'] }}</td>
@@ -243,7 +251,13 @@
           {% endfor %}
         </tbody>
         <tfoot>
-          <tr>
+          <tr class="f-sub">
+            <td>Total premezcla</td>
+            <td class="num">{{ "{:,.2f}".format(tot_base.v) }}</td>
+            <td></td>
+            <td></td>
+          </tr>
+          <tr class="f-tot">
             <td>Total núcleo</td>
             <td></td>
             <td></td>

@@ -1325,11 +1325,19 @@
             total += kg * baches;
         });
 
-        const pie = tabla.querySelector('tfoot tr');
-        if (!pie) return;
-        const tds = pie.querySelectorAll('td');
-        if (tds[1]) tds[1].textContent = base.toLocaleString('en-US', { maximumFractionDigits: 0 });
-        if (tds[3]) tds[3].textContent = total.toLocaleString('en-US', { maximumFractionDigits: 0 });
+        const filasPie = tabla.querySelectorAll('tfoot tr');
+        if (!filasPie.length) return;
+
+        if (filasPie.length >= 2) {
+            const sub = filasPie[0].querySelectorAll('td');
+            const tot = filasPie[1].querySelectorAll('td');
+            if (sub[1]) sub[1].textContent = base.toLocaleString('en-US', { maximumFractionDigits: 0 });
+            if (tot[3]) tot[3].textContent = total.toLocaleString('en-US', { maximumFractionDigits: 0 });
+        } else {
+            const tds = filasPie[0].querySelectorAll('td');
+            if (tds[1]) tds[1].textContent = base.toLocaleString('en-US', { maximumFractionDigits: 0 });
+            if (tds[3]) tds[3].textContent = total.toLocaleString('en-US', { maximumFractionDigits: 0 });
+        }
     }
 
     // Función para quitar sin recargar la página
