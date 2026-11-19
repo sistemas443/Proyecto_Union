@@ -25,6 +25,7 @@
     graf_desde      primera semana que se grafica (omite las anteriores)
     graf_dtick_y    separación de las marcas del eje Y (siempre)
     graf_dtick_y_fs separación de las marcas del eje Y solo en pantalla completa
+    graf_y_min      valor mínimo del eje Y (por debajo no se dibuja nada)
     graf_contenedor id del contenedor de la tabla (para ajustar su alto)
     graf_altura     alto del gráfico en px (por defecto 330)
     graf_eje        nombre del eje X (por defecto "Semana")
@@ -74,6 +75,7 @@
          data-desde="{{ graf_desde|default('') }}"
          data-dtick-y="{{ graf_dtick_y|default('') }}"
          data-dtick-y-fs="{{ graf_dtick_y_fs|default('') }}"
+         data-y-min="{{ graf_y_min|default('') }}"
          data-eje="{{ graf_eje|default('Semana') }}"
          data-tipo="{{ graf_tipo|default('line') }}"
          data-selector="{{ graf_selector|default('') }}"

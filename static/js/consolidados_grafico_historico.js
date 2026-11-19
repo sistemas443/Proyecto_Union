@@ -64,6 +64,9 @@
         dtickYFs: (cont.dataset.dtickYFs || '').trim() === ''
           ? null
           : parseFloat(cont.dataset.dtickYFs),
+        yMin: (cont.dataset.yMin || '').trim() === ''
+          ? null
+          : parseFloat(cont.dataset.yMin),
         card: cont.closest('.card'),
         tabla: cont.dataset.contenedor
           ? document.getElementById(cont.dataset.contenedor)
@@ -205,6 +208,18 @@
         paper_bgcolor: '#ffffff',
         plot_bgcolor: '#ffffff'
       };
+
+      if (g.yMin !== null && !isNaN(g.yMin)) {
+        var maxDato = g.yMin;
+        trazas.forEach(function (t) {
+          (t.y || []).forEach(function (v) {
+            if (v !== null && !isNaN(v) && v > maxDato) maxDato = v;
+          });
+        });
+        delete layout.yaxis.rangemode;
+        layout.yaxis.autorange = false;
+        layout.yaxis.range = [g.yMin, Math.max(g.yMin + 100, maxDato * 1.03)];
+      }
 
       if (g.tipo === 'bar') {
         layout.barmode = 'stack';
