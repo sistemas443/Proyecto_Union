@@ -20,7 +20,7 @@ BOTONES = [
     {'titulo': 'SALDO AVES', 'icono': '🐔', 'hoja': 'H8', 'endpoint': 'consolidados.saldo_aves'},
     {'titulo': '% PRODUCCIÓN', 'icono': '📈', 'hoja': 'H9', 'endpoint': 'consolidados.porc_produccion'},
     {'titulo': '% MORT. ACUMULADA', 'icono': '☠️', 'hoja': 'H11', 'endpoint': 'consolidados.mort_acumulada'},
-    {'titulo': 'MUERTES SEMANALES', 'icono': '📉', 'hoja': 'H5', 'endpoint': 'consolidados.mortalidad_semanal'},
+    {'titulo': 'CANTIDAD DE AVES MUERTAS SEMANAL', 'icono': '📉', 'hoja': 'H5', 'endpoint': 'consolidados.mortalidad_semanal'},
     {'titulo': 'PESO HUEVO', 'icono': '⚪', 'hoja': 'PESO HUEVO', 'endpoint': 'consolidados.peso_huevo'},
     {'titulo': 'UNIFORMIDAD', 'icono': '🎯', 'hoja': 'Uniformidad', 'endpoint': 'consolidados.uniformidad'},
     # Fila 3
