@@ -12,8 +12,6 @@
     </h5>
   </div>
 
-  {% include 'consolidados/_panel_lotes.html' %}
-
   <div class="cons-tabla-barra">
     <button type="button" class="cons-fs js-tabla-fs" title="Ver la tabla en pantalla completa">
       <i class="fas fa-expand" aria-hidden="true"></i><span>Pantalla completa</span>
@@ -61,6 +59,14 @@
       </tbody>
     </table>
   </div>
+
+  {% set graf_id = 'PesoHuevo' %}
+  {% set graf_titulo = 'Peso del huevo (g)' %}
+  {% set graf_dec = 1 %}
+  {% set graf_sufijo = '' %}
+  {% set graf_factor = 1 %}
+  {% set graf_contenedor = 'contenedorPesoHuevo' %}
+  {% include 'consolidados/_grafico_historico.html' %}
 </div>
 <script>
   document.addEventListener("DOMContentLoaded", function () {
@@ -100,15 +106,6 @@
     };
     ajustarSticky();
     window.addEventListener('resize', ajustarSticky);
-    const cont = document.getElementById('contenedorPesoHuevo');
-    if (cont && window.ResizeObserver) {
-      const ajustar = () => {
-        const rect = cont.getBoundingClientRect();
-        cont.style.height = Math.max(window.innerHeight - rect.top - 15, 300) + 'px';
-      };
-      new ResizeObserver(ajustar).observe(document.body);
-      ajustar();
-    }
   });
 </script>
 <script src="{{ url_for('static', filename='js/consolidados_tabla.js') }}"></script>

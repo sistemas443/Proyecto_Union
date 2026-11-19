@@ -1,0 +1,58 @@
+{#-
+  Tarjeta con el histórico por lote de una vista de Consolidados.
+
+  Se incluye después de la tabla, dentro del contenedor de la página:
+
+      {% set graf_id = 'Haa' %}
+      {% set graf_titulo = 'Huevos por ave alojada' %}
+      {% set graf_dec = 2 %}
+      {% set graf_sufijo = '' %}
+      {% set graf_factor = 1 %}
+      {% set graf_contenedor = 'contenedorHaa' %}
+      {% include 'consolidados/_grafico_historico.html' %}
+
+  Variables:
+    graf_id         sufijo de los ids (cardGraficoX, graficoX, btnPantallaX)
+    graf_titulo     título del eje Y
+    graf_dec        decimales del tooltip y del eje Y (0 a 3)
+    graf_sufijo     '' o '%' (se agrega al valor en el tooltip)
+    graf_factor     1, o 100 cuando la matriz viene en fracción 0-1
+    graf_contenedor id del contenedor de la tabla (para ajustar su alto)
+    graf_altura     alto del gráfico en px (por defecto 330)
+
+  La barra "Lotes incluidos" es la misma de la tabla: los checkboxes
+  .chk-incluir alimentan a la vez los totales/promedios y este gráfico.
+-#}
+<div class="card shadow-sm border rounded mt-3 card-pantalla-completa" id="cardGrafico{{ graf_id }}">
+  <div class="card-body py-2">
+    {% include 'consolidados/_panel_lotes.html' %}
+
+    <div class="cons-tabla-barra">
+      <button type="button" class="cons-fs" id="btnPantalla{{ graf_id }}"
+              title="Ver el gráfico en pantalla completa">
+        <i class="fas fa-expand" aria-hidden="true"></i><span>Pantalla completa</span>
+      </button>
+    </div>
+
+    <div id="grafico{{ graf_id }}"
+         class="grafico-fs js-grafico-consolidado"
+         data-datos="datos-grafico-{{ graf_id }}"
+         data-titulo="{{ graf_titulo }}"
+         data-dec="{{ graf_dec|default(2) }}"
+         data-sufijo="{{ graf_sufijo|default('') }}"
+         data-factor="{{ graf_factor|default(1) }}"
+         data-contenedor="{{ graf_contenedor }}"
+         style="height: {{ graf_altura|default(330) }}px;"></div>
+  </div>
+</div>
+
+<script id="datos-grafico-{{ graf_id }}" type="application/json">
+  {{ {
+      'semanas': datos.semanas,
+      'lotes': datos.lotes | map(attribute='nombre') | list,
+      'matriz': datos.matriz
+     } | tojson }}
+</script>
+<script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+<script src="{{ url_for('static', filename='js/consolidados_pantalla_completa.js') }}"></script>
+<script src="{{ url_for('static', filename='js/consolidados_grafico_historico.js') }}"></script>
