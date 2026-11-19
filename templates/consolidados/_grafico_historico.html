@@ -25,6 +25,8 @@
     graf_altura     alto del gráfico en px (por defecto 330)
     graf_eje        nombre del eje X (por defecto "Semana")
     graf_tipo       "line" (por defecto) o "bar" para conteos por día
+    graf_barra      selector de la barra de filtros que se mueve a la tarjeta
+                    cuando el gráfico pasa a pantalla completa
     graf_semanas    lista del eje X (por defecto datos.semanas)
     graf_matriz     matriz a graficar (por defecto datos.matriz)
     graf_panel      0 para no repetir la barra "Lotes incluidos"
@@ -34,7 +36,9 @@
   La barra "Lotes incluidos" es la misma de la tabla: los checkboxes
   .chk-incluir alimentan a la vez los totales/promedios y este gráfico.
 -#}
-<div class="card shadow-sm border rounded mt-3 card-pantalla-completa" id="cardGrafico{{ graf_id }}">
+<div class="card shadow-sm border rounded mt-3 card-pantalla-completa"
+     id="cardGrafico{{ graf_id }}"
+     data-barra="{{ graf_barra|default('') }}">
   <div class="card-body py-2">
     {% if graf_panel|default(1) %}
     {% include 'consolidados/_panel_lotes.html' %}

@@ -182,6 +182,13 @@
   text-overflow: ellipsis;
 }
 
+/* Barra de filtros de la página traída a la tarjeta en pantalla completa */
+.barra-en-pantalla {
+  top: 0 !important;
+  margin: 0 0 0.5rem !important;
+  z-index: 5;
+}
+
 /* ============================================================
    Panel de lotes
    ============================================================ */

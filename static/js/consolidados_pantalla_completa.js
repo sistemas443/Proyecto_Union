@@ -32,6 +32,33 @@
         boton.title = activo ? 'Salir de pantalla completa' : 'Ver en pantalla completa';
     }
 
+    /*
+     * Si la tarjeta trae data-barra="#selector", ese bloque (la barra de
+     * filtros de la página) se mueve dentro de la tarjeta mientras dura la
+     * pantalla completa y se devuelve a su sitio al salir. Se mueve el nodo,
+     * no se copia, así conserva sus eventos y su estado.
+     */
+    function moverBarra(card, activo) {
+        var selector = card.getAttribute('data-barra');
+        if (!selector) return;
+
+        if (activo) {
+            var barra = document.querySelector(selector);
+            if (!barra || card.contains(barra)) return;
+            barra._origen = { padre: barra.parentNode, siguiente: barra.nextSibling };
+            var cuerpo = card.querySelector('.card-body') || card;
+            cuerpo.insertBefore(barra, cuerpo.firstChild);
+            barra.classList.add('barra-en-pantalla');
+            return;
+        }
+
+        var dentro = card.querySelector(selector);
+        if (!dentro || !dentro._origen) return;
+        dentro._origen.padre.insertBefore(dentro, dentro._origen.siguiente);
+        delete dentro._origen;
+        dentro.classList.remove('barra-en-pantalla');
+    }
+
     window.pantallaCompletaGrafico = function (contenedorId, graficoId, botonId) {
         var contenedor = document.getElementById(contenedorId);
         if (!contenedor) return;
@@ -63,6 +90,7 @@
             var esActivo = card === activo;
             card.classList.toggle('pantalla-completa-activa', esActivo);
             cambiarIcono(card.dataset.fsBoton, esActivo);
+            moverBarra(card, esActivo);
             redimensionar(card);
         });
     }

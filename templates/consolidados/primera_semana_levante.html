@@ -568,6 +568,7 @@
   {% set graf_tipo = sec.tipo|default('line') %}
   {% set graf_panel = 0 %}
   {% set graf_compacto = 1 %}
+  {% set graf_barra = '#pslLoteBar' %}
   {% set graf_scripts = 1 if loop.first else 0 %}
   {% include 'consolidados/_grafico_historico.html' %}
   </div>
