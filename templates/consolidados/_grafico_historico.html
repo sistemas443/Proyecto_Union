@@ -22,18 +22,27 @@
     graf_desde      primera semana que se grafica (omite las anteriores)
     graf_contenedor id del contenedor de la tabla (para ajustar su alto)
     graf_altura     alto del gráfico en px (por defecto 330)
+    graf_eje        nombre del eje X (por defecto "Semana")
+    graf_semanas    lista del eje X (por defecto datos.semanas)
+    graf_matriz     matriz a graficar (por defecto datos.matriz)
+    graf_panel      0 para no repetir la barra "Lotes incluidos"
+    graf_compacto   1 para dejar solo el icono de pantalla completa
+    graf_scripts    0 cuando los .js ya se cargaron en otra tarjeta
 
   La barra "Lotes incluidos" es la misma de la tabla: los checkboxes
   .chk-incluir alimentan a la vez los totales/promedios y este gráfico.
 -#}
 <div class="card shadow-sm border rounded mt-3 card-pantalla-completa" id="cardGrafico{{ graf_id }}">
   <div class="card-body py-2">
+    {% if graf_panel|default(1) %}
     {% include 'consolidados/_panel_lotes.html' %}
+    {% endif %}
 
     <div class="cons-tabla-barra">
       <button type="button" class="cons-fs" id="btnPantalla{{ graf_id }}"
               title="Ver el gráfico en pantalla completa">
-        <i class="fas fa-expand" aria-hidden="true"></i><span>Pantalla completa</span>
+        <i class="fas fa-expand" aria-hidden="true"></i>
+        {% if not graf_compacto|default(0) %}<span>Pantalla completa</span>{% endif %}
       </button>
     </div>
 
@@ -47,6 +56,7 @@
          data-conectar="{{ graf_conectar|default(0) }}"
          data-maximo="{{ graf_maximo|default('') }}"
          data-desde="{{ graf_desde|default('') }}"
+         data-eje="{{ graf_eje|default('Semana') }}"
          data-contenedor="{{ graf_contenedor }}"
          style="height: {{ graf_altura|default(330) }}px;"></div>
   </div>
@@ -54,11 +64,13 @@
 
 <script id="datos-grafico-{{ graf_id }}" type="application/json">
   {{ {
-      'semanas': datos.semanas,
+      'semanas': graf_semanas|default(datos.semanas),
       'lotes': datos.lotes | map(attribute='nombre') | list,
-      'matriz': datos.matriz
+      'matriz': graf_matriz|default(datos.matriz)
      } | tojson }}
 </script>
+{% if graf_scripts|default(1) %}
 <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
 <script src="{{ url_for('static', filename='js/consolidados_pantalla_completa.js') }}"></script>
 <script src="{{ url_for('static', filename='js/consolidados_grafico_historico.js') }}"></script>
+{% endif %}

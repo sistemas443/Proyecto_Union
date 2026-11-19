@@ -10,6 +10,11 @@
 (function () {
   'use strict';
 
+  // Si la tarjeta se incluye varias veces en una página, el archivo se
+  // ejecuta una sola vez.
+  if (window.__consolidadosGraficoHistorico) return;
+  window.__consolidadosGraficoHistorico = true;
+
   var SELECTOR_CHECK = '.chk-incluir[data-lote]';
   var LOTE_POR_DEFECTO = 5;
 
@@ -36,6 +41,7 @@
         cont: cont,
         datos: datos || {},
         titulo: cont.dataset.titulo || 'Valor',
+        eje: cont.dataset.eje || 'Semana',
         dec: parseInt(cont.dataset.dec, 10) || 0,
         sufijo: cont.dataset.sufijo || '',
         factor: parseFloat(cont.dataset.factor) || 1,
@@ -104,17 +110,32 @@
           // cualquier punto se sabe de qué lote es el dato señalado.
           hovertemplate:
             '<b>Lote ' + nombre + '</b><br>' +
-            'Semana %{x}: %{y:,.' + g.dec + 'f}' + g.sufijo +
+            g.eje + ' %{x}: %{y:,.' + g.dec + 'f}' + g.sufijo +
             '<extra></extra>'
         };
       });
 
+      var valores = semanas.map(Number).filter(function (v) { return !isNaN(v); });
+      var rango = valores.length
+        ? Math.max.apply(null, valores) - Math.min.apply(null, valores)
+        : 0;
+
+      // La leyenda ocupa más filas cuando hay muchos lotes o el gráfico es
+      // angosto: se reserva el espacio inferior necesario.
+      var ancho = g.cont.clientWidth || 900;
+      var alto = g.cont.clientHeight || 330;
+      var porFila = Math.max(1, Math.floor(ancho / 72));
+      var filasLeyenda = Math.max(1, Math.ceil(Math.max(nombres.length, 1) / porFila));
+      var margenInferior = Math.min(170, 46 + filasLeyenda * 14);
+      var plotAlto = Math.max(60, alto - 10 - margenInferior);
+      var yLeyenda = -(40 / plotAlto);
+
       var layout = {
-        margin: { l: 72, r: 24, t: 10, b: 76 },
+        margin: { l: 72, r: 24, t: 10, b: margenInferior },
         xaxis: {
-          title: { text: 'Semana' },
+          title: { text: g.eje },
           tickmode: 'linear',
-          dtick: 5,
+          dtick: rango <= 15 ? 1 : 5,
           gridcolor: '#eef1f4',
           zeroline: false
         },
@@ -130,7 +151,7 @@
           orientation: 'h',
           x: 0.5,
           xanchor: 'center',
-          y: -0.2,
+          y: yLeyenda,
           font: { size: 10 }
         },
         paper_bgcolor: '#ffffff',

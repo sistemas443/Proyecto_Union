@@ -415,6 +415,20 @@
     cursor: pointer;
     white-space: nowrap;
   }
+
+  /* Cada sección: tabla y su gráfico en la misma fila cuando hay espacio */
+  .psl-bloque {
+    display: grid;
+    gap: 0.6rem;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+  @media (min-width: 1500px) {
+    .psl-bloque { grid-template-columns: minmax(0, 1fr) 520px; }
+  }
+  .psl-bloque > .contenedor-matriz { margin: 0 !important; }
+  .psl-bloque .card { margin-top: 0 !important; }
+  .psl-bloque .cons-tabla-barra { margin: 0 0 0.35rem; }
 </style>
 
 <div class="container-fluid px-4 py-3">
@@ -467,14 +481,26 @@
     </div>
   </div>
 
+  {# Checkboxes ocultos que alimentan los gráficos: los mantiene en sincronía
+     el script de la página con el Set "incluidos". #}
+  <div class="d-none" id="pslChecks">
+    {% for l in datos.lotes %}
+    <input type="checkbox" class="chk-incluir" data-lote="{{ l.nombre }}" checked>
+    {% endfor %}
+  </div>
+
   {% set secciones = [
-    {'id': 'peso', 'titulo': 'Peso corporal (g) por día', 'datos': datos.peso},
-    {'id': 'unif', 'titulo': '% Uniformidad por día', 'datos': datos.unif},
-    {'id': 'consumo', 'titulo': 'Consumo (g/ave/día) por día', 'datos': datos.consumo},
-    {'id': 'mort', 'titulo': 'Mortalidad por día', 'datos': datos.mort},
+    {'id': 'peso', 'graf_id': 'PslPeso', 'titulo': 'Peso corporal (g) por día',
+     'eje': 'Peso corporal (g)', 'datos': datos.peso, 'dec': 2, 'sufijo': ''},
+    {'id': 'unif', 'graf_id': 'PslUnif', 'titulo': '% Uniformidad por día',
+     'eje': '% de uniformidad', 'datos': datos.unif, 'dec': 2, 'sufijo': '%'},
+    {'id': 'consumo', 'graf_id': 'PslConsumo', 'titulo': 'Consumo (g/ave/día) por día',
+     'eje': 'Consumo (g/ave/día)', 'datos': datos.consumo, 'dec': 2, 'sufijo': ''},
+    {'id': 'mort', 'graf_id': 'PslMort', 'titulo': 'Mortalidad por día',
+     'eje': 'Aves muertas', 'datos': datos.mort, 'dec': 0, 'sufijo': ''},
   ] %}
   {% for sec in secciones %}
-  {% set dec = 0 if sec.id == 'mort' else 2 %}
+  {% set dec = sec.dec %}
   <div class="psl-seccion-head mt-3">
     <h6 class="fw-bold text-secondary text-uppercase mb-0">{{ sec.titulo }}</h6>
     <button type="button" class="psl-btn-pantalla" data-target="contenedor-{{ sec.id }}"
@@ -482,7 +508,8 @@
       <i class="fas fa-expand"></i>
     </button>
   </div>
-  <div class="contenedor-matriz shadow-sm border rounded mt-2 mb-4" id="contenedor-{{ sec.id }}">
+  <div class="psl-bloque">
+  <div class="contenedor-matriz shadow-sm border rounded" id="contenedor-{{ sec.id }}">
     <table class="table table-sm table-bordered mb-0 tabla-compacta tabla-seccion" id="tabla-{{ sec.id }}" data-decimales="{{ dec }}">
       <thead>
         <tr>
@@ -524,6 +551,21 @@
         {% endfor %}
       </tbody>
     </table>
+  </div>
+
+  {% set graf_id = sec.graf_id %}
+  {% set graf_titulo = sec.eje %}
+  {% set graf_dec = sec.dec %}
+  {% set graf_sufijo = sec.sufijo %}
+  {% set graf_factor = 1 %}
+  {% set graf_altura = 260 %}
+  {% set graf_eje = 'Día' %}
+  {% set graf_semanas = datos.dias %}
+  {% set graf_matriz = sec.datos.matriz %}
+  {% set graf_panel = 0 %}
+  {% set graf_compacto = 1 %}
+  {% set graf_scripts = 1 if loop.first else 0 %}
+  {% include 'consolidados/_grafico_historico.html' %}
   </div>
   {% endfor %}
 </div>
@@ -581,6 +623,22 @@
           tr.querySelector('[data-prom]').textContent = n > 0 ? fmt(suma / n, dec) : '';
         });
       });
+    }
+
+    function sincronizarGraficos() {
+      const checks = document.querySelectorAll('#pslChecks .chk-incluir[data-lote]');
+      if (!checks.length) return;
+      let cambio = false;
+      checks.forEach(function (chk) {
+        const valor = incluidos.has(chk.dataset.lote);
+        if (chk.checked !== valor) {
+          chk.checked = valor;
+          cambio = true;
+        }
+      });
+      if (cambio) {
+        checks[0].dispatchEvent(new Event('change', { bubbles: true }));
+      }
     }
 
     function actualizarResumen() {
@@ -679,6 +737,7 @@
       actualizarGrupos();
       actualizarCategorias();
       recalcularProms();
+      sincronizarGraficos();
     }
 
     function actualizarTabs() {
