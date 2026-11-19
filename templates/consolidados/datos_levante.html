@@ -176,14 +176,18 @@
   {% include 'consolidados/_panel_lotes.html' %}
 
   {% for var in datos.variables %}
-  <h6 class="fw-bold text-secondary text-uppercase mt-3">{{ var.titulo }}</h6>
-
-  <div class="cons-tabla-barra">
-    <button type="button" class="cons-fs js-tabla-fs" title="Ver la tabla en pantalla completa">
-      <i class="fas fa-expand" aria-hidden="true"></i><span>Pantalla completa</span>
-    </button>
+  <div class="cons-seccion-head">
+    <h6 class="fw-bold text-secondary text-uppercase mb-0">{{ var.titulo }}</h6>
+    <div class="cons-tabla-barra">
+      <button type="button" class="cons-fs js-tabla-fs"
+              data-tabla="#contenedor-{{ var.id }}"
+              title="Ver la tabla en pantalla completa">
+        <i class="fas fa-expand" aria-hidden="true"></i><span>Pantalla completa</span>
+      </button>
+    </div>
   </div>
-  <div class="contenedor-matriz shadow-sm border rounded mt-2 mb-4" id="contenedor-{{ var.id }}">
+  <div class="cons-tabla-grafico cons-estirar">
+  <div class="contenedor-matriz shadow-sm border rounded" id="contenedor-{{ var.id }}">
     <table class="table table-sm table-bordered mb-0 tabla-compacta tabla-variable"
            id="tabla-{{ var.id }}" data-variable="{{ var.id }}" data-decimales="{{ var.decimales }}">
       <thead>
@@ -230,6 +234,23 @@
         {% endfor %}
       </tbody>
     </table>
+  </div>
+
+  {% set graf_id = 'Dl' ~ loop.index %}
+  {% set graf_titulo = var.titulo %}
+  {% set graf_dec = var.decimales %}
+  {% set graf_sufijo = '' %}
+  {% set graf_factor = 1 %}
+  {% set graf_altura = 0 %}
+  {% set graf_eje = 'Semana' %}
+  {% set graf_semanas = datos.semanas %}
+  {% set graf_matriz = var.matriz %}
+  {% set graf_panel = 0 %}
+  {% set graf_compacto = 1 %}
+  {% set graf_barra = '#clLotes' %}
+  {% set graf_selector = '#tabla-' ~ var.id ~ ' .chk-incluir' %}
+  {% set graf_scripts = 1 if loop.first else 0 %}
+  {% include 'consolidados/_grafico_historico.html' %}
   </div>
   {% endfor %}
   </div>

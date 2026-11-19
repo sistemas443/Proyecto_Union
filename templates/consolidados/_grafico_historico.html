@@ -27,6 +27,8 @@
     graf_tipo       "line" (por defecto) o "bar" para conteos por día
     graf_barra      selector de la barra de filtros que se mueve a la tarjeta
                     cuando el gráfico pasa a pantalla completa
+    graf_selector   selector CSS de los checkboxes que controlan este gráfico
+                    (por defecto, todos los .chk-incluir de la página)
     graf_semanas    lista del eje X (por defecto datos.semanas)
     graf_matriz     matriz a graficar (por defecto datos.matriz)
     graf_panel      0 para no repetir la barra "Lotes incluidos"
@@ -65,8 +67,9 @@
          data-desde="{{ graf_desde|default('') }}"
          data-eje="{{ graf_eje|default('Semana') }}"
          data-tipo="{{ graf_tipo|default('line') }}"
+         data-selector="{{ graf_selector|default('') }}"
          data-contenedor="{{ graf_contenedor }}"
-         style="height: {{ graf_altura|default(330) }}px;"></div>
+         {% if graf_altura|default(330) %}style="height: {{ graf_altura|default(330) }}px;"{% endif %}></div>
   </div>
 </div>
 

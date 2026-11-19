@@ -37,9 +37,13 @@
       if (fuente) {
         try { datos = JSON.parse(fuente.textContent); } catch (e) { datos = null; }
       }
+      var selector = cont.dataset.selector || SELECTOR_CHECK;
+      var idTabla = (selector.match(/^#([^\s]+)/) || [])[1];
       return {
         cont: cont,
         datos: datos || {},
+        selector: selector,
+        tablaFiltro: idTabla ? document.getElementById(idTabla) : null,
         titulo: cont.dataset.titulo || 'Valor',
         eje: cont.dataset.eje || 'Semana',
         tipo: cont.dataset.tipo || 'line',
@@ -65,7 +69,7 @@
     var listo = false;
 
     function lotesIncluidos(g) {
-      var checks = Array.prototype.slice.call(document.querySelectorAll(SELECTOR_CHECK));
+      var checks = Array.prototype.slice.call(document.querySelectorAll(g.selector));
       if (!checks.length) return (g.datos.lotes || []).slice();
       var nombres = checks
         .filter(function (chk) { return chk.checked; })
@@ -205,10 +209,26 @@
     }
 
     // La selección de lotes es compartida con los TOTALES/PROM de la tabla.
+    // Se agrupan los cambios seguidos (la barra marca varios lotes de golpe)
+    // en un solo dibujado por gráfico.
+    var pendientes = [];
+
+    function programar(g) {
+      if (pendientes.indexOf(g) !== -1) return;
+      pendientes.push(g);
+      window.setTimeout(function () {
+        pendientes = pendientes.filter(function (x) { return x !== g; });
+        dibujar(g);
+      }, 0);
+    }
+
     document.querySelectorAll(SELECTOR_CHECK).forEach(function (chk) {
       chk.addEventListener('change', function () {
         if (!listo) return;
-        dibujarTodo();
+        var tabla = chk.closest('table');
+        graficos.forEach(function (g) {
+          if (!g.tablaFiltro || g.tablaFiltro === tabla) programar(g);
+        });
       });
     });
 
@@ -224,16 +244,18 @@
       });
     });
 
-    // Arranque: si la tabla no trae lotes marcados, se incluyen los primeros
-    // para que gráfico y promedios no salgan vacíos.
-    var checks = Array.prototype.slice.call(document.querySelectorAll(SELECTOR_CHECK));
-    var hayMarcados = checks.some(function (chk) { return chk.checked; });
-    if (!hayMarcados && checks.length) {
+    // Arranque: si una tabla no trae lotes marcados, se incluyen los primeros
+    // para que su gráfico y sus promedios no salgan vacíos.
+    graficos.forEach(function (g) {
+      var checks = Array.prototype.slice.call(document.querySelectorAll(g.selector));
+      if (!checks.length) return;
+      var hay = checks.some(function (chk) { return chk.checked; });
+      if (hay) return;
       checks.slice(0, LOTE_POR_DEFECTO).forEach(function (chk) {
         chk.checked = true;
         chk.dispatchEvent(new Event('change', { bubbles: true }));
       });
-    }
+    });
 
     listo = true;
     dibujarTodo();

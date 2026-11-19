@@ -189,6 +189,44 @@
   z-index: 5;
 }
 
+/* Tabla y su gráfico: lado a lado cuando hay ancho suficiente */
+.cons-tabla-grafico {
+  display: grid;
+  gap: 0.6rem;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}
+@media (min-width: 1500px) {
+  .cons-tabla-grafico { grid-template-columns: minmax(0, 1fr) 520px; }
+}
+.cons-tabla-grafico > .contenedor-matriz { margin: 0 !important; }
+.cons-tabla-grafico .card { margin-top: 0 !important; }
+.cons-tabla-grafico .cons-tabla-barra { margin: 0 0 0.35rem; }
+
+/* El gráfico toma la altura de la tabla (matrices largas) */
+.cons-tabla-grafico.cons-estirar { align-items: stretch; }
+.cons-tabla-grafico.cons-estirar > .card { display: flex; flex-direction: column; }
+.cons-tabla-grafico.cons-estirar > .card .card-body {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.cons-tabla-grafico.cons-estirar > .card .grafico-fs {
+  flex: 1 1 auto;
+  min-height: 300px;
+}
+
+/* Cabecera de sección: título a la izquierda, botón a la derecha */
+.cons-seccion-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+.cons-seccion-head .cons-tabla-barra { margin: 0; }
+
 /* ============================================================
    Panel de lotes
    ============================================================ */
