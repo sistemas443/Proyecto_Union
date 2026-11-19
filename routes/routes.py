@@ -528,7 +528,12 @@ def gestion_usuarios():
         cur.close()
         conn.close()
 
-    return render_template('auth/usuarios.html', usuarios=usuarios, roles=roles, areas=areas)
+    total = len(usuarios)
+    activos = sum(1 for u in usuarios if u[3])
+    inactivos = total - activos
+
+    return render_template('auth/usuarios.html', usuarios=usuarios, roles=roles, areas=areas,
+                           total=total, activos=activos, inactivos=inactivos)
 
 @bp.route('/api/usuarios/<int:id>/foto')
 def foto_usuario(id):
