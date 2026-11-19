@@ -61,6 +61,9 @@
         dtickY: (cont.dataset.dtickY || '').trim() === ''
           ? null
           : parseFloat(cont.dataset.dtickY),
+        dtickYFs: (cont.dataset.dtickYFs || '').trim() === ''
+          ? null
+          : parseFloat(cont.dataset.dtickYFs),
         card: cont.closest('.card'),
         tabla: cont.dataset.contenedor
           ? document.getElementById(cont.dataset.contenedor)
@@ -208,10 +211,13 @@
         layout.bargap = 0.2;
       }
 
-      if (g.dtickY !== null && !isNaN(g.dtickY)
-          && (document.fullscreenElement === g.card
-              || document.webkitFullscreenElement === g.card)) {
-        layout.yaxis.dtick = g.dtickY;
+      var enPantallaCompleta = document.fullscreenElement === g.card
+        || document.webkitFullscreenElement === g.card;
+      var dtickY = enPantallaCompleta && g.dtickYFs !== null
+        ? g.dtickYFs
+        : g.dtickY;
+      if (dtickY !== null && !isNaN(dtickY)) {
+        layout.yaxis.dtick = dtickY;
       }
 
       if (!nombres.length) {
