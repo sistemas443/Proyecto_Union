@@ -190,8 +190,10 @@
     {% include 'consolidados/_panel_lotes.html' %}
 
     <div class="d-none">
+      {% set hay_activos = panel_lotes | selectattr('estado', 'equalto', 'ACTIVO') | list | length > 0 %}
       {% for l in panel_lotes %}
-      <input type="checkbox" class="chk-incluir" data-lote="{{ l.nombre }}" checked>
+      <input type="checkbox" class="chk-incluir" data-lote="{{ l.nombre }}"
+        {% if (hay_activos and l.estado == 'ACTIVO') or (not hay_activos) %}checked{% endif %}>
       {% endfor %}
     </div>
 
