@@ -4,7 +4,7 @@ from datetime import date
 from flask import Blueprint, jsonify, render_template, request, session
 
 from routes.routes import login_requerido
-from models.lotes.services import get_lotes_distintos
+from models.lotes.services import get_lotes_distintos, get_lotes_agrupados
 from models.reporte_diario import (
     MESES,
     aplicar_modulos_entrada_a_todos,
@@ -90,6 +90,7 @@ def reporte_diario():
     return render_template(
         'produccion/reporte_diario.html',
         lotes=get_lotes_distintos(),
+        lotes_agrupados=get_lotes_agrupados(session.get('user_rol')),
         lote_seleccionado=lote,
         cabecera=cabecera,
         filas=filas,

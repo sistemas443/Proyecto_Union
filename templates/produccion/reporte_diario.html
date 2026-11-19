@@ -223,12 +223,23 @@
 
   <form method="POST" class="d-flex flex-wrap align-items-center gap-2 m-0">
     <label for="lote" class="form-label-design">Lote</label>
-    <select name="lote" id="lote" class="form-select form-select-sm" style="width: 180px;">
-      <option value="">-- Seleccione --</option>
-      {% for l in lotes %}
-      <option value="{{ l }}" {% if lote_seleccionado == l %}selected{% endif %}>LOTE {{ l }}</option>
-      {% endfor %}
-    </select>
+    <div class="lote-picker">
+      <select name="lote" id="lote" class="form-select form-select-sm" style="width: 180px;" data-lote-picker>
+        <option value="">-- Seleccione --</option>
+        {% for grupo in lotes_agrupados %}
+        <optgroup label="{{ grupo.titulo }} ({{ grupo.lotes|length }})">
+          {% for l in grupo.lotes %}
+          <option value="{{ l.nombre }}"
+            data-estado="{{ grupo.estado }}"
+            data-prefijo="{{ grupo.prefijo }}"
+            data-fecha="{{ l.fecha }}"
+            data-variedad="{{ l.variedad }}"
+            {% if lote_seleccionado == l.nombre %}selected{% endif %}>LOTE {{ l.nombre }}</option>
+          {% endfor %}
+        </optgroup>
+        {% endfor %}
+      </select>
+    </div>
 
     <label for="mes" class="form-label-design">Mes</label>
     <input type="month" name="mes" id="mes" class="form-control form-control-sm"
