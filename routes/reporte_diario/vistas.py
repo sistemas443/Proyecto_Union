@@ -9,9 +9,11 @@ from models.reporte_diario import (
     MESES,
     aplicar_modulos_entrada_a_todos,
     cabecera_lote,
+    crear_desinfectante,
     estado_mes,
     guardar_campo,
     guardar_modulos_entrada,
+    listar_desinfectantes,
     listar_mes,
     modulos_entrada,
     mort_total_de,
@@ -101,6 +103,7 @@ def reporte_diario():
         hoy=hoy,
         hay_desinfeccion=hay_desinfeccion,
         mods_entrada=mods_entrada,
+        desinfectantes=listar_desinfectantes(),
     )
 
 
@@ -199,6 +202,25 @@ def config_entrada():
 
     limpios = guardar_modulos_entrada(cabecera['id'], modulos)
     return jsonify(ok=True, modulos=limpios)
+
+
+@reporte_diario_bp.route('/reporte-diario/desinfectantes', methods=['POST'])
+@login_requerido
+def crear_desinfectante_api():
+    """Agrega un producto al catalogo de desinfectantes."""
+    datos = request.get_json(silent=True) or {}
+    nombre = (datos.get('nombre') or '').strip()
+
+    if not nombre:
+        return jsonify(ok=False, error='Escribe el nombre del producto'), 400
+
+    try:
+        producto = crear_desinfectante(nombre)
+    except Exception as e:
+        print(f"[REPORTE DIARIO] No se pudo crear el desinfectante: {e}")
+        return jsonify(ok=False, error='No se pudo guardar el producto'), 400
+
+    return jsonify(ok=True, desinfectante=producto)
 
 
 @reporte_diario_bp.route('/reporte-diario/config-entrada-todos', methods=['POST'])

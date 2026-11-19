@@ -261,6 +261,52 @@ def mort_total_de(id_lote, fecha):
         conn.close()
 
 
+def listar_desinfectantes(solo_activos=True):
+    """Catalogo de productos de desinfeccion."""
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        sql = "SELECT id, nombre FROM desinfectantes"
+        if solo_activos:
+            sql += " WHERE activo = true"
+        sql += " ORDER BY nombre ASC"
+        cur.execute(sql)
+        return [dict(r) for r in cur.fetchall()]
+    except Exception as e:
+        print(f"[REPORTE DIARIO] No se pudo leer el catalogo de desinfectantes: {e}")
+        return []
+    finally:
+        cur.close()
+        conn.close()
+
+
+def crear_desinfectante(nombre):
+    """Crea (o reactiva) un desinfectante. Devuelve {'id', 'nombre'}."""
+    nombre = str(nombre or '').strip()
+    if not nombre:
+        raise ValueError('Escribe el nombre del producto')
+    nombre = nombre[:120]
+
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cur.execute(
+            """
+            INSERT INTO desinfectantes (nombre)
+            VALUES (%s)
+            ON CONFLICT (nombre) DO UPDATE SET activo = true
+            RETURNING id, nombre
+            """,
+            (nombre,),
+        )
+        fila = cur.fetchone()
+        conn.commit()
+        return dict(fila)
+    finally:
+        cur.close()
+        conn.close()
+
+
 def modulos_entrada(id_lote):
     """Módulos junto a los que está la puerta/entrada del galpón (1-4)."""
     conn = get_db_connection()

@@ -102,6 +102,16 @@
 
   .rd-tabla.rd-sin-prod .col-prod{ display:none; }
 
+  .rd-prod{ display:flex; align-items:center; gap:2px; }
+  .rd-prod .rd-sel{ min-width:92px; }
+  .rd-add-prod{
+    flex:0 0 auto; width:20px; height:20px; padding:0; border-radius:5px;
+    border:1px solid var(--rd-border); background:var(--rd-row); color:#1f4e79;
+    font-size:.85rem; font-weight:800; line-height:1; cursor:pointer;
+  }
+  .rd-add-prod:hover{ background:#1f4e79; border-color:#1f4e79; color:#fff; }
+  .rd-add-prod:disabled{ opacity:.4; cursor:not-allowed; }
+
   /* --- Entrada del galpón --- */
   .rd-config{ display:flex; align-items:center; gap:.45rem; flex-wrap:wrap; margin-bottom:.65rem; }
   .rd-config-label{
@@ -377,14 +387,25 @@
             </select>
           </td>
           <td class="col-prod">
-            <input class="rd-in" style="text-align:left;min-width:92px" data-fecha="{{ fila.fecha }}"
-                   data-campo="desinfeccion_producto" placeholder="Producto"
-                   value="{{ val(d, 'desinfeccion_producto') }}"
-                   {% if not (d and d.get('desinfeccion') == 'Sí') %}disabled{% endif %}>
+            <div class="rd-prod">
+              {% set actual_prod = (d.get('desinfeccion_producto') if d else '') or '' %}
+              <select class="rd-sel" data-fecha="{{ fila.fecha }}" data-campo="desinfeccion_producto"
+                      {% if not (d and d.get('desinfeccion') == 'Sí') %}disabled{% endif %}>
+                <option value="">—</option>
+                {% for prod in desinfectantes %}
+                <option value="{{ prod.nombre }}" {% if actual_prod == prod.nombre %}selected{% endif %}>{{ prod.nombre }}</option>
+                {% endfor %}
+                {% if actual_prod and actual_prod not in desinfectantes | map(attribute='nombre') | list %}
+                <option value="{{ actual_prod }}" selected>{{ actual_prod }}</option>
+                {% endif %}
+              </select>
+              <button type="button" class="rd-add-prod" data-fecha="{{ fila.fecha }}"
+                      title="Agregar un producto al catálogo">+</button>
+            </div>
           </td>
           <td>
             <select class="rd-sel" data-fecha="{{ fila.fecha }}" data-campo="gallinaza">
-              {{ opciones(d, 'gallinaza', ['Hoy', 'No aplica']) }}
+              {{ opciones(d, 'gallinaza', ['Sí', 'No']) }}
             </select>
           </td>
           <td><input class="rd-in" style="text-align:left;min-width:70px" data-fecha="{{ fila.fecha }}"
@@ -414,6 +435,28 @@
         </tr>
       </tfoot>
     </table>
+  </div>
+</div>
+
+<!-- Modal: nuevo desinfectante -->
+<div class="modal fade" id="modalDesinfectante" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title fw-bold">Nuevo desinfectante</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <label class="form-label small fw-semibold" for="nuevoDesinfectante">Nombre del producto</label>
+        <input type="text" class="form-control" id="nuevoDesinfectante" maxlength="120"
+               placeholder="Ej: Virkon S" autocomplete="off">
+        <div class="text-danger small mt-1 d-none" id="nuevoDesinfectanteError"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-sm btn-primary" id="btnGuardarDesinfectante">Guardar</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -458,7 +501,7 @@
     tabla.classList.toggle('rd-sin-prod', !hay);
     selects.forEach(s => {
       const inp = document.querySelector(
-        'input[data-campo="desinfeccion_producto"][data-fecha="' + s.dataset.fecha + '"]'
+        '[data-campo="desinfeccion_producto"][data-fecha="' + s.dataset.fecha + '"]'
       );
       if (inp) inp.disabled = (s.value !== 'Sí');
     });
@@ -536,7 +579,7 @@
         actualizarProducto();
         if (valor === 'Sí') {
           const inp = document.querySelector(
-            'input[data-campo="desinfeccion_producto"][data-fecha="' + fecha + '"]'
+            '[data-campo="desinfeccion_producto"][data-fecha="' + fecha + '"]'
           );
           if (inp) inp.focus();
         }
@@ -651,6 +694,80 @@
   ubicarLeyenda();
   setTimeout(ubicarLeyenda, 60);
   setTimeout(ubicarLeyenda, 400);
+
+  // --- Catalogo de desinfectantes ---
+  const modalProdEl = document.getElementById('modalDesinfectante');
+  const inputProd = document.getElementById('nuevoDesinfectante');
+  const errorProd = document.getElementById('nuevoDesinfectanteError');
+  let fechaProducto = null;
+
+  function mostrarErrorProd(msg) {
+    if (!errorProd) return;
+    errorProd.textContent = msg;
+    errorProd.classList.remove('d-none');
+  }
+
+  function agregarOpcionProducto(nombre) {
+    document.querySelectorAll('select[data-campo="desinfeccion_producto"]').forEach(function (sel) {
+      const existe = Array.from(sel.options).some(function (o) { return o.value === nombre; });
+      if (!existe) {
+        const opt = document.createElement('option');
+        opt.value = nombre;
+        opt.textContent = nombre;
+        sel.appendChild(opt);
+      }
+    });
+  }
+
+  document.querySelectorAll('.rd-add-prod').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      fechaProducto = btn.dataset.fecha;
+      if (inputProd) inputProd.value = '';
+      if (errorProd) errorProd.classList.add('d-none');
+      if (!modalProdEl) return;
+      bootstrap.Modal.getOrCreateInstance(modalProdEl).show();
+      setTimeout(function () { if (inputProd) inputProd.focus(); }, 300);
+    });
+  });
+
+  async function guardarProducto() {
+    const nombre = (inputProd ? inputProd.value : '').trim();
+    if (!nombre) { mostrarErrorProd('Escribe el nombre del producto'); return; }
+
+    try {
+      const res = await fetch("{{ url_for('reporte_diario.crear_desinfectante_api') }}", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nombre: nombre })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || 'No se pudo guardar');
+
+      const creado = data.desinfectante.nombre;
+      agregarOpcionProducto(creado);
+
+      const sel = document.querySelector('[data-campo="desinfeccion_producto"][data-fecha="' + fechaProducto + '"]');
+      if (sel) {
+        sel.value = creado;
+        const desinf = document.querySelector('[data-campo="desinfeccion"][data-fecha="' + fechaProducto + '"]');
+        if (desinf && desinf.value === 'Sí') {
+          sel.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      }
+
+      if (modalProdEl) bootstrap.Modal.getInstance(modalProdEl).hide();
+    } catch (e) {
+      mostrarErrorProd(e.message);
+    }
+  }
+
+  const btnGuardarProd = document.getElementById('btnGuardarDesinfectante');
+  if (btnGuardarProd) btnGuardarProd.addEventListener('click', guardarProducto);
+  if (inputProd) {
+    inputProd.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); guardarProducto(); }
+    });
+  }
 
   // Señalar el día de hoy
   const filaHoy = document.querySelector('tr.rd-hoy');
