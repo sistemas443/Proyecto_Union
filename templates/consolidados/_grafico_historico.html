@@ -24,6 +24,7 @@
     graf_contenedor id del contenedor de la tabla (para ajustar su alto)
     graf_altura     alto del gráfico en px (por defecto 330)
     graf_eje        nombre del eje X (por defecto "Semana")
+    graf_tipo       "line" (por defecto) o "bar" para conteos por día
     graf_semanas    lista del eje X (por defecto datos.semanas)
     graf_matriz     matriz a graficar (por defecto datos.matriz)
     graf_panel      0 para no repetir la barra "Lotes incluidos"
@@ -59,6 +60,7 @@
          data-maximo="{{ graf_maximo|default('') }}"
          data-desde="{{ graf_desde|default('') }}"
          data-eje="{{ graf_eje|default('Semana') }}"
+         data-tipo="{{ graf_tipo|default('line') }}"
          data-contenedor="{{ graf_contenedor }}"
          style="height: {{ graf_altura|default(330) }}px;"></div>
   </div>

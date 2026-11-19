@@ -42,6 +42,7 @@
         datos: datos || {},
         titulo: cont.dataset.titulo || 'Valor',
         eje: cont.dataset.eje || 'Semana',
+        tipo: cont.dataset.tipo || 'line',
         dec: parseInt(cont.dataset.dec, 10) || 0,
         sufijo: cont.dataset.sufijo || '',
         factor: parseFloat(cont.dataset.factor) || 1,
@@ -97,22 +98,29 @@
 
       var trazas = nombres.map(function (nombre, indice) {
         var color = COLORES[indice % COLORES.length];
-        return {
+        var valores = semanas.map(function (s) { return valorEn(g, s, nombre); });
+        var traza = {
           x: semanas,
-          y: semanas.map(function (s) { return valorEn(g, s, nombre); }),
-          type: 'scatter',
-          mode: 'lines',
+          y: valores,
           name: nombre,
-          connectgaps: g.conectar,
-          line: { width: 2, color: color },
-          marker: { size: 5, color: color },
-          // El lote va escrito en el propio tooltip: al pasar el puntero por
-          // cualquier punto se sabe de qué lote es el dato señalado.
           hovertemplate:
             '<b>Lote ' + nombre + '</b><br>' +
             g.eje + ' %{x}: %{y:,.' + g.dec + 'f}' + g.sufijo +
             '<extra></extra>'
         };
+
+        if (g.tipo === 'bar') {
+          traza.type = 'bar';
+          traza.marker = { color: color };
+        } else {
+          traza.type = 'scatter';
+          traza.mode = 'lines';
+          traza.connectgaps = g.conectar;
+          traza.line = { width: 2, color: color };
+          traza.marker = { size: 5, color: color };
+        }
+
+        return traza;
       });
 
       var valores = semanas.map(Number).filter(function (v) { return !isNaN(v); });
@@ -157,6 +165,11 @@
         paper_bgcolor: '#ffffff',
         plot_bgcolor: '#ffffff'
       };
+
+      if (g.tipo === 'bar') {
+        layout.barmode = 'stack';
+        layout.bargap = 0.2;
+      }
 
       if (!trazas.length) {
         layout.annotations = [{
