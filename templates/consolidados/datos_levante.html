@@ -242,6 +242,7 @@
   {% set graf_sufijo = '' %}
   {% set graf_factor = 1 %}
   {% set graf_conectar = 1 if var.id in ['peso', 'unif'] else 0 %}
+  {% set graf_maximo = 100 if var.id == 'unif' else '' %}
   {% set graf_altura = 0 %}
   {% set graf_eje = 'Semana' %}
   {% set graf_semanas = datos.semanas %}
