@@ -39,6 +39,7 @@
         dec: parseInt(cont.dataset.dec, 10) || 0,
         sufijo: cont.dataset.sufijo || '',
         factor: parseFloat(cont.dataset.factor) || 1,
+        conectar: cont.dataset.conectar === '1',
         card: cont.closest('.card'),
         tabla: cont.dataset.contenedor
           ? document.getElementById(cont.dataset.contenedor)
@@ -85,7 +86,7 @@
           type: 'scatter',
           mode: 'lines',
           name: nombre,
-          connectgaps: false,
+          connectgaps: g.conectar,
           line: { width: 2, color: color },
           marker: { size: 5, color: color },
           // El lote va escrito en el propio tooltip: al pasar el puntero por
