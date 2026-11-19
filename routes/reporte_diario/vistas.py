@@ -7,7 +7,6 @@ from routes.routes import login_requerido
 from models.lotes.services import get_lotes_distintos, get_lotes_agrupados
 from models.reporte_diario import (
     MESES,
-    aplicar_modulos_entrada_a_todos,
     cabecera_lote,
     crear_desinfectante,
     estado_mes,
@@ -222,17 +221,3 @@ def crear_desinfectante_api():
         return jsonify(ok=False, error='No se pudo guardar el producto'), 400
 
     return jsonify(ok=True, desinfectante=producto)
-
-
-@reporte_diario_bp.route('/reporte-diario/config-entrada-todos', methods=['POST'])
-@login_requerido
-def config_entrada_todos():
-    """Aplica la misma entrada del galpón a todos los lotes."""
-    datos = request.get_json(silent=True) or {}
-    modulos = datos.get('modulos') or []
-
-    if not isinstance(modulos, list):
-        modulos = [modulos]
-
-    total = aplicar_modulos_entrada_a_todos(modulos)
-    return jsonify(ok=True, lotes_actualizados=total)

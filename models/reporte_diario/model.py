@@ -357,35 +357,6 @@ def guardar_modulos_entrada(id_lote, modulos):
     return [int(texto)] if texto else []
 
 
-def aplicar_modulos_entrada_a_todos(modulos):
-    """Aplica el mismo módulo de entrada a todos los lotes existentes."""
-    limpios = sorted({
-        int(m) for m in modulos
-        if str(m).strip().isdigit() and 1 <= int(m) <= 4
-    })
-    texto = str(limpios[0]) if limpios else ''
-
-    conn = get_db_connection()
-    cur = conn.cursor()
-    try:
-        cur.execute(
-            """
-            INSERT INTO reporte_diario_config (id_lote, modulos_entrada)
-            SELECT id, %s FROM cabecera_lotes
-            ON CONFLICT (id_lote)
-            DO UPDATE SET modulos_entrada = EXCLUDED.modulos_entrada,
-                          actualizado_en = now()
-            """,
-            (texto,),
-        )
-        total = cur.rowcount
-        conn.commit()
-        return total
-    finally:
-        cur.close()
-        conn.close()
-
-
 def estado_mes(id_lote, anio, mes, saldo_apertura):
     """
     Recalcula el mes y devuelve datos listos para JSON:

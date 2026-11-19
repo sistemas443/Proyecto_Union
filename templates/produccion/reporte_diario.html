@@ -129,11 +129,6 @@
   .rd-tog.activo{ background:var(--rd-door); border-color:var(--rd-door); color:#fff; }
   html[data-bs-theme="dark"] .rd-tog.activo{ background:#2dd4bf; border-color:#2dd4bf; color:#04211d; }
   .rd-config-hint{ font-size:.7rem; color:var(--rd-muted); }
-  .rd-tog-aplicar{
-    border:1px dashed var(--rd-border); background:transparent; color:var(--rd-muted);
-    font-size:.7rem; font-weight:700; padding:.18rem .6rem; border-radius:999px; cursor:pointer;
-  }
-  .rd-tog-aplicar:hover{ border-color:var(--rd-door); color:var(--rd-door); border-style:solid; }
 
   .rd-tabla th.rd-col-entrada{ background:var(--rd-door) !important; }
   .rd-tabla tbody tr td.rd-col-entrada{ background:var(--rd-door-soft) !important; }
@@ -304,11 +299,7 @@
   <button type="button" class="rd-tog{% if m in mods_entrada %} activo{% endif %}"
           data-modulo="{{ m }}" title="Módulo {{ m }}">M{{ m }}</button>
   {% endfor %}
-  <button type="button" class="rd-tog-aplicar" id="btnAplicarTodos"
-          title="Aplicar este módulo como entrada a todos los lotes">
-    <i class="fas fa-copy"></i> Aplicar a todos
-  </button>
-  <span class="rd-config-hint">Solo un módulo puede ser la entrada. Marca el de este galpón.</span>
+  <span class="rd-config-hint">Solo un módulo es la entrada. Marca el de este galpón.</span>
 </div>
 
 <div class="rd-leyenda-wrap" id="leyendaWrap">
@@ -650,7 +641,6 @@
 
   // Entrada del galpón: un solo módulo
   const API_CFG = "{{ url_for('reporte_diario.config_entrada') }}";
-  const API_CFG_TODOS = "{{ url_for('reporte_diario.config_entrada_todos') }}";
 
   document.querySelectorAll('.rd-tog').forEach(btn => {
     btn.addEventListener('click', async () => {
@@ -672,32 +662,6 @@
       }
     });
   });
-
-  const btnTodos = document.getElementById('btnAplicarTodos');
-  if (btnTodos) {
-    btnTodos.addEventListener('click', async () => {
-      const activo = document.querySelector('.rd-tog.activo');
-      if (!activo) {
-        alert('Marca primero el módulo de entrada de este galpón.');
-        return;
-      }
-      const m = activo.dataset.modulo;
-      if (!confirm('¿Aplicar M' + m + ' como entrada del galpón a TODOS los lotes?')) return;
-
-      try {
-        const res = await fetch(API_CFG_TODOS, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ modulos: [m] })
-        });
-        const data = await res.json();
-        if (!res.ok || !data.ok) throw new Error(data.error || 'No se pudo aplicar');
-        alert('Aplicado a ' + data.lotes_actualizados + ' lotes.');
-      } catch (e) {
-        alert(e.message);
-      }
-    });
-  }
 
   // Ubicar la leyenda encima del encabezado PROCESO
   function ubicarLeyenda() {

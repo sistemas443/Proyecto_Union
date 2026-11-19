@@ -3,7 +3,6 @@ from .model import (
     CAMPOS_NUMERICOS,
     CAMPOS_TEXTO,
     MESES,
-    aplicar_modulos_entrada_a_todos,
     cabecera_lote,
     crear_desinfectante,
     estado_mes,
