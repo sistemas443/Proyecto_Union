@@ -207,7 +207,9 @@
         layout.bargap = 0.2;
       }
 
-      if (g.dtickY !== null && !isNaN(g.dtickY)) {
+      if (g.dtickY !== null && !isNaN(g.dtickY)
+          && (document.fullscreenElement === g.card
+              || document.webkitFullscreenElement === g.card)) {
         layout.yaxis.dtick = g.dtickY;
       }
 
@@ -305,6 +307,9 @@
     window.addEventListener('resize', ajustarTodo);
     document.addEventListener('fullscreenchange', function () {
       window.setTimeout(ajustarTodo, 120);
+      // La escala fina del eje Y (si está configurada) solo aplica en
+      // pantalla completa: al entrar o salir hay que redibujar.
+      window.setTimeout(dibujarTodo, 160);
     });
   });
 })();
