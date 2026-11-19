@@ -43,6 +43,9 @@
         maximo: (cont.dataset.maximo || '').trim() === ''
           ? null
           : parseFloat(cont.dataset.maximo),
+        desde: (cont.dataset.desde || '').trim() === ''
+          ? null
+          : parseFloat(cont.dataset.desde),
         card: cont.closest('.card'),
         tabla: cont.dataset.contenedor
           ? document.getElementById(cont.dataset.contenedor)
@@ -81,7 +84,9 @@
     function dibujar(g) {
       if (!window.Plotly) return;
 
-      var semanas = g.datos.semanas || [];
+      var semanas = (g.datos.semanas || []).filter(function (s) {
+        return g.desde === null || Number(s) >= g.desde;
+      });
       var nombres = lotesIncluidos(g);
 
       var trazas = nombres.map(function (nombre, indice) {
