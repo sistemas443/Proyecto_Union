@@ -76,10 +76,6 @@
 
       var semanas = g.datos.semanas || [];
       var nombres = lotesIncluidos(g);
-      var hover =
-        '<b>%{fullData.name}</b><br>Semana %{x}: ' +
-        '%{y:,.' + g.dec + 'f}' + g.sufijo +
-        '<extra></extra>';
 
       var trazas = nombres.map(function (nombre, indice) {
         var color = COLORES[indice % COLORES.length];
@@ -92,7 +88,12 @@
           connectgaps: false,
           line: { width: 2, color: color },
           marker: { size: 5, color: color },
-          hovertemplate: hover
+          // El lote va escrito en el propio tooltip: al pasar el puntero por
+          // cualquier punto se sabe de qué lote es el dato señalado.
+          hovertemplate:
+            '<b>Lote ' + nombre + '</b><br>' +
+            'Semana %{x}: %{y:,.' + g.dec + 'f}' + g.sufijo +
+            '<extra></extra>'
         };
       });
 
