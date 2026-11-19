@@ -18,6 +18,7 @@
     graf_sufijo     '' o '%' (se agrega al valor en el tooltip)
     graf_factor     1, o 100 cuando la matriz viene en fracción 0-1
     graf_conectar   1 para unir la línea a través de las semanas sin dato
+    graf_maximo     valor tope: los datos que lo superen no se grafican
     graf_contenedor id del contenedor de la tabla (para ajustar su alto)
     graf_altura     alto del gráfico en px (por defecto 330)
 
@@ -43,6 +44,7 @@
          data-sufijo="{{ graf_sufijo|default('') }}"
          data-factor="{{ graf_factor|default(1) }}"
          data-conectar="{{ graf_conectar|default(0) }}"
+         data-maximo="{{ graf_maximo|default('') }}"
          data-contenedor="{{ graf_contenedor }}"
          style="height: {{ graf_altura|default(330) }}px;"></div>
   </div>

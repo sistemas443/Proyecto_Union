@@ -40,6 +40,9 @@
         sufijo: cont.dataset.sufijo || '',
         factor: parseFloat(cont.dataset.factor) || 1,
         conectar: cont.dataset.conectar === '1',
+        maximo: (cont.dataset.maximo || '').trim() === ''
+          ? null
+          : parseFloat(cont.dataset.maximo),
         card: cont.closest('.card'),
         tabla: cont.dataset.contenedor
           ? document.getElementById(cont.dataset.contenedor)
@@ -69,7 +72,10 @@
       if (crudo === null || crudo === undefined || crudo === '') return null;
       var numero = Number(crudo);
       if (isNaN(numero)) return null;
-      return numero * g.factor;
+      var mostrado = numero * g.factor;
+      // Los valores fuera de rango se omiten para que no deformen el eje.
+      if (g.maximo !== null && !isNaN(g.maximo) && mostrado > g.maximo) return null;
+      return mostrado;
     }
 
     function dibujar(g) {
