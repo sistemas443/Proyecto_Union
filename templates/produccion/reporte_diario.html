@@ -33,7 +33,7 @@
     --rd-focus:#2b333d;
     --rd-door:#0b4f48; --rd-door-soft:rgba(45,212,191,.10);
   }
-  .rd-scroll{ overflow-x:auto; }
+  .rd-scroll{ overflow:auto; max-height: calc(100vh - 235px); }
   .rd-tabla{
     width:100%; border-collapse:separate; border-spacing:0;
     font-size:.78rem; color:var(--rd-text); font-variant-numeric:tabular-nums;
@@ -46,6 +46,8 @@
     border-bottom:1px solid var(--rd-border);
   }
   .rd-tabla thead th.rd-sep{ border-left:1px solid rgba(255,255,255,.18); }
+  /* Segunda fila del encabezado (M1..M4) se pega debajo de la primera */
+  .rd-tabla thead tr:nth-child(2) th{ top: var(--rd-head1, 34px); }
   .rd-tabla tbody td{
     padding:.18rem .2rem; text-align:right; white-space:nowrap;
     border-bottom:1px solid var(--rd-border); vertical-align:middle;
@@ -622,6 +624,18 @@
 
   actualizarProducto();
   revisarTodas();
+
+  // Altura real de la primera fila del encabezado, para pegar la segunda debajo
+  const tablaRD = document.getElementById('tablaRD');
+  function ajustarAltoEncabezado() {
+    if (!tablaRD) return;
+    const fila1 = tablaRD.querySelector('thead tr');
+    if (!fila1) return;
+    tablaRD.style.setProperty('--rd-head1', Math.round(fila1.getBoundingClientRect().height) + 'px');
+  }
+  ajustarAltoEncabezado();
+  window.addEventListener('resize', ajustarAltoEncabezado);
+  window.addEventListener('load', ajustarAltoEncabezado);
 
   // Entrada del galpón: un solo módulo
   const API_CFG = "{{ url_for('reporte_diario.config_entrada') }}";
