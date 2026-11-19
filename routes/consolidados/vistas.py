@@ -14,13 +14,13 @@ BOTONES = [
     {'titulo': 'PRIMER HUEVO (#1)', 'icono': '🥚', 'hoja': 'H2', 'endpoint': 'consolidados.primer_huevo'},
     {'titulo': 'HUEVOS SEMANAL', 'icono': '📦', 'hoja': 'H3', 'endpoint': 'consolidados.huevos_semanal'},
     {'titulo': 'KILOS SEMANAL', 'icono': '⚖️', 'hoja': 'H4', 'endpoint': 'consolidados.kilos_semanal'},
-    {'titulo': '% MORTALIDAD', 'icono': '☠️', 'hoja': 'H10', 'endpoint': 'consolidados.mort_semanal'},
+    {'titulo': '% MORTALIDAD SEMANAL', 'icono': '☠️', 'hoja': 'H10', 'endpoint': 'consolidados.mort_semanal'},
     {'titulo': 'PESO AVE', 'icono': '🐤', 'hoja': 'H6', 'endpoint': 'consolidados.peso_aves'},
     # Fila 2
     {'titulo': 'SALDO AVES', 'icono': '🐔', 'hoja': 'H8', 'endpoint': 'consolidados.saldo_aves'},
     {'titulo': '% PRODUCCIÓN', 'icono': '📈', 'hoja': 'H9', 'endpoint': 'consolidados.porc_produccion'},
     {'titulo': '% MORT. ACUMULADA', 'icono': '☠️', 'hoja': 'H11', 'endpoint': 'consolidados.mort_acumulada'},
-    {'titulo': '% MORTALIDAD SEMANAL', 'icono': '📉', 'hoja': 'H5', 'endpoint': 'consolidados.mortalidad_semanal'},
+    {'titulo': 'MUERTES SEMANALES', 'icono': '📉', 'hoja': 'H5', 'endpoint': 'consolidados.mortalidad_semanal'},
     {'titulo': 'PESO HUEVO', 'icono': '⚪', 'hoja': 'PESO HUEVO', 'endpoint': 'consolidados.peso_huevo'},
     {'titulo': 'UNIFORMIDAD', 'icono': '🎯', 'hoja': 'Uniformidad', 'endpoint': 'consolidados.uniformidad'},
     # Fila 3
