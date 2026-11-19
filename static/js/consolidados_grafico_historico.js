@@ -50,6 +50,7 @@
         dec: parseInt(cont.dataset.dec, 10) || 0,
         sufijo: cont.dataset.sufijo || '',
         factor: parseFloat(cont.dataset.factor) || 1,
+        guiaFactor: parseFloat(cont.dataset.guiaFactor) || 1,
         conectar: cont.dataset.conectar === '1',
         maximo: (cont.dataset.maximo || '').trim() === ''
           ? null
@@ -101,7 +102,7 @@
       if (crudo === null || crudo === undefined || crudo === '') return null;
       var numero = Number(crudo);
       if (isNaN(numero)) return null;
-      var mostrado = numero * g.factor;
+      var mostrado = numero * g.guiaFactor;
       if (g.maximo !== null && !isNaN(g.maximo) && mostrado > g.maximo) return null;
       return mostrado;
     }

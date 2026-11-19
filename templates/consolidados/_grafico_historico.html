@@ -18,6 +18,8 @@
     graf_dec        decimales del tooltip y del eje Y (0 a 3)
     graf_sufijo     '' o '%' (se agrega al valor en el tooltip)
     graf_factor     1, o 100 cuando la matriz viene en fracción 0-1
+    graf_guia_factor factor de la guía TABLA (por defecto 1; 100 si la guía
+                    viene en fracción y la matriz se muestra en %)
     graf_conectar   1 para unir la línea a través de las semanas sin dato
     graf_maximo     valor tope: los datos que lo superen no se grafican
     graf_desde      primera semana que se grafica (omite las anteriores)
@@ -66,6 +68,7 @@
          data-dec="{{ graf_dec|default(2) }}"
          data-sufijo="{{ graf_sufijo|default('') }}"
          data-factor="{{ graf_factor|default(1) }}"
+         data-guia-factor="{{ graf_guia_factor|default(1) }}"
          data-conectar="{{ graf_conectar|default(0) }}"
          data-maximo="{{ graf_maximo|default('') }}"
          data-desde="{{ graf_desde|default('') }}"

@@ -288,3 +288,30 @@ GUIA_LEV_CONV_TAB = {
     8: 3.27, 9: 3.56, 10: 3.90, 11: 4.39, 12: 5.04, 13: 5.76,
     14: 7.70, 15: 6.91, 16: 8.83, 17: 7.44, 18: None,
 }
+
+# ---------------------------------------------------------------------------
+# Guias de mortalidad del informe semanal de produccion (columna M.TAB).
+#
+# M.TAB es la mortalidad ACUMULADA en % (0.05, 0.08, 0.13, ...). La guia
+# semanal es la diferencia entre una semana y la anterior. Se declaran al
+# final del archivo para que prevalezcan sobre las versiones redondeadas.
+# ---------------------------------------------------------------------------
+M_TAB = (
+    0.05, 0.08, 0.13, 0.20, 0.27, 0.34, 0.40, 0.46, 0.50, 0.55,
+    0.61, 0.66, 0.71, 0.76, 0.80, 0.86, 0.92, 0.97, 1.02, 1.08,
+    1.12, 1.18, 1.24, 1.30, 1.35, 1.41, 1.47, 1.52, 1.59, 1.64,
+    1.70, 1.76, 1.83, 1.89, 1.95, 2.01, 2.09, 2.16, 2.24, 2.33,
+    2.40, 2.49, 2.57, 2.65, 2.77, 2.85, 2.92, 2.97, 3.08, 3.14,
+    3.20, 3.30, 3.43, 3.58, 3.73, 3.88, 4.03, 4.18, 4.33, 4.48,
+    4.63, 4.78, 4.93, 5.08, 5.23, 5.38, 5.53, 5.68, 5.83, 5.98,
+    6.13, 6.28, 6.45, 6.65, 6.85, 7.10, 7.30, 7.50, 7.60, 7.80,
+    8.00, 8.20, 8.40,
+)
+
+# Semana 18 = primer valor de M.TAB (la acumulada coincide con la semanal).
+GUIA_MORT_ACUM = {18 + i: valor for i, valor in enumerate(M_TAB)}
+GUIA_MORT_SEM = {18: M_TAB[0]}
+GUIA_MORT_SEM.update({
+    19 + i: round(M_TAB[i + 1] - M_TAB[i], 2)
+    for i in range(len(M_TAB) - 1)
+})
