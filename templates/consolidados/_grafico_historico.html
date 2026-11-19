@@ -21,6 +21,7 @@
     graf_conectar   1 para unir la línea a través de las semanas sin dato
     graf_maximo     valor tope: los datos que lo superen no se grafican
     graf_desde      primera semana que se grafica (omite las anteriores)
+    graf_dtick_y    separación de las marcas del eje Y (por defecto, automática)
     graf_contenedor id del contenedor de la tabla (para ajustar su alto)
     graf_altura     alto del gráfico en px (por defecto 330)
     graf_eje        nombre del eje X (por defecto "Semana")
@@ -29,6 +30,8 @@
                     cuando el gráfico pasa a pantalla completa
     graf_selector   selector CSS de los checkboxes que controlan este gráfico
                     (por defecto, todos los .chk-incluir de la página)
+    graf_tabla      serie de la guía TABLA (por defecto, datos.tabla). Se dibuja
+                    como línea discontinua oscura y no depende de la selección.
     graf_semanas    lista del eje X (por defecto datos.semanas)
     graf_matriz     matriz a graficar (por defecto datos.matriz)
     graf_panel      0 para no repetir la barra "Lotes incluidos"
@@ -65,6 +68,7 @@
          data-conectar="{{ graf_conectar|default(0) }}"
          data-maximo="{{ graf_maximo|default('') }}"
          data-desde="{{ graf_desde|default('') }}"
+         data-dtick-y="{{ graf_dtick_y|default('') }}"
          data-eje="{{ graf_eje|default('Semana') }}"
          data-tipo="{{ graf_tipo|default('line') }}"
          data-selector="{{ graf_selector|default('') }}"
@@ -74,10 +78,12 @@
 </div>
 
 <script id="datos-grafico-{{ graf_id }}" type="application/json">
+  {% set _guia = graf_tabla if graf_tabla is defined else (datos.tabla if datos.tabla is defined else {}) %}
   {{ {
       'semanas': graf_semanas|default(datos.semanas),
       'lotes': datos.lotes | map(attribute='nombre') | list,
-      'matriz': graf_matriz|default(datos.matriz)
+      'matriz': graf_matriz|default(datos.matriz),
+      'guia': _guia
      } | tojson }}
 </script>
 {% if graf_scripts|default(1) %}

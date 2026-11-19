@@ -57,6 +57,9 @@
         desde: (cont.dataset.desde || '').trim() === ''
           ? null
           : parseFloat(cont.dataset.desde),
+        dtickY: (cont.dataset.dtickY || '').trim() === ''
+          ? null
+          : parseFloat(cont.dataset.dtickY),
         card: cont.closest('.card'),
         tabla: cont.dataset.contenedor
           ? document.getElementById(cont.dataset.contenedor)
@@ -88,6 +91,17 @@
       if (isNaN(numero)) return null;
       var mostrado = numero * g.factor;
       // Los valores fuera de rango se omiten para que no deformen el eje.
+      if (g.maximo !== null && !isNaN(g.maximo) && mostrado > g.maximo) return null;
+      return mostrado;
+    }
+
+    function valorGuia(g, semana) {
+      var guia = g.datos.guia || {};
+      var crudo = guia[String(semana)];
+      if (crudo === null || crudo === undefined || crudo === '') return null;
+      var numero = Number(crudo);
+      if (isNaN(numero)) return null;
+      var mostrado = numero * g.factor;
       if (g.maximo !== null && !isNaN(g.maximo) && mostrado > g.maximo) return null;
       return mostrado;
     }
@@ -127,6 +141,24 @@
         return traza;
       });
 
+      // Guía TABLA: referencia fija, siempre visible y por encima de los lotes.
+      var guia = semanas.map(function (s) { return valorGuia(g, s); });
+      if (guia.some(function (v) { return v !== null; })) {
+        trazas.push({
+          x: semanas,
+          y: guia,
+          type: 'scatter',
+          mode: 'lines',
+          name: 'Tabla (guía)',
+          connectgaps: true,
+          line: { width: 2.4, color: '#212529', dash: 'dash' },
+          hovertemplate:
+            '<b>Tabla (guía)</b><br>' +
+            g.eje + ' %{x}: %{y:,.' + g.dec + 'f}' + g.sufijo +
+            '<extra></extra>'
+        });
+      }
+
       var valores = semanas.map(Number).filter(function (v) { return !isNaN(v); });
       var rango = valores.length
         ? Math.max.apply(null, valores) - Math.min.apply(null, valores)
@@ -137,7 +169,7 @@
       var ancho = g.cont.clientWidth || 900;
       var alto = g.cont.clientHeight || 330;
       var porFila = Math.max(1, Math.floor(ancho / 72));
-      var filasLeyenda = Math.max(1, Math.ceil(Math.max(nombres.length, 1) / porFila));
+      var filasLeyenda = Math.max(1, Math.ceil(Math.max(trazas.length, 1) / porFila));
       var margenInferior = Math.min(170, 46 + filasLeyenda * 14);
       var plotAlto = Math.max(60, alto - 10 - margenInferior);
       var yLeyenda = -(40 / plotAlto);
@@ -175,7 +207,11 @@
         layout.bargap = 0.2;
       }
 
-      if (!trazas.length) {
+      if (g.dtickY !== null && !isNaN(g.dtickY)) {
+        layout.yaxis.dtick = g.dtickY;
+      }
+
+      if (!nombres.length) {
         layout.annotations = [{
           text: 'Selecciona al menos un lote en la barra de filtros',
           xref: 'paper', yref: 'paper', x: 0.5, y: 0.5,
@@ -272,3 +308,4 @@
     });
   });
 })();
+
