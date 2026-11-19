@@ -493,11 +493,11 @@
     {'id': 'peso', 'graf_id': 'PslPeso', 'titulo': 'Peso corporal (g) por día',
      'eje': 'Peso corporal (g)', 'datos': datos.peso, 'dec': 2, 'sufijo': ''},
     {'id': 'unif', 'graf_id': 'PslUnif', 'titulo': '% Uniformidad por día',
-     'eje': '% de uniformidad', 'datos': datos.unif, 'dec': 2, 'sufijo': '%'},
+     'eje': '% de uniformidad', 'datos': datos.unif, 'dec': 2, 'sufijo': '%', 'maximo': 100},
     {'id': 'consumo', 'graf_id': 'PslConsumo', 'titulo': 'Consumo (g/ave/día) por día',
-     'eje': 'Consumo (g/ave/día)', 'datos': datos.consumo, 'dec': 2, 'sufijo': ''},
+     'eje': 'Consumo (g/ave/día)', 'datos': datos.consumo, 'dec': 2, 'sufijo': '', 'desde': 1},
     {'id': 'mort', 'graf_id': 'PslMort', 'titulo': 'Mortalidad por día',
-     'eje': 'Aves muertas', 'datos': datos.mort, 'dec': 0, 'sufijo': ''},
+     'eje': 'Aves muertas', 'datos': datos.mort, 'dec': 0, 'sufijo': '', 'desde': 1},
   ] %}
   {% for sec in secciones %}
   {% set dec = sec.dec %}
@@ -563,6 +563,8 @@
   {% set graf_eje = 'Día' %}
   {% set graf_semanas = datos.dias %}
   {% set graf_matriz = sec.datos.matriz %}
+  {% set graf_maximo = sec.maximo|default('') %}
+  {% set graf_desde = sec.desde|default('') %}
   {% set graf_panel = 0 %}
   {% set graf_compacto = 1 %}
   {% set graf_scripts = 1 if loop.first else 0 %}
