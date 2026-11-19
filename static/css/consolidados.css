@@ -162,6 +162,26 @@
   height: auto !important;
 }
 
+/* Cabecera de la tarjeta del gráfico: título a la izquierda y botón a la derecha */
+.cons-tabla-barra.cons-grafico-barra {
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.cons-grafico-titulo {
+  margin: 0;
+  min-width: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #41505f;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* ============================================================
    Panel de lotes
    ============================================================ */

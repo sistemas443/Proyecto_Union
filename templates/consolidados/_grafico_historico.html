@@ -14,6 +14,7 @@
   Variables:
     graf_id         sufijo de los ids (cardGraficoX, graficoX, btnPantallaX)
     graf_titulo     título del eje Y
+    graf_encabezado título de la tarjeta (por defecto, graf_titulo)
     graf_dec        decimales del tooltip y del eje Y (0 a 3)
     graf_sufijo     '' o '%' (se agrega al valor en el tooltip)
     graf_factor     1, o 100 cuando la matriz viene en fracción 0-1
@@ -38,7 +39,8 @@
     {% include 'consolidados/_panel_lotes.html' %}
     {% endif %}
 
-    <div class="cons-tabla-barra">
+    <div class="cons-tabla-barra cons-grafico-barra">
+      <h6 class="cons-grafico-titulo" title="{{ graf_encabezado|default(graf_titulo) }}">{{ graf_encabezado|default(graf_titulo) }}</h6>
       <button type="button" class="cons-fs" id="btnPantalla{{ graf_id }}"
               title="Ver el gráfico en pantalla completa">
         <i class="fas fa-expand" aria-hidden="true"></i>
