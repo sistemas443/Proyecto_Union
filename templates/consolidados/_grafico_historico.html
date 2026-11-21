@@ -89,6 +89,7 @@
   {{ {
       'semanas': graf_semanas|default(datos.semanas),
       'lotes': datos.lotes | map(attribute='nombre') | list,
+      'lotes_meta': datos.lotes_meta|default({}),
       'matriz': graf_matriz|default(datos.matriz),
       'guia': _guia
      } | tojson }}

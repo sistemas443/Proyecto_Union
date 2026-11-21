@@ -121,6 +121,7 @@ def _meta_todos_los_lotes() -> dict:
             'aves_enc': f['aves_enc'],
             'estado': info.get('estado', 'ACTIVO'),
             'variedad': info.get('variedad') or '',
+            'marca': info.get('marca_galpon') or '',
         }
     return meta
 
@@ -180,6 +181,13 @@ def _depurar(datos: dict, cortes: dict = None, eje: str = 'semanas') -> dict:
     # Del lote más viejo al más nuevo (columnas: viejos a la izquierda).
     nombres = sorted(meta.keys(), key=_orden_lote)
     datos['lotes'] = [meta[n] for n in nombres]
+    datos['lotes_meta'] = {
+        n: {
+            'variedad': meta[n].get('variedad') or '',
+            'marca': meta[n].get('marca') or '',
+        }
+        for n in nombres
+    }
 
     # 2. Matrices: la principal y las anidadas de primera semana
     matrices = []
@@ -1338,6 +1346,7 @@ def get_datos_levante(variables_param=None, lotes_param=None) -> dict:
         info = estados.get(lote['nombre'], {})
         lote['estado'] = info.get('estado', 'ACTIVO')
         lote['variedad'] = info.get('variedad') or ''
+        lote['marca'] = info.get('marca_galpon') or ''
         lote['fecha'] = lote['fecha_enc']
     lotes_meta.sort(key=lambda l: (l.get('fecha') or '', l['nombre']))
 

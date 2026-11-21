@@ -113,6 +113,32 @@
       return mostrado;
     }
 
+    function escaparHtml(texto) {
+      return String(texto)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
+
+    // Variedad y marca del galpón del lote (metadata de cabecera_lotes).
+    // Unas vistas la entregan como {lote: {...}} y otras como lista de lotes.
+    function metaLote(g, nombre) {
+      var crudo = g.datos.lotes_meta;
+      var meta = null;
+      if (Array.isArray(crudo)) {
+        for (var i = 0; i < crudo.length; i++) {
+          if (crudo[i] && crudo[i].nombre === nombre) { meta = crudo[i]; break; }
+        }
+      } else if (crudo) {
+        meta = crudo[nombre];
+      }
+      meta = meta || {};
+      return {
+        variedad: escaparHtml(meta.variedad || '—'),
+        marca: escaparHtml(meta.marca || '—')
+      };
+    }
+
     function dibujar(g) {
       if (!window.Plotly) return;
 
@@ -123,14 +149,17 @@
 
       var trazas = nombres.map(function (nombre, indice) {
         var color = COLORES[indice % COLORES.length];
+        var info = metaLote(g, nombre);
         var valores = semanas.map(function (s) { return valorEn(g, s, nombre); });
         var traza = {
           x: semanas,
           y: valores,
           name: nombre,
           hovertemplate:
-            '<b>Lote ' + nombre + '</b><br>' +
-            g.eje + ' %{x}: %{y:,.' + g.dec + 'f}' + g.sufijo +
+            '<b>Lote ' + escaparHtml(nombre) + '</b><br>' +
+            g.eje + ' %{x}: %{y:,.' + g.dec + 'f}' + g.sufijo + '<br>' +
+            'Variedad: ' + info.variedad + '<br>' +
+            'Marca galpón: ' + info.marca +
             '<extra></extra>'
         };
 

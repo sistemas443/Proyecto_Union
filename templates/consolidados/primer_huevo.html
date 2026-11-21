@@ -367,7 +367,10 @@
         name: s.lote,
         line: { color: color, width: 1.8 },
         marker: { size: 3.5, color: color },
-        hovertemplate: '<b>Lote ' + s.lote + '</b><br>Día %{x}: %{y:.2f}%<extra></extra>'
+        hovertemplate: '<b>Lote ' + s.lote + '</b><br>' +
+          'Día %{x}: %{y:.2f}%<br>' +
+          'Variedad: ' + (s.variedad || '—') + '<br>' +
+          'Marca galpón: ' + (s.marca || '—') + '<extra></extra>'
       });
 
       trazas.push({

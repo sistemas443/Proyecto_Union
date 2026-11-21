@@ -50,6 +50,7 @@ def fetch_clasificacion_lotes(nombres=None):
     try:
         sql = """
             SELECT c.lote, e.nombre, c.levante_externo, c.variedad, c.estado_manual,
+                   c.marca_galpon,
                    (SELECT b.fecha_fin_sem
                       FROM bd_vargas b
                      WHERE b.id_lote = c.id AND b.sem_prod = 82
@@ -67,12 +68,13 @@ def fetch_clasificacion_lotes(nombres=None):
         cur.execute(sql, params)
 
         resultado = {}
-        for lote, empresa, levante_externo, variedad, estado_manual, fecha, fecha_recepcion, aves in cur.fetchall():
+        for lote, empresa, levante_externo, variedad, estado_manual, marca_galpon, fecha, fecha_recepcion, aves in cur.fetchall():
             resultado[lote] = {
                 'empresa': empresa,
                 'levante_externo': bool(levante_externo),
                 'variedad': variedad,
                 'estado_manual': estado_manual,
+                'marca_galpon': marca_galpon,
                 'fecha_sem82': fecha,
                 'fecha_recepcion': fecha_recepcion,
                 'aves_enc': aves,

@@ -104,8 +104,15 @@ def primer_huevo():
             'nombre': lote,
             'estado': datos.get('estado') or 'ACTIVO',
             'variedad': datos.get('variedad') or '',
+            'marca': datos.get('marca_galpon') or '',
             'fecha': fecha.isoformat() if hasattr(fecha, 'isoformat') else (str(fecha) if fecha else ''),
         })
+
+    # Variedad y marca del galpón en el tooltip de cada serie
+    for serie in grafico:
+        datos = info.get(serie.get('lote')) or {}
+        serie['variedad'] = datos.get('variedad') or ''
+        serie['marca'] = datos.get('marca_galpon') or ''
 
     return render_template(
         'consolidados/primer_huevo.html',
