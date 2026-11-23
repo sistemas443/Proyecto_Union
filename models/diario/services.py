@@ -267,19 +267,31 @@ def update_registro_diario_field(id_reg: int, columna: str, valor: str) -> tuple
                 
                 if valores_update:
                     cur_update = conn.cursor()
-                    cur_update.executemany("""
-                        UPDATE data_diario 
-                        SET porc_mort_sem = %s, 
-                            porc_mort_acum = %s, 
-                            saldo_aves = %s,
-                            consumo_gr_a_d = %s, 
-                            cons_k_acum = %s, 
-                            cons_gr_ave_tab_acum = %s, 
-                            cons_gr_ave_ac = %s,
-                            percent_diario_prod = %s,
-                            prom_ave_dia_cc = %s
-                        WHERE id_diario = %s
-                    """, valores_update)
+                    # Una sola sentencia para las 770 filas (antes era un
+                    # executemany con un viaje a la BD por cada día).
+                    psycopg2.extras.execute_values(
+                        cur_update,
+                        """
+                        UPDATE data_diario AS d
+                        SET porc_mort_sem = v.porc_mort_sem,
+                            porc_mort_acum = v.porc_mort_acum,
+                            saldo_aves = v.saldo_aves,
+                            consumo_gr_a_d = v.real_gr_ave,
+                            cons_k_acum = v.k_acum,
+                            cons_gr_ave_tab_acum = v.gr_ave_tab_acum,
+                            cons_gr_ave_ac = v.gr_ave_real_acum,
+                            percent_diario_prod = v.porc_prod,
+                            prom_ave_dia_cc = v.prom_agua
+                        FROM (VALUES %s) AS v(
+                            porc_mort_sem, porc_mort_acum, saldo_aves,
+                            real_gr_ave, k_acum, gr_ave_tab_acum,
+                            gr_ave_real_acum, porc_prod, prom_agua, id_diario
+                        )
+                        WHERE d.id_diario = v.id_diario
+                        """,
+                        valores_update,
+                        template="(%s::numeric, %s::numeric, %s::integer, %s::numeric, %s::numeric, %s::numeric, %s::numeric, %s::numeric, %s::numeric, %s::integer)",
+                    )
                     cur_update.close()
                 
                 try:

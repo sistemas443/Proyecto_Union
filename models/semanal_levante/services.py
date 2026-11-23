@@ -1,5 +1,8 @@
 # models/semanal_levante/services.py
 from datetime import datetime, timedelta
+
+import psycopg2.extras
+
 from models.base import (get_db_connection, parse_empty, to_float_safe,
                          redondear, a_numero)
 from models.semanal_levante.schemas import COLUMNAS_PERMITIDAS
@@ -615,15 +618,29 @@ def recalcular_lote_semanal_levante_directo(id_lote, cur):
 
     # Aplica masivamente los resultados reconstruidos de las 18 semanas a la base de datos
     if valores_update:
-        cur.executemany("""
-            UPDATE semanal_levante 
-            SET cons_kilos_real = %s, mort = %s, sel = %s, otros = %s,
-                cons_real = %s, cons_k_acum = %s, cons_gr_ave_tab = %s, cons_gr_ave_ao = %s,
-                acu = %s, porc_mort_sem = %s, porc_mort_acm = %s, porc_sel_sem = %s, porc_ms_acu = %s, 
-                saldo_aves = %s, conv_sem = %s, ganancia_ave_dia = %s, ganancia_ave = %s, porc_cumpl_ganan = %s,
-                conv_sem_tab = %s, cons_kilos_ajustado = %s, porc_cumpl_cons = %s
-            WHERE id = %s                      
-        """, valores_update)
+        psycopg2.extras.execute_values(
+            cur,
+            """
+            UPDATE semanal_levante AS s
+            SET cons_kilos_real = v.cons_kilos_real, mort = v.mort, sel = v.sel, otros = v.otros,
+                cons_real = v.cons_real, cons_k_acum = v.cons_k_acum, cons_gr_ave_tab = v.cons_gr_ave_tab,
+                cons_gr_ave_ao = v.cons_gr_ave_ao, acu = v.acu, porc_mort_sem = v.porc_mort_sem,
+                porc_mort_acm = v.porc_mort_acm, porc_sel_sem = v.porc_sel_sem, porc_ms_acu = v.porc_ms_acu,
+                saldo_aves = v.saldo_aves, conv_sem = v.conv_sem, ganancia_ave_dia = v.ganancia_ave_dia,
+                ganancia_ave = v.ganancia_ave, porc_cumpl_ganan = v.porc_cumpl_ganan,
+                conv_sem_tab = v.conv_sem_tab, cons_kilos_ajustado = v.cons_kilos_ajustado,
+                porc_cumpl_cons = v.porc_cumpl_cons
+            FROM (VALUES %s) AS v(
+                cons_kilos_real, mort, sel, otros, cons_real, cons_k_acum, cons_gr_ave_tab,
+                cons_gr_ave_ao, acu, porc_mort_sem, porc_mort_acm, porc_sel_sem, porc_ms_acu,
+                saldo_aves, conv_sem, ganancia_ave_dia, ganancia_ave, porc_cumpl_ganan,
+                conv_sem_tab, cons_kilos_ajustado, porc_cumpl_cons, id
+            )
+            WHERE s.id = v.id
+            """,
+            valores_update,
+            template="(%s::numeric, %s::numeric, %s::numeric, %s::numeric, %s::numeric, %s::numeric, %s::numeric, %s::numeric, %s::numeric, %s::numeric, %s::numeric, %s::numeric, %s::numeric, %s::numeric, %s::numeric, %s::numeric, %s::numeric, %s::numeric, %s::numeric, %s::numeric, %s::numeric, %s::integer)",
+        )
         
 DECIMALES_SEMANAL_LEVANTE = {
     'peso_real': 1,

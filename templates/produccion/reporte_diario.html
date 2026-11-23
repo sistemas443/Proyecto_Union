@@ -188,6 +188,23 @@
   .rd-kpi .k{ font-size:.63rem; text-transform:uppercase; letter-spacing:.05em; color:var(--rd-muted); font-weight:700; }
   .rd-kpi .v{ font-size:1.2rem; font-weight:800; color:var(--rd-text); font-variant-numeric:tabular-nums; }
   .rd-kpi .v small{ font-size:.68rem; font-weight:600; color:var(--rd-muted); }
+
+  /* Aviso de sincronización con el módulo Diario */
+  .rd-sync-toast{
+    position:fixed; right:18px; bottom:18px; z-index:1080;
+    max-width:330px; padding:.55rem .85rem; border-radius:10px;
+    font-size:.8rem; font-weight:600; line-height:1.25;
+    background:#e3f4ea; color:#1e6b44; border:1px solid #9fd4b4;
+    box-shadow:0 8px 22px rgba(0,0,0,.16);
+    opacity:0; transform:translateY(10px); pointer-events:none;
+    transition:opacity .18s ease, transform .18s ease;
+  }
+  .rd-sync-toast.visible{ opacity:1; transform:translateY(0); }
+  .rd-sync-toast.warn{ background:#fff4e0; color:#8a5a00; border-color:#f0c987; }
+  .rd-sync-toast.error{ background:#fdecec; color:#a33; border-color:#e6a5a5; }
+  html[data-bs-theme="dark"] .rd-sync-toast{ background:#1f2b24; color:#a7e3c1; border-color:#2f5a44; }
+  html[data-bs-theme="dark"] .rd-sync-toast.warn{ background:#2e2717; color:#f3c76b; border-color:#6b5424; }
+  html[data-bs-theme="dark"] .rd-sync-toast.error{ background:#2e1b1b; color:#f0a6a6; border-color:#6b2f2f; }
 </style>
 
 {% macro val(d, campo) -%}
@@ -442,6 +459,8 @@
   </div>
 </div>
 
+<div class="rd-sync-toast" id="rdSyncToast" role="status" aria-live="polite"></div>
+
 <!-- Modal: nuevo desinfectante -->
 <div class="modal fade" id="modalDesinfectante" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-sm">
@@ -468,7 +487,8 @@
   <i class="fas fa-circle-info"></i>
   Escribe en cualquier celda y se guarda al salir del campo. El <strong>saldo de aves</strong> se
   calcula con las <strong>muertas</strong> del día. Si los 4 módulos no suman lo mismo, la celda se
-  marca en ámbar para que lo revises.
+  marca en ámbar para que lo revises. <strong>Producción, alimento, muertas, agua y otros</strong>
+  se envían automáticamente al módulo Diario.
 </p>
 
 {% else %}
@@ -495,6 +515,39 @@
   function set(id, valor) {
     const el = document.getElementById(id);
     if (el) el.textContent = valor;
+  }
+
+  // Aviso flotante del estado de sincronización con el Diario
+  const syncToast = document.getElementById('rdSyncToast');
+  let syncTimer = null;
+
+  function avisarDiario(info) {
+    if (!syncToast || !info) return;
+    if (info.sin_cambios || info.motivo === 'valor_vacio'
+        || info.motivo === 'campo_fuera_de_alcance') return;
+
+    let mensaje = '';
+    let tipo = '';
+
+    if (info.sincronizado) {
+      mensaje = 'Guardado y enviado al Diario';
+    } else if (info.motivo === 'sin_dia_en_diario') {
+      mensaje = 'Guardado. Ese día no existe en el Diario, no se envió.';
+      tipo = 'warn';
+    } else if (info.motivo === 'afecta_saldo_no') {
+      mensaje = 'Guardado. "Otras" no se envió porque no afecta el saldo.';
+      tipo = 'warn';
+    } else {
+      mensaje = 'Guardado aquí, pero falló el envío al Diario.';
+      tipo = 'error';
+    }
+
+    syncToast.textContent = mensaje;
+    syncToast.className = 'rd-sync-toast visible' + (tipo ? ' ' + tipo : '');
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(function () {
+      syncToast.className = 'rd-sync-toast' + (tipo ? ' ' + tipo : '');
+    }, 3400);
   }
 
   function actualizarProducto() {
@@ -556,6 +609,8 @@
       el.value = valor;
       el.classList.add('rd-ok');
       setTimeout(() => el.classList.remove('rd-ok'), 1200);
+
+      avisarDiario(data.diario);
 
       Object.entries(data.saldos || {}).forEach(([f, s]) => {
         const c = document.querySelector('td.rd-saldo[data-fecha="' + f + '"]');

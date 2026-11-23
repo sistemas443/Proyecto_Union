@@ -17,6 +17,7 @@ from models.reporte_diario import (
     modulos_entrada,
     mort_total_de,
     saldo_inicial,
+    sincronizar_diario,
     tabla_disponible,
 )
 
@@ -169,6 +170,15 @@ def guardar():
     except ValueError as e:
         return jsonify(ok=False, error=str(e)), 400
 
+    # Reporte Diario es la primera captura del día: los campos operativos se
+    # replican en el Diario con su misma cascada de cálculo.
+    aviso_diario = {'sincronizado': False, 'motivo': 'no_aplica'}
+    if campo in ('produccion', 'alimento', 'muertas', 'agua', 'otras'):
+        afecta = actual.get('afecta_saldo')
+        if afecta is None:
+            afecta = True
+        aviso_diario = sincronizar_diario(cabecera['id'], fecha, campo, valor, afecta)
+
     saldos, totales = estado_mes(cabecera['id'], fecha.year, fecha.month, saldo_ap)
     if aves:
         totales['porc_mort'] = round(
@@ -180,6 +190,7 @@ def guardar():
         mort_total=mort_total_de(cabecera['id'], fecha_txt),
         saldos=saldos,
         totales=totales,
+        diario=aviso_diario,
     )
 
 

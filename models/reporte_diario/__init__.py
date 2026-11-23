@@ -1,4 +1,5 @@
 # models/reporte_diario/__init__.py
+from .sync_diario import sincronizar_diario
 from .model import (
     CAMPOS_NUMERICOS,
     CAMPOS_TEXTO,

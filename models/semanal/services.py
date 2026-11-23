@@ -734,6 +734,38 @@ def recalcular_lote_semanal_completo_directo(id_lote, cur):
     """, (id_lote,))
     filas = cur.fetchall()
 
+    # Una sola consulta a data_diario y las sumas semanales se arman en Python.
+    # Antes se hacían 3 consultas por semana (279 viajes a la BD) dentro del
+    # bucle, lo que hacía muy lento cada guardado del Diario.
+    cur.execute("""
+        SELECT dias,
+               COALESCE(consumo_kg, 0), COALESCE(mortalidad, 0),
+               COALESCE(sel, 0), COALESCE(otros, 0), COALESCE(produccion, 0)
+        FROM data_diario WHERE id_lote = %s
+    """, (id_lote,))
+    filas_diario = cur.fetchall()
+    usa_diario = bool(filas_diario)
+
+    sem_consumo, sem_mort, sem_sel, sem_otros, sem_prod = {}, {}, {}, {}, {}
+    for d in filas_diario:
+        try:
+            dia = int(d[0])
+        except (TypeError, ValueError):
+            continue
+        sem = (dia - 1) // 7 + 1
+        sem_consumo[sem] = sem_consumo.get(sem, 0.0) + to_float_safe(d[1])
+        sem_mort[sem] = sem_mort.get(sem, 0.0) + to_float_safe(d[2])
+        sem_sel[sem] = sem_sel.get(sem, 0.0) + to_float_safe(d[3])
+        sem_otros[sem] = sem_otros.get(sem, 0.0) + to_float_safe(d[4])
+        sem_prod[sem] = sem_prod.get(sem, 0.0) + to_float_safe(d[5])
+
+    # Producción acumulada hasta cada semana (para las semanas <= 18).
+    prod_acum = {}
+    total_prod = 0.0
+    for sem in range(1, (max(sem_prod) if sem_prod else 0) + 1):
+        total_prod += sem_prod.get(sem, 0.0)
+        prod_acum[sem] = total_prod
+
     acum_kilos, acum_gr_ave_tab, acum_mort, acum_sel, acum_otros = 0.0, 0.0, 0.0, 0.0, 0.0
     acum_huevos_tab = 0.0
     acum_consumo_tab = 0.0
@@ -770,33 +802,26 @@ def recalcular_lote_semanal_completo_directo(id_lote, cur):
 
         peso_huevo_real_val = to_float_safe(f[13])
 
-        cur.execute("SELECT COUNT(*) FROM data_diario WHERE id_lote = %s", (id_lote,))
-        usa_diario = cur.fetchone()[0] > 0
+        c_k_real_db = sem_consumo.get(num_semana, 0.0)
+        m_sem_db = sem_mort.get(num_semana, 0.0)
+        s_sem_db = sem_sel.get(num_semana, 0.0)
+        o_sem_db = sem_otros.get(num_semana, 0.0)
 
-        cur.execute("""
-            SELECT COALESCE(SUM(consumo_kg), 0), COALESCE(SUM(mortalidad), 0), COALESCE(SUM(sel), 0), COALESCE(SUM(otros), 0)
-            FROM data_diario WHERE id_lote = %s AND dias BETWEEN %s AND %s
-        """, (id_lote, dia_inicio, dia_fin))
-        res_sem = cur.fetchone()
-        
         if usa_diario:
-            c_k_real = to_float_safe(res_sem[0]) if res_sem else 0.0
-            m_sem = to_float_safe(res_sem[1]) if res_sem else 0.0
-            s_sem = to_float_safe(res_sem[2]) if res_sem else 0.0
-            o_sem = to_float_safe(res_sem[3]) if res_sem else 0.0
+            c_k_real = c_k_real_db
+            m_sem = m_sem_db
+            s_sem = s_sem_db
+            o_sem = o_sem_db
         else:
-            c_k_real = to_float_safe(res_sem[0]) if res_sem and res_sem[0] > 0 else to_float_safe(f[2])
-            m_sem = to_float_safe(res_sem[1]) if res_sem and res_sem[1] > 0 else to_float_safe(f[3])
-            s_sem = to_float_safe(res_sem[2]) if res_sem and res_sem[2] > 0 else to_float_safe(f[4])
-            o_sem = to_float_safe(res_sem[3]) if res_sem and res_sem[3] > 0 else to_float_safe(f[5])
+            c_k_real = c_k_real_db if c_k_real_db > 0 else to_float_safe(f[2])
+            m_sem = m_sem_db if m_sem_db > 0 else to_float_safe(f[3])
+            s_sem = s_sem_db if s_sem_db > 0 else to_float_safe(f[4])
+            o_sem = o_sem_db if o_sem_db > 0 else to_float_safe(f[5])
 
         if num_semana <= 18:
-            cur.execute("SELECT COALESCE(SUM(produccion), 0) FROM data_diario WHERE id_lote = %s AND dias <= %s", (id_lote, dia_fin))
+            diarios_huevos = prod_acum.get(num_semana, 0.0)
         else:
-            cur.execute("SELECT COALESCE(SUM(produccion), 0) FROM data_diario WHERE id_lote = %s AND dias BETWEEN %s AND %s", (id_lote, dia_inicio, dia_fin))
-        
-        res_huevos = cur.fetchone()
-        diarios_huevos = to_float_safe(res_huevos[0]) if res_huevos else 0.0
+            diarios_huevos = sem_prod.get(num_semana, 0.0)
 
         db_prod_sem = to_float_safe(f[25])
         huevos_semana = diarios_huevos if usa_diario else db_prod_sem
