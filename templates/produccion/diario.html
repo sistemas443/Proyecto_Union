@@ -499,6 +499,7 @@
       <col style="width:80px;">
       <col style="width:90px;">
       <col style="width:90px;">
+      <col style="width:100px;">
     </colgroup>
 
     <thead>
@@ -517,6 +518,7 @@
         <th rowspan="2" class="th-orange" style="position: sticky; top: 0; z-index: 10;">% Prod</th>
         <th rowspan="2" class="th-orange" style="position: sticky; top: 0; z-index: 10;">Prom. Ave</th>
         <th rowspan="2" class="th-orange" style="position: sticky; top: 0; z-index: 10;">Agua</th>
+        <th rowspan="2" class="th-orange" style="position: sticky; top: 0; z-index: 10;">Agua/Consumo</th>
       </tr>
       <tr>
         <th class="th-sub" style="position: sticky; top: 30px; z-index: 10;">Días</th>
@@ -583,10 +585,14 @@
         
         <td><input type="text" inputmode="numeric" data-miles="0" data-col="consumo_agua" value="{{ f['consumo_agua']|miles(0) if f['consumo_agua'] else '' }}"
             class="form-control form-control-sm border-0 bg-transparent text-center"></td>
+
+        <td><input type="text" data-col="agua_consumo"
+            value="{{ '%.1f'|format(f['agua_consumo']|float) if f['agua_consumo'] is not none and f['agua_consumo']|float != 0 else '' }}"
+            class="form-control form-control-sm border-0 bg-transparent text-center celda-agua_consumo" readonly></td>
       </tr>
       {% else %}
       <tr>
-        <td colspan="15" class="ps-vacio">
+        <td colspan="16" class="ps-vacio">
           <i class="fas fa-inbox d-block"></i>
           <p class="mb-1 fw-semibold" style="color: var(--text-secondary);">No hay registros diarios para este lote</p>
         </td>
@@ -849,7 +855,8 @@
       consumo_gr_a_tab: 'Gr.A.D Tab',
       percent_diario_prod: '% Prod',
       prom_ave_dia_cc: 'Prom. Ave',
-      consumo_agua: 'Agua'
+      consumo_agua: 'Agua',
+      agua_consumo: 'Agua/Consumo'
     };
 
     let ancla = null;      // celda desde donde empezó la selección

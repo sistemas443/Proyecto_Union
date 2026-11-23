@@ -28,6 +28,7 @@ def fetch_diario_por_lote(id_lote, limite=None):
         SELECT id_diario, id_lote, lote, fecha_dia, dias, sem,
                mortalidad, sel, consumo_kg, consumo_gr_a_tab, otros, peso_real, peso_tabla, observaciones,
                saldo_aves, consumo_gr_a_d, percent_diario_prod, prom_ave_dia_cc, consumo_agua,
+               agua_consumo,
                porc_mort_sem, porc_mort_acum, cons_k_acum, cons_gr_ave_tab_acum, cons_gr_ave_ac,
                produccion
         FROM data_diario

@@ -154,7 +154,21 @@ def get_diario_all(lote_nombre: str = '', cabecera=None):
         
     aplicar_parche_diario(id_lote)
         
-    return model.fetch_diario_por_lote(id_lote)
+    filas = model.fetch_diario_por_lote(id_lote)
+
+    # Respaldo para filas antiguas que aun no tengan el valor calculado.
+    for fila in filas:
+        if fila.get('agua_consumo') is not None:
+            continue
+        prom = fila.get('prom_ave_dia_cc')
+        cons = fila.get('consumo_gr_a_d')
+        try:
+            if prom is not None and cons is not None and float(cons) > 0:
+                fila['agua_consumo'] = round(float(prom) / float(cons), 1)
+        except (TypeError, ValueError):
+            continue
+
+    return filas
 
 def update_registro_diario_field(id_reg: int, columna: str, valor: str) -> tuple[bool, dict, str]:
     """ Ejecuta guardados directos y recalculos matematicos en cascada """
@@ -242,6 +256,12 @@ def update_registro_diario_field(id_reg: int, columna: str, valor: str) -> tuple
                     
                     prom_agua_exacto = round((float(agua) / float(saldo_actual)) * 1000.0, 1) if saldo_actual > 0 else 0.0
 
+                    # Agua por ave (cc) / alimento por ave (g) = cc de agua por gramo.
+                    agua_consumo_exacto = (
+                        round(prom_agua_exacto / real_gr_ave_exacto, 1)
+                        if real_gr_ave_exacto > 0 else None
+                    )
+
                     valores_update.append((
                         round(porc_sem, 2), 
                         round(porc_acum, 2), 
@@ -252,6 +272,7 @@ def update_registro_diario_field(id_reg: int, columna: str, valor: str) -> tuple
                         round(acum_gr_real_exacto, 2) if acum_gr_real_exacto > 0 else None, 
                         round(porc_prod_exacto, 1), 
                         round(prom_agua_exacto, 2), 
+                        agua_consumo_exacto,
                         f_id
                     ))
                     
@@ -262,7 +283,8 @@ def update_registro_diario_field(id_reg: int, columna: str, valor: str) -> tuple
                             'saldo_aves':          int(round(saldo_actual)),
                             'consumo_gr_a_d':      f"{real_gr_ave_exacto:.1f}" if real_gr_ave_exacto > 0 else '0.0',
                             'percent_diario_prod': f"{porc_prod_exacto:.1f}" if porc_prod_exacto > 0 else '0.0',
-                            'prom_ave_dia_cc': f"{prom_agua_exacto:.1f}" if prom_agua_exacto > 0 else '0.0'
+                            'prom_ave_dia_cc': f"{prom_agua_exacto:.1f}" if prom_agua_exacto > 0 else '0.0',
+                            'agua_consumo': f"{agua_consumo_exacto:.1f}" if agua_consumo_exacto else '0.0'
                         }
                 
                 if valores_update:
@@ -281,16 +303,17 @@ def update_registro_diario_field(id_reg: int, columna: str, valor: str) -> tuple
                             cons_gr_ave_tab_acum = v.gr_ave_tab_acum,
                             cons_gr_ave_ac = v.gr_ave_real_acum,
                             percent_diario_prod = v.porc_prod,
-                            prom_ave_dia_cc = v.prom_agua
+                            prom_ave_dia_cc = v.prom_agua,
+                            agua_consumo = v.agua_consumo
                         FROM (VALUES %s) AS v(
                             porc_mort_sem, porc_mort_acum, saldo_aves,
                             real_gr_ave, k_acum, gr_ave_tab_acum,
-                            gr_ave_real_acum, porc_prod, prom_agua, id_diario
+                            gr_ave_real_acum, porc_prod, prom_agua, agua_consumo, id_diario
                         )
                         WHERE d.id_diario = v.id_diario
                         """,
                         valores_update,
-                        template="(%s::numeric, %s::numeric, %s::integer, %s::numeric, %s::numeric, %s::numeric, %s::numeric, %s::numeric, %s::numeric, %s::integer)",
+                        template="(%s::numeric, %s::numeric, %s::integer, %s::numeric, %s::numeric, %s::numeric, %s::numeric, %s::numeric, %s::numeric, %s::numeric, %s::integer)",
                     )
                     cur_update.close()
                 
