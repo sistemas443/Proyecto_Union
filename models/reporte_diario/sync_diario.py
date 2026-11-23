@@ -57,7 +57,7 @@ def sincronizar_diario(id_lote, fecha, campo, valor, afecta_saldo=True):
 
     # Se envía un texto numérico limpio: entero para las columnas enteras y
     # decimal para el resto (evita comas de miles y formatos del navegador).
-    if columna in ('mortalidad', 'otros'):
+    if columna in ('mortalidad', 'otros', 'consumo_kg'):
         texto_db = str(int(round(nuevo)))
     else:
         texto_db = str(nuevo)
