@@ -820,7 +820,7 @@
     } catch (e) {
       el.classList.add('rd-error');
       setTimeout(() => el.classList.remove('rd-error'), 3000);
-      alert(e.message);
+      avisarProceso('No se pudo guardar', e.message, 'error');
     } finally {
       el.classList.remove('rd-guardando');
     }
@@ -981,7 +981,7 @@
     } catch (e) {
       const previo = td.dataset.saved ? JSON.parse(td.dataset.saved) : [];
       renderProcesos(td, previo);
-      alert(e.message);
+      avisarProceso('No se pudo guardar', e.message, 'error');
     } finally {
       td.classList.remove('rd-guardando');
     }
@@ -1099,9 +1099,46 @@
     });
   }
 
+  function avisarProceso(titulo, texto, icono) {
+    if (typeof window.Swal === 'undefined') {
+      alert(texto || titulo);
+      return;
+    }
+    window.Swal.fire({
+      title: titulo,
+      text: texto,
+      icon: icono || 'info',
+      confirmButtonText: 'Entendido',
+      confirmButtonColor: '#2c3e50',
+      customClass: { container: 'swal-desenfoque' }
+    });
+  }
+
+  function confirmarQuitarProceso(proceso) {
+    const detalle = proceso
+      ? 'Se quitarán los módulos de "' + proceso + '". Los demás procesos y sus colores se mantienen.'
+      : 'Se quitarán los módulos de este proceso. Los demás procesos y sus colores se mantienen.';
+    if (typeof window.Swal === 'undefined') {
+      return Promise.resolve(confirm('¿Quitar este proceso y sus módulos?'));
+    }
+    return window.Swal.fire({
+      title: '¿Quitar este proceso?',
+      text: detalle,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, quitar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#c0392b',
+      cancelButtonColor: '#6c757d',
+      reverseButtons: true,
+      focusCancel: true,
+      customClass: { container: 'swal-desenfoque' }
+    }).then(function (r) { return r.isConfirmed; });
+  }
+
   const tablaProcesos = document.getElementById('tablaRD');
   if (tablaProcesos) {
-    tablaProcesos.addEventListener('click', function (ev) {
+    tablaProcesos.addEventListener('click', async function (ev) {
       if (ev.target.closest('#btnNuevoProceso')) {
         abrirModalProceso(null);
         return;
@@ -1154,15 +1191,17 @@
       if (del) {
         const row = del.closest('.rd-proc-row');
         if (!row) return;
+        const nombreProc = row.dataset.proceso ||
+          (row.querySelector('.rd-proc-sel') ? row.querySelector('.rd-proc-sel').value : '');
         if (row.querySelectorAll('.rd-proc-chip.activo').length &&
-            !confirm('¿Quitar este proceso y sus módulos?')) return;
+            !(await confirmarQuitarProceso(nombreProc))) return;
         row.remove();
         actualizarBotonAgregar(td);
         guardarProcesosFila(td);
       }
     });
 
-    tablaProcesos.addEventListener('change', function (ev) {
+    tablaProcesos.addEventListener('change', async function (ev) {
       const sel = ev.target.closest('.rd-proc-sel');
       if (!sel) return;
       const td = sel.closest('.rd-proc-celda');
@@ -1171,8 +1210,9 @@
       const nuevo = sel.value;
 
       if (!nuevo) {
+        const nombreProc = row.dataset.proceso;
         if (row.querySelectorAll('.rd-proc-chip.activo').length &&
-            !confirm('¿Quitar este proceso y sus módulos?')) {
+            !(await confirmarQuitarProceso(nombreProc))) {
           renderProcesos(td, td.dataset.saved ? JSON.parse(td.dataset.saved) : []);
           return;
         }
@@ -1185,7 +1225,9 @@
       const repetido = Array.from(td.querySelectorAll('.rd-proc-sel'))
         .some(function (s) { return s !== sel && s.value === nuevo; });
       if (repetido) {
-        alert('Ese proceso ya está agregado en este día.');
+        avisarProceso('Proceso ya agregado',
+          'Ese proceso ya está en este día. Edita sus módulos en la fila existente.',
+          'info');
         renderProcesos(td, td.dataset.saved ? JSON.parse(td.dataset.saved) : []);
         return;
       }
@@ -1242,7 +1284,7 @@
         if (!res.ok || !data.ok) throw new Error(data.error || 'No se pudo guardar');
         location.reload();
       } catch (e) {
-        alert(e.message);
+        avisarProceso('No se pudo guardar', e.message, 'error');
       }
     });
   });
