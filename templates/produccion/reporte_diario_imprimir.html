@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Reporte Diario · {{ cabecera['lote'] }} · {{ mes_nombre }} {{ anio }}</title>
+<style>
+  @page { size: A4 landscape; margin: 8mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 8pt;
+    color: #111;
+    margin: 0;
+    background: #fff;
+  }
+  .barra {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 8px;
+  }
+  .btn {
+    padding: 6px 14px; border: 0; border-radius: 4px;
+    background: #1a202c; color: #fff; font-size: 9pt; cursor: pointer;
+  }
+  .header {
+    display: flex; align-items: center; gap: 10px;
+    border-bottom: 2px solid #1a202c; padding-bottom: 6px; margin-bottom: 8px;
+  }
+  .header img { height: 42px; }
+  h1 { font-size: 14pt; margin: 0; }
+  .sub { color: #555; font-size: 8pt; }
+  .kpis { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 10px; }
+  .kpi { border: 1px solid #bbb; padding: 3px 7px; border-radius: 3px; }
+  .kpi span { display: block; font-size: 6.5pt; color: #555; text-transform: uppercase; }
+  .kpi b { font-size: 10pt; }
+
+  table.diario { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  table.diario th, table.diario td { border: 1px solid #999; padding: 2px 3px; vertical-align: top; }
+  table.diario th {
+    background: #1a202c; color: #fff; font-size: 6.8pt;
+    text-transform: uppercase; letter-spacing: .02em;
+  }
+  table.diario td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  table.diario tr { page-break-inside: avoid; }
+  table.diario thead { display: table-header-group; }
+  table.diario tfoot td { background: #eef1f4; font-weight: 700; }
+
+  .proc { font-size: 6.6pt; line-height: 1.25; margin-bottom: 1px; }
+  .proc i {
+    display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+    margin-right: 3px; vertical-align: middle;
+  }
+  .p-med { background: #35c6ea; }
+  .p-fmed { background: #ffe600; }
+  .p-iny { background: #e8b8b8; }
+
+  .resumen { margin-top: 12px; page-break-inside: avoid; }
+  .resumen h2 { font-size: 10pt; margin: 0 0 4px; }
+  table.resumen { border-collapse: collapse; min-width: 60%; }
+  table.resumen th, table.resumen td { border: 1px solid #999; padding: 2px 8px; font-size: 7.5pt; }
+  table.resumen th { background: #eef1f4; }
+  .pie { margin-top: 10px; color: #666; font-size: 7pt; }
+  @media print {
+    .no-print { display: none !important; }
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+
+{% macro ent(v) -%}{%- if v is not none -%}{{ "{:,.0f}".format(v | float) }}{%- endif -%}{%- endmacro %}
+{% macro dec(v) -%}{%- if v is not none -%}{{ "{:,.2f}".format(v | float) }}{%- endif -%}{%- endmacro %}
+
+<div class="barra no-print">
+  <span class="sub">Vista imprimible · usa "Guardar como PDF" en el diálogo de impresión.</span>
+  <button class="btn" onclick="window.print()">Imprimir / Guardar PDF</button>
+</div>
+
+<div class="header">
+  <img src="{{ url_for('static', filename='img/LOGO_AVICOLA_SAN_MARTIN_SAS.png') }}" alt="Avícola San Martín">
+  <div>
+    <h1>Reporte Diario</h1>
+    <div class="sub">
+      {{ cabecera['lote'] }}{% if cabecera['variedad'] %} · {{ cabecera['variedad'] }}{% endif %}
+      · {{ mes_nombre }} {{ anio }}
+      · Aves encasetadas: {{ "{:,.0f}".format(aves | float) }}
+    </div>
+  </div>
+</div>
+
+<div class="kpis">
+  <div class="kpi"><span>Producción</span><b>{{ ent(totales.get('produccion')) }}</b></div>
+  <div class="kpi"><span>Alimento (kg)</span><b>{{ dec(totales.get('alimento')) }}</b></div>
+  <div class="kpi"><span>Muertes</span><b>{{ ent(totales.get('total')) }}</b></div>
+  <div class="kpi"><span>% Mortalidad</span><b>{{ "{:,.2f}".format(totales.get('porc_mort', 0) | float) }} %</b></div>
+  <div class="kpi"><span>Saldo inicial</span><b>{{ ent(totales.get('saldo_apertura')) }}</b></div>
+  <div class="kpi"><span>Saldo final</span><b>{{ ent(totales.get('saldo_final')) }}</b></div>
+</div>
+
+<table class="diario">
+  <colgroup>
+    <col style="width:4.5%">
+    <col style="width:7%">
+    <col style="width:6%">
+    <col style="width:5%">
+    <col style="width:5%">
+    <col style="width:7%">
+    <col style="width:6%">
+    <col style="width:5%">
+    <col style="width:4%"><col style="width:4%"><col style="width:4%"><col style="width:4%">
+    <col style="width:19%">
+    <col style="width:7%">
+    <col style="width:5.5%">
+    <col style="width:5%">
+  </colgroup>
+  <thead>
+    <tr>
+      <th>Fecha</th>
+      <th>Producción</th>
+      <th>Alimento</th>
+      <th>Muertas</th>
+      <th>Otras</th>
+      <th>Saldo</th>
+      <th>Agua</th>
+      <th>Silo</th>
+      <th>M1</th><th>M2</th><th>M3</th><th>M4</th>
+      <th>Procesos</th>
+      <th>Desinfección</th>
+      <th>Gallinaza</th>
+      <th>Cierra silo</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for fila in filas %}
+    {% set d = fila.datos %}
+    <tr>
+      <td>{{ fila.dia }}</td>
+      <td class="num">{{ ent(d.get('produccion') if d else none) }}</td>
+      <td class="num">{{ dec(d.get('alimento') if d else none) }}</td>
+      <td class="num">{{ ent(d.get('muertas') if d else none) }}</td>
+      <td class="num">{{ ent(d.get('otras') if d else none) }}</td>
+      <td class="num">{{ ent(fila.saldo) }}</td>
+      <td class="num">{{ dec(d.get('agua') if d else none) }}</td>
+      <td class="num">{{ dec(d.get('silo') if d else none) }}</td>
+      <td class="num">{{ ent(d.get('mort_m1') if d else none) }}</td>
+      <td class="num">{{ ent(d.get('mort_m2') if d else none) }}</td>
+      <td class="num">{{ ent(d.get('mort_m3') if d else none) }}</td>
+      <td class="num">{{ ent(d.get('mort_m4') if d else none) }}</td>
+      <td>
+        {% for p in ((d.get('procesos') if d else []) or []) %}
+        <div class="proc">
+          <i class="{{ {'I. MEDICACION':'p-med','F. MEDICACION':'p-fmed','INYECCION':'p-iny'}[p.proceso] }}"></i>
+          {{ p.proceso }}{% if p.modulos %} ({% for m in p.modulos %}M{{ m }}{% if not loop.last %}, {% endif %}{% endfor %}){% endif %}
+        </div>
+        {% endfor %}
+      </td>
+      <td>
+        {{ (d.get('desinfeccion') if d else '') or '' }}
+        {% if d and d.get('desinfeccion_producto') %}
+        <div class="proc">{{ d.get('desinfeccion_producto') }}</div>
+        {% endif %}
+      </td>
+      <td>{{ (d.get('gallinaza') if d else '') or '' }}</td>
+      <td>{{ (d.get('cierra_silo') if d else '') or '' }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+  <tfoot>
+    <tr>
+      <td>Totales</td>
+      <td class="num">{{ ent(totales.get('produccion')) }}</td>
+      <td class="num">{{ dec(totales.get('alimento')) }}</td>
+      <td class="num">{{ ent(totales.get('total')) }}</td>
+      <td class="num">{{ ent(totales.get('otras')) }}</td>
+      <td class="num">{{ ent(totales.get('saldo_final')) }}</td>
+      <td class="num">{{ dec(totales.get('agua')) }}</td>
+      <td class="num">{{ dec(totales.get('silo')) }}</td>
+      <td class="num">{{ ent(totales.get('m1')) }}</td>
+      <td class="num">{{ ent(totales.get('m2')) }}</td>
+      <td class="num">{{ ent(totales.get('m3')) }}</td>
+      <td class="num">{{ ent(totales.get('m4')) }}</td>
+      <td colspan="4"></td>
+    </tr>
+  </tfoot>
+</table>
+
+<div class="resumen">
+  <h2>Resumen de procesos por módulo</h2>
+  <table class="resumen">
+    <thead>
+      <tr>
+        <th>Módulo</th>
+        <th>I. MEDICACION</th>
+        <th>F. MEDICACION</th>
+        <th>INYECCION</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in [1, 2, 3, 4] %}
+      <tr>
+        <td><strong>M{{ m }}</strong></td>
+        {% for proc in ['I. MEDICACION', 'F. MEDICACION', 'INYECCION'] %}
+        <td>{{ resumen[m].get(proc, 0) or '' }}</td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="pie">
+  Generado el {{ hoy.strftime('%d-%m-%Y') }} · Reporte Diario · {{ cabecera['lote'] }}
+</div>
+
+</body>
+</html>

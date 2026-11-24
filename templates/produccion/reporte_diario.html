@@ -180,6 +180,69 @@
   .rd-tabla td.rd-proc-celda .rd-sel{ color:#1f2937; font-weight:700; min-width:140px; }
   .rd-tabla td.rd-proc-celda .rd-sel option{ background:#fff; color:#1f2937; }
 
+  /* --- Procesos multiples por dia --- */
+  .rd-tabla td.rd-proc-celda{ min-width:248px; vertical-align:top; }
+  .rd-proc-list{ display:flex; flex-direction:column; gap:2px; }
+  .rd-proc-row{
+    position:relative; display:flex; align-items:center; gap:2px;
+    padding-left:6px; min-height:20px;
+  }
+  .rd-proc-row::before{
+    content:""; position:absolute; left:0; top:1px; bottom:1px;
+    width:3px; border-radius:2px; background:transparent;
+  }
+  .rd-proc-row[data-proceso="I. MEDICACION"]::before{ background:#35c6ea; }
+  .rd-proc-row[data-proceso="F. MEDICACION"]::before{ background:#ffe600; }
+  .rd-proc-row[data-proceso="INYECCION"]::before{ background:#e8b8b8; }
+
+  .rd-proc-row .rd-proc-sel{
+    width:112px; min-width:112px; font-size:.66rem; padding:.1rem .2rem;
+  }
+  .rd-proc-chips{ display:flex; gap:1px; }
+  .rd-proc-chip{
+    width:19px; height:17px; padding:0; border-radius:4px;
+    border:1px solid var(--rd-border); background:var(--rd-row);
+    color:var(--rd-text); font-size:.56rem; font-weight:800; line-height:1;
+    cursor:pointer;
+  }
+  .rd-proc-chip:hover{ border-color:#8b97a5; }
+  .rd-proc-row[data-proceso="I. MEDICACION"] .rd-proc-chip.activo{ background:#35c6ea; border-color:#35c6ea; color:#1f2937; }
+  .rd-proc-row[data-proceso="F. MEDICACION"] .rd-proc-chip.activo{ background:#ffe600; border-color:#ffe600; color:#1f2937; }
+  .rd-proc-row[data-proceso="INYECCION"] .rd-proc-chip.activo{ background:#e8b8b8; border-color:#e8b8b8; color:#1f2937; }
+
+  .rd-proc-todos{
+    padding:0 .2rem; height:17px; border:1px dashed var(--rd-border);
+    border-radius:4px; background:transparent; color:var(--rd-muted);
+    font-size:.55rem; font-weight:700; cursor:pointer;
+  }
+  .rd-proc-todos:hover{ border-color:var(--rd-door); color:var(--rd-door); }
+  .rd-proc-del{
+    width:16px; height:17px; padding:0; border:0; background:transparent;
+    color:#b45353; font-size:.72rem; font-weight:800; line-height:1; cursor:pointer;
+  }
+  .rd-proc-del:hover{ color:#c0392b; }
+  .rd-proc-add{
+    margin-top:2px; padding:0 .3rem; height:18px; border-radius:4px;
+    border:1px dashed var(--rd-border); background:transparent;
+    color:var(--rd-muted); font-size:.58rem; font-weight:700; cursor:pointer;
+  }
+  .rd-proc-add:hover{ border-color:var(--rd-door); color:var(--rd-door); }
+  .rd-proc-celda.rd-guardando{ opacity:.65; pointer-events:none; }
+
+  /* Modulos resaltados por proceso (sutil, admite varios colores) */
+  .rd-tabla tbody td.rd-mod-proc{ position:relative; }
+  .rd-proc-strip{
+    position:absolute; top:0; left:0; right:0; height:3px;
+    display:flex; pointer-events:none; z-index:2;
+  }
+  .rd-proc-strip i{ flex:1; display:block; height:3px; }
+  .rd-proc-dots{
+    position:absolute; top:4px; right:2px; display:flex; gap:1px;
+    pointer-events:none; z-index:2;
+  }
+  .rd-proc-dots i{ width:4px; height:4px; border-radius:50%; display:block; }
+  .rd-mod-proc .rd-in{ padding-top:.32rem; }
+
   .rd-kpis{ display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:.7rem; margin-bottom:1rem; }
   .rd-kpi{
     background:var(--rd-row); border:1px solid var(--rd-border); border-radius:10px;
@@ -265,6 +328,11 @@
     <button type="button" class="btn btn-outline-secondary btn-sm" id="btnHoy" title="Ir al día de hoy">
       <i class="fas fa-calendar-day"></i> Hoy
     </button>
+    <a class="btn btn-outline-secondary btn-sm" target="_blank" rel="noopener"
+       href="{{ url_for('reporte_diario.imprimir', lote=lote_seleccionado, mes=mes_valor) }}"
+       title="Exportar el mes a PDF">
+      <i class="fas fa-file-pdf"></i> PDF
+    </a>
     {% endif %}
   </form>
 </div>
@@ -390,17 +458,48 @@
           <td><input class="rd-in" data-tipo="dec" data-fecha="{{ fila.fecha }}" data-campo="silo"
                      inputmode="decimal" placeholder="0" value="{{ val(d, 'silo') }}"></td>
 
+          {% set procs_mod = (d.get('procesos_por_modulo', {}) if d else {}) %}
           {% for m in [1, 2, 3, 4] %}
-          <td class="{% if m == 1 %}rd-sep {% endif %}{% if m in mods_entrada %}rd-col-entrada{% endif %}" data-mod="{{ m }}">
+          {% set lista_proc = procs_mod.get(m, []) %}
+          <td class="{% if m == 1 %}rd-sep {% endif %}{% if m in mods_entrada %}rd-col-entrada {% endif %}{% if lista_proc %}rd-mod-proc{% endif %}"
+              data-mod="{{ m }}"
+              {% if lista_proc %}data-procesos="{{ lista_proc | join('|') }}" title="{{ lista_proc | join(' · ') }}"{% endif %}>
+            {% if lista_proc %}
+            <span class="rd-proc-strip">
+              {% for proc in lista_proc %}<i class="{{ {'I. MEDICACION':'p-med','F. MEDICACION':'p-fmed','INYECCION':'p-iny'}[proc] }}"></i>{% endfor %}
+            </span>
+            <span class="rd-proc-dots">
+              {% for proc in lista_proc %}<i class="{{ {'I. MEDICACION':'p-med','F. MEDICACION':'p-fmed','INYECCION':'p-iny'}[proc] }}"></i>{% endfor %}
+            </span>
+            {% endif %}
             <input class="rd-in" data-tipo="int" data-fecha="{{ fila.fecha }}" data-campo="mort_m{{ m }}"
                    inputmode="numeric" placeholder="0" value="{{ val(d, 'mort_m' ~ m) }}">
           </td>
           {% endfor %}
 
-          <td class="rd-sep rd-proc-celda{% if d and d.get('proceso') == 'I. MEDICACION' %} p-med{% elif d and d.get('proceso') == 'F. MEDICACION' %} p-fmed{% elif d and d.get('proceso') == 'INYECCION' %} p-iny{% endif %}">
-            <select class="rd-sel" data-fecha="{{ fila.fecha }}" data-campo="proceso">
-              {{ opciones(d, 'proceso', ['I. MEDICACION', 'F. MEDICACION', 'INYECCION']) }}
-            </select>
+          <td class="rd-sep rd-proc-celda" data-fecha="{{ fila.fecha }}">
+            <div class="rd-proc-list">
+              {% for p in (d.get('procesos') if d else []) %}
+              <div class="rd-proc-row" data-proceso="{{ p.proceso }}">
+                <select class="rd-sel rd-proc-sel" data-fecha="{{ fila.fecha }}">
+                  <option value="">—</option>
+                  {% for op in ['I. MEDICACION', 'F. MEDICACION', 'INYECCION'] %}
+                  <option value="{{ op }}" {% if p.proceso == op %}selected{% endif %}>{{ op }}</option>
+                  {% endfor %}
+                </select>
+                <div class="rd-proc-chips">
+                  {% for m in [1, 2, 3, 4] %}
+                  <button type="button" class="rd-proc-chip{% if m in (p.modulos or []) %} activo{% endif %}"
+                          data-mod="{{ m }}" aria-pressed="{{ 'true' if m in (p.modulos or []) else 'false' }}"
+                          title="M{{ m }}">M{{ m }}</button>
+                  {% endfor %}
+                </div>
+                <button type="button" class="rd-proc-todos" title="Marcar M1–M4">Todos</button>
+                <button type="button" class="rd-proc-del" title="Quitar este proceso">✕</button>
+              </div>
+              {% endfor %}
+            </div>
+            <button type="button" class="rd-proc-add" data-fecha="{{ fila.fecha }}">+ Agregar proceso</button>
           </td>
           <td>
             <select class="rd-sel" data-fecha="{{ fila.fecha }}" data-campo="desinfeccion">
@@ -509,7 +608,13 @@
 <script>
 (function () {
   const API = "{{ url_for('reporte_diario.guardar') }}";
+  const API_PROCESOS = "{{ url_for('reporte_diario.guardar_procesos_api') }}";
   const LOTE = "{{ lote_seleccionado }}";
+  const PROC_CLASES = {
+    'I. MEDICACION': 'p-med',
+    'F. MEDICACION': 'p-fmed',
+    'INYECCION': 'p-iny'
+  };
   const fmt = n => Number(n || 0).toLocaleString('en-US');
 
   function set(id, valor) {
@@ -588,6 +693,7 @@
   async function guardar(el) {
     const fecha = el.dataset.fecha;
     const campo = el.dataset.campo;
+    if (!campo) return;
     let valor = el.value;
 
     if (el.dataset.tipo === 'int') valor = valor.replace(/[^\d]/g, '');
@@ -671,6 +777,247 @@
       el.classList.remove('rd-guardando');
     }
   }
+
+  // --- Procesos por dia: varias lineas, cada una con sus modulos ---
+  function filaProcesoHTML(fecha) {
+    return '' +
+      '<select class="rd-sel rd-proc-sel" data-fecha="' + fecha + '">' +
+        '<option value="">—</option>' +
+        '<option value="I. MEDICACION">I. MEDICACION</option>' +
+        '<option value="F. MEDICACION">F. MEDICACION</option>' +
+        '<option value="INYECCION">INYECCION</option>' +
+      '</select>' +
+      '<div class="rd-proc-chips">' +
+        [1, 2, 3, 4].map(function (m) {
+          return '<button type="button" class="rd-proc-chip" data-mod="' + m +
+            '" aria-pressed="false" title="M' + m + '">M' + m + '</button>';
+        }).join('') +
+      '</div>' +
+      '<button type="button" class="rd-proc-todos" title="Marcar M1–M4">Todos</button>' +
+      '<button type="button" class="rd-proc-del" title="Quitar este proceso">✕</button>';
+  }
+
+  function serializarProcesos(td) {
+    const salida = [];
+    td.querySelectorAll('.rd-proc-row').forEach(function (row) {
+      const sel = row.querySelector('.rd-proc-sel');
+      const proceso = sel ? sel.value : '';
+      if (!proceso) return;
+      const modulos = Array.from(row.querySelectorAll('.rd-proc-chip.activo'))
+        .map(function (b) { return parseInt(b.dataset.mod, 10); })
+        .filter(function (m) { return m >= 1 && m <= 4; });
+      salida.push({ proceso: proceso, modulos: modulos });
+    });
+    return salida;
+  }
+
+  function pintarModulos(fecha, procesos) {
+    const tdProc = document.querySelector('.rd-proc-celda[data-fecha="' + fecha + '"]');
+    if (!tdProc) return;
+    const tr = tdProc.closest('tr');
+    if (!tr) return;
+
+    const porMod = { 1: [], 2: [], 3: [], 4: [] };
+    (procesos || []).forEach(function (p) {
+      (p.modulos || []).forEach(function (m) {
+        if (porMod[m] && porMod[m].indexOf(p.proceso) === -1) porMod[m].push(p.proceso);
+      });
+    });
+
+    [1, 2, 3, 4].forEach(function (m) {
+      const td = tr.querySelector('td[data-mod="' + m + '"]');
+      if (!td) return;
+      const lista = porMod[m];
+      td.classList.toggle('rd-mod-proc', lista.length > 0);
+
+      if (lista.length) {
+        td.dataset.procesos = lista.join('|');
+        td.title = lista.join(' · ');
+      } else {
+        delete td.dataset.procesos;
+        td.removeAttribute('title');
+      }
+
+      let strip = td.querySelector('.rd-proc-strip');
+      let dots = td.querySelector('.rd-proc-dots');
+      if (lista.length) {
+        if (!strip) {
+          strip = document.createElement('span');
+          strip.className = 'rd-proc-strip';
+          td.appendChild(strip);
+        }
+        if (!dots) {
+          dots = document.createElement('span');
+          dots.className = 'rd-proc-dots';
+          td.appendChild(dots);
+        }
+        const html = lista.map(function (p) {
+          return '<i class="' + (PROC_CLASES[p] || '') + '"></i>';
+        }).join('');
+        strip.innerHTML = html;
+        dots.innerHTML = html;
+      } else {
+        if (strip) strip.remove();
+        if (dots) dots.remove();
+      }
+    });
+  }
+
+  function actualizarBotonAgregar(td) {
+    let btn = td.querySelector('.rd-proc-add');
+    const filas = td.querySelectorAll('.rd-proc-row').length;
+    if (filas >= 3) {
+      if (btn) btn.style.display = 'none';
+      return;
+    }
+    if (!btn) {
+      btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'rd-proc-add';
+      btn.dataset.fecha = td.dataset.fecha;
+      btn.textContent = '+ Agregar proceso';
+      td.appendChild(btn);
+    }
+    btn.style.display = '';
+  }
+
+  function renderProcesos(td, procesos) {
+    const lista = td.querySelector('.rd-proc-list');
+    if (!lista) return;
+    lista.innerHTML = '';
+    (procesos || []).forEach(function (p) {
+      const row = document.createElement('div');
+      row.className = 'rd-proc-row';
+      row.dataset.proceso = p.proceso;
+      row.innerHTML = filaProcesoHTML(td.dataset.fecha);
+      const sel = row.querySelector('.rd-proc-sel');
+      if (sel) sel.value = p.proceso;
+      (p.modulos || []).forEach(function (m) {
+        const chip = row.querySelector('.rd-proc-chip[data-mod="' + m + '"]');
+        if (chip) {
+          chip.classList.add('activo');
+          chip.setAttribute('aria-pressed', 'true');
+        }
+      });
+      lista.appendChild(row);
+    });
+    actualizarBotonAgregar(td);
+    pintarModulos(td.dataset.fecha, procesos || []);
+  }
+
+  async function guardarProcesosFila(td) {
+    const fecha = td.dataset.fecha;
+    const procesos = serializarProcesos(td);
+    td.classList.add('rd-guardando');
+    try {
+      const res = await fetch(API_PROCESOS, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lote: LOTE, fecha: fecha, procesos: procesos })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || 'No se pudieron guardar los procesos');
+      const guardados = data.procesos || [];
+      td.dataset.saved = JSON.stringify(guardados);
+      renderProcesos(td, guardados);
+    } catch (e) {
+      const previo = td.dataset.saved ? JSON.parse(td.dataset.saved) : [];
+      renderProcesos(td, previo);
+      alert(e.message);
+    } finally {
+      td.classList.remove('rd-guardando');
+    }
+  }
+
+  const tablaProcesos = document.getElementById('tablaRD');
+  if (tablaProcesos) {
+    tablaProcesos.addEventListener('click', function (ev) {
+      const td = ev.target.closest('.rd-proc-celda');
+      if (!td) return;
+
+      const add = ev.target.closest('.rd-proc-add');
+      if (add) {
+        const lista = td.querySelector('.rd-proc-list');
+        if (!lista || lista.querySelectorAll('.rd-proc-row').length >= 3) return;
+        const row = document.createElement('div');
+        row.className = 'rd-proc-row';
+        row.innerHTML = filaProcesoHTML(td.dataset.fecha);
+        lista.appendChild(row);
+        actualizarBotonAgregar(td);
+        const sel = row.querySelector('.rd-proc-sel');
+        if (sel) sel.focus();
+        return;
+      }
+
+      const chip = ev.target.closest('.rd-proc-chip');
+      if (chip) {
+        chip.classList.toggle('activo');
+        chip.setAttribute('aria-pressed', chip.classList.contains('activo') ? 'true' : 'false');
+        guardarProcesosFila(td);
+        return;
+      }
+
+      const todos = ev.target.closest('.rd-proc-todos');
+      if (todos) {
+        const row = todos.closest('.rd-proc-row');
+        if (!row) return;
+        row.querySelectorAll('.rd-proc-chip').forEach(function (c) {
+          c.classList.add('activo');
+          c.setAttribute('aria-pressed', 'true');
+        });
+        guardarProcesosFila(td);
+        return;
+      }
+
+      const del = ev.target.closest('.rd-proc-del');
+      if (del) {
+        const row = del.closest('.rd-proc-row');
+        if (!row) return;
+        if (row.querySelectorAll('.rd-proc-chip.activo').length &&
+            !confirm('¿Quitar este proceso y sus módulos?')) return;
+        row.remove();
+        actualizarBotonAgregar(td);
+        guardarProcesosFila(td);
+      }
+    });
+
+    tablaProcesos.addEventListener('change', function (ev) {
+      const sel = ev.target.closest('.rd-proc-sel');
+      if (!sel) return;
+      const td = sel.closest('.rd-proc-celda');
+      const row = sel.closest('.rd-proc-row');
+      if (!td || !row) return;
+      const nuevo = sel.value;
+
+      if (!nuevo) {
+        if (row.querySelectorAll('.rd-proc-chip.activo').length &&
+            !confirm('¿Quitar este proceso y sus módulos?')) {
+          renderProcesos(td, td.dataset.saved ? JSON.parse(td.dataset.saved) : []);
+          return;
+        }
+        row.remove();
+        actualizarBotonAgregar(td);
+        guardarProcesosFila(td);
+        return;
+      }
+
+      const repetido = Array.from(td.querySelectorAll('.rd-proc-sel'))
+        .some(function (s) { return s !== sel && s.value === nuevo; });
+      if (repetido) {
+        alert('Ese proceso ya está agregado en este día.');
+        renderProcesos(td, td.dataset.saved ? JSON.parse(td.dataset.saved) : []);
+        return;
+      }
+
+      row.dataset.proceso = nuevo;
+      guardarProcesosFila(td);
+    });
+  }
+
+  document.querySelectorAll('.rd-proc-celda').forEach(function (td) {
+    td.dataset.saved = JSON.stringify(serializarProcesos(td));
+    actualizarBotonAgregar(td);
+  });
 
   document.querySelectorAll('.rd-in, .rd-sel').forEach(el => {
     el.addEventListener('change', () => guardar(el));

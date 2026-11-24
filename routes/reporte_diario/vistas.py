@@ -1,7 +1,7 @@
 # routes/reporte_diario/vistas.py
 from datetime import date
 
-from flask import Blueprint, jsonify, render_template, request, session
+from flask import Blueprint, jsonify, redirect, render_template, request, session, url_for
 
 from routes.routes import login_requerido
 from models.lotes.services import get_lotes_distintos, get_lotes_agrupados
@@ -12,6 +12,7 @@ from models.reporte_diario import (
     estado_mes,
     guardar_campo,
     guardar_modulos_entrada,
+    guardar_procesos,
     listar_desinfectantes,
     listar_mes,
     modulos_entrada,
@@ -191,6 +192,101 @@ def guardar():
         saldos=saldos,
         totales=totales,
         diario=aviso_diario,
+    )
+
+
+@reporte_diario_bp.route('/reporte-diario/procesos', methods=['POST'])
+@login_requerido
+def guardar_procesos_api():
+    """Guarda los procesos del día y los módulos donde se aplicaron."""
+    datos = request.get_json(silent=True) or {}
+    lote = (datos.get('lote') or '').strip()
+    fecha_txt = (datos.get('fecha') or '').strip()
+    procesos = datos.get('procesos')
+
+    if not lote or not fecha_txt:
+        return jsonify(ok=False, error='Faltan datos para guardar'), 400
+
+    try:
+        fecha = date.fromisoformat(fecha_txt)
+    except ValueError:
+        return jsonify(ok=False, error='Fecha inválida'), 400
+
+    cabecera = cabecera_lote(lote)
+    if not cabecera:
+        return jsonify(ok=False, error='No se encontró el lote'), 404
+
+    try:
+        limpios = guardar_procesos(cabecera['id'], lote, fecha, procesos or [])
+    except ValueError as e:
+        return jsonify(ok=False, error=str(e)), 400
+    except Exception as e:
+        print(f"[REPORTE DIARIO] No se pudieron guardar los procesos: {e}")
+        return jsonify(ok=False, error='No se pudieron guardar los procesos'), 500
+
+    return jsonify(ok=True, procesos=limpios)
+
+
+@reporte_diario_bp.route('/reporte-diario/imprimir')
+@login_requerido
+def imprimir():
+    """Vista imprimible del reporte mensual (PDF desde el navegador)."""
+    lote = (request.args.get('lote') or '').strip()
+    mes_txt = (request.args.get('mes') or '').strip()
+
+    if not lote:
+        return redirect(url_for('reporte_diario.reporte_diario'))
+
+    hoy = date.today()
+    anio, mes = hoy.year, hoy.month
+    if len(mes_txt) == 7 and mes_txt[4] == '-':
+        try:
+            anio_tmp = int(mes_txt[:4])
+            mes_tmp = int(mes_txt[5:7])
+            if 1 <= mes_tmp <= 12 and 2000 <= anio_tmp <= 2100:
+                anio, mes = anio_tmp, mes_tmp
+        except ValueError:
+            pass
+
+    cabecera = cabecera_lote(lote)
+    if not cabecera:
+        return redirect(url_for('reporte_diario.reporte_diario'))
+
+    aves = cabecera.get('no_aves_encasetadas') or cabecera.get('no_pollitas_recibidas') or 0
+    saldo_ap = saldo_inicial(cabecera.get('id'), anio, mes)
+    if saldo_ap is None:
+        saldo_ap = aves
+
+    filas, totales = listar_mes(cabecera.get('id'), anio, mes, saldo_ap)
+    totales['saldo_apertura'] = saldo_ap
+    if aves:
+        totales['porc_mort'] = round(
+            (aves - totales.get('saldo_final', 0)) / aves * 100, 3
+        )
+    else:
+        totales['porc_mort'] = 0.0
+
+    # Resumen: días por proceso y por módulo.
+    resumen = {1: {}, 2: {}, 3: {}, 4: {}}
+    for fila in filas:
+        for p in ((fila.get('datos') or {}).get('procesos') or []):
+            for m in p.get('modulos') or []:
+                if m in resumen:
+                    resumen[m][p['proceso']] = resumen[m].get(p['proceso'], 0) + 1
+
+    return render_template(
+        'produccion/reporte_diario_imprimir.html',
+        lote_seleccionado=lote,
+        cabecera=cabecera,
+        filas=filas,
+        totales=totales,
+        aves=aves,
+        anio=anio,
+        mes=mes,
+        mes_nombre=MESES[mes - 1],
+        mes_valor=f'{anio:04d}-{mes:02d}',
+        resumen=resumen,
+        hoy=hoy,
     )
 
 

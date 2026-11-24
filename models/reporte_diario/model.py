@@ -41,6 +41,8 @@ CAMPOS_TEXTO = (
     'observaciones',
 )
 
+PROCESOS_VALIDOS = ('I. MEDICACION', 'F. MEDICACION', 'INYECCION')
+
 
 def tabla_disponible():
     """True si la migración de `reporte_diario` ya se ejecutó."""
@@ -113,6 +115,37 @@ def saldo_inicial(id_lote, anio, mes):
         conn.close()
 
 
+def _procesos_por_reporte(ids):
+    """{id_reporte: [{proceso, modulos}]} para los ids indicados."""
+    if not ids:
+        return {}
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cur.execute(
+            """
+            SELECT id_reporte, proceso, modulos, orden
+            FROM reporte_diario_procesos
+            WHERE id_reporte = ANY(%s)
+            ORDER BY orden ASC, id ASC
+            """,
+            (list(ids),),
+        )
+        resultado = {}
+        for fila in cur.fetchall():
+            resultado.setdefault(fila['id_reporte'], []).append({
+                'proceso': fila['proceso'],
+                'modulos': [int(m) for m in (fila['modulos'] or [])],
+            })
+        return resultado
+    except Exception as e:
+        print(f"[REPORTE DIARIO] No se pudieron leer los procesos: {e}")
+        return {}
+    finally:
+        cur.close()
+        conn.close()
+
+
 def _filas_del_mes(id_lote, anio, mes):
     """Trae las filas guardadas del lote para el mes indicado."""
     conn = get_db_connection()
@@ -134,13 +167,24 @@ def _filas_del_mes(id_lote, anio, mes):
             """,
             (id_lote, anio, mes),
         )
-        return cur.fetchall()
+        filas = cur.fetchall()
     except Exception as e:
         print(f"[REPORTE DIARIO] Error consultando el mes: {e}")
         return []
     finally:
         cur.close()
         conn.close()
+
+    procesos = _procesos_por_reporte([f['id'] for f in filas])
+    for fila in filas:
+        lista = procesos.get(fila['id'], [])
+        fila['procesos'] = lista
+        por_modulo = {}
+        for p in lista:
+            for m in p.get('modulos') or []:
+                por_modulo.setdefault(int(m), []).append(p['proceso'])
+        fila['procesos_por_modulo'] = por_modulo
+    return filas
 
 
 def listar_mes(id_lote, anio, mes, saldo_apertura=0):
@@ -240,6 +284,96 @@ def guardar_campo(id_lote, lote, fecha, campo, valor):
         conn.close()
 
     return valor_db
+
+
+def guardar_procesos(id_lote, lote, fecha, procesos):
+    """Guarda la lista de procesos del día y los módulos de cada uno.
+
+    Reglas:
+      - Solo los tres procesos válidos.
+      - Un proceso no se repite en el mismo día.
+      - Módulos entre 1 y 4, sin repetir.
+      - Máximo 3 procesos.
+      - El orden de la lista es el orden de captura.
+    """
+    if not isinstance(procesos, list):
+        raise ValueError('La lista de procesos no es válida')
+
+    limpios = []
+    vistos = set()
+    for item in procesos:
+        if not isinstance(item, dict):
+            continue
+        nombre = str(item.get('proceso') or '').strip()
+        if not nombre:
+            continue
+        if nombre not in PROCESOS_VALIDOS:
+            raise ValueError(f'Proceso no válido: {nombre}')
+        if nombre in vistos:
+            raise ValueError(f'El proceso {nombre} ya está agregado')
+        vistos.add(nombre)
+
+        modulos = item.get('modulos') or []
+        if not isinstance(modulos, (list, tuple)):
+            modulos = [modulos]
+        limpios_mods = []
+        for m in modulos:
+            try:
+                numero = int(m)
+            except (TypeError, ValueError):
+                continue
+            if 1 <= numero <= 4 and numero not in limpios_mods:
+                limpios_mods.append(numero)
+        limpios_mods.sort()
+        limpios.append({'proceso': nombre, 'modulos': limpios_mods})
+
+    if len(limpios) > 3:
+        raise ValueError('Máximo 3 procesos por día')
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """
+            INSERT INTO reporte_diario (id_lote, lote, fecha)
+            VALUES (%s, %s, %s)
+            ON CONFLICT (id_lote, fecha)
+            DO UPDATE SET actualizado_en = now()
+            RETURNING id
+            """,
+            (id_lote, lote, fecha),
+        )
+        id_reporte = cur.fetchone()[0]
+
+        cur.execute(
+            'DELETE FROM reporte_diario_procesos WHERE id_reporte = %s',
+            (id_reporte,),
+        )
+        for orden, p in enumerate(limpios):
+            cur.execute(
+                """
+                INSERT INTO reporte_diario_procesos
+                    (id_reporte, proceso, modulos, orden)
+                VALUES (%s, %s, %s, %s)
+                """,
+                (id_reporte, p['proceso'], p['modulos'], orden),
+            )
+
+        # Compatibilidad: la columna vieja guarda el primer proceso.
+        primero = limpios[0]['proceso'] if limpios else None
+        cur.execute(
+            'UPDATE reporte_diario SET proceso = %s, actualizado_en = now() WHERE id = %s',
+            (primero, id_reporte),
+        )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        cur.close()
+        conn.close()
+
+    return limpios
 
 
 def mort_total_de(id_lote, fecha):

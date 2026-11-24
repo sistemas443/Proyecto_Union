@@ -9,6 +9,7 @@ from .model import (
     estado_mes,
     guardar_campo,
     guardar_modulos_entrada,
+    guardar_procesos,
     listar_desinfectantes,
     listar_mes,
     modulos_entrada,
