@@ -152,7 +152,8 @@
   .rd-leyenda{
     position:absolute; top:0; left:0;
     border-collapse:collapse; font-size:.72rem;
-    box-shadow:0 2px 8px rgba(15,23,42,.10); border-radius:6px; overflow:hidden;
+    box-shadow:0 2px 8px rgba(15,23,42,.10); border-radius:6px; overflow:auto;
+    max-height:100px;
   }
   .rd-leyenda::after{
     content:''; position:absolute; left:50%; bottom:-7px; transform:translateX(-50%);
@@ -189,11 +190,9 @@
   }
   .rd-proc-row::before{
     content:""; position:absolute; left:0; top:1px; bottom:1px;
-    width:3px; border-radius:2px; background:transparent;
+    width:3px; border-radius:2px;
+    background: var(--proc-color, transparent);
   }
-  .rd-proc-row[data-proceso="I. MEDICACION"]::before{ background:#35c6ea; }
-  .rd-proc-row[data-proceso="F. MEDICACION"]::before{ background:#ffe600; }
-  .rd-proc-row[data-proceso="INYECCION"]::before{ background:#e8b8b8; }
 
   .rd-proc-row .rd-proc-sel{
     width:112px; min-width:112px; font-size:.66rem; padding:.1rem .2rem;
@@ -206,9 +205,24 @@
     cursor:pointer;
   }
   .rd-proc-chip:hover{ border-color:#8b97a5; }
-  .rd-proc-row[data-proceso="I. MEDICACION"] .rd-proc-chip.activo{ background:#35c6ea; border-color:#35c6ea; color:#1f2937; }
-  .rd-proc-row[data-proceso="F. MEDICACION"] .rd-proc-chip.activo{ background:#ffe600; border-color:#ffe600; color:#1f2937; }
-  .rd-proc-row[data-proceso="INYECCION"] .rd-proc-chip.activo{ background:#e8b8b8; border-color:#e8b8b8; color:#1f2937; }
+  .rd-proc-chip.activo{
+    background: var(--proc-color, #8b97a5);
+    border-color: var(--proc-color, #8b97a5);
+    color:#1f2937;
+  }
+  .rd-proc-new{
+    width:16px; height:17px; padding:0; border:0; background:transparent;
+    color:#1f4e79; font-size:.72rem; font-weight:900; line-height:1; cursor:pointer;
+  }
+  .rd-proc-new:hover{ color:#0b4f48; }
+  .rd-proc-new-global{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:16px; height:16px; margin-left:4px; padding:0;
+    border:1px solid rgba(255,255,255,.55); border-radius:4px;
+    background:transparent; color:#fff; font-size:.68rem; font-weight:900;
+    line-height:1; vertical-align:middle; cursor:pointer;
+  }
+  .rd-proc-new-global:hover{ background:rgba(255,255,255,.18); }
 
   .rd-proc-todos{
     padding:0 .2rem; height:17px; border:1px dashed var(--rd-border);
@@ -393,9 +407,11 @@
       <tr><th>Color</th><th>Proceso</th></tr>
     </thead>
     <tbody>
-      <tr><td><span class="rd-sw p-med"></span></td><td>I. MEDICACION</td></tr>
-      <tr><td><span class="rd-sw p-fmed"></span></td><td>F. MEDICACION</td></tr>
-      <tr><td><span class="rd-sw p-iny"></span></td><td>INYECCION</td></tr>
+      {% for p in procesos_catalogo %}
+      <tr><td><span class="rd-sw" style="background:{{ p.color }}"></span></td><td>{{ p.nombre }}</td></tr>
+      {% else %}
+      <tr><td colspan="2" class="text-muted small">Sin procesos</td></tr>
+      {% endfor %}
     </tbody>
   </table>
 </div>
@@ -414,7 +430,10 @@
           <th class="rd-sep" rowspan="2">Agua</th>
           <th rowspan="2">Silo</th>
           <th class="rd-sep" colspan="4">Mortalidad por módulo</th>
-          <th class="rd-sep rd-th-proceso" rowspan="2">Proceso</th>
+          <th class="rd-sep rd-th-proceso" rowspan="2">Proceso
+            <button type="button" class="rd-proc-new-global" id="btnNuevoProceso"
+                    title="Crear un proceso nuevo">+</button>
+          </th>
           <th rowspan="2">Desinf.</th>
           <th class="col-prod" rowspan="2">Producto desinf.</th>
           <th rowspan="2">Gallinaza</th>
@@ -466,10 +485,10 @@
               {% if lista_proc %}data-procesos="{{ lista_proc | join('|') }}" title="{{ lista_proc | join(' · ') }}"{% endif %}>
             {% if lista_proc %}
             <span class="rd-proc-strip">
-              {% for proc in lista_proc %}<i class="{{ {'I. MEDICACION':'p-med','F. MEDICACION':'p-fmed','INYECCION':'p-iny'}[proc] }}"></i>{% endfor %}
+              {% for proc in lista_proc %}<i style="background: {{ colores_procesos.get(proc, '#8b97a5') }}"></i>{% endfor %}
             </span>
             <span class="rd-proc-dots">
-              {% for proc in lista_proc %}<i class="{{ {'I. MEDICACION':'p-med','F. MEDICACION':'p-fmed','INYECCION':'p-iny'}[proc] }}"></i>{% endfor %}
+              {% for proc in lista_proc %}<i style="background: {{ colores_procesos.get(proc, '#8b97a5') }}"></i>{% endfor %}
             </span>
             {% endif %}
             <input class="rd-in" data-tipo="int" data-fecha="{{ fila.fecha }}" data-campo="mort_m{{ m }}"
@@ -478,15 +497,21 @@
           {% endfor %}
 
           <td class="rd-sep rd-proc-celda" data-fecha="{{ fila.fecha }}">
+            {% set nombres_catalogo = procesos_catalogo | map(attribute='nombre') | list %}
             <div class="rd-proc-list">
               {% for p in (d.get('procesos') if d else []) %}
-              <div class="rd-proc-row" data-proceso="{{ p.proceso }}">
+              <div class="rd-proc-row" data-proceso="{{ p.proceso }}"
+                   style="--proc-color: {{ colores_procesos.get(p.proceso, '#8b97a5') }}">
                 <select class="rd-sel rd-proc-sel" data-fecha="{{ fila.fecha }}">
                   <option value="">—</option>
-                  {% for op in ['I. MEDICACION', 'F. MEDICACION', 'INYECCION'] %}
-                  <option value="{{ op }}" {% if p.proceso == op %}selected{% endif %}>{{ op }}</option>
+                  {% for op in procesos_catalogo %}
+                  <option value="{{ op.nombre }}" {% if p.proceso == op.nombre %}selected{% endif %}>{{ op.nombre }}</option>
                   {% endfor %}
+                  {% if p.proceso and p.proceso not in nombres_catalogo %}
+                  <option value="{{ p.proceso }}" selected>{{ p.proceso }}</option>
+                  {% endif %}
                 </select>
+                <button type="button" class="rd-proc-new" title="Crear un proceso nuevo">+</button>
                 <div class="rd-proc-chips">
                   {% for m in [1, 2, 3, 4] %}
                   <button type="button" class="rd-proc-chip{% if m in (p.modulos or []) %} activo{% endif %}"
@@ -558,6 +583,30 @@
   </div>
 </div>
 
+<!-- Modal: nuevo proceso -->
+<div class="modal fade" id="modalProceso" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title fw-bold">Nuevo proceso</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <label class="form-label small fw-semibold" for="nuevoProcesoNombre">Nombre</label>
+        <input type="text" class="form-control" id="nuevoProcesoNombre" maxlength="40"
+               placeholder="Ej: VACUNACION" autocomplete="off">
+        <label class="form-label small fw-semibold mt-2" for="nuevoProcesoColor">Color</label>
+        <input type="color" class="form-control form-control-color" id="nuevoProcesoColor" value="#35c6ea">
+        <div class="text-danger small mt-1 d-none" id="nuevoProcesoError"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-sm btn-primary" id="btnGuardarProceso">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="rd-sync-toast" id="rdSyncToast" role="status" aria-live="polite"></div>
 
 <!-- Modal: nuevo desinfectante -->
@@ -609,12 +658,11 @@
 (function () {
   const API = "{{ url_for('reporte_diario.guardar') }}";
   const API_PROCESOS = "{{ url_for('reporte_diario.guardar_procesos_api') }}";
+  const API_PROCESO_CREAR = "{{ url_for('reporte_diario.crear_proceso_api') }}";
   const LOTE = "{{ lote_seleccionado }}";
-  const PROC_CLASES = {
-    'I. MEDICACION': 'p-med',
-    'F. MEDICACION': 'p-fmed',
-    'INYECCION': 'p-iny'
-  };
+  const PROCESOS_CATALOGO = {{ procesos_catalogo | tojson }};
+  const PROC_COLORES = {};
+  PROCESOS_CATALOGO.forEach(function (p) { PROC_COLORES[p.nombre] = p.color; });
   const fmt = n => Number(n || 0).toLocaleString('en-US');
 
   function set(id, valor) {
@@ -780,13 +828,14 @@
 
   // --- Procesos por dia: varias lineas, cada una con sus modulos ---
   function filaProcesoHTML(fecha) {
+    const opciones = PROCESOS_CATALOGO.map(function (p) {
+      return '<option value="' + p.nombre + '">' + p.nombre + '</option>';
+    }).join('');
     return '' +
       '<select class="rd-sel rd-proc-sel" data-fecha="' + fecha + '">' +
-        '<option value="">—</option>' +
-        '<option value="I. MEDICACION">I. MEDICACION</option>' +
-        '<option value="F. MEDICACION">F. MEDICACION</option>' +
-        '<option value="INYECCION">INYECCION</option>' +
+        '<option value="">—</option>' + opciones +
       '</select>' +
+      '<button type="button" class="rd-proc-new" title="Crear un proceso nuevo">+</button>' +
       '<div class="rd-proc-chips">' +
         [1, 2, 3, 4].map(function (m) {
           return '<button type="button" class="rd-proc-chip" data-mod="' + m +
@@ -852,7 +901,7 @@
           td.appendChild(dots);
         }
         const html = lista.map(function (p) {
-          return '<i class="' + (PROC_CLASES[p] || '') + '"></i>';
+          return '<i style="background:' + (PROC_COLORES[p] || '#8b97a5') + '"></i>';
         }).join('');
         strip.innerHTML = html;
         dots.innerHTML = html;
@@ -889,9 +938,18 @@
       const row = document.createElement('div');
       row.className = 'rd-proc-row';
       row.dataset.proceso = p.proceso;
+      row.style.setProperty('--proc-color', PROC_COLORES[p.proceso] || '#8b97a5');
       row.innerHTML = filaProcesoHTML(td.dataset.fecha);
       const sel = row.querySelector('.rd-proc-sel');
-      if (sel) sel.value = p.proceso;
+      if (sel) {
+        if (!Array.from(sel.options).some(function (o) { return o.value === p.proceso; })) {
+          const opt = document.createElement('option');
+          opt.value = p.proceso;
+          opt.textContent = p.proceso;
+          sel.appendChild(opt);
+        }
+        sel.value = p.proceso;
+      }
       (p.modulos || []).forEach(function (m) {
         const chip = row.querySelector('.rd-proc-chip[data-mod="' + m + '"]');
         if (chip) {
@@ -929,11 +987,134 @@
     }
   }
 
+  // --- Crear proceso nuevo ---
+  const modalProcesoEl = document.getElementById('modalProceso');
+  const inputProceso = document.getElementById('nuevoProcesoNombre');
+  const colorProceso = document.getElementById('nuevoProcesoColor');
+  const errorProceso = document.getElementById('nuevoProcesoError');
+  const PALETA_PROCESOS = ['#35c6ea', '#ffe600', '#e8b8b8', '#a5d6a7', '#ce93d8',
+    '#ffcc80', '#90caf9', '#f48fb1', '#b0bec5', '#c5e1a5'];
+  let filaNuevaProceso = null;
+
+  function colorLibreCliente() {
+    const usados = Object.values(PROC_COLORES);
+    for (let i = 0; i < PALETA_PROCESOS.length; i++) {
+      if (usados.indexOf(PALETA_PROCESOS[i]) === -1) return PALETA_PROCESOS[i];
+    }
+    return PALETA_PROCESOS[0];
+  }
+
+  function mostrarErrorProceso(msg) {
+    if (!errorProceso) return;
+    errorProceso.textContent = msg;
+    errorProceso.classList.remove('d-none');
+  }
+
+  function abrirModalProceso(row) {
+    filaNuevaProceso = row || null;
+    if (inputProceso) inputProceso.value = '';
+    if (colorProceso) colorProceso.value = colorLibreCliente();
+    if (errorProceso) errorProceso.classList.add('d-none');
+    if (!modalProcesoEl) return;
+    bootstrap.Modal.getOrCreateInstance(modalProcesoEl).show();
+    setTimeout(function () { if (inputProceso) inputProceso.focus(); }, 300);
+  }
+
+  async function guardarNuevoProceso() {
+    const nombre = (inputProceso ? inputProceso.value : '').trim();
+    if (!nombre) { mostrarErrorProceso('Escribe el nombre del proceso'); return; }
+
+    try {
+      const res = await fetch(API_PROCESO_CREAR, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nombre: nombre,
+          color: colorProceso ? colorProceso.value : ''
+        })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || 'No se pudo crear el proceso');
+
+      const p = data.proceso;
+      if (!PROCESOS_CATALOGO.some(function (x) { return x.nombre === p.nombre; })) {
+        PROCESOS_CATALOGO.push({ nombre: p.nombre, color: p.color });
+      }
+      PROC_COLORES[p.nombre] = p.color;
+
+      // Agregar la opcion a todos los selectores de proceso.
+      document.querySelectorAll('.rd-proc-sel').forEach(function (sel) {
+        if (!Array.from(sel.options).some(function (o) { return o.value === p.nombre; })) {
+          const opt = document.createElement('option');
+          opt.value = p.nombre;
+          opt.textContent = p.nombre;
+          sel.appendChild(opt);
+        }
+      });
+
+      // Actualizar la leyenda.
+      const tbody = document.querySelector('#leyendaProc tbody');
+      if (tbody) {
+        const vacio = tbody.querySelector('td[colspan]');
+        if (vacio) vacio.closest('tr').remove();
+        const ya = Array.from(tbody.querySelectorAll('td')).some(function (td) {
+          return td.textContent.trim() === p.nombre;
+        });
+        if (!ya) {
+          const tr = document.createElement('tr');
+          const tdColor = document.createElement('td');
+          const sw = document.createElement('span');
+          sw.className = 'rd-sw';
+          sw.style.background = p.color;
+          tdColor.appendChild(sw);
+          const tdNombre = document.createElement('td');
+          tdNombre.textContent = p.nombre;
+          tr.appendChild(tdColor);
+          tr.appendChild(tdNombre);
+          tbody.appendChild(tr);
+        }
+      }
+      if (typeof ubicarLeyenda === 'function') ubicarLeyenda();
+
+      // Si se abrio desde una fila, dejar el proceso seleccionado alli.
+      if (filaNuevaProceso && filaNuevaProceso.isConnected) {
+        const sel = filaNuevaProceso.querySelector('.rd-proc-sel');
+        if (sel) {
+          sel.value = p.nombre;
+          sel.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      }
+
+      if (modalProcesoEl) bootstrap.Modal.getInstance(modalProcesoEl).hide();
+    } catch (e) {
+      mostrarErrorProceso(e.message);
+    }
+  }
+
+  const btnGuardarProceso = document.getElementById('btnGuardarProceso');
+  if (btnGuardarProceso) btnGuardarProceso.addEventListener('click', guardarNuevoProceso);
+  if (inputProceso) {
+    inputProceso.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Enter') { ev.preventDefault(); guardarNuevoProceso(); }
+    });
+  }
+
   const tablaProcesos = document.getElementById('tablaRD');
   if (tablaProcesos) {
     tablaProcesos.addEventListener('click', function (ev) {
+      if (ev.target.closest('#btnNuevoProceso')) {
+        abrirModalProceso(null);
+        return;
+      }
+
       const td = ev.target.closest('.rd-proc-celda');
       if (!td) return;
+
+      const nuevoBtn = ev.target.closest('.rd-proc-new');
+      if (nuevoBtn) {
+        abrirModalProceso(nuevoBtn.closest('.rd-proc-row'));
+        return;
+      }
 
       const add = ev.target.closest('.rd-proc-add');
       if (add) {
@@ -1010,6 +1191,7 @@
       }
 
       row.dataset.proceso = nuevo;
+      row.style.setProperty('--proc-color', PROC_COLORES[nuevo] || '#8b97a5');
       guardarProcesosFila(td);
     });
   }

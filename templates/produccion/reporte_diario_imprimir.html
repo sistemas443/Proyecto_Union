@@ -148,7 +148,7 @@
       <td>
         {% for p in ((d.get('procesos') if d else []) or []) %}
         <div class="proc">
-          <i class="{{ {'I. MEDICACION':'p-med','F. MEDICACION':'p-fmed','INYECCION':'p-iny'}[p.proceso] }}"></i>
+          <i style="background: {{ colores_procesos.get(p.proceso, '#8b97a5') }}"></i>
           {{ p.proceso }}{% if p.modulos %} ({% for m in p.modulos %}M{{ m }}{% if not loop.last %}, {% endif %}{% endfor %}){% endif %}
         </div>
         {% endfor %}
@@ -185,26 +185,30 @@
 
 <div class="resumen">
   <h2>Resumen de procesos por módulo</h2>
+  {% if procesos_resumen %}
   <table class="resumen">
     <thead>
       <tr>
         <th>Módulo</th>
-        <th>I. MEDICACION</th>
-        <th>F. MEDICACION</th>
-        <th>INYECCION</th>
+        {% for p in procesos_resumen %}
+        <th>{{ p.nombre }}</th>
+        {% endfor %}
       </tr>
     </thead>
     <tbody>
       {% for m in [1, 2, 3, 4] %}
       <tr>
         <td><strong>M{{ m }}</strong></td>
-        {% for proc in ['I. MEDICACION', 'F. MEDICACION', 'INYECCION'] %}
-        <td>{{ resumen[m].get(proc, 0) or '' }}</td>
+        {% for p in procesos_resumen %}
+        <td>{{ resumen[m].get(p.nombre, 0) or '' }}</td>
         {% endfor %}
       </tr>
       {% endfor %}
     </tbody>
   </table>
+  {% else %}
+  <p class="sub">Sin procesos registrados en el mes.</p>
+  {% endif %}
 </div>
 
 <div class="pie">

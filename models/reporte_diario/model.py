@@ -43,6 +43,13 @@ CAMPOS_TEXTO = (
 
 PROCESOS_VALIDOS = ('I. MEDICACION', 'F. MEDICACION', 'INYECCION')
 
+# Paleta para procesos nuevos (colores claros, texto oscuro legible).
+PROCESOS_PALETA = (
+    '#35c6ea', '#ffe600', '#e8b8b8', '#a5d6a7', '#ce93d8',
+    '#ffcc80', '#90caf9', '#f48fb1', '#b0bec5', '#c5e1a5',
+)
+COLOR_PROCESO_DEFECTO = '#35c6ea'
+
 
 def tabla_disponible():
     """True si la migración de `reporte_diario` ya se ejecutó."""
@@ -80,6 +87,99 @@ def cabecera_lote(lote):
     except Exception as e:
         print(f"[REPORTE DIARIO] Error leyendo la cabecera del lote: {e}")
         return None
+    finally:
+        cur.close()
+        conn.close()
+
+
+def listar_procesos(solo_activos=True):
+    """Catalogo de procesos (nombre y color) para el Reporte Diario."""
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        sql = 'SELECT id, nombre, color, activo FROM procesos'
+        if solo_activos:
+            sql += ' WHERE activo = true'
+        sql += ' ORDER BY id ASC'
+        cur.execute(sql)
+        return [dict(r) for r in cur.fetchall()]
+    except Exception as e:
+        print(f"[REPORTE DIARIO] No se pudo leer el catalogo de procesos: {e}")
+        return [
+            {'id': i + 1, 'nombre': nombre, 'color': color, 'activo': True}
+            for i, (nombre, color) in enumerate(zip(PROCESOS_VALIDOS, PROCESOS_PALETA))
+        ]
+    finally:
+        cur.close()
+        conn.close()
+
+
+def _nombres_catalogo():
+    """Nombres permitidos (incluye inactivos para no perder historicos)."""
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute('SELECT nombre FROM procesos')
+        nombres = {fila[0] for fila in cur.fetchall()}
+        return nombres or set(PROCESOS_VALIDOS)
+    except Exception as e:
+        print(f"[REPORTE DIARIO] No se pudo validar el catalogo de procesos: {e}")
+        return set(PROCESOS_VALIDOS)
+    finally:
+        cur.close()
+        conn.close()
+
+
+def _color_libre():
+    """Primer color de la paleta que no este usado por un proceso activo."""
+    usados = {p.get('color') for p in listar_procesos(solo_activos=True)}
+    for color in PROCESOS_PALETA:
+        if color not in usados:
+            return color
+    return PROCESOS_PALETA[len(usados) % len(PROCESOS_PALETA)]
+
+
+def crear_proceso(nombre, color=None):
+    """Crea (o recupera) un proceso del catalogo.
+
+    Devuelve {'id', 'nombre', 'color', 'existente'}.
+    """
+    nombre = ' '.join(str(nombre or '').split()).upper()[:40]
+    if not nombre:
+        raise ValueError('Escribe el nombre del proceso')
+
+    if not re.match(r'^#[0-9a-fA-F]{6}$', str(color or '')):
+        color = _color_libre()
+    color = color.lower()
+
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cur.execute(
+            """
+            INSERT INTO procesos (nombre, color)
+            VALUES (%s, %s)
+            ON CONFLICT (nombre) DO NOTHING
+            RETURNING id, nombre, color
+            """,
+            (nombre, color),
+        )
+        fila = cur.fetchone()
+        existente = False
+        if not fila:
+            cur.execute(
+                'SELECT id, nombre, color FROM procesos WHERE nombre = %s',
+                (nombre,),
+            )
+            fila = cur.fetchone()
+            existente = True
+        conn.commit()
+        salida = dict(fila)
+        salida['existente'] = existente
+        return salida
+    except Exception:
+        conn.rollback()
+        raise
     finally:
         cur.close()
         conn.close()
@@ -301,13 +401,14 @@ def guardar_procesos(id_lote, lote, fecha, procesos):
 
     limpios = []
     vistos = set()
+    validos = _nombres_catalogo()
     for item in procesos:
         if not isinstance(item, dict):
             continue
         nombre = str(item.get('proceso') or '').strip()
         if not nombre:
             continue
-        if nombre not in PROCESOS_VALIDOS:
+        if nombre not in validos:
             raise ValueError(f'Proceso no válido: {nombre}')
         if nombre in vistos:
             raise ValueError(f'El proceso {nombre} ya está agregado')

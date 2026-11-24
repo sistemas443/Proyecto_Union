@@ -9,12 +9,14 @@ from models.reporte_diario import (
     MESES,
     cabecera_lote,
     crear_desinfectante,
+    crear_proceso,
     estado_mes,
     guardar_campo,
     guardar_modulos_entrada,
     guardar_procesos,
     listar_desinfectantes,
     listar_mes,
+    listar_procesos,
     modulos_entrada,
     mort_total_de,
     saldo_inicial,
@@ -88,6 +90,10 @@ def reporte_diario():
             )
             mods_entrada = modulos_entrada(cabecera.get('id'))
 
+    todos_procesos = listar_procesos(solo_activos=False)
+    procesos_catalogo = [p for p in todos_procesos if p.get('activo', True)]
+    colores_procesos = {p['nombre']: p['color'] for p in todos_procesos}
+
     return render_template(
         'produccion/reporte_diario.html',
         lotes=get_lotes_distintos(),
@@ -106,6 +112,8 @@ def reporte_diario():
         hay_desinfeccion=hay_desinfeccion,
         mods_entrada=mods_entrada,
         desinfectantes=listar_desinfectantes(),
+        procesos_catalogo=procesos_catalogo,
+        colores_procesos=colores_procesos,
     )
 
 
@@ -227,6 +235,21 @@ def guardar_procesos_api():
     return jsonify(ok=True, procesos=limpios)
 
 
+@reporte_diario_bp.route('/reporte-diario/procesos/crear', methods=['POST'])
+@login_requerido
+def crear_proceso_api():
+    """Crea un proceso nuevo en el catálogo."""
+    datos = request.get_json(silent=True) or {}
+    try:
+        proceso = crear_proceso(datos.get('nombre'), datos.get('color'))
+    except ValueError as e:
+        return jsonify(ok=False, error=str(e)), 400
+    except Exception as e:
+        print(f"[REPORTE DIARIO] No se pudo crear el proceso: {e}")
+        return jsonify(ok=False, error='No se pudo crear el proceso'), 500
+    return jsonify(ok=True, proceso=proceso)
+
+
 @reporte_diario_bp.route('/reporte-diario/imprimir')
 @login_requerido
 def imprimir():
@@ -274,6 +297,22 @@ def imprimir():
                 if m in resumen:
                     resumen[m][p['proceso']] = resumen[m].get(p['proceso'], 0) + 1
 
+    todos_procesos = listar_procesos(solo_activos=False)
+    colores_procesos = {p['nombre']: p['color'] for p in todos_procesos}
+
+    usados = []
+    for m in (1, 2, 3, 4):
+        for nombre in resumen[m]:
+            if nombre not in usados:
+                usados.append(nombre)
+
+    procesos_resumen = [p for p in todos_procesos if p['nombre'] in usados]
+    nombres_catalogo = {p['nombre'] for p in todos_procesos}
+    for nombre in usados:
+        if nombre not in nombres_catalogo:
+            procesos_resumen.append({'nombre': nombre, 'color': '#8b97a5'})
+            colores_procesos[nombre] = '#8b97a5'
+
     return render_template(
         'produccion/reporte_diario_imprimir.html',
         lote_seleccionado=lote,
@@ -286,6 +325,8 @@ def imprimir():
         mes_nombre=MESES[mes - 1],
         mes_valor=f'{anio:04d}-{mes:02d}',
         resumen=resumen,
+        procesos_resumen=procesos_resumen,
+        colores_procesos=colores_procesos,
         hoy=hoy,
     )
 
