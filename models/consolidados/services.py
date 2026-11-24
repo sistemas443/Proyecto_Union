@@ -367,14 +367,16 @@ def get_matriz_primer_huevo() -> dict:
     variedades = model.fetch_variedades_por_lote(lotes)
     clases = {l: _clase_variedad(variedades.get(l)) for l in lotes}
 
-    # Reglas de color por porcentaje objetivo (fracción), en orden de prioridad.
-    # Una celda solo recibe una clase: la primera regla que la "reclame".
+    # Reglas de color por banda de producción (fracción), de mayor a menor.
+    # Se pinta UNA sola celda por lote: la del último dato registrado, con el
+    # color de la banda en la que está actualmente. Así un lote que arranca
+    # (por debajo del 1 %) no recibe colores de umbrales que no ha alcanzado.
     REGLAS_COLOR = [
-        (0.01, 'celda-cerca-1pct'),   # 1% amarillo
-        (0.05, 'celda-cerca-5pct'),   # 5% rosa
-        (0.20, 'celda-cerca-20pct'),  # 20% azul claro
-        (0.50, 'celda-cerca-50pct'),  # 50% azul oscuro
-        (0.90, 'celda-cerca-90pct'),  # 90% verde claro
+        (0.90, 'celda-cerca-90pct'),  # 90 % verde claro
+        (0.50, 'celda-cerca-50pct'),  # 50 % azul oscuro
+        (0.20, 'celda-cerca-20pct'),  # 20 % azul claro
+        (0.05, 'celda-cerca-5pct'),   # 5 % rosa
+        (0.01, 'celda-cerca-1pct'),   # 1 % amarillo
     ]
 
     # Inicializar clase de color vacía en cada celda
@@ -384,20 +386,21 @@ def get_matriz_primer_huevo() -> dict:
             if celda:
                 celda['color_clase'] = ''
 
-    # Asignar color a cada lote según cada regla (prioridad por orden)
-    for target, clase in REGLAS_COLOR:
-        for lote in lotes:
-            mejor_idx = None
-            mejor_diff = None
-            for idx, f in enumerate(filas_raw):
-                celda = f['celdas'].get(lote)
-                if celda and celda.get('valor') is not None and celda.get('color_clase') == '':
-                    diff = abs(celda['valor'] - target)
-                    if mejor_diff is None or diff < mejor_diff:
-                        mejor_diff = diff
-                        mejor_idx = idx
-            if mejor_idx is not None:
-                filas_raw[mejor_idx]['celdas'][lote]['color_clase'] = clase
+    # Pintar el último dato de cada lote según su banda actual
+    for lote in lotes:
+        ultimo_idx = None
+        for idx, f in enumerate(filas_raw):
+            celda = f['celdas'].get(lote)
+            if celda and celda.get('valor') is not None:
+                ultimo_idx = idx
+        if ultimo_idx is None:
+            continue
+
+        valor = filas_raw[ultimo_idx]['celdas'][lote]['valor']
+        for umbral, clase in REGLAS_COLOR:
+            if valor >= umbral:
+                filas_raw[ultimo_idx]['celdas'][lote]['color_clase'] = clase
+                break
 
     return {
         'lotes': lotes,
