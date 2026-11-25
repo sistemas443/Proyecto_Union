@@ -11,10 +11,11 @@
 
   <header class="ga-head">
     <div>
-      <a class="ga-back" href="{{ url_for('gestion_ambiental.temas', sede=sede) }}">
-        <i class='bx bx-left-arrow-alt' aria-hidden="true"></i> {{ sedes[sede].nombre }}
-      </a>
-      <h1 class="ga-title">{{ tema.nombre }}</h1>
+      {% include 'gestion_ambiental/_migas.html' %}
+      <h1 class="ga-title">
+        <span class="ga-head-icon" aria-hidden="true"><i class='bx {{ tema.icono }}'></i></span>
+        <span class="ga-title-text">{{ tema.nombre }}</span>
+      </h1>
       <p class="ga-subtitle">
         <span>{{ sedes[sede].nombre }}</span>
         <span class="ga-dot-sep" aria-hidden="true"></span>
@@ -37,23 +38,6 @@
           {% endif %}
         {% endfor %}
       </div>
-
-      <form method="get" class="ga-filters"
-            action="{{ url_for('gestion_ambiental.tablero', sede=sede, tema=tema_slug, indicador=kpi_foco.indicador.id if kpi_foco else None) }}">
-        <label class="visually-hidden" for="ga-rango">Rango de fechas</label>
-        <select id="ga-rango" name="r" class="ga-select" onchange="this.form.submit()">
-          {% for codigo, etiqueta in rangos.items() %}
-          <option value="{{ codigo }}"{{ ' selected' if rango == codigo }}>{{ etiqueta }}</option>
-          {% endfor %}
-        </select>
-        {% if rango == 'p' %}
-        <label class="visually-hidden" for="ga-desde">Desde</label>
-        <input id="ga-desde" type="date" name="d" class="ga-date" value="{{ desde_iso }}">
-        <label class="visually-hidden" for="ga-hasta">Hasta</label>
-        <input id="ga-hasta" type="date" name="h" class="ga-date" value="{{ hasta_iso }}">
-        <button type="submit" class="ga-btn">Aplicar</button>
-        {% endif %}
-      </form>
 
       <button type="button" class="ga-btn" id="ga-export-xlsx">
         <i class='bx bx-spreadsheet' aria-hidden="true"></i> Excel
@@ -104,7 +88,10 @@
       <section class="ga-focus" aria-label="Indicador seleccionado">
         <div class="ga-focus-main">
           <div class="ga-focus-head">
-            <h2 class="ga-focus-title">{{ kpi_foco.indicador.nombre }}</h2>
+            <div class="ga-focus-head-main">
+              <h2 class="ga-focus-title">{{ kpi_foco.indicador.nombre }}</h2>
+              {% include 'gestion_ambiental/_filtro_fechas.html' %}
+            </div>
             <div class="ga-focus-tools">
               {% if kpi_foco.indicador.criterio != 'informativo' %}
               <span class="ga-focus-limit">Límite: {{ kpi_foco.limite }}</span>
@@ -147,58 +134,20 @@
           <div class="ga-empty">Este indicador no tiene registros en el rango seleccionado.</div>
           {% endif %}
         </div>
-
-        <aside class="ga-focus-side" aria-label="Cifras del indicador">
-          <div class="ga-metric is-{{ kpi_foco.estado }}">
-            <span class="ga-metric-label">Último valor</span>
-            <span class="ga-metric-value">{{ kpi_foco.ultimo_txt }}<small>{{ kpi_foco.indicador.unidad }}</small></span>
-            <span class="ga-metric-note">{{ kpi_foco.fecha_txt }}</span>
-          </div>
-          <div class="ga-metric">
-            <span class="ga-metric-label">Promedio histórico</span>
-            <span class="ga-metric-value">{{ kpi_foco.promedio_txt }}<small>{{ kpi_foco.indicador.unidad }}</small></span>
-            <span class="ga-metric-note">{{ kpi_foco.n }} registros válidos</span>
-          </div>
-          <div class="ga-metric">
-            <span class="ga-metric-label">Rango observado</span>
-            <span class="ga-metric-value">{{ kpi_foco.minimo_txt }} – {{ kpi_foco.maximo_txt }}</span>
-            <span class="ga-metric-note">{{ kpi_foco.indicador.unidad }}</span>
-          </div>
-          {% if kpi_foco.indicador.criterio != 'informativo' %}
-          <div class="ga-metric is-{{ 'ok' if kpi_foco.porc_cumplimiento and kpi_foco.porc_cumplimiento >= 80 else 'alerta' }}">
-            <span class="ga-metric-label">Registros en norma</span>
-            <span class="ga-metric-value">{{ kpi_foco.porc_txt }}</span>
-            <span class="ga-metric-note">{{ kpi_foco.cumplen }} de {{ kpi_foco.n }}{% if kpi_foco.excluidos %} · {{ kpi_foco.excluidos }} descartados{% endif %}</span>
-          </div>
-          {% endif %}
-        </aside>
       </section>
 
-      {% if tabla_detalle and tabla_detalle.filas %}
-      <details class="ga-records">
-        <summary>Registros de {{ kpi_foco.indicador.nombre }} ({{ tabla_detalle.filas|length }})</summary>
+      <details class="ga-records" id="ga-records">
+        <summary id="ga-records-summary">Registros de {{ kpi_foco.indicador.nombre }}</summary>
         <div class="ga-table-wrap">
-          <table class="ga-table">
+          <p class="ga-table-loading" id="ga-records-loading">Abriendo registros…</p>
+          <table class="ga-table" id="ga-records-table" hidden>
             <thead>
-              <tr>
-                {% for columna in tabla_detalle.columnas %}
-                <th scope="col">{{ columna }}</th>
-                {% endfor %}
-              </tr>
+              <tr id="ga-records-head"></tr>
             </thead>
-            <tbody>
-              {% for fila in tabla_detalle.filas %}
-              <tr>
-                {% for celda in fila %}
-                <td{% if loop.index > 1 %} class="ga-num"{% endif %}>{{ celda }}</td>
-                {% endfor %}
-              </tr>
-              {% endfor %}
-            </tbody>
+            <tbody id="ga-records-body"></tbody>
           </table>
         </div>
       </details>
-      {% endif %}
     </div>
   </div>
 
@@ -235,7 +184,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 <script id="ga-chart-data" type="application/json">{{ grafico|tojson }}</script>
-<script id="ga-export-data" type="application/json">{{ export_data|tojson }}</script>
 <script src="{{ url_for('static', filename='js/ga.js') }}"></script>
+<script src="{{ url_for('static', filename='js/ga-transitions.js') }}" defer></script>
 {% endif %}
 {% endblock %}

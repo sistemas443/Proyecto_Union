@@ -310,9 +310,13 @@ def etiqueta_mes(anio, mes):
     return '%s %d' % (MESES_CORTOS[mes - 1], anio)
 
 
-def series_mensuales(puntos, decimales, usa_tipo, nombre_base='Valor real'):
+def series_mensuales(puntos, decimales, usa_tipo, nombre_base='Valor real',
+                     agregacion='promedio'):
     """
     Agrupa los registros por anio-mes y, cuando aplica, por tipo de agua.
+
+    `agregacion` puede ser 'promedio' (por defecto) o 'suma'. La suma se usa en
+    los indicadores de flujo, como los kilos de residuos o las aves muertas.
 
     Devuelve (periodos, series). Cada serie trae su nombre y sus valores
     alineados al eje de periodos, con None en los meses sin dato. Las series
@@ -352,7 +356,10 @@ def series_mensuales(puntos, decimales, usa_tipo, nombre_base='Valor real'):
         for periodo in periodos:
             grupo = por_periodo.get(periodo)
             if grupo:
-                valores.append(round(sum(grupo) / float(len(grupo)), decimales))
+                if agregacion == 'suma':
+                    valores.append(round(sum(grupo), decimales))
+                else:
+                    valores.append(round(sum(grupo) / float(len(grupo)), decimales))
             else:
                 valores.append(None)
         presentes = [v for v in valores if v is not None]

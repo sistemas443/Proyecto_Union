@@ -25,7 +25,7 @@
         align-items: center;
         justify-content: center;
         padding-top: 40px;
-        background-color: #ffffff;
+        background-color: var(--bs-body-bg, #ffffff);
         gap: 1rem;
         /* Separación entre el saludo y el GIF */
     }
@@ -40,7 +40,7 @@
     .saludo-bienvenida .saludo-hora {
         font-size: 2.5rem;
         font-weight: 300;
-        color: #6c757d;
+        color: var(--bs-secondary-color, #6c757d);
         margin-bottom: 5px;
         letter-spacing: 1px;
         margin-top: -20px; /* Ajuste para centrar verticalmente con el GIF */
@@ -49,9 +49,15 @@
     .saludo-bienvenida .saludo-nombre {
         font-size: 3.5rem;
         font-weight: 900;
-        color: #212529;
+        color: var(--bs-body-color, #212529);
         letter-spacing: 1px;
         text-transform: uppercase;
+    }
+
+    .saludo-bienvenida .saludo-subtitulo {
+        font-size: 2rem;
+        color: var(--bs-secondary-color, #6c757d);
+        margin-top: 5px;
     }
 
     /* Línea decorativa naranja debajo del nombre */
@@ -108,7 +114,7 @@
     <div class="saludo-bienvenida">
         <div class="saludo-hora" id="saludoHora">Buenos días,</div>
         <div class="saludo-nombre">{{ session.get('user_nombre', 'Usuario') }}</div>
-        <div style="font-size: 2rem; color: #6c757d; margin-top: 5px;">
+        <div class="saludo-subtitulo">
             Bienvenido al sistema de gestión de datos productivos
         </div>
     </div>

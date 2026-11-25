@@ -45,7 +45,12 @@ def login_requerido(f):
 
 @bp.before_app_request
 def verificar_usuario_activo():
-    """Expulsa en vivo a un usuario que fue desactivado por un administrador."""
+    """Expulsa en vivo a un usuario que fue desactivado por un administrador.
+
+    La consulta a la base se hace como máximo una vez por minuto y por sesión.
+    El sondeo `/api/sesion/estado` siempre valida de verdad, de modo que una
+    cuenta desactivada se expulsa en el siguiente ciclo (≤15 s).
+    """
     if 'user_id' not in session:
         return None
 
@@ -54,6 +59,16 @@ def verificar_usuario_activo():
         return None
     if ruta.startswith(('/solicitar-', '/verificar-pin', '/cambiar-clave-pin')):
         return None
+
+    ahora = time.time()
+    es_sondeo = ruta == '/api/sesion/estado'
+    if not es_sondeo:
+        ultima = session.get('activo_verificado')
+        try:
+            if ultima and (ahora - float(ultima)) < 60:
+                return None
+        except (TypeError, ValueError):
+            pass
 
     try:
         conn = get_db_connection()
@@ -70,6 +85,7 @@ def verificar_usuario_activo():
         return None
 
     if fila and fila[0]:
+        session['activo_verificado'] = ahora
         return None
 
     session.clear()

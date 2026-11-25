@@ -824,7 +824,7 @@
                     .then(res => res.json())
                     .then(data => {
                         if (data.status === 'ok') {
-                            window.location.href = "{{ url_for('main.index') }}";
+                            window.location.href = "{{ url_for('main.pantalla_principal') }}";
                         } else {
                             Swal.fire('Atención', data.msg, 'error');
                         }

@@ -231,7 +231,8 @@ def create_app():
         if endpoint.startswith('gestion_ambiental.') or endpoint.startswith('static'):
             return None
         if endpoint in ('main.logout', 'main.login', 'main.login_page',
-                        'main.foto_usuario', 'main.estado_sesion'):
+                        'main.foto_usuario', 'main.estado_sesion',
+                        'main.pantalla_principal'):
             return None
         if request.path == '/favicon.ico':
             return None

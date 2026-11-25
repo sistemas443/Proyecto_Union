@@ -1,0 +1,49 @@
+{% extends 'generales/layout.html' %}
+
+{% block title %}{{ titulo }} · {{ linea.nombre }} · General — Gestión Ambiental{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ga.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="ga-page">
+
+  <header class="ga-head">
+    <div>
+      {% include 'gestion_ambiental/_migas.html' %}
+      <h1 class="ga-title">
+        <span class="ga-head-icon" aria-hidden="true"><i class='bx {{ icono }}'></i></span>
+        <span class="ga-title-text">{{ titulo }}</span>
+      </h1>
+      <p class="ga-subtitle">
+        <span>{{ linea.nombre }}</span>
+        {% if subtitulo %}
+        <span class="ga-dot-sep" aria-hidden="true"></span>
+        <span>{{ subtitulo }}</span>
+        {% endif %}
+      </p>
+    </div>
+
+    <div class="ga-filters">
+      {% include 'gestion_ambiental/_selector_linea.html' %}
+    </div>
+  </header>
+
+  <div class="ga-temas">
+    {% for item in tarjetas %}
+    <a class="ga-tema-card" data-vt href="{{ item.url }}">
+      <span class="ga-tema-art" aria-hidden="true"><i class='bx {{ item.icono }}'></i></span>
+      <span class="ga-tema-name">{{ item.nombre }}</span>
+      <span class="ga-tema-desc">{{ item.descripcion }}</span>
+      <span class="ga-tema-meta">{{ item.meta }}</span>
+    </a>
+    {% endfor %}
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/ga-transitions.js') }}" defer></script>
+{% endblock %}

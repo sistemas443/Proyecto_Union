@@ -260,6 +260,11 @@ class PoolConexiones:
 _pool_principal = PoolConexiones(DB_POOL_MIN, DB_POOL_MAX, PARAMETROS_CONEXION)
 atexit.register(_pool_principal.cerrar)
 
+# Gestion Ambiental vive en otra base (master_ga). Comparte el mismo esquema de
+# pool para no pagar la autenticacion remota en cada pantalla.
+_pool_ga = PoolConexiones(DB_POOL_MIN, DB_POOL_MAX, PARAMETROS_GA)
+atexit.register(_pool_ga.cerrar)
+
 
 def get_db_connection():
     """
@@ -280,10 +285,10 @@ def get_ga_connection():
     Conexion de solo lectura a la base de Gestion Ambiental (master_ga).
 
     Alli viven las tablas migradas desde los aplicativos de AppSheet de las
-    sedes Lourdes y Vargas. Se abre una conexion por operacion y se cierra
-    con close(), igual que en el resto del proyecto.
+    sedes Lourdes y Vargas. Se usa el pool de conexiones igual que en la base
+    principal: close() devuelve la conexion al pool en vez de cerrarla.
     """
-    return psycopg2.connect(**PARAMETROS_GA)
+    return _pool_ga.obtener()
 
 
 def parse_empty(value):

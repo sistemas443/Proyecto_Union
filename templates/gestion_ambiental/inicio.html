@@ -13,7 +13,7 @@
     <div>
       <h1 class="ga-title">Gestión Ambiental</h1>
       <p class="ga-subtitle">
-        Selecciona la sede para consultar sus indicadores
+        Selecciona el módulo o la sede para consultar sus indicadores
       </p>
     </div>
   </header>
@@ -21,7 +21,7 @@
   <div class="ga-sedes">
     {% for clave, info in sedes.items() %}
       {% if info.activa %}
-      <a class="ga-sede-card" href="{{ url_for('gestion_ambiental.temas', sede=clave) }}">
+      <a class="ga-sede-card" data-vt href="{{ url_for('gestion_ambiental.temas', sede=clave) }}">
         <span class="ga-sede-icon" aria-hidden="true"><i class='bx bx-buildings'></i></span>
         <span class="ga-sede-body">
           <span class="ga-sede-name">{{ info.nombre }}</span>
@@ -39,7 +39,22 @@
       </span>
       {% endif %}
     {% endfor %}
+
+    <a class="ga-sede-card is-general" data-vt href="{{ url_for('gestion_ambiental.general_lineas') }}">
+      <span class="ga-sede-icon" aria-hidden="true"><i class='bx bx-globe'></i></span>
+      <span class="ga-sede-body">
+        <span class="ga-sede-name">General</span>
+        <span class="ga-sede-meta">
+          Producción y Levante · {{ general_temas_activos }} de {{ general_temas_total }} temas activos
+        </span>
+      </span>
+      <span class="ga-sede-go" aria-hidden="true"><i class='bx bx-right-arrow-alt'></i></span>
+    </a>
   </div>
 
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/ga-transitions.js') }}" defer></script>
 {% endblock %}

@@ -1,0 +1,18 @@
+<nav class="ga-crumbs" aria-label="Ruta de navegación">
+  {% for miga in migas %}
+    {% if miga.url %}
+    <a class="ga-crumb" href="{{ miga.url }}" title="{{ miga.nombre }}">
+      {% if loop.first %}<i class='bx bx-grid-alt' aria-hidden="true"></i>{% endif %}
+      <span>{{ miga.nombre }}</span>
+    </a>
+    {% else %}
+    <span class="ga-crumb is-current" aria-current="page" title="{{ miga.nombre }}">
+      {% if loop.first %}<i class='bx bx-grid-alt' aria-hidden="true"></i>{% endif %}
+      <span>{{ miga.nombre }}</span>
+    </span>
+    {% endif %}
+    {% if not loop.last %}
+    <i class='bx bx-chevron-right ga-crumb-sep' aria-hidden="true"></i>
+    {% endif %}
+  {% endfor %}
+</nav>

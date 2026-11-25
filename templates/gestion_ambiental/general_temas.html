@@ -1,0 +1,57 @@
+{% extends 'generales/layout.html' %}
+
+{% block title %}{{ linea.nombre }} · General — Gestión Ambiental{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ga.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="ga-page">
+
+  <header class="ga-head">
+    <div>
+      {% include 'gestion_ambiental/_migas.html' %}
+      <h1 class="ga-title">
+        <span class="ga-head-icon" aria-hidden="true"><i class='bx {{ linea.icono }}'></i></span>
+        <span class="ga-title-text">{{ linea.nombre }}</span>
+      </h1>
+      <p class="ga-subtitle">
+        <span>{{ linea.descripcion }}</span>
+        <span class="ga-dot-sep" aria-hidden="true"></span>
+        <span>Selecciona un tema para ver el detalle</span>
+      </p>
+    </div>
+
+    <div class="ga-filters">
+      {% include 'gestion_ambiental/_selector_linea.html' %}
+    </div>
+  </header>
+
+  <div class="ga-temas">
+    {% for clave, tema in temas.items() %}
+      {% if tema.activo %}
+      <a class="ga-tema-card" data-vt
+         href="{{ url_for('gestion_ambiental.general_tablero', linea=linea_slug, tema=clave) }}">
+        <span class="ga-tema-art" aria-hidden="true"><i class='bx {{ tema.icono }}'></i></span>
+        <span class="ga-tema-name">{{ tema.nombre }}</span>
+        <span class="ga-tema-desc">{{ tema.descripcion }}</span>
+        <span class="ga-tema-meta">{{ etiquetas[clave] }}</span>
+      </a>
+      {% else %}
+      <span class="ga-tema-card is-disabled" aria-disabled="true">
+        <span class="ga-tema-art" aria-hidden="true"><i class='bx {{ tema.icono }}'></i></span>
+        <span class="ga-tema-name">{{ tema.nombre }}</span>
+        <span class="ga-tema-desc">{{ tema.descripcion }}</span>
+        <span class="ga-tema-meta">En construcción</span>
+      </span>
+      {% endif %}
+    {% endfor %}
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/ga-transitions.js') }}" defer></script>
+{% endblock %}

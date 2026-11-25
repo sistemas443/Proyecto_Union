@@ -1,0 +1,190 @@
+{% extends 'generales/layout.html' %}
+
+{% block title %}{{ titulo }} · {{ linea.nombre }} · General — Gestión Ambiental{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ga.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="ga-page">
+
+  <header class="ga-head">
+    <div>
+      {% include 'gestion_ambiental/_migas.html' %}
+      <h1 class="ga-title">
+        <span class="ga-head-icon" aria-hidden="true"><i class='bx {{ icono or "bx-grid-alt" }}'></i></span>
+        <span class="ga-title-text">{{ titulo }}</span>
+      </h1>
+      <p class="ga-subtitle">
+        <span>{{ linea.nombre }}</span>
+        <span class="ga-dot-sep" aria-hidden="true"></span>
+        <span>{{ sedes_general[sede_general].nombre }}</span>
+        <span class="ga-dot-sep" aria-hidden="true"></span>
+        <span>{{ rango_texto }}</span>
+        {% if historico and historico[0] %}
+        <span class="ga-dot-sep" aria-hidden="true"></span>
+        <span>Serie desde {{ historico[0].day }} de {{ ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'][historico[0].month - 1] }} de {{ historico[0].year }}</span>
+        {% endif %}
+      </p>
+    </div>
+
+    <div class="ga-filters">
+      {% include 'gestion_ambiental/_selector_linea.html' %}
+
+      <button type="button" class="ga-btn" id="ga-export-xlsx">
+        <i class='bx bx-spreadsheet' aria-hidden="true"></i> Excel
+      </button>
+      <button type="button" class="ga-btn" id="ga-export-pdf">
+        <i class='bx bxs-file-pdf' aria-hidden="true"></i> PDF
+      </button>
+    </div>
+  </header>
+
+  {% if error %}
+  <div class="ga-alert" role="alert">
+    <strong>No se pudo cargar el tablero</strong>
+    <p>{{ error }}</p>
+  </div>
+  {% else %}
+
+  <div class="ga-layout" id="gaLayout">
+
+    <aside class="ga-side" id="gaSide" aria-label="Indicadores de General">
+      <div class="ga-side-head">
+        <span>Indicadores ({{ resumen.total_indicadores }})</span>
+        <button type="button" class="ga-side-toggle" id="gaSideToggle"
+                aria-label="Ocultar la lista de indicadores" aria-expanded="true">
+          <i class='bx bx-chevron-left' aria-hidden="true"></i>
+        </button>
+      </div>
+      <nav class="ga-side-list">
+        {% for seccion in secciones %}
+        <div class="ga-side-group">
+          <span class="ga-side-group-title">
+            <i class='bx {{ seccion.icono }}' aria-hidden="true"></i>{{ seccion.nombre }}
+          </span>
+          {% for item in seccion.indicadores %}
+          <a class="ga-side-item is-{{ item.estado }}{{ ' is-current' if item.indicador.id == kpi_foco.indicador.id }}"
+             href="{{ url_general(indicador_=item.indicador.id) }}"
+             title="{{ item.indicador.nombre }}">
+            <span class="ga-dot is-{{ item.estado }}" aria-hidden="true"></span>
+            <span class="ga-side-name">{{ item.indicador.nombre }}</span>
+            <span class="ga-side-value">{{ item.ultimo_txt }}</span>
+          </a>
+          {% endfor %}
+        </div>
+        {% endfor %}
+      </nav>
+    </aside>
+
+    <div class="ga-main">
+      <button type="button" class="ga-side-open" id="gaSideOpen"
+              aria-label="Mostrar la lista de indicadores">
+        <i class='bx bx-chevron-right' aria-hidden="true"></i>
+        <span>Indicadores</span>
+      </button>
+
+      <section class="ga-focus" aria-label="Indicador seleccionado">
+        <div class="ga-focus-main">
+          <div class="ga-focus-head">
+            <div class="ga-focus-head-main">
+              <h2 class="ga-focus-title">{{ kpi_foco.indicador.nombre }}</h2>
+              {% include 'gestion_ambiental/_filtro_fechas.html' %}
+            </div>
+            <div class="ga-focus-tools">
+              {% if kpi_foco.indicador.criterio != 'informativo' %}
+              <span class="ga-focus-limit">Límite: {{ kpi_foco.limite }}</span>
+              {% endif %}
+              <button type="button" class="ga-btn ga-btn-sm" id="ga-fullscreen" aria-pressed="false">
+                <i class='bx bx-expand' aria-hidden="true"></i>
+                <span class="ga-fullscreen-text">Pantalla completa</span>
+              </button>
+            </div>
+          </div>
+          <p class="ga-focus-meta">
+            Eje X: {% if grafico %}{{ grafico.eje_x|lower }}{% else %}fecha{% endif %}
+            {% if grafico and grafico.dimension %}
+            <span class="ga-dot-sep" aria-hidden="true"></span> Desglose: {{ grafico.dimension }}
+            {% endif %}
+            {% if grafico %}
+            <span class="ga-dot-sep" aria-hidden="true"></span> Eje Y: {{ grafico.eje_y }}
+            {% endif %}
+          </p>
+
+          {% if grafico and grafico.opcionales %}
+          <div class="ga-optional" role="group" aria-label="Métricas opcionales">
+            <span class="ga-optional-label">Métricas opcionales</span>
+            {% for op in grafico.opcionales %}
+            <label class="ga-check">
+              <input type="checkbox" data-serie-opcional="{{ loop.index0 }}">
+              <span>{{ op.nombre }}</span>
+            </label>
+            {% endfor %}
+          </div>
+          {% endif %}
+
+          {% if kpi_foco.n %}
+          <div class="ga-chart-box">
+            <canvas id="ga-chart" role="img"
+                    aria-label="Serie de {{ kpi_foco.indicador.nombre }} con {{ kpi_foco.n }} registros"></canvas>
+          </div>
+          <p class="ga-chart-note" id="ga-chart-note"></p>
+          {% else %}
+          <div class="ga-empty">Este indicador no tiene registros en el rango seleccionado.</div>
+          {% endif %}
+        </div>
+      </section>
+
+      <details class="ga-records" id="ga-records">
+        <summary id="ga-records-summary">Registros de {{ kpi_foco.indicador.nombre }}</summary>
+        <div class="ga-table-wrap">
+          <p class="ga-table-loading" id="ga-records-loading">Abriendo registros…</p>
+          <table class="ga-table" id="ga-records-table" hidden>
+            <thead>
+              <tr id="ga-records-head"></tr>
+            </thead>
+            <tbody id="ga-records-body"></tbody>
+          </table>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var layout = document.getElementById('gaLayout');
+      var ocultar = document.getElementById('gaSideToggle');
+      var mostrar = document.getElementById('gaSideOpen');
+      if (!layout) return;
+
+      var CLAVE = 'ga-side-oculta';
+
+      function aplicar(oculta) {
+        layout.classList.toggle('is-collapsed', oculta);
+        if (ocultar) ocultar.setAttribute('aria-expanded', oculta ? 'false' : 'true');
+        try { localStorage.setItem(CLAVE, oculta ? '1' : '0'); } catch (e) {}
+      }
+
+      var guardado = null;
+      try { guardado = localStorage.getItem(CLAVE); } catch (e) {}
+      aplicar(guardado === '1');
+
+      if (ocultar) ocultar.addEventListener('click', function () { aplicar(true); });
+      if (mostrar) mostrar.addEventListener('click', function () { aplicar(false); });
+    })();
+  </script>
+
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if not error %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<script id="ga-chart-data" type="application/json">{{ grafico|tojson }}</script>
+<script src="{{ url_for('static', filename='js/ga.js') }}"></script>
+<script src="{{ url_for('static', filename='js/ga-transitions.js') }}" defer></script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,59 @@
+{% extends 'generales/layout.html' %}
+
+{% block title %}General — Gestión Ambiental{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ga.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="ga-page">
+
+  <header class="ga-head">
+    <div>
+      {% include 'gestion_ambiental/_migas.html' %}
+      <h1 class="ga-title">
+        <span class="ga-head-icon" aria-hidden="true"><i class='bx bx-globe'></i></span>
+        <span class="ga-title-text">General</span>
+      </h1>
+      <p class="ga-subtitle">
+        <span>Indicadores consolidados de la empresa</span>
+        <span class="ga-dot-sep" aria-hidden="true"></span>
+        <span>Selecciona la línea de producción</span>
+      </p>
+    </div>
+
+    <div class="ga-filters">
+      <a class="ga-btn ga-btn-sm" href="{{ url_for('gestion_ambiental.inicio') }}"
+         title="Ir al menú principal">
+        <i class='bx bx-grid-alt' aria-hidden="true"></i>
+        <span>Menú</span>
+      </a>
+    </div>
+  </header>
+
+  <div class="ga-sedes ga-lineas">
+    {% for clave, linea in lineas.items() %}
+    <a class="ga-sede-card" data-vt href="{{ url_for('gestion_ambiental.general_temas', linea=clave) }}">
+      <span class="ga-sede-icon" aria-hidden="true"><i class='bx {{ linea.icono }}'></i></span>
+      <span class="ga-sede-body">
+        <span class="ga-sede-name">{{ linea.nombre }}</span>
+        <span class="ga-sede-meta">{{ linea.descripcion }}</span>
+        <span class="ga-sede-meta">
+          {% set activos = linea.temas.values()|selectattr('activo')|list|length %}
+          {{ linea.temas|length }} temas
+          <span class="ga-dot-sep" aria-hidden="true"></span>
+          {{ activos }} activo{{ 's' if activos != 1 }}
+        </span>
+      </span>
+      <span class="ga-sede-go" aria-hidden="true"><i class='bx bx-right-arrow-alt'></i></span>
+    </a>
+    {% endfor %}
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/ga-transitions.js') }}" defer></script>
+{% endblock %}

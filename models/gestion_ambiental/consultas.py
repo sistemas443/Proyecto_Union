@@ -27,6 +27,12 @@ _CACHE_SERIES = {}
 _CACHE_OPCIONALES = {}
 _CACHE_TTL = 60.0
 
+# Cache de metadatos: que relaciones existen y que columnas tiene cada una.
+# Cambian solo cuando se migra una vista nueva, asi que duran mas.
+_CACHE_RELACIONES = {}
+_CACHE_COLUMNAS = {}
+_CACHE_METADATOS_TTL = 300.0
+
 
 def nombre_tabla(sede, sufijo):
     """
@@ -64,6 +70,64 @@ def tabla_disponible(sede, sufijo):
                 conn.close()
             except Exception:
                 pass
+
+
+def _relaciones_disponibles(cur, conn, nombres):
+    """
+    Devuelve el conjunto de relaciones existentes, con cache de metadatos.
+
+    `information_schema.views` tarda ~200 ms en la base remota; esta lista solo
+    cambia cuando se migra una vista nueva, asi que se guarda por 5 minutos.
+    """
+    clave = tuple(sorted(set(nombres)))
+    ahora = time.monotonic()
+    guardado = _CACHE_RELACIONES.get(clave)
+    if guardado and (ahora - guardado[0]) < _CACHE_METADATOS_TTL:
+        return guardado[1]
+
+    try:
+        cur.execute("""
+            SELECT c.relname AS table_name
+            FROM pg_class c
+            JOIN pg_namespace n ON n.oid = c.relnamespace
+            WHERE n.nspname = 'public'
+              AND c.relkind IN ('r', 'v', 'm')
+              AND c.relname = ANY(%s)
+        """, (list(clave),))
+        disponibles = {fila['table_name'] for fila in cur.fetchall()}
+    except Exception:
+        conn.rollback()
+        return set()
+
+    _CACHE_RELACIONES[clave] = (ahora, disponibles)
+    if len(_CACHE_RELACIONES) > 32:
+        for vieja in list(_CACHE_RELACIONES)[:16]:
+            _CACHE_RELACIONES.pop(vieja, None)
+    return disponibles
+
+
+def _columnas_relacion(cur, conn, relacion):
+    """Columnas de una tabla, con cache de metadatos."""
+    ahora = time.monotonic()
+    guardado = _CACHE_COLUMNAS.get(relacion)
+    if guardado and (ahora - guardado[0]) < _CACHE_METADATOS_TTL:
+        return guardado[1]
+
+    try:
+        cur.execute("""
+            SELECT column_name FROM information_schema.columns
+            WHERE table_schema = 'public' AND table_name = %s
+        """, (relacion,))
+        existentes = {fila['column_name'] for fila in cur.fetchall()}
+    except Exception:
+        conn.rollback()
+        return set()
+
+    _CACHE_COLUMNAS[relacion] = (ahora, existentes)
+    if len(_CACHE_COLUMNAS) > 64:
+        for vieja in list(_CACHE_COLUMNAS)[:32]:
+            _CACHE_COLUMNAS.pop(vieja, None)
+    return existentes
 
 
 def _resolver_columna(indicador, sede):
@@ -175,15 +239,7 @@ def _cargar_series_sin_cache(sede, indicadores, desde=None, hasta=None):
         for (relacion, col_fecha), pares in grupos.items():
             lista = [ind for ind, _ in pares]
 
-            try:
-                cur.execute("""
-                    SELECT column_name FROM information_schema.columns
-                    WHERE table_schema = 'public' AND table_name = %s
-                """, (relacion,))
-                existentes = {fila['column_name'] for fila in cur.fetchall()}
-            except Exception:
-                conn.rollback()
-                existentes = set()
+            existentes = _columnas_relacion(cur, conn, relacion)
 
             partes = []
             for ind in lista:
@@ -283,15 +339,7 @@ def _cargar_desde_vistas(cur, conn, sede, indicadores, resultado, desde, hasta):
     if not ramas_por_vista:
         return
 
-    try:
-        cur.execute("""
-            SELECT table_name FROM information_schema.views
-            WHERE table_schema = 'public' AND table_name = ANY(%s)
-        """, (nombres,))
-        disponibles = {fila['table_name'] for fila in cur.fetchall()}
-    except Exception:
-        conn.rollback()
-        disponibles = set()
+    disponibles = _relaciones_disponibles(cur, conn, nombres)
 
     ramas = []
     for ind, vista in ramas_por_vista:
@@ -300,10 +348,15 @@ def _cargar_desde_vistas(cur, conn, sede, indicadores, resultado, desde, hasta):
             continue
         col_tipo = ind.get('col_tipo')
         tipo_sql = '"%s"' % col_tipo if col_tipo else 'NULL::text'
+        origen = nombre_vista
+        if ind.get('filtro_sql'):
+            origen = '(SELECT * FROM %s WHERE %s) AS _fuente' % (
+                nombre_vista, ind['filtro_sql'],
+            )
         ramas.append(
             "SELECT '%s'::text AS indicador, \"%s\" AS fecha, %s AS tipo, "
             "\"%s\"::numeric AS valor FROM %s"
-            % (ind['id'], col_fecha, tipo_sql, col_valor, nombre_vista)
+            % (ind['id'], col_fecha, tipo_sql, col_valor, origen)
         )
 
     if not ramas:

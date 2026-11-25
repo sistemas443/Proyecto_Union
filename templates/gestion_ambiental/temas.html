@@ -11,10 +11,11 @@
 
   <header class="ga-head">
     <div>
-      <a class="ga-back" href="{{ url_for('gestion_ambiental.inicio') }}">
-        <i class='bx bx-left-arrow-alt' aria-hidden="true"></i> Sedes
-      </a>
-      <h1 class="ga-title">{{ sedes[sede].nombre }}</h1>
+      {% include 'gestion_ambiental/_migas.html' %}
+      <h1 class="ga-title">
+        <span class="ga-head-icon" aria-hidden="true"><i class='bx bx-buildings'></i></span>
+        <span class="ga-title-text">{{ sedes[sede].nombre }}</span>
+      </h1>
       <p class="ga-subtitle">
         <span>{{ indicadores }} indicadores ambientales</span>
         <span class="ga-dot-sep" aria-hidden="true"></span>
@@ -38,7 +39,7 @@
 
   <div class="ga-temas">
     {% for clave, tema in temas.items() %}
-    <a class="ga-tema-card" href="{{ url_for('gestion_ambiental.tablero', sede=sede, tema=clave) }}">
+    <a class="ga-tema-card" data-vt href="{{ url_for('gestion_ambiental.tablero', sede=sede, tema=clave) }}">
       <span class="ga-tema-art" aria-hidden="true"><i class='bx {{ tema.icono }}'></i></span>
       <span class="ga-tema-name">{{ tema.nombre }}</span>
       <span class="ga-tema-desc">{{ tema.descripcion }}</span>
@@ -48,4 +49,8 @@
   </div>
 
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/ga-transitions.js') }}" defer></script>
 {% endblock %}

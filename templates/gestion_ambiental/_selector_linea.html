@@ -1,0 +1,11 @@
+<div class="ga-segmented" role="group" aria-label="Línea de producción">
+  {% for clave, info in lineas.items() %}
+  <a href="{{ urls_lineas[clave] }}"
+     class="{{ 'is-active' if clave == linea_slug }}">{{ info.nombre }}</a>
+  {% endfor %}
+</div>
+<a class="ga-btn ga-btn-sm" href="{{ url_for('gestion_ambiental.inicio') }}"
+   title="Ir al menú principal">
+  <i class='bx bx-grid-alt' aria-hidden="true"></i>
+  <span>Menú</span>
+</a>

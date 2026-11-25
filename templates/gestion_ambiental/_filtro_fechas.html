@@ -1,0 +1,28 @@
+<form class="ga-periodo" method="get" action="{{ request.path }}"
+      aria-label="Filtrar por fecha y año">
+  <label class="ga-periodo-field">
+    <span class="ga-periodo-label">Desde</span>
+    <input type="date" name="d" value="{{ desde_form }}" max="{{ hoy_iso }}"
+           onchange="this.form.submit()">
+  </label>
+  <label class="ga-periodo-field">
+    <span class="ga-periodo-label">Hasta</span>
+    <input type="date" name="h" value="{{ hasta_form }}" max="{{ hoy_iso }}"
+           onchange="this.form.submit()">
+  </label>
+  <label class="ga-periodo-field ga-periodo-year">
+    <span class="ga-periodo-label">Año</span>
+    <select name="anio" onchange="this.form.submit()">
+      <option value="">Todos</option>
+      {% for anio in anios %}
+      <option value="{{ anio }}"{{ ' selected' if anio_sel == anio }}>{{ anio }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  {% if filtros_activos %}
+  <a class="ga-periodo-clear" href="{{ request.path }}" title="Quitar filtros"
+     aria-label="Quitar filtros">
+    <i class='bx bx-x' aria-hidden="true"></i>
+  </a>
+  {% endif %}
+</form>
