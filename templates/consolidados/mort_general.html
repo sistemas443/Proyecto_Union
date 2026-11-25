@@ -1,0 +1,293 @@
+{% extends 'generales/layout.html' %}
+{% block title %}% Mortalidad General – Avícola San Martín{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/consolidados.css') }}">
+<style>
+  #tablaMortGeneral .col-fecha { width: 88px; min-width: 88px; max-width: 88px; }
+  #tablaMortGeneral .col-anio { width: 56px; min-width: 56px; max-width: 56px; }
+  #tablaMortGeneral .col-cant { width: 86px; min-width: 86px; max-width: 86px; }
+  #tablaMortGeneral .col-pct { width: 96px; min-width: 96px; max-width: 96px; }
+  #tablaMortGeneral .col-lotes { width: 62px; min-width: 62px; max-width: 62px; }
+  #tablaMortGeneral tbody tr:nth-child(even) td { background-color: rgba(0, 0, 0, 0.02); }
+  html[data-bs-theme="dark"] #tablaMortGeneral tbody tr:nth-child(even) td {
+    background-color: rgba(255, 255, 255, 0.025);
+  }
+  .anio-pill {
+    border: 1px solid var(--bs-border-color);
+    color: var(--bs-body-color);
+    background: transparent;
+    border-radius: 999px;
+    padding: 0.2rem 0.7rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-decoration: none;
+    font-variant-numeric: tabular-nums;
+  }
+  .anio-pill:hover { border-color: #97271c; color: #97271c; }
+  .anio-pill.activo { background: #97271c; border-color: #97271c; color: #ffffff; }
+  html[data-bs-theme="dark"] .anio-pill:hover { border-color: #ffb4a8; color: #ffb4a8; }
+  html[data-bs-theme="dark"] .anio-pill.activo { background: #97271c; border-color: #97271c; color: #ffffff; }
+  .grafico-mortalidad {
+    position: relative;
+    height: 300px;
+    min-height: 220px;
+  }
+</style>
+
+<div class="container-fluid px-4 py-3 h-100 d-flex flex-column">
+  <div class="d-flex flex-wrap align-items-center mb-3 px-3 py-2 rounded shadow-sm" style="background-color: #212529;">
+    <a href="{{ url_for('consolidados.vista_consolidados') }}" class="btn btn-sm btn-outline-light fw-bold me-3">
+      <i class='bx bx-arrow-back me-1'></i>VOLVER
+    </a>
+    <h5 class="mb-0 fw-bold text-uppercase text-white" style="letter-spacing: 0.5px;">
+      <i class='bx bx-pulse me-2'></i>% MORTALIDAD GENERAL
+    </h5>
+  </div>
+
+  <div class="row g-2">
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body py-2 px-3">
+          <div class="text-body-secondary text-uppercase" style="font-size: 0.66rem; font-weight: 700; letter-spacing: 0.06em;">PROM {{ datos.anio if datos.anio else '' }}</div>
+          <div class="fw-bold" style="font-size: 1.2rem;">
+            {{ '{:,.3f}%'.format(datos.prom * 100) if datos.prom is not none else '—' }}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body py-2 px-3">
+          <div class="text-body-secondary text-uppercase" style="font-size: 0.66rem; font-weight: 700; letter-spacing: 0.06em;">Muertes del año</div>
+          <div class="fw-bold" style="font-size: 1.2rem;">
+            {{ '{:,.0f}'.format(datos.total_muertes).replace(',', '.') }}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body py-2 px-3">
+          <div class="text-body-secondary text-uppercase" style="font-size: 0.66rem; font-weight: 700; letter-spacing: 0.06em;">Semanas registradas</div>
+          <div class="fw-bold" style="font-size: 1.2rem;">{{ datos.semanas }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body py-2 px-3">
+          <div class="text-body-secondary text-uppercase" style="font-size: 0.66rem; font-weight: 700; letter-spacing: 0.06em;">Lotes incluidos</div>
+          <div class="fw-bold" style="font-size: 1.2rem;">{{ datos.lotes }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% if datos.anios %}
+  <div class="d-flex flex-wrap align-items-center gap-2 mt-3">
+    <span class="text-body-secondary text-uppercase" style="font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em;">Año</span>
+    {% for a in datos.anios %}
+    <a href="{{ url_for('consolidados.mort_general', anio=a) }}"
+       class="anio-pill {{ 'activo' if a == datos.anio else '' }}">{{ a }}</a>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="card border-0 shadow-sm my-3">
+    <div class="card-body py-2">
+      <div class="grafico-mortalidad">
+        <canvas id="graficoMortGeneral"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="cons-tabla-barra">
+    <button type="button" class="cons-fs js-tabla-fs" title="Ver la tabla en pantalla completa">
+      <i class="fas fa-expand" aria-hidden="true"></i><span>Pantalla completa</span>
+    </button>
+  </div>
+
+  <div class="contenedor-matriz shadow-sm border rounded mt-1" id="contenedorMortGeneral">
+    <table class="table table-sm table-bordered mb-0 tabla-compacta" id="tablaMortGeneral">
+      <thead>
+        <tr>
+          <th class="col-fija col-fecha">FECHA</th>
+          <th class="col-anio">AÑO</th>
+          <th class="col-cant">AVES MUERTAS</th>
+          <th class="col-cant">SALDO AVES</th>
+          <th class="col-pct">% MORTALIDAD GENERAL</th>
+          <th class="col-lotes">LOTES</th>
+          <th class="col-cant">Σ SEMANAS</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in datos.filas %}
+        <tr>
+          <td class="col-fija col-fecha fw-bold">{{ f.fecha[8:10] }}/{{ f.fecha[5:7] }}/{{ f.fecha[0:4] }}</td>
+          <td class="col-anio">{{ f.anio if f.anio else '' }}</td>
+          <td class="col-cant num">{{ '{:,.0f}'.format(f.muertes).replace(',', '.') }}</td>
+          <td class="col-cant num">{{ '{:,.0f}'.format(f.saldo).replace(',', '.') }}</td>
+          <td class="col-pct num fw-bold">{{ '{:,.3f}%'.format(f.pct * 100) if f.pct is not none else '' }}</td>
+          <td class="col-lotes">{{ f.lotes }}</td>
+          <td class="col-cant num">{{ '{:,.0f}'.format(f.suma_sem).replace(',', '.') }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" class="text-center py-4 text-body-secondary">No hay semanas con datos de mortalidad.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <p class="text-body-secondary mt-2 mb-0" style="font-size: 0.72rem;">
+    Las muertes y el saldo se suman por fecha de cierre de semana sobre los lotes
+    visibles (SAN MARTÍN y levante externo). El PROM es el promedio de los
+    porcentajes semanales válidos del año seleccionado.
+  </p>
+</div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const cont = document.getElementById('contenedorMortGeneral');
+    if (cont && window.ResizeObserver) {
+      const ajustar = () => {
+        const rect = cont.getBoundingClientRect();
+        cont.style.height = Math.max(window.innerHeight - rect.top - 15, 260) + 'px';
+      };
+      new ResizeObserver(ajustar).observe(document.body);
+      ajustar();
+    }
+  });
+</script>
+<script type="application/json" id="mortGeneralDatos">{{ {
+  'etiquetas': datos.filas | map(attribute='fecha') | list,
+  'valores': datos.filas | map(attribute='pct') | list,
+  'prom': datos.prom
+} | tojson }}</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const fuente = document.getElementById('mortGeneralDatos');
+    const canvas = document.getElementById('graficoMortGeneral');
+    if (!fuente || !canvas || typeof Chart === 'undefined') return;
+
+    const datos = JSON.parse(fuente.textContent);
+    if (!datos.etiquetas || !datos.etiquetas.length) return;
+
+    if (window.ChartDataLabels && Chart.register) {
+      Chart.register(window.ChartDataLabels);
+    }
+
+    const etiquetas = datos.etiquetas.map(function (f) {
+      return f.slice(8, 10) + '/' + f.slice(5, 7);
+    });
+    const valores = datos.valores.map(function (v) { return v === null ? null : v * 100; });
+    const prom = datos.prom === null || datos.prom === undefined ? null : datos.prom * 100;
+
+    const colores = function () {
+      const oscuro = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+      const css = getComputedStyle(document.documentElement);
+      const texto = (css.getPropertyValue('--bs-body-color') || '').trim();
+      const borde = (css.getPropertyValue('--bs-border-color') || '').trim();
+      return {
+        barra: oscuro ? '#dbe3ea' : '#212529',
+        linea: oscuro ? '#ffb4a8' : '#97271c',
+        texto: texto || (oscuro ? '#dbe3ea' : '#212529'),
+        grid: borde || (oscuro ? '#38424d' : '#dee2e6')
+      };
+    };
+    const inicial = colores();
+
+    const grafico = new Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels: etiquetas,
+        datasets: [
+          {
+            type: 'bar',
+            label: '% DE MORTALIDAD SEMANAL',
+            data: valores,
+            backgroundColor: inicial.barra,
+            borderWidth: 0,
+            order: 2,
+            datalabels: {
+              display: true,
+              anchor: 'end',
+              align: 'top',
+              offset: 1,
+              clip: false,
+              font: { size: 6 },
+              color: inicial.texto,
+              formatter: function (v) { return v === null ? '' : Number(v).toFixed(2); }
+            }
+          },
+          {
+            type: 'line',
+            label: 'PROMEDIO DE MORTALIDAD GENERAL',
+            data: etiquetas.map(function () { return prom; }),
+            borderColor: inicial.linea,
+            backgroundColor: inicial.linea,
+            borderWidth: 2,
+            pointRadius: 0,
+            pointHoverRadius: 0,
+            order: 1,
+            datalabels: { display: false }
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        layout: { padding: { top: 18 } },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: { color: inicial.texto, maxRotation: 90, minRotation: 90, font: { size: 7 } }
+          },
+          y: {
+            beginAtZero: true,
+            grid: { color: inicial.grid },
+            ticks: {
+              color: inicial.texto,
+              font: { size: 8 },
+              callback: function (v) { return Number(v).toFixed(3); }
+            }
+          }
+        },
+        plugins: {
+          legend: {
+            position: 'right',
+            labels: { color: inicial.texto, boxWidth: 12, font: { size: 10 } }
+          },
+          tooltip: {
+            callbacks: {
+              label: function (ctx) {
+                const v = ctx.parsed.y;
+                return ctx.dataset.label + ': ' + (v === null ? '' : Number(v).toFixed(3) + ' %');
+              }
+            }
+          }
+        }
+      }
+    });
+
+    const observador = new MutationObserver(function () {
+      const c = colores();
+      grafico.data.datasets[0].backgroundColor = c.barra;
+      grafico.data.datasets[0].datalabels.color = c.texto;
+      grafico.data.datasets[1].borderColor = c.linea;
+      grafico.data.datasets[1].backgroundColor = c.linea;
+      grafico.options.scales.x.ticks.color = c.texto;
+      grafico.options.scales.y.ticks.color = c.texto;
+      grafico.options.scales.y.grid.color = c.grid;
+      grafico.options.plugins.legend.labels.color = c.texto;
+      grafico.update('none');
+    });
+    observador.observe(document.documentElement, { attributes: true, attributeFilter: ['data-bs-theme'] });
+  });
+</script>
+<script src="{{ url_for('static', filename='js/consolidados_tabla.js') }}"></script>
+{% endblock %}

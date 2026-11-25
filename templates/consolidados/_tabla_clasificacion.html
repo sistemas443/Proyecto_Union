@@ -1,0 +1,163 @@
+<link rel="stylesheet" href="{{ url_for('static', filename='css/consolidados.css') }}">
+<style>
+  #{{ tabla_id }} .col-semana {
+    width: 54px;
+    min-width: 54px;
+    max-width: 54px;
+  }
+  #{{ tabla_id }} .c {
+    width: 46px;
+    min-width: 46px;
+    max-width: 46px;
+  }
+  #{{ tabla_id }} thead .c {
+    font-size: 0.56rem;
+    letter-spacing: 0;
+  }
+  #{{ tabla_id }} thead tr:nth-child(-n+3) th[colspan] {
+    font-size: 0.58rem;
+    white-space: nowrap;
+    overflow: visible;
+    text-overflow: clip;
+  }
+  #{{ tabla_id }} .col-lote-nombre {
+    font-size: 0.64rem;
+    font-weight: 700;
+  }
+  .cl-barra .cl-resumen strong { white-space: nowrap; }
+</style>
+
+<div class="container-fluid px-4 py-3 h-100 d-flex flex-column">
+  <div class="d-flex flex-wrap align-items-center mb-3 px-3 py-2 rounded shadow-sm" style="background-color: #212529;">
+    <a href="{{ url_for('consolidados.vista_consolidados') }}" class="btn btn-sm btn-outline-light fw-bold me-3">
+      <i class='bx bx-arrow-back me-1'></i>VOLVER
+    </a>
+    <h5 class="mb-0 fw-bold text-uppercase text-white" style="letter-spacing: 0.5px;">
+      <i class='bx {{ icono }} me-2'></i>{{ titulo }}
+    </h5>
+  </div>
+
+  {% if datos.con_dato %}
+  <div class="alert alert-info py-1 mb-2" style="font-size: 0.76rem;">
+    Lotes con datos: {{ datos.con_dato | join(', ') }}
+  </div>
+  {% else %}
+  <div class="alert alert-warning py-1 mb-2" style="font-size: 0.76rem;">
+    Sin datos de clasificación registrados.
+  </div>
+  {% endif %}
+
+  <div class="cl-barra" id="filtroVariedad">
+    <div class="cl-resumen">
+      <strong>Filtrar por variedad</strong>
+    </div>
+    <div class="cl-acciones">
+      <button type="button" class="cl-filtro activo" data-variedad="TODAS">TODAS</button>
+      <button type="button" class="cl-filtro" data-variedad="HY LINE">HY LINE</button>
+      <button type="button" class="cl-filtro" data-variedad="LOHMANN">LOHMANN</button>
+    </div>
+  </div>
+
+  <div class="cons-tabla-barra">
+    <button type="button" class="cons-fs js-tabla-fs" title="Ver la tabla en pantalla completa">
+      <i class="fas fa-expand" aria-hidden="true"></i><span>Pantalla completa</span>
+    </button>
+  </div>
+
+  <div class="contenedor-matriz shadow-sm border rounded mt-1" id="{{ contenedor_id }}">
+    <table class="table table-sm table-bordered mb-0 tabla-compacta" id="{{ tabla_id }}">      <thead>
+        <tr>
+          <th class="col-semana col-titulo">FECHA ENCACETAMIENTO</th>
+          {%- for l in datos.lotes %}
+          {%- set var = (l.variedad or '')|upper %}
+          <th colspan="12" data-b="{{ l.nombre }}" data-variedad="{{ var }}">{{ l.fecha_enc if l.fecha_enc else '' }}</th>
+          {%- endfor %}
+        </tr>
+        <tr>
+          <th class="col-semana col-titulo">AVES ENCACETADAS</th>
+          {%- for l in datos.lotes %}
+          <th colspan="12" data-b="{{ l.nombre }}">{{ '{:,.0f}'.format(l.aves_enc).replace(',', '.') if l.aves_enc is not none else '' }}</th>
+          {%- endfor %}
+        </tr>
+        <tr>
+          <th class="col-semana col-titulo">LOTE</th>
+          {%- for l in datos.lotes %}
+          {%- set var = (l.variedad or '')|upper %}
+          {%- set clase = 'lote-lohmann' if 'LOHMANN' in var else ('lote-hyline' if 'HY LINE' in var else '') %}
+          <th colspan="12" class="col-lote-nombre {{ clase }}" data-b="{{ l.nombre }}">{{ l.nombre }}</th>
+          {%- endfor %}
+        </tr>
+        <tr>
+          <th class="col-semana">SEMANA</th>
+          {%- for l in datos.lotes %}
+          {%- for c in datos.categorias %}
+          <th class="c" data-b="{{ l.nombre }}">{{ c.titulo }}</th>
+          {%- endfor %}
+          {%- endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {%- for s in datos.semanas %}
+        <tr data-semana="{{ s }}">
+          <td class="col-semana fw-bold">{{ s }}</td>
+          {%- for l in datos.lotes %}
+          {%- set fila = datos.matriz.get(s, {}).get(l.nombre, {}) %}
+          {%- for c in datos.categorias %}
+          {%- set v = fila.get(c.clave) %}
+          <td class="c num" data-b="{{ l.nombre }}">{% if v is not none %}{{ '{:,.2f}'.format(v) }}{% endif %}</td>
+          {%- endfor %}
+          {%- endfor %}
+        </tr>
+        {%- endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% set graf_id = 'Clasif' ~ tabla_id|replace('tabla', '') %}
+  {% set graf_titulo = '% de rotura' %}
+  {% set graf_encabezado = grafico_titulo|default('ROTURA por lote') %}
+  {% set graf_dec = 2 %}
+  {% set graf_sufijo = '%' %}
+  {% set graf_factor = 1 %}
+  {% set graf_contenedor = contenedor_id %}
+  {% set graf_panel = 0 %}
+  {% set graf_matriz = datos.grafico %}
+  {% include 'consolidados/_grafico_historico.html' %}
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const tabla = document.getElementById('{{ tabla_id }}');
+    const barra = document.getElementById('filtroVariedad');
+    if (!tabla || !barra) return;
+
+    const variedades = {};
+    tabla.querySelectorAll('[data-b][data-variedad]').forEach(function (celda) {
+      variedades[celda.dataset.b] = celda.dataset.variedad || '';
+    });
+
+    barra.querySelectorAll('.cl-filtro').forEach(function (boton) {
+      boton.addEventListener('click', function () {
+        const filtro = boton.dataset.variedad;
+        barra.querySelectorAll('.cl-filtro').forEach(function (b) {
+          b.classList.toggle('activo', b === boton);
+        });
+        tabla.querySelectorAll('[data-b]').forEach(function (celda) {
+          const variedad = variedades[celda.dataset.b] || '';
+          celda.classList.toggle('cl-oculto', filtro !== 'TODAS' && variedad.indexOf(filtro) === -1);
+        });
+      });
+    });
+
+    const cont = document.getElementById('{{ contenedor_id }}');
+    if (cont && window.ResizeObserver) {
+      const ajustar = function () {
+        const rect = cont.getBoundingClientRect();
+        cont.style.height = Math.max(window.innerHeight - rect.top - 15, 300) + 'px';
+      };
+      new ResizeObserver(ajustar).observe(document.body);
+      ajustar();
+    }
+  });
+</script>
+<script src="{{ url_for('static', filename='js/consolidados_tabla.js') }}"></script>

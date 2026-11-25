@@ -7,7 +7,7 @@ from models.base import get_db_connection
 
 consolidados_bp = Blueprint('consolidados', __name__)
 
-# Orden de la grilla: 4 filas x 6 botones (ver Excel de referencia).
+# Orden de la grilla de Consolidados L+P (ver Excel de referencia).
 # url=None -> botón deshabilitado con badge "Próximamente".
 BOTONES = [
     # Fila 1
@@ -34,6 +34,9 @@ BOTONES = [
     {'titulo': 'GRAMOS AVES', 'icono': '🌾', 'hoja': 'H13', 'endpoint': 'consolidados.gramos_aves'},
     {'titulo': 'DATOS DE LEVANTE', 'icono': '📋', 'hoja': 'H19', 'endpoint': 'consolidados.datos_levante'},
     {'titulo': 'CONSUMO AGUA SEMANAL', 'icono': '💧', 'hoja': 'H7', 'endpoint': 'consolidados.consumo_agua'},
+    {'titulo': '% MORTALIDAD GENERAL', 'icono': '📊', 'hoja': 'PORCENTAJE MORTALIDAD GENERAL', 'endpoint': 'consolidados.mort_general'},
+    {'titulo': '% SEMANAL ROTURA DE HUEVO', 'icono': '🥚', 'hoja': '% SEMANAL ROTURA DE HUEVO', 'endpoint': 'consolidados.rotura_huevo'},
+    {'titulo': '% ACUMULADOS CLASIFICACIÓN', 'icono': '🍳', 'hoja': '% ACOMULADOS CLASIFICACIÓN', 'endpoint': 'consolidados.acumulados_clasificadora'},
 ]
 
 
@@ -203,6 +206,16 @@ def mort_semanal():
     return render_template('consolidados/mort_semanal.html', datos=datos)
 
 
+@consolidados_bp.route('/consolidados/mort-general')
+@login_requerido
+def mort_general():
+    """Renderiza la serie semanal de % mortalidad general (todas las aves)."""
+    from models.consolidados import services as consolidados_services
+    anio = request.args.get('anio', type=int)
+    datos = consolidados_services.get_mort_general_detalle(anio=anio)
+    return render_template('consolidados/mort_general.html', datos=datos)
+
+
 @consolidados_bp.route('/consolidados/huevos-ave-alojada')
 @login_requerido
 def huevos_ave_alojada():
@@ -242,20 +255,20 @@ def uniformidad():
 @consolidados_bp.route('/consolidados/rotura-huevo')
 @login_requerido
 def rotura_huevo():
-    """Renderiza la matriz de % rotura con PROM (sin TABLA)."""
+    """Clasificación semanal por lote con 12 columnas (hoja del Excel)."""
     from models.consolidados import services as consolidados_services
     datos = consolidados_services.get_rotura_huevo_detalle()
+    datos['grafico'] = consolidados_services.matriz_grafico_clasificacion(datos)
     return render_template('consolidados/rotura_huevo.html', datos=datos)
 
 
 @consolidados_bp.route('/consolidados/acumulados-clasificadora')
 @login_requerido
 def acumulados_clasificadora():
-    """Renderiza la matriz por categoria con selector (?categoria=)."""
-    from flask import request
+    """Renderiza la matriz acumulada con 12 columnas por lote (como el Excel)."""
     from models.consolidados import services as consolidados_services
-    categoria = request.args.get('categoria', 'SEGUNDAS')
-    datos = consolidados_services.get_acumulados_clasificadora_detalle(categoria)
+    datos = consolidados_services.get_acumulados_clasificadora_detalle()
+    datos['grafico'] = consolidados_services.matriz_grafico_clasificacion(datos)
     return render_template('consolidados/acumulados_clasificadora.html', datos=datos)
 
 

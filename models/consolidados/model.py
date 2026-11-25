@@ -306,6 +306,31 @@ def fetch_mort_semanal() -> list:
         conn.close()
 
 
+def fetch_mort_general() -> list:
+    """Devuelve las semanas de bd_vargas para la mortalidad general.
+
+    Incluye la fecha de cierre de semana, el lote, las muertes de la semana,
+    el saldo de aves y la semana de producción. La vista agrupa por fecha.
+    """
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            SELECT b.fecha_fin_sem, b.lote, b.mort_sem, b.saldo_ave, b.sem_prod
+            FROM bd_vargas b
+            WHERE b.fecha_fin_sem IS NOT NULL AND TRIM(b.fecha_fin_sem) <> ''
+            ORDER BY b.fecha_fin_sem, b.lote
+        """)
+        return [
+            {'fecha_fin_sem': r[0], 'lote': r[1], 'mort_sem': r[2],
+             'saldo_ave': r[3], 'sem_prod': r[4]}
+            for r in cur.fetchall()
+        ]
+    finally:
+        cur.close()
+        conn.close()
+
+
 def fetch_haa() -> list:
     """Devuelve sem_prod, lote, huevos de la semana y metadata.
 
@@ -666,61 +691,68 @@ def fetch_peso_huevo() -> list:
 
 
 def fetch_rotura_huevo() -> list:
-    """Devuelve sv (semana), lote, roto (% rotura) y metadata."""
+    """Devuelve la clasificación semanal completa de cada lote.
+
+    Incluye las 10 categorías de clasificacion_produccion (% semanal), la
+    fecha de encasetamiento y las aves encasetadas. La vista calcula además
+    ROTURA (TOTIA/O + YEMA) y % H Grande (JUM + EXTRA + AA), igual que la
+    hoja "% SEMANAL ROTURA DE HUEVO" del Excel.
+    """
     conn = get_db_connection()
     cur = conn.cursor()
     try:
         cur.execute("""
-            SELECT c.sv, c.lote, c.roto,
+            SELECT c.sv, c.lote,
+                   c.porc_sem_jum, c.porc_sem_extra, c.porc_sem_aa,
+                   c.porc_sem_a, c.porc_sem_b, c.porc_sem_c,
+                   c.porc_sem_sucio, c.porc_sem_totiao, c.porc_sem_yema,
+                   c.porc_sem_segundas,
                    cab.fecha_recepcion, cab.no_pollitas_recibidas
             FROM clasificacion_produccion c
             LEFT JOIN cabecera_lotes cab ON cab.id = c.id_lote
             ORDER BY c.sv, c.lote
         """)
-        return [
-            {'sem_prod': r[0], 'lote': r[1], 'roto': r[2],
-             'fecha_recepcion': r[3], 'aves_enc': r[4]}
-            for r in cur.fetchall()
-        ]
+        cols = ['sem_prod', 'lote',
+                'porc_sem_jum', 'porc_sem_extra', 'porc_sem_aa',
+                'porc_sem_a', 'porc_sem_b', 'porc_sem_c',
+                'porc_sem_sucio', 'porc_sem_totiao', 'porc_sem_yema',
+                'porc_sem_segundas', 'fecha_recepcion', 'aves_enc']
+        return [dict(zip(cols, r)) for r in cur.fetchall()]
     finally:
         cur.close()
         conn.close()
 
 
-CATEGORIAS_CLASIFICACION = {
-    'JUM': 'porc_sem_jum',
-    'EXTRA': 'porc_sem_extra',
-    'AA': 'porc_sem_aa',
-    'A': 'porc_sem_a',
-    'B': 'porc_sem_b',
-    'C': 'porc_sem_c',
-    'SUCIO': 'porc_sem_sucio',
-    'YEMA': 'porc_sem_yema',
-    'ROTURA': 'roto',
-    'SEGUNDAS': 'porc_sem_segundas',
-}
+def fetch_acumulados_clasificacion() -> list:
+    """Devuelve la clasificación acumulada de cada lote y el peso del huevo.
 
-
-def fetch_acumulados_clasificadora(categoria: str) -> list:
-    """Devuelve sv, lote y % de la categoria (whitelist validada)."""
-    columna = CATEGORIAS_CLASIFICACION.get(categoria)
-    if not columna:
-        return []
+    El peso es bd_vargas.peso_huevo_real, que es el que usa el Excel en la
+    columna "Peso H. prom" (no el peso_h_prom de clasificacion_produccion).
+    """
     conn = get_db_connection()
     cur = conn.cursor()
     try:
-        cur.execute(f"""
-            SELECT c.sv, c.lote, c.{columna},
+        cur.execute("""
+            SELECT c.sv, c.lote,
+                   c.porc_acu_jum, c.porc_acu_extra, c.porc_acu_aa,
+                   c.porc_acu_a, c.porc_acu_b, c.porc_acu_c,
+                   c.porc_acu_sucio, c.porc_acu_totiao, c.porc_acu_yema,
+                   c.porc_acu_segundas,
+                   b.peso_huevo_real,
                    cab.fecha_recepcion, cab.no_pollitas_recibidas
             FROM clasificacion_produccion c
             LEFT JOIN cabecera_lotes cab ON cab.id = c.id_lote
+            LEFT JOIN bd_vargas b
+                ON b.id_lote = c.id_lote AND b.sem_prod = c.sv
             ORDER BY c.sv, c.lote
         """)
-        return [
-            {'sem_prod': r[0], 'lote': r[1], 'valor': r[2],
-             'fecha_recepcion': r[3], 'aves_enc': r[4]}
-            for r in cur.fetchall()
-        ]
+        cols = ['sem_prod', 'lote',
+                'porc_acu_jum', 'porc_acu_extra', 'porc_acu_aa',
+                'porc_acu_a', 'porc_acu_b', 'porc_acu_c',
+                'porc_acu_sucio', 'porc_acu_totiao', 'porc_acu_yema',
+                'porc_acu_segundas', 'peso_huevo_real',
+                'fecha_recepcion', 'aves_enc']
+        return [dict(zip(cols, r)) for r in cur.fetchall()]
     finally:
         cur.close()
         conn.close()

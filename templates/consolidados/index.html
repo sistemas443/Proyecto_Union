@@ -156,6 +156,30 @@
     .cons-card { min-height: 108px; }
     .cons-header p { margin-left: 0; }
   }
+
+  /* Modo noche */
+  html[data-bs-theme="dark"] .cons-card {
+    background: var(--bs-card-bg);
+    border-color: var(--border);
+    color: var(--bs-body-color);
+  }
+  html[data-bs-theme="dark"] .cons-card:hover,
+  html[data-bs-theme="dark"] .cons-card:focus-visible {
+    border-color: rgba(242, 184, 176, 0.5);
+    box-shadow: 0 14px 28px -22px rgba(0, 0, 0, 0.9);
+  }
+  html[data-bs-theme="dark"] .cons-card-icon {
+    background: rgba(151, 39, 28, 0.22);
+    color: #ffb4a8;
+  }
+  html[data-bs-theme="dark"] .cons-card:hover .cons-card-icon {
+    background: rgba(151, 39, 28, 0.34);
+  }
+  html[data-bs-theme="dark"] .cons-card-arrow { color: #5c6874; }
+  html[data-bs-theme="dark"] .cons-card:hover .cons-card-arrow { color: #ffb4a8; }
+  html[data-bs-theme="dark"] .cons-card.desactivada:hover {
+    border-color: var(--border);
+  }
 </style>
 
 <div class="consolidados-layout">

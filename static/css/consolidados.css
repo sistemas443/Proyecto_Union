@@ -506,3 +506,134 @@
 
 /* Columna oculta por el filtro de variedad */
 .tabla-compacta .cl-oculto { display: none !important; }
+
+/* ============================================================
+   Modo noche
+   Los encabezados de tabla ya son oscuros; aquí se ajustan las
+   superficies claras (columnas congeladas, panel de lotes,
+   resaltados y pantalla completa).
+   ============================================================ */
+html[data-bs-theme="dark"] .tabla-compacta thead th {
+  background-color: var(--table-header-bg);
+  color: var(--table-header-text);
+}
+html[data-bs-theme="dark"] .tabla-compacta tbody .col-semana,
+html[data-bs-theme="dark"] .tabla-compacta tbody .col-prom,
+html[data-bs-theme="dark"] .tabla-compacta tbody .col-tabla,
+html[data-bs-theme="dark"] .tabla-compacta tbody .col-congelada {
+  background-color: var(--surface-alt);
+  color: var(--bs-body-color);
+}
+html[data-bs-theme="dark"] .tabla-compacta thead .col-semana,
+html[data-bs-theme="dark"] .tabla-compacta thead .col-prom,
+html[data-bs-theme="dark"] .tabla-compacta thead .col-tabla,
+html[data-bs-theme="dark"] .tabla-compacta thead .col-congelada {
+  background-color: var(--table-header-bg);
+  color: var(--table-header-text);
+}
+
+/* Resaltado con el mouse y marca fija al hacer clic */
+html[data-bs-theme="dark"] .tabla-compacta tbody td.hover-fila,
+html[data-bs-theme="dark"] .tabla-compacta tbody td.hover-columna {
+  background-color: #2e3944 !important;
+}
+html[data-bs-theme="dark"] .tabla-compacta tbody td.col-congelada.hover-fila,
+html[data-bs-theme="dark"] .tabla-compacta tbody td.col-congelada.hover-columna {
+  background-color: #35414d !important;
+}
+html[data-bs-theme="dark"] .tabla-compacta tbody td.marca-fila,
+html[data-bs-theme="dark"] .tabla-compacta tbody td.marca-columna {
+  background-color: #33404d !important;
+}
+html[data-bs-theme="dark"] .tabla-compacta tbody td.col-congelada.marca-fila,
+html[data-bs-theme="dark"] .tabla-compacta tbody td.col-congelada.marca-columna {
+  background-color: #3b4855 !important;
+}
+html[data-bs-theme="dark"] .tabla-compacta tbody td.marca-celda {
+  background-color: #45535f !important;
+  box-shadow: inset 0 0 0 1px #ffb4a8;
+}
+html[data-bs-theme="dark"] .tabla-compacta thead th.col-excluida {
+  background-color: #3a444f !important;
+  color: #9aa5b1;
+}
+
+/* Botón de pantalla completa y contenedor en pantalla completa */
+html[data-bs-theme="dark"] .cons-fs {
+  background: var(--surface-alt);
+  border-color: var(--border);
+  color: var(--text-secondary);
+}
+html[data-bs-theme="dark"] .cons-fs:hover {
+  background: #2b343d;
+  border-color: #4a5663;
+  color: #ffffff;
+}
+html[data-bs-theme="dark"] .card-pantalla-completa.pantalla-completa-activa {
+  background: var(--bs-body-bg);
+}
+html[data-bs-theme="dark"] .contenedor-matriz:fullscreen,
+html[data-bs-theme="dark"] .contenedor-matriz:-webkit-full-screen,
+html[data-bs-theme="dark"] .contenedor-matriz.tabla-fs-fallback {
+  background: var(--bs-body-bg);
+}
+
+/* Panel de lotes */
+html[data-bs-theme="dark"] .cl-filtro.activo {
+  background: #eef2f6;
+  color: #1d232a;
+}
+html[data-bs-theme="dark"] .cl-panel {
+  background: var(--surface);
+  color: var(--bs-body-color);
+  border-color: var(--border);
+  box-shadow: 0 24px 48px -20px rgba(0, 0, 0, 0.7), 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+html[data-bs-theme="dark"] .cl-panel-head strong { color: var(--text-primary); }
+html[data-bs-theme="dark"] .cl-panel-head .cl-contador {
+  background: #2b333d;
+  border-color: #3a444f;
+  color: var(--text-secondary);
+}
+html[data-bs-theme="dark"] .cl-tabs { border-bottom-color: var(--border); }
+html[data-bs-theme="dark"] .cl-tab { color: var(--text-muted); }
+html[data-bs-theme="dark"] .cl-tab.activo { color: #ffb4a8; border-bottom-color: #ffb4a8; }
+html[data-bs-theme="dark"] .cl-cuenta { background: #2b333d; color: var(--text-secondary); }
+html[data-bs-theme="dark"] .cl-tab.activo .cl-cuenta {
+  background: rgba(151, 39, 28, 0.30);
+  color: #ffb4a8;
+}
+html[data-bs-theme="dark"] .cl-buscar i { color: #7f8b98; }
+html[data-bs-theme="dark"] .cl-buscar input {
+  background: #1a2028;
+  border-color: var(--border);
+  color: var(--bs-body-color);
+}
+html[data-bs-theme="dark"] .cl-buscar input::placeholder { color: #7f8b98; }
+html[data-bs-theme="dark"] .cl-buscar input:focus {
+  background: #20272e;
+  border-color: #97271c;
+  box-shadow: 0 0 0 3px rgba(151, 39, 28, 0.28);
+}
+html[data-bs-theme="dark"] .cl-tools button {
+  background: var(--surface-alt);
+  border-color: var(--border);
+  color: var(--text-secondary);
+}
+html[data-bs-theme="dark"] .cl-tools button:hover {
+  background: #2b343d;
+  border-color: #4a5663;
+}
+html[data-bs-theme="dark"] .cl-lista {
+  background: #1a2028;
+  border-color: var(--border);
+}
+html[data-bs-theme="dark"] .cl-grupo-head:hover { background: #242b34; }
+html[data-bs-theme="dark"] .cl-grupo-nombre { color: var(--text-secondary); }
+html[data-bs-theme="dark"] .cl-grupo-cuenta { color: var(--text-muted); }
+html[data-bs-theme="dark"] .cl-grupo-flecha { color: var(--text-muted); }
+html[data-bs-theme="dark"] .cl-item:hover { background: #242b34; }
+html[data-bs-theme="dark"] .cl-item-nombre { color: var(--text-primary); }
+html[data-bs-theme="dark"] .cl-item-fecha { color: var(--text-muted); }
+html[data-bs-theme="dark"] .cl-vacio { color: var(--text-muted); }
+html[data-bs-theme="dark"] .cl-pie span { color: var(--text-muted); }

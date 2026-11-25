@@ -76,6 +76,27 @@
   }
   .contenedor-matriz { overflow: auto; max-height: 65vh; }
 
+  /* Modo noche */
+  html[data-bs-theme="dark"] .tabla-compacta tbody .col-semana,
+  html[data-bs-theme="dark"] .tabla-compacta tbody .col-dia {
+    background-color: var(--surface-alt);
+  }
+  html[data-bs-theme="dark"] .hover-fila,
+  html[data-bs-theme="dark"] .hover-columna {
+    background-color: rgba(120, 140, 160, 0.26) !important;
+  }
+  html[data-bs-theme="dark"] #tablaMatrizPrimerHuevo td.marca-fila,
+  html[data-bs-theme="dark"] #tablaMatrizPrimerHuevo td.marca-columna,
+  html[data-bs-theme="dark"] #tablaMatrizPrimerHuevo th.marca-columna {
+    background-color: rgba(90, 110, 130, 0.42) !important;
+  }
+  html[data-bs-theme="dark"] #tablaMatrizPrimerHuevo td.marca-celda {
+    box-shadow: inset 0 0 0 1px #ffb4a8;
+  }
+  html[data-bs-theme="dark"] #tablaMatrizPrimerHuevo tbody tr.fila-semana > td {
+    border-top-color: #4a5663 !important;
+  }
+  html[data-bs-theme="dark"] .valor-mouse { color: var(--text-secondary); }
   /* Grafico en pantalla completa */
   #fsGrafico:fullscreen,
   #fsGrafico:-webkit-full-screen {

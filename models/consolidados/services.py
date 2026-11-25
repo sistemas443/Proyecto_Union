@@ -132,7 +132,12 @@ def _cortes_produccion() -> dict:
 
 
 def _limpiar_matriz(matriz: dict, nombres: list, cortes: dict) -> None:
-    """Pone en blanco los ceros y corta después de la última fila con datos."""
+    """Pone en blanco los ceros y corta después de la última fila con datos.
+
+    Las celdas pueden ser un valor simple (vistas de una columna por lote) o un
+    diccionario {categoría: valor} (vistas de clasificación con 12 columnas por
+    lote). En el segundo caso se limpia cada categoría por separado.
+    """
     for clave, fila in matriz.items():
         for nombre in nombres:
             if nombre not in fila:
@@ -140,10 +145,20 @@ def _limpiar_matriz(matriz: dict, nombres: list, cortes: dict) -> None:
             valor = fila[nombre]
             if valor is None:
                 continue
+            corte = cortes.get(nombre)
+            if isinstance(valor, dict):
+                for categoria in list(valor):
+                    v = valor[categoria]
+                    if v is None:
+                        continue
+                    if v == 0:
+                        valor[categoria] = None
+                    elif corte is not None and isinstance(clave, (int, float)) and clave > corte:
+                        valor[categoria] = None
+                continue
             if valor == 0:
                 fila[nombre] = None
                 continue
-            corte = cortes.get(nombre)
             if corte is not None and isinstance(clave, (int, float)) and clave > corte:
                 fila[nombre] = None
 
@@ -823,6 +838,77 @@ def get_mort_semanal_detalle() -> dict:
     }
 
 
+def get_mort_general_detalle(anio: int = None) -> dict:
+    """Serie semanal de % mortalidad general (hoja PORCENTAJE MORTALIDAD GENERAL).
+
+    Agrupa los lotes visibles por fecha de cierre de semana, igual que el Excel:
+      - muertes   = suma de mort_sem de los lotes con datos esa semana
+      - saldo     = suma de saldo_ave de esos lotes
+      - pct       = muertes / saldo  (fraccion; el template la muestra en %)
+      - suma_sem  = suma de sem_prod de esos lotes
+    El PROM es el promedio aritmetico de los porcentajes semanales validos.
+    Por defecto se muestra el ultimo anio con datos; `anio` permite elegir otro.
+    """
+    meta = _meta_todos_los_lotes()
+    filas = [f for f in model.fetch_mort_general() if f['lote'] in meta]
+
+    semanas = {}
+    for f in filas:
+        fecha = str(f['fecha_fin_sem']).strip()[:10]
+        if not fecha:
+            continue
+        fila = semanas.setdefault(fecha, {
+            'fecha': fecha,
+            'anio': int(fecha[:4]) if fecha[:4].isdigit() else None,
+            'muertes': 0.0,
+            'saldo': 0.0,
+            'suma_sem': 0.0,
+            'lotes_nombres': set(),
+        })
+        fila['muertes'] += _a_num(f.get('mort_sem')) or 0.0
+        fila['saldo'] += _a_num(f.get('saldo_ave')) or 0.0
+        fila['suma_sem'] += _a_num(f.get('sem_prod')) or 0.0
+        if f['lote']:
+            fila['lotes_nombres'].add(f['lote'])
+
+    resultado = []
+    hoy = date.today().isoformat()
+    for fecha in sorted(semanas):
+        if fecha > hoy:
+            # Semanas que todavía no cierran (la BD las deja creadas con ceros).
+            continue
+        fila = semanas[fecha]
+        if not fila['muertes'] and not fila['saldo']:
+            continue
+        fila['pct'] = (fila['muertes'] / fila['saldo']) if fila['saldo'] else None
+        fila['lotes'] = len(fila['lotes_nombres'])
+        resultado.append(fila)
+
+    anios = sorted({f['anio'] for f in resultado if f['anio']}, reverse=True)
+    if anio is None:
+        anio = anios[0] if anios else None
+    filas_anio = [f for f in resultado if f['anio'] == anio] if anio else resultado
+
+    porcentajes = [f['pct'] for f in filas_anio if f['pct'] is not None]
+    prom = (sum(porcentajes) / len(porcentajes)) if porcentajes else None
+
+    lotes_anio = set()
+    for f in filas_anio:
+        lotes_anio |= f['lotes_nombres']
+    for f in resultado:
+        f.pop('lotes_nombres', None)
+
+    return {
+        'filas': filas_anio,
+        'anio': anio,
+        'anios': anios,
+        'prom': prom,
+        'total_muertes': sum(f['muertes'] for f in filas_anio),
+        'semanas': len(filas_anio),
+        'lotes': len(lotes_anio),
+    }
+
+
 def get_haa_detalle() -> dict:
     """Arma la matriz Semana x Lote de huevos ave alojada (Excel H12).
 
@@ -1415,80 +1501,117 @@ def get_peso_huevo_detalle() -> dict:
     }
 
 
-def get_rotura_huevo_detalle() -> dict:
-    """Arma la matriz Semana x Lote de % rotura (columna roto, ya en %).
+def _matriz_clasificacion(filas: list, categorias) -> dict:
+    """Arma la matriz Semana x Lote con 12 categorías por lote.
 
-    Sin TABLA (la hoja no trae guia). PROM = promedio de incluidos.
-    Incluye solo lotes con al menos un dato no nulo.
+    Cada celda de `matriz[semana][lote]` es un diccionario {clave: valor}.
+    Una categoría puede combinar varias columnas (ROTURA = TOTIA/O + YEMA).
     """
-    filas = model.fetch_rotura_huevo()
-    filas = _aplicar_aves_enc_semana17(filas)
-
     meta = {}
     for f in filas:
-        if f['lote'] and f['lote'] not in meta:
-            fecha = f['fecha_recepcion']
-            meta[f['lote']] = {
-                'nombre': f['lote'],
-                'fecha_enc': fecha.isoformat() if hasattr(fecha, 'isoformat') else (str(fecha) if fecha else ''),
-                'aves_enc': f['aves_enc'],
-            }
+        lote = f.get('lote')
+        if not lote or lote in meta:
+            continue
+        fecha = f['fecha_recepcion']
+        meta[lote] = {
+            'nombre': lote,
+            'fecha_enc': fecha.isoformat() if hasattr(fecha, 'isoformat') else (str(fecha) if fecha else ''),
+            'aves_enc': f['aves_enc'],
+        }
 
-    con_dato = {f['lote'] for f in filas if f['lote'] and _a_num(f['roto']) is not None}
     lotes = sorted(meta.keys())
     semanas = sorted({f['sem_prod'] for f in filas if f['sem_prod'] is not None})
     matriz = {s: {} for s in semanas}
+    con_dato = set()
+
     for f in filas:
-        if f['sem_prod'] is None or not f['lote']:
+        if f['sem_prod'] is None or not f.get('lote'):
             continue
-        matriz[f['sem_prod']][f['lote']] = _a_num(f['roto'])
+        valores = {}
+        for clave, _titulo, columnas in categorias:
+            partes = [_a_num(f.get(columna)) for columna in columnas]
+            presentes = [p for p in partes if p is not None]
+            if not presentes:
+                valores[clave] = None
+                continue
+            valores[clave] = sum(presentes)
+            con_dato.add(f['lote'])
+        matriz[f['sem_prod']][f['lote']] = valores
 
     return {
         'lotes': [meta[l] for l in lotes],
         'semanas': semanas,
+        'categorias': [{'clave': c[0], 'titulo': c[1]} for c in categorias],
         'matriz': matriz,
         'con_dato': sorted(con_dato),
     }
 
 
-def get_acumulados_clasificadora_detalle(categoria: str = 'SEGUNDAS') -> dict:
-    """Arma la matriz Semana x Lote del % de la categoria elegida.
+# Estructura de la hoja "% SEMANAL ROTURA DE HUEVO": 10 categorías + ROTURA
+# (TOTIA/O + YEMA) + SEGUNDAS + % H Grande (JUM + EXTRA + AA).
+CATEGORIAS_ROTURA = (
+    ('JUM', 'JUM', ('porc_sem_jum',)),
+    ('EXTRA', 'EXTRA', ('porc_sem_extra',)),
+    ('AA', 'A A', ('porc_sem_aa',)),
+    ('A', 'A', ('porc_sem_a',)),
+    ('B', 'B', ('porc_sem_b',)),
+    ('C', 'C', ('porc_sem_c',)),
+    ('SUCIO', 'SUCIO', ('porc_sem_sucio',)),
+    ('TOTIAO', 'TOTIA/O', ('porc_sem_totiao',)),
+    ('YEMA', 'YEMA', ('porc_sem_yema',)),
+    ('ROTURA', 'ROTURA', ('porc_sem_totiao', 'porc_sem_yema')),
+    ('SEGUNDAS', 'SEGUNDAS', ('porc_sem_segundas',)),
+    ('H_GRANDE', '% H Grande', ('porc_sem_jum', 'porc_sem_extra', 'porc_sem_aa')),
+)
 
-    Categoria validada contra whitelist de model. Sin TABLA.
-    PROM = promedio de incluidos (calculado por JS).
+# Estructura de la hoja "% ACOMULADOS CLASIFICACIÓN": las mismas categorías
+# acumuladas y, en la última columna, el peso promedio del huevo.
+CATEGORIAS_ACUMULADA = (
+    ('JUM', 'JUM', ('porc_acu_jum',)),
+    ('EXTRA', 'EXTRA', ('porc_acu_extra',)),
+    ('AA', 'A A', ('porc_acu_aa',)),
+    ('A', 'A', ('porc_acu_a',)),
+    ('B', 'B', ('porc_acu_b',)),
+    ('C', 'C', ('porc_acu_c',)),
+    ('SUCIO', 'SUCIO', ('porc_acu_sucio',)),
+    ('TOTIAO', 'TOTIA/O', ('porc_acu_totiao',)),
+    ('YEMA', 'YEMA', ('porc_acu_yema',)),
+    ('ROTURA', 'ROTURA', ('porc_acu_totiao', 'porc_acu_yema')),
+    ('SEGUNDAS', 'SEGUNDAS', ('porc_acu_segundas',)),
+    ('PESO_H', 'Peso H. prom', ('peso_huevo_real',)),
+)
+
+
+def get_rotura_huevo_detalle() -> dict:
+    """Clasificación semanal por lote (hoja "% SEMANAL ROTURA DE HUEVO").
+
+    12 columnas por lote, igual que el Excel. ROTURA y % H Grande se calculan
+    sumando sus componentes. Sin columna PROM (el Excel no la trae).
     """
-    from models.consolidados.model import CATEGORIAS_CLASIFICACION
-    if categoria not in CATEGORIAS_CLASIFICACION:
-        categoria = 'SEGUNDAS'
-    filas = model.fetch_acumulados_clasificadora(categoria)
-    filas = _aplicar_aves_enc_semana17(filas)
+    filas = _aplicar_aves_enc_semana17(model.fetch_rotura_huevo())
+    return _matriz_clasificacion(filas, CATEGORIAS_ROTURA)
 
-    meta = {}
-    for f in filas:
-        if f['lote'] and f['lote'] not in meta:
-            fecha = f['fecha_recepcion']
-            meta[f['lote']] = {
-                'nombre': f['lote'],
-                'fecha_enc': fecha.isoformat() if hasattr(fecha, 'isoformat') else (str(fecha) if fecha else ''),
-                'aves_enc': f['aves_enc'],
-            }
 
-    con_dato = {f['lote'] for f in filas if f['lote'] and _a_num(f['valor']) is not None}
-    lotes = sorted(meta.keys())
-    semanas = sorted({f['sem_prod'] for f in filas if f['sem_prod'] is not None})
-    matriz = {s: {} for s in semanas}
-    for f in filas:
-        if f['sem_prod'] is None or not f['lote']:
-            continue
-        matriz[f['sem_prod']][f['lote']] = _a_num(f['valor'])
+def get_acumulados_clasificadora_detalle(categoria: str = None) -> dict:
+    """Clasificación acumulada por lote (hoja "% ACOMULADOS CLASIFICACIÓN").
 
+    12 columnas por lote: las 11 categorías acumuladas y "Peso H. prom".
+    El parámetro `categoria` se conserva por compatibilidad y no se usa.
+    """
+    filas = _aplicar_aves_enc_semana17(model.fetch_acumulados_clasificacion())
+    return _matriz_clasificacion(filas, CATEGORIAS_ACUMULADA)
+
+
+def matriz_grafico_clasificacion(datos: dict, clave: str = 'ROTURA') -> dict:
+    """Matriz simple semana x lote de una categoría, para el gráfico histórico."""
+    matriz = datos.get('matriz') or {}
+    semanas = datos.get('semanas') or sorted(matriz)
     return {
-        'lotes': [meta[l] for l in lotes],
-        'semanas': semanas,
-        'matriz': matriz,
-        'con_dato': sorted(con_dato),
-        'categoria': categoria,
-        'categorias': sorted(CATEGORIAS_CLASIFICACION.keys()),
+        str(semana): {
+            lote: (matriz.get(semana, {}).get(lote) or {}).get(clave)
+            for lote in (matriz.get(semana) or {})
+        }
+        for semana in semanas
     }
 
 
