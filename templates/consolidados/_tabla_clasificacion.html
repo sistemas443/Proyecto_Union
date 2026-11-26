@@ -164,16 +164,7 @@
     </table>
   </div>
 
-  {% set graf_id = 'Clasif' ~ tabla_id|replace('tabla', '') %}
-  {% set graf_titulo = '% de rotura' %}
-  {% set graf_encabezado = grafico_titulo|default('ROTURA por lote') %}
-  {% set graf_dec = 2 %}
-  {% set graf_sufijo = '%' %}
-  {% set graf_factor = 1 %}
-  {% set graf_contenedor = contenedor_id %}
-  {% set graf_panel = 0 %}
-  {% set graf_matriz = datos.grafico %}
-  {% include 'consolidados/_grafico_historico.html' %}
+  {% include 'consolidados/_graficos_clasificacion.html' %}
 </div>
 
 <script>
