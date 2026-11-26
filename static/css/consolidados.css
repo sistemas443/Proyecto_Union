@@ -73,6 +73,16 @@
 }
 .tabla-compacta thead th.col-excluida { background-color: #6c757d !important; }
 
+/* Encabezado del lote según la variedad (mismo criterio de Primer Huevo) */
+.tabla-compacta th.lote-hyline {
+  background-color: #4472C4 !important;
+  color: #fff !important;
+}
+.tabla-compacta th.lote-lohmann {
+  background-color: #ED7D31 !important;
+  color: #fff !important;
+}
+
 /* Encabezado: las celdas vacías de las dos primeras filas forman un bloque continuo */
 .tabla-compacta thead tr:first-child th.col-total,
 .tabla-compacta thead tr:first-child th.col-nro,

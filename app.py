@@ -199,6 +199,17 @@ def create_app():
             return ''
 
     app.jinja_env.filters['miles'] = miles
+
+    def clase_variedad(variedad):
+        """Clase CSS del encabezado de lote según la variedad."""
+        v = (variedad or '').upper()
+        if 'LOHMANN' in v:
+            return 'lote-lohmann'
+        if 'HY LINE' in v:
+            return 'lote-hyline'
+        return ''
+
+    app.jinja_env.filters['clase_variedad'] = clase_variedad
     # ---------------------------------------
 
     app.config.from_object(Config)

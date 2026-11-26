@@ -41,7 +41,7 @@
           <th class="col-prom">PROM</th>
           <th class="col-tabla">TABLA</th>
           {% for l in datos.lotes %}
-          <th class="col-lote">
+          <th class="col-lote {{ l.variedad|clase_variedad }}">
             <input type="checkbox" class="chk-incluir form-check-input me-1" data-lote="{{ l.nombre }}">
             {{ l.nombre }}
           </th>

@@ -41,7 +41,7 @@
           <th class="col-total">TOTALES</th>
           <th class="col-nro">NRO</th>
           {% for l in datos.lotes %}
-          <th class="col-lote">
+          <th class="col-lote {{ l.variedad|clase_variedad }}">
             <input type="checkbox" class="chk-incluir form-check-input me-1" data-lote="{{ l.nombre }}"
                    {% if loop.index <= 5 %}checked{% endif %}>
             {{ l.nombre }}
