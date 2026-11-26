@@ -95,14 +95,6 @@
           hoverformat: ',.2f'
         },
         hovermode: 'closest',
-        legend: {
-          orientation: 'h',
-          x: 0.5,
-          xanchor: 'center',
-          y: 1.02,
-          yanchor: 'bottom',
-          font: { size: 10 }
-        },
         paper_bgcolor: '#ffffff',
         plot_bgcolor: '#ffffff'
       };
@@ -133,6 +125,32 @@
       return categorias.filter(function (c) { return c.clave === clave; })[0];
     }
 
+    // Leyenda propia (HTML) encima del gráfico: la de Plotly se dibujaba dentro
+    // del área de trazado en pantalla completa y las líneas la atravesaban.
+    function crearLeyenda(contenedor) {
+      if (contenedor._leyendaEl) return contenedor._leyendaEl;
+      var div = document.createElement('div');
+      div.className = 'cons-leyenda';
+      contenedor.parentNode.insertBefore(div, contenedor);
+      contenedor._leyendaEl = div;
+      return div;
+    }
+
+    function pintarLeyenda(contenedor) {
+      var div = crearLeyenda(contenedor);
+      while (div.firstChild) div.removeChild(div.firstChild);
+      lotesOrden.forEach(function (lote, indice) {
+        if (!contenedor._seleccion.has(lote)) return;
+        var color = COLORES[indice % COLORES.length];
+        var item = document.createElement('span');
+        var marca = document.createElement('i');
+        marca.style.background = color;
+        item.appendChild(marca);
+        item.appendChild(document.createTextNode(String(lote)));
+        div.appendChild(item);
+      });
+    }
+
     // Alterna la visibilidad de las trazas ya creadas (barato).
     function aplicarSeleccion(contenedor) {
       if (!contenedor._trazas) return;
@@ -159,6 +177,8 @@
       }
       contenedor._flags = flags;
 
+      if (!previos || indices.length) pintarLeyenda(contenedor);
+
       // El aviso "Selecciona al menos un lote" es una capa CSS: no re-layout.
       contenedor.classList.toggle('sin-lotes', sinLotes);
     }
@@ -173,13 +193,12 @@
         contenedor._trazas = trazasDe(contenedor, categoria, seleccion);
         // Estado inicial conocido: la visibilidad con la que nacieron las trazas.
         contenedor._flags = lotesOrden.map(function (lote) { return seleccion.has(lote); });
-        contenedor._leyenda = false;
+        crearLeyenda(contenedor);
+        pintarLeyenda(contenedor);
         window.Plotly.react(contenedor, contenedor._trazas, contenedor._layout, CONFIG_PLOT)
           .then(function () {
             contenedor.dataset.dibujado = '1';
             aplicarSeleccion(contenedor);
-            // Si el primer dibujo termina ya en pantalla completa, se pone la leyenda.
-            ajustarLeyenda();
           });
         return;
       }
@@ -259,30 +278,6 @@
         window.pantallaCompletaGrafico(card.id, contenedor.id, boton.id);
       });
     });
-
-    // La leyenda con los 31 lotes solo cabe en pantalla completa: en la
-    // tarjeta pequeña taparía el gráfico (los nombres siguen en el tooltip).
-    function ajustarLeyenda() {
-      var activo = document.fullscreenElement || document.webkitFullscreenElement;
-      contenedores.forEach(function (contenedor) {
-        var card = contenedor.closest('.card');
-        if (!card || contenedor.dataset.dibujado !== '1') return;
-        var mostrar = card === activo;
-        if (mostrar !== contenedor._leyenda) {
-          contenedor._leyenda = mostrar;
-          window.Plotly.relayout(contenedor, {
-            showlegend: mostrar,
-            // En pantalla completa se reserva arriba el alto de la leyenda.
-            margin: mostrar
-              ? { l: 56, r: 16, t: 84, b: 48 }
-              : { l: 46, r: 10, t: 6, b: 46 }
-          });
-        }
-      });
-    }
-
-    document.addEventListener('fullscreenchange', ajustarLeyenda);
-    document.addEventListener('webkitfullscreenchange', ajustarLeyenda);
 
     if ('IntersectionObserver' in window) {
       // Render diferido: cada gráfico se dibuja al entrar en pantalla.
