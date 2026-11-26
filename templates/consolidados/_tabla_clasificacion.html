@@ -185,17 +185,38 @@
       document.querySelectorAll('#clasifChecks .chk-incluir[data-lote]')
     );
     const botones = Array.prototype.slice.call(document.querySelectorAll('.clasif-cat'));
+    const botonTodas = botones.find(function (b) { return b.dataset.cat === 'TODAS'; });
+    const botonesCat = botones.filter(function (b) { return b.dataset.cat !== 'TODAS'; });
+    const clavesCat = botonesCat.map(function (b) { return b.dataset.cat; });
     const estado = document.getElementById('clasifEstado');
-    let columna = 'TODAS';
+
+    // Varias columnas se pueden mostrar a la vez. Arranca con todas.
+    let seleccionCat = new Set(clavesCat);
 
     function seleccionados() {
       return new Set(checks.filter(function (c) { return c.checked; })
         .map(function (c) { return c.dataset.lote; }));
     }
 
+    function titulosSeleccionados() {
+      return clavesCat.filter(function (clave) { return seleccionCat.has(clave); })
+        .map(function (clave) {
+          const boton = botonesCat.find(function (b) { return b.dataset.cat === clave; });
+          return boton ? boton.textContent.trim() : clave;
+        });
+    }
+
+    function pintarBotones() {
+      const todas = seleccionCat.size === clavesCat.length;
+      botonesCat.forEach(function (boton) {
+        boton.classList.toggle('activo', !todas && seleccionCat.has(boton.dataset.cat));
+      });
+      if (botonTodas) botonTodas.classList.toggle('activo', todas);
+    }
+
     function aplicar() {
       const sel = seleccionados();
-      const todas = columna === 'TODAS';
+      const todasCat = seleccionCat.size === clavesCat.length;
 
       tabla.querySelectorAll('[data-b]').forEach(function (celda) {
         celda.classList.toggle('cl-oculto', !sel.has(celda.dataset.b));
@@ -206,25 +227,27 @@
           celda.classList.add('cl-oculto');
           return;
         }
-        celda.classList.toggle('cl-oculto', !todas && celda.dataset.cat !== columna);
+        celda.classList.toggle('cl-oculto', !seleccionCat.has(celda.dataset.cat));
       });
 
+      const columnas = Math.max(seleccionCat.size, 1);
       tabla.querySelectorAll('th[colspan][data-b]').forEach(function (th) {
-        th.setAttribute('colspan', todas ? '12' : '1');
+        th.setAttribute('colspan', String(columnas));
       });
 
       tabla.querySelectorAll('.clasif-fila-fecha, .clasif-fila-aves').forEach(function (tr) {
-        tr.classList.toggle('cl-oculto', !todas);
+        tr.classList.toggle('cl-oculto', !todasCat);
       });
 
       if (estado) {
         if (!sel.size) {
           estado.textContent = 'No hay lotes seleccionados.';
         } else {
-          const activo = botones.find(function (b) { return b.classList.contains('activo'); });
-          const etiqueta = activo ? activo.textContent.trim() : 'TODAS';
+          const detalle = todasCat
+            ? 'todas las columnas'
+            : 'columnas: ' + titulosSeleccionados().join(', ');
           estado.textContent = 'Mostrando ' + sel.size + ' de ' + checks.length + ' lotes \u00b7 ' +
-            (todas ? 'todas las columnas' : 'columna ' + etiqueta) + '.';
+            detalle + '.';
         }
       }
     }
@@ -233,14 +256,35 @@
       chk.addEventListener('change', aplicar);
     });
 
-    botones.forEach(function (boton) {
+    botonesCat.forEach(function (boton) {
       boton.addEventListener('click', function () {
-        columna = boton.dataset.cat;
-        botones.forEach(function (b) { b.classList.toggle('activo', b === boton); });
+        const clave = boton.dataset.cat;
+        const todasActivas = seleccionCat.size === clavesCat.length;
+
+        if (todasActivas) {
+          // Primer clic sobre una columna: mostrar solo esa.
+          seleccionCat = new Set([clave]);
+        } else if (seleccionCat.has(clave)) {
+          // Si quedaria vacio, se conserva la ultima.
+          if (seleccionCat.size > 1) seleccionCat.delete(clave);
+        } else {
+          seleccionCat.add(clave);
+        }
+
+        pintarBotones();
         aplicar();
       });
     });
 
+    if (botonTodas) {
+      botonTodas.addEventListener('click', function () {
+        seleccionCat = new Set(clavesCat);
+        pintarBotones();
+        aplicar();
+      });
+    }
+
+    pintarBotones();
     aplicar();
 
     const cont = document.getElementById('{{ contenedor_id }}');
