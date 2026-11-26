@@ -16,7 +16,6 @@
   window.__consolidadosGraficoHistorico = true;
 
   var SELECTOR_CHECK = '.chk-incluir[data-lote]';
-  var LOTE_POR_DEFECTO = 5;
 
   var COLORES = [
     '#2f7ed8', '#e07b39', '#3ba55d', '#c0392b', '#8e44ad',
@@ -330,19 +329,6 @@
       if (!boton || !g.card || !window.pantallaCompletaGrafico) return;
       boton.addEventListener('click', function () {
         window.pantallaCompletaGrafico(g.card.id, g.cont.id, boton.id);
-      });
-    });
-
-    // Arranque: si una tabla no trae lotes marcados, se incluyen los primeros
-    // para que su gráfico y sus promedios no salgan vacíos.
-    graficos.forEach(function (g) {
-      var checks = Array.prototype.slice.call(document.querySelectorAll(g.selector));
-      if (!checks.length) return;
-      var hay = checks.some(function (chk) { return chk.checked; });
-      if (hay) return;
-      checks.slice(0, LOTE_POR_DEFECTO).forEach(function (chk) {
-        chk.checked = true;
-        chk.dispatchEvent(new Event('change', { bubbles: true }));
       });
     });
 

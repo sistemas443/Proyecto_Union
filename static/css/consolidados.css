@@ -71,7 +71,9 @@
   overflow: visible;
   text-overflow: clip;
 }
-.tabla-compacta thead th.col-excluida { background-color: #6c757d !important; }
+.tabla-compacta thead th.col-excluida:not(.col-lote):not(.col-lote-nombre) {
+  background-color: #6c757d !important;
+}
 
 /* Encabezado del lote según la variedad (mismo criterio de Primer Huevo) */
 .tabla-compacta thead th.lote-hyline {
@@ -81,11 +83,6 @@
 .tabla-compacta thead th.lote-lohmann {
   background-color: #ED7D31 !important;
   color: #fff !important;
-}
-/* Lote excluido: conserva el color de su variedad, solo se atenúa */
-.tabla-compacta thead th.lote-hyline.col-excluida,
-.tabla-compacta thead th.lote-lohmann.col-excluida {
-  opacity: 0.55;
 }
 
 /* Encabezado: las celdas vacías de las dos primeras filas forman un bloque continuo */
@@ -568,7 +565,7 @@ html[data-bs-theme="dark"] .tabla-compacta tbody td.marca-celda {
   background-color: #45535f !important;
   box-shadow: inset 0 0 0 1px #ffb4a8;
 }
-html[data-bs-theme="dark"] .tabla-compacta thead th.col-excluida:not(.lote-hyline):not(.lote-lohmann) {
+html[data-bs-theme="dark"] .tabla-compacta thead th.col-excluida:not(.col-lote):not(.col-lote-nombre) {
   background-color: #3a444f !important;
   color: #9aa5b1;
 }
