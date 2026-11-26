@@ -6,10 +6,14 @@
  * cambio en la barra de lotes actualiza las tarjetas.
  *
  * Rendimiento: las trazas de los 31 lotes se crean una sola vez por tarjeta y
- * los filtros solo alternan su visibilidad con Plotly.restyle (~35 ms por
+ * los filtros solo alternan su visibilidad con Plotly.restyle (~60 ms por
  * gráfico). Rehacer las trazas con Plotly.react costaba ~200 ms por tarjeta.
  * Además cada tarjeta se dibuja solo al entrar en pantalla y en su propio
  * frame, para que la tabla responda primero.
+ *
+ * Se usa SVG (tipo 'scatter'), no 'scattergl': el lienzo WebGL se pierde al
+ * cambiar la visibilidad o al redimensionar (pantalla completa) y el gráfico
+ * quedaba dibujado con los ejes pero sin líneas.
  */
 (function () {
   'use strict';
@@ -32,17 +36,6 @@
     var fuente = document.getElementById('datos-clasificacion');
     var contenedores = Array.prototype.slice.call(document.querySelectorAll('.js-grafico-cat'));
     if (!fuente || !contenedores.length || !window.Plotly) return;
-
-    // WebGL dibuja más rápido con varias decenas de trazas.
-    var usarGL = (function () {
-      try {
-        var lienzo = document.createElement('canvas');
-        return !!(window.WebGLRenderingContext &&
-          (lienzo.getContext('webgl') || lienzo.getContext('experimental-webgl')));
-      } catch (e) {
-        return false;
-      }
-    })();
 
     var datos;
     try { datos = JSON.parse(fuente.textContent); } catch (e) { return; }
@@ -115,18 +108,20 @@
       };
     }
 
-    // Trazas fijas de la tarjeta: todos los lotes, inicialmente invisibles.
-    function trazasDe(contenedor, categoria) {
+    // Trazas fijas de la tarjeta: un traza por lote, visible según la selección.
+    // Se usa SVG (no scattergl): el lienzo WebGL se pierde tras restyle/resize
+    // y el gráfico queda vacío al entrar a pantalla completa.
+    function trazasDe(contenedor, categoria, seleccion) {
       contenedor._layout = layoutDe(categoria);
       return lotesOrden.map(function (lote, indice) {
         var color = COLORES[indice % COLORES.length];
         return {
           x: semanas,
           y: serieDe(lote, categoria.clave),
-          type: usarGL ? 'scattergl' : 'scatter',
+          type: 'scatter',
           mode: 'lines+markers',
           name: lote,
-          visible: false,
+          visible: seleccion.has(lote),
           connectgaps: false,
           line: { width: 1.6, color: color },
           marker: { size: 3, color: color }
@@ -173,15 +168,18 @@
       var categoria = categoriaDe(contenedor.dataset.cat);
       if (!categoria) return;
       if (!contenedor._trazas) {
-        contenedor._seleccion = new Set(seleccionados());
-        contenedor._trazas = trazasDe(contenedor, categoria);
-        // Todas las trazas nacen invisibles: ese es el estado inicial conocido.
-        contenedor._flags = lotesOrden.map(function () { return false; });
+        var seleccion = contenedor._seleccion || new Set(seleccionados());
+        contenedor._seleccion = seleccion;
+        contenedor._trazas = trazasDe(contenedor, categoria, seleccion);
+        // Estado inicial conocido: la visibilidad con la que nacieron las trazas.
+        contenedor._flags = lotesOrden.map(function (lote) { return seleccion.has(lote); });
         contenedor._leyenda = false;
         window.Plotly.react(contenedor, contenedor._trazas, contenedor._layout, CONFIG_PLOT)
           .then(function () {
             contenedor.dataset.dibujado = '1';
             aplicarSeleccion(contenedor);
+            // Si el primer dibujo termina ya en pantalla completa, se pone la leyenda.
+            ajustarLeyenda();
           });
         return;
       }
