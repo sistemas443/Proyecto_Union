@@ -25,6 +25,42 @@
     font-weight: 700;
   }
   .cl-barra .cl-resumen strong { white-space: nowrap; }
+
+  /* Filtro por columna (categoría) */
+  .clasif-columnas {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin: 0.55rem 0 0.2rem;
+  }
+  .clasif-etiqueta {
+    font-size: 0.68rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #41505f;
+    margin-right: 0.25rem;
+  }
+  .clasif-sep { width: 1px; height: 22px; background: #dee2e6; margin: 0 0.2rem; }
+  .clasif-cat {
+    border: 1px solid transparent;
+    border-radius: 7px;
+    padding: 0.3rem 0.55rem;
+    font-size: 0.66rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    opacity: 0.45;
+    transition: opacity 0.15s ease, box-shadow 0.15s ease;
+  }
+  .clasif-cat:hover { opacity: 0.8; }
+  .clasif-cat.activo { opacity: 1; box-shadow: 0 3px 8px rgba(16, 24, 40, 0.22); }
+  .clasif-cat-verde { background: #2f7d4f; color: #fff; }
+  .clasif-cat-naranja { background: #d18b00; color: #fff; }
+  .clasif-cat-neutro { background: #fff; color: #41505f; border-color: #c9d2dd; }
+  .clasif-cat-neutro.activo { background: #212529; border-color: #212529; color: #fff; }
+  .clasif-estado { font-size: 0.72rem; color: #6c757d; margin: 0.25rem 0 0.4rem; }
 </style>
 
 <div class="container-fluid px-4 py-3 h-100 d-flex flex-column">
@@ -37,25 +73,40 @@
     </h5>
   </div>
 
-  {% if datos.con_dato %}
-  <div class="alert alert-info py-1 mb-2" style="font-size: 0.76rem;">
-    Lotes con datos: {{ datos.con_dato | join(', ') }}
-  </div>
-  {% else %}
+  {% if not datos.con_dato %}
   <div class="alert alert-warning py-1 mb-2" style="font-size: 0.76rem;">
     Sin datos de clasificación registrados.
   </div>
   {% endif %}
 
-  <div class="cl-barra" id="filtroVariedad">
-    <div class="cl-resumen">
-      <strong>Filtrar por variedad</strong>
-    </div>
-    <div class="cl-acciones">
-      <button type="button" class="cl-filtro activo" data-variedad="TODAS">TODAS</button>
-      <button type="button" class="cl-filtro" data-variedad="HY LINE">HY LINE</button>
-      <button type="button" class="cl-filtro" data-variedad="LOHMANN">LOHMANN</button>
-    </div>
+  {% include 'consolidados/_panel_lotes.html' %}
+
+  <div class="d-none" id="clasifChecks">
+    {% for l in datos.lotes %}
+    <input type="checkbox" class="chk-incluir" data-lote="{{ l.nombre }}" checked>
+    {% endfor %}
+  </div>
+
+  {% set grupos_cat = {
+      'JUM': 'verde', 'EXTRA': 'verde', 'AA': 'verde', 'A': 'verde', 'B': 'verde', 'C': 'verde',
+      'SUCIO': 'naranja', 'TOTIAO': 'naranja', 'YEMA': 'naranja', 'ROTURA': 'naranja', 'SEGUNDAS': 'naranja'
+  } %}
+  <div class="clasif-columnas">
+    <span class="clasif-etiqueta">Columna</span>
+    <button type="button" class="clasif-cat clasif-cat-neutro activo" data-cat="TODAS">TODAS</button>
+    <span class="clasif-sep" aria-hidden="true"></span>
+    {% set grupo_previo = namespace(valor='') %}
+    {% for c in datos.categorias %}
+    {% set grupo = grupos_cat.get(c.clave, 'neutro') %}
+    {% if grupo != grupo_previo.valor %}
+    {% if not loop.first %}<span class="clasif-sep" aria-hidden="true"></span>{% endif %}
+    {% set grupo_previo.valor = grupo %}
+    {% endif %}
+    <button type="button" class="clasif-cat clasif-cat-{{ grupo }}" data-cat="{{ c.clave }}">{{ c.titulo }}</button>
+    {% endfor %}
+  </div>
+  <div class="clasif-estado" id="clasifEstado">
+    Mostrando {{ datos.lotes|length }} de {{ datos.lotes|length }} lotes &middot; todas las columnas.
   </div>
 
   <div class="cons-tabla-barra">
@@ -66,14 +117,14 @@
 
   <div class="contenedor-matriz shadow-sm border rounded mt-1" id="{{ contenedor_id }}">
     <table class="table table-sm table-bordered mb-0 tabla-compacta" id="{{ tabla_id }}">      <thead>
-        <tr>
+        <tr class="clasif-fila-fecha">
           <th class="col-semana col-titulo">FECHA ENCACETAMIENTO</th>
           {%- for l in datos.lotes %}
           {%- set var = (l.variedad or '')|upper %}
           <th colspan="12" data-b="{{ l.nombre }}" data-variedad="{{ var }}">{{ l.fecha_enc if l.fecha_enc else '' }}</th>
           {%- endfor %}
         </tr>
-        <tr>
+        <tr class="clasif-fila-aves">
           <th class="col-semana col-titulo">AVES ENCACETADAS</th>
           {%- for l in datos.lotes %}
           <th colspan="12" data-b="{{ l.nombre }}">{{ '{:,.0f}'.format(l.aves_enc).replace(',', '.') if l.aves_enc is not none else '' }}</th>
@@ -91,7 +142,7 @@
           <th class="col-semana">SEMANA</th>
           {%- for l in datos.lotes %}
           {%- for c in datos.categorias %}
-          <th class="c" data-b="{{ l.nombre }}">{{ c.titulo }}</th>
+          <th class="c" data-b="{{ l.nombre }}" data-cat="{{ c.clave }}">{{ c.titulo }}</th>
           {%- endfor %}
           {%- endfor %}
         </tr>
@@ -104,7 +155,7 @@
           {%- set fila = datos.matriz.get(s, {}).get(l.nombre, {}) %}
           {%- for c in datos.categorias %}
           {%- set v = fila.get(c.clave) %}
-          <td class="c num" data-b="{{ l.nombre }}">{% if v is not none %}{{ '{:,.2f}'.format(v) }}{% endif %}</td>
+          <td class="c num" data-b="{{ l.nombre }}" data-cat="{{ c.clave }}">{% if v is not none %}{{ '{:,.2f}'.format(v) }}{% endif %}</td>
           {%- endfor %}
           {%- endfor %}
         </tr>
@@ -128,26 +179,69 @@
 <script>
   document.addEventListener('DOMContentLoaded', function () {
     const tabla = document.getElementById('{{ tabla_id }}');
-    const barra = document.getElementById('filtroVariedad');
-    if (!tabla || !barra) return;
+    if (!tabla) return;
 
-    const variedades = {};
-    tabla.querySelectorAll('[data-b][data-variedad]').forEach(function (celda) {
-      variedades[celda.dataset.b] = celda.dataset.variedad || '';
+    const checks = Array.prototype.slice.call(
+      document.querySelectorAll('#clasifChecks .chk-incluir[data-lote]')
+    );
+    const botones = Array.prototype.slice.call(document.querySelectorAll('.clasif-cat'));
+    const estado = document.getElementById('clasifEstado');
+    let columna = 'TODAS';
+
+    function seleccionados() {
+      return new Set(checks.filter(function (c) { return c.checked; })
+        .map(function (c) { return c.dataset.lote; }));
+    }
+
+    function aplicar() {
+      const sel = seleccionados();
+      const todas = columna === 'TODAS';
+
+      tabla.querySelectorAll('[data-b]').forEach(function (celda) {
+        celda.classList.toggle('cl-oculto', !sel.has(celda.dataset.b));
+      });
+
+      tabla.querySelectorAll('.c[data-cat]').forEach(function (celda) {
+        if (!sel.has(celda.dataset.b)) {
+          celda.classList.add('cl-oculto');
+          return;
+        }
+        celda.classList.toggle('cl-oculto', !todas && celda.dataset.cat !== columna);
+      });
+
+      tabla.querySelectorAll('th[colspan][data-b]').forEach(function (th) {
+        th.setAttribute('colspan', todas ? '12' : '1');
+      });
+
+      tabla.querySelectorAll('.clasif-fila-fecha, .clasif-fila-aves').forEach(function (tr) {
+        tr.classList.toggle('cl-oculto', !todas);
+      });
+
+      if (estado) {
+        if (!sel.size) {
+          estado.textContent = 'No hay lotes seleccionados.';
+        } else {
+          const activo = botones.find(function (b) { return b.classList.contains('activo'); });
+          const etiqueta = activo ? activo.textContent.trim() : 'TODAS';
+          estado.textContent = 'Mostrando ' + sel.size + ' de ' + checks.length + ' lotes \u00b7 ' +
+            (todas ? 'todas las columnas' : 'columna ' + etiqueta) + '.';
+        }
+      }
+    }
+
+    checks.forEach(function (chk) {
+      chk.addEventListener('change', aplicar);
     });
 
-    barra.querySelectorAll('.cl-filtro').forEach(function (boton) {
+    botones.forEach(function (boton) {
       boton.addEventListener('click', function () {
-        const filtro = boton.dataset.variedad;
-        barra.querySelectorAll('.cl-filtro').forEach(function (b) {
-          b.classList.toggle('activo', b === boton);
-        });
-        tabla.querySelectorAll('[data-b]').forEach(function (celda) {
-          const variedad = variedades[celda.dataset.b] || '';
-          celda.classList.toggle('cl-oculto', filtro !== 'TODAS' && variedad.indexOf(filtro) === -1);
-        });
+        columna = boton.dataset.cat;
+        botones.forEach(function (b) { b.classList.toggle('activo', b === boton); });
+        aplicar();
       });
     });
+
+    aplicar();
 
     const cont = document.getElementById('{{ contenedor_id }}');
     if (cont && window.ResizeObserver) {
