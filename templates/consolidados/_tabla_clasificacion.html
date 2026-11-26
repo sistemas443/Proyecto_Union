@@ -61,6 +61,22 @@
   .clasif-cat-neutro { background: #fff; color: #41505f; border-color: #c9d2dd; }
   .clasif-cat-neutro.activo { background: #212529; border-color: #212529; color: #fff; }
   .clasif-estado { font-size: 0.72rem; color: #6c757d; margin: 0.25rem 0 0.4rem; }
+
+  /* Columnas por grupo: tamaños verde, defectos naranja (igual que los botones) */
+  #{{ tabla_id }} thead th.clasif-grupo-verde {
+    background-color: #2f7d4f !important;
+    color: #fff !important;
+  }
+  #{{ tabla_id }} thead th.clasif-grupo-naranja {
+    background-color: #d18b00 !important;
+    color: #fff !important;
+  }
+  #{{ tabla_id }} tbody td.clasif-grupo-verde {
+    background-image: linear-gradient(rgba(47, 125, 79, 0.10), rgba(47, 125, 79, 0.10));
+  }
+  #{{ tabla_id }} tbody td.clasif-grupo-naranja {
+    background-image: linear-gradient(rgba(209, 139, 0, 0.12), rgba(209, 139, 0, 0.12));
+  }
 </style>
 
 <div class="container-fluid px-4 py-3 h-100 d-flex flex-column">
@@ -142,7 +158,7 @@
           <th class="col-semana">SEMANA</th>
           {%- for l in datos.lotes %}
           {%- for c in datos.categorias %}
-          <th class="c" data-b="{{ l.nombre }}" data-cat="{{ c.clave }}">{{ c.titulo }}</th>
+          <th class="c clasif-grupo-{{ grupos_cat.get(c.clave, 'neutro') }}" data-b="{{ l.nombre }}" data-cat="{{ c.clave }}">{{ c.titulo }}</th>
           {%- endfor %}
           {%- endfor %}
         </tr>
@@ -155,7 +171,7 @@
           {%- set fila = datos.matriz.get(s, {}).get(l.nombre, {}) %}
           {%- for c in datos.categorias %}
           {%- set v = fila.get(c.clave) %}
-          <td class="c num" data-b="{{ l.nombre }}" data-cat="{{ c.clave }}">{% if v is not none %}{{ '{:,.2f}'.format(v) }}{% endif %}</td>
+          <td class="c num clasif-grupo-{{ grupos_cat.get(c.clave, 'neutro') }}" data-b="{{ l.nombre }}" data-cat="{{ c.clave }}">{% if v is not none %}{{ '{:,.2f}'.format(v) }}{% endif %}</td>
           {%- endfor %}
           {%- endfor %}
         </tr>
