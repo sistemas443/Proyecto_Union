@@ -2,19 +2,60 @@
   Grilla de gráficos por categoría de clasificación.
   Se incluye después de la tabla; cada tarjeta toma su serie de datos.matriz
   y se redibuja cuando cambia la selección de lotes (#clasifChecks).
+  En pantalla completa, la barra de lotes (#clLotes) se mueve dentro de la
+  tarjeta mediante data-barra.
 -#}
+{% set colores_cat = {
+    'JUM': '#1f77b4',
+    'EXTRA': '#d95f02',
+    'AA': '#1b9e77',
+    'A': '#e7298a',
+    'B': '#7570b3',
+    'C': '#a6761d',
+    'SUCIO': '#5a5a5a',
+    'TOTIAO': '#e6ab02',
+    'YEMA': '#b2182b',
+    'ROTURA': '#2166ac',
+    'SEGUNDAS': '#4d9221',
+    'H_GRANDE': '#8c510a'
+} %}
+{% set categorias_color = [] %}
+{% for c in datos.categorias %}
+{% set _ = categorias_color.append({
+    'clave': c.clave,
+    'titulo': c.titulo,
+    'color': colores_cat.get(c.clave, '#41505f')
+}) %}
+{% endfor %}
+
 <h6 class="fw-bold text-secondary text-uppercase mt-4 mb-2" style="font-size:.78rem;">
   Gráficos por categoría
 </h6>
 <div class="row g-3" id="graficosClasificacion">
   {% for c in datos.categorias %}
+  {% set color = colores_cat.get(c.clave, '#41505f') %}
   <div class="col-12 col-md-6 col-xl-4">
-    <div class="card shadow-sm border rounded h-100">
+    <div class="card shadow-sm border rounded h-100 card-pantalla-completa"
+         id="cardGraficoCat{{ c.clave }}"
+         data-barra="#clLotes"
+         style="border-left: 3px solid {{ color }};">
       <div class="card-body py-2">
-        <h6 class="fw-bold text-secondary text-uppercase mb-2" style="font-size:.72rem;">
-          % Clasificadora &middot; {{ c.titulo }}
-        </h6>
-        <div class="js-grafico-cat" data-cat="{{ c.clave }}" style="height:240px;"></div>
+        <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+          <h6 class="fw-bold text-uppercase mb-0" style="font-size:.72rem; color:{{ color }};">
+            <span class="d-inline-block rounded-circle me-1"
+                  style="width:8px;height:8px;background:{{ color }};"></span>
+            % Clasificadora &middot; {{ c.titulo }}
+          </h6>
+          <button type="button" class="cons-fs" id="btnFsCat{{ c.clave }}"
+                  title="Ver el gráfico en pantalla completa"
+                  aria-label="Ver el gráfico en pantalla completa">
+            <i class="fas fa-expand" aria-hidden="true"></i>
+          </button>
+        </div>
+        <div id="graficoCat{{ c.clave }}"
+             class="grafico-fs js-grafico-cat"
+             data-cat="{{ c.clave }}"
+             style="height:240px;"></div>
       </div>
     </div>
   </div>
@@ -25,9 +66,10 @@
   {{ {
       'semanas': datos.semanas,
       'lotes': datos.lotes | map(attribute='nombre') | list,
-      'categorias': datos.categorias,
+      'categorias': categorias_color,
       'matriz': datos.matriz
      } | tojson }}
 </script>
 <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+<script src="{{ url_for('static', filename='js/consolidados_pantalla_completa.js') }}"></script>
 <script src="{{ url_for('static', filename='js/consolidados_graficos_clasificacion.js') }}"></script>

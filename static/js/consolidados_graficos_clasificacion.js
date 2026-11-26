@@ -84,7 +84,10 @@
           tickfont: { size: 9 }
         },
         yaxis: {
-          title: { text: categoria.titulo, font: { size: 9 } },
+          title: {
+            text: categoria.titulo,
+            font: { size: 9, color: categoria.color || '#41505f' }
+          },
           gridcolor: '#eef1f4',
           zeroline: false,
           rangemode: 'tozero',
@@ -128,6 +131,16 @@
 
     checks.forEach(function (chk) {
       chk.addEventListener('change', dibujarTodo);
+    });
+
+    // Pantalla completa de cada tarjeta: incluye la barra de lotes (#clLotes).
+    contenedores.forEach(function (contenedor) {
+      var card = contenedor.closest('.card');
+      var boton = card ? card.querySelector('.cons-fs') : null;
+      if (!card || !boton || !window.pantallaCompletaGrafico) return;
+      boton.addEventListener('click', function () {
+        window.pantallaCompletaGrafico(card.id, contenedor.id, boton.id);
+      });
     });
 
     dibujarTodo();
