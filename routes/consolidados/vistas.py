@@ -1,9 +1,19 @@
 """Grilla de Consolidados L+P. En Fase A ninguna vista destino existe:
 todos los botones se muestran como Próximamente."""
+import base64
 import hashlib
-from flask import Blueprint, render_template, request, jsonify
+import io
+
+from flask import Blueprint, Response, abort, jsonify, render_template, request, session, url_for
 from routes.routes import login_requerido
 from models.base import get_db_connection
+from models.consolidados.tarjetas import (
+    guardar_tarjeta,
+    listar_iconos,
+    listar_tarjetas,
+    obtener_icono,
+    quitar_icono,
+)
 
 consolidados_bp = Blueprint('consolidados', __name__)
 
@@ -40,11 +50,200 @@ BOTONES = [
 ]
 
 
+def _clave_boton(boton):
+    """Clave estable de la tarjeta: sufijo del endpoint."""
+    endpoint = boton.get('endpoint') or ''
+    return endpoint.split('.')[-1] if endpoint else 'tarjeta'
+
+
+CLAVES_TARJETAS = {_clave_boton(b) for b in BOTONES}
+
+
+def _titulo_original(clave):
+    for boton in BOTONES:
+        if _clave_boton(boton) == clave:
+            return boton['titulo']
+    return clave
+
+
+def _crear_thumb(data, mime):
+    """Miniatura de 96x96 para incrustar en el HTML (PNG)."""
+    if not data or not mime:
+        return None, None
+    if mime == 'image/svg+xml':
+        return data, mime
+
+    try:
+        from PIL import Image
+
+        with Image.open(io.BytesIO(data)) as imagen:
+            imagen.seek(0)
+            imagen.load()
+            try:
+                resample = Image.Resampling.LANCZOS
+            except AttributeError:
+                resample = Image.LANCZOS
+            imagen.thumbnail((96, 96), resample)
+            if imagen.mode not in ('RGBA', 'RGB'):
+                imagen = imagen.convert('RGBA')
+            salida = io.BytesIO()
+            imagen.save(salida, format='PNG', optimize=True)
+            return salida.getvalue(), 'image/png'
+    except Exception as e:
+        print(f"[CONSOLIDADOS TARJETAS] No se pudo crear la miniatura: {e}")
+        return data, mime
+
+
+def _data_uri(data, mime):
+    if not data or not mime:
+        return ''
+    return 'data:{};base64,{}'.format(
+        mime, base64.b64encode(bytes(data)).decode('ascii')
+    )
+
+
+def _icono_item(clave, icono):
+    """Devuelve (data_uri, url_fallback) para la tarjeta."""
+    if not icono:
+        return '', ''
+
+    data = icono.get('icono_thumb') or icono.get('icono_data')
+    mime = icono.get('icono_thumb_mime') or icono.get('icono_mime')
+    if not data:
+        return '', ''
+
+    data = bytes(data)
+    if mime and len(data) <= 48 * 1024:
+        return _data_uri(data, mime), ''
+
+    actualizado = icono.get('actualizado_en')
+    version = int(actualizado.timestamp()) if actualizado else 0
+    return '', url_for('consolidados.icono_tarjeta', clave=clave, v=version)
+
+
 @consolidados_bp.route('/consolidados')
 @login_requerido
 def vista_consolidados():
     """Muestra la grilla de botones de Consolidados L+P."""
-    return render_template('consolidados/index.html', botones=BOTONES)
+    overrides = listar_tarjetas()
+    iconos = listar_iconos()
+
+    botones = []
+    for boton in BOTONES:
+        item = dict(boton)
+        clave = _clave_boton(boton)
+        item['clave'] = clave
+        item['titulo_original'] = boton['titulo']
+        custom = overrides.get(clave) or {}
+        if custom.get('titulo'):
+            item['titulo'] = custom['titulo']
+
+        inline, fallback = _icono_item(clave, iconos.get(clave))
+        item['icono_inline'] = inline
+        item['icono_url'] = fallback
+        botones.append(item)
+
+    return render_template('consolidados/index.html', botones=botones)
+
+
+@consolidados_bp.route('/consolidados/tarjeta/<clave>/icono')
+@login_requerido
+def icono_tarjeta(clave):
+    """Sirve el icono personalizado guardado en la base."""
+    icono = obtener_icono(clave)
+    data = (icono or {}).get('icono_thumb') or (icono or {}).get('icono_data')
+    if not data:
+        abort(404)
+
+    mime = ((icono or {}).get('icono_thumb_mime') or
+            (icono or {}).get('icono_mime') or 'application/octet-stream')
+    headers = {
+        'Cache-Control': 'public, max-age=86400',
+        'X-Content-Type-Options': 'nosniff',
+    }
+    if mime == 'image/svg+xml':
+        headers['Content-Security-Policy'] = "default-src 'none'; style-src 'unsafe-inline'"
+    return Response(bytes(data), mimetype=mime, headers=headers)
+
+
+@consolidados_bp.route('/consolidados/tarjeta/<clave>', methods=['POST'])
+@login_requerido
+def editar_tarjeta(clave):
+    """Guarda el título y/o el icono de una tarjeta (solo Superadmin)."""
+    if session.get('user_rol') != 'Superadmin':
+        return jsonify(ok=False, error='Solo Superadmin puede editar las tarjetas.'), 403
+    if clave not in CLAVES_TARJETAS:
+        return jsonify(ok=False, error='Tarjeta no válida'), 404
+
+    titulo = (request.form.get('titulo') or '').strip()[:120] or None
+    archivo = request.files.get('icono')
+    data = mime = nombre = None
+
+    if archivo and archivo.filename:
+        data = archivo.read()
+        if len(data) > 512 * 1024:
+            return jsonify(ok=False, error='El icono no puede superar 512 KB'), 400
+
+        mime = (archivo.mimetype or '').lower()
+        permitidos = {
+            'image/png', 'image/jpeg', 'image/webp',
+            'image/gif', 'image/svg+xml',
+        }
+        if mime not in permitidos:
+            return jsonify(ok=False, error='Formato de imagen no permitido'), 400
+
+        if mime == 'image/svg+xml':
+            inicio = data[:2000].decode('utf-8', 'ignore').lower()
+            if '<svg' not in inicio:
+                return jsonify(ok=False, error='El SVG no es válido'), 400
+
+        nombre = archivo.filename[:160]
+
+    thumb = thumb_mime = None
+    if data:
+        thumb, thumb_mime = _crear_thumb(data, mime)
+
+    try:
+        guardar_tarjeta(
+            clave, titulo, data, mime, nombre, thumb, thumb_mime,
+            session.get('user_id')
+        )
+    except Exception as e:
+        print(f"[CONSOLIDADOS TARJETAS] No se pudo guardar {clave}: {e}")
+        return jsonify(ok=False, error='No se pudo guardar la tarjeta'), 500
+
+    icono = obtener_icono(clave)
+    inline, fallback = _icono_item(clave, icono)
+    return jsonify(
+        ok=True,
+        titulo=titulo or _titulo_original(clave),
+        icono_inline=inline,
+        icono_url=fallback,
+    )
+
+
+@consolidados_bp.route('/consolidados/tarjeta/<clave>/quitar-icono', methods=['POST'])
+@login_requerido
+def quitar_icono_tarjeta(clave):
+    """Quita el icono personalizado y deja el emoji original."""
+    if session.get('user_rol') != 'Superadmin':
+        return jsonify(ok=False, error='Solo Superadmin puede editar las tarjetas.'), 403
+    if clave not in CLAVES_TARJETAS:
+        return jsonify(ok=False, error='Tarjeta no válida'), 404
+
+    try:
+        quitar_icono(clave)
+    except Exception as e:
+        print(f"[CONSOLIDADOS TARJETAS] No se pudo quitar el icono {clave}: {e}")
+        return jsonify(ok=False, error='No se pudo quitar el icono'), 500
+
+    actual = listar_tarjetas().get(clave) or {}
+    return jsonify(
+        ok=True,
+        icono_inline='',
+        icono_url='',
+        titulo=actual.get('titulo') or _titulo_original(clave),
+    )
 
 
 @consolidados_bp.route('/api/consolidados/version')

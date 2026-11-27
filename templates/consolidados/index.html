@@ -97,6 +97,67 @@
     outline-offset: 2px;
   }
 
+  .cons-card-wrap {
+    position: relative;
+    display: flex;
+    min-height: 0;
+    min-width: 0;
+  }
+  .cons-card-wrap .cons-card { flex: 1 1 auto; }
+  .cons-card-edit {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    z-index: 3;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #e9ecef;
+    border-radius: 7px;
+    background: rgba(255, 255, 255, .94);
+    color: #6c757d;
+    font-size: .62rem;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(16, 24, 40, .08);
+    transition: background .15s ease, border-color .15s ease, color .15s ease;
+  }
+  .cons-card-edit:hover {
+    background: #97271c;
+    border-color: #97271c;
+    color: #ffffff;
+  }
+  .cons-card-wrap--admin .cons-card-arrow { margin-right: 26px; }
+  .cons-card-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 4px;
+    display: block;
+  }
+
+  .tarjeta-preview {
+    width: 64px;
+    height: 64px;
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+    background: #fbeae8;
+    color: #97271c;
+    font-size: 2rem;
+    line-height: 1;
+    overflow: hidden;
+    margin-bottom: .5rem;
+  }
+  .tarjeta-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 6px;
+  }
+
   .cons-card-top {
     display: flex;
     align-items: center;
@@ -178,6 +239,20 @@
   }
   html[data-bs-theme="dark"] .cons-card-arrow { color: #5c6874; }
   html[data-bs-theme="dark"] .cons-card:hover .cons-card-arrow { color: #ffb4a8; }
+  html[data-bs-theme="dark"] .cons-card-edit {
+    background: rgba(33, 37, 41, .94);
+    border-color: var(--border);
+    color: #c3cad2;
+  }
+  html[data-bs-theme="dark"] .cons-card-edit:hover {
+    background: #97271c;
+    border-color: #97271c;
+    color: #ffffff;
+  }
+  html[data-bs-theme="dark"] .tarjeta-preview {
+    background: rgba(151, 39, 28, .22);
+    color: #ffb4a8;
+  }
   html[data-bs-theme="dark"] .cons-card.desactivada:hover {
     border-color: var(--border);
   }
@@ -193,11 +268,21 @@
   </header>
 
   <div class="consolidados-grid">
-    {% for b in botones %}
+    {% set es_admin = session.get('user_rol') == 'Superadmin' %}
+  {% for b in botones %}
+  <div class="cons-card-wrap{% if es_admin %} cons-card-wrap--admin{% endif %}"
+       data-clave="{{ b.clave }}"
+       data-titulo-default="{{ b.titulo_original }}"
+       data-titulo-actual="{{ b.titulo }}"
+       data-icono-default="{{ b.icono }}"
+       data-url-edit="{{ url_for('consolidados.editar_tarjeta', clave=b.clave) }}"
+       data-url-quitar="{{ url_for('consolidados.quitar_icono_tarjeta', clave=b.clave) }}">
     {% if b.endpoint %}
     <a href="{{ url_for(b.endpoint) }}" class="cons-card">
       <span class="cons-card-top">
-        <span class="cons-card-icon" aria-hidden="true">{{ b.icono }}</span>
+        <span class="cons-card-icon" aria-hidden="true">
+          {% if b.icono_inline or b.icono_url %}<img src="{{ b.icono_inline or b.icono_url }}" alt="">{% else %}{{ b.icono }}{% endif %}
+        </span>
         <i class='bx bx-right-arrow-alt cons-card-arrow' aria-hidden="true"></i>
       </span>
       <span class="cons-card-title">{{ b.titulo }}</span>
@@ -205,7 +290,9 @@
     {% elif b.url %}
     <a href="{{ b.url }}" class="cons-card">
       <span class="cons-card-top">
-        <span class="cons-card-icon" aria-hidden="true">{{ b.icono }}</span>
+        <span class="cons-card-icon" aria-hidden="true">
+          {% if b.icono_inline or b.icono_url %}<img src="{{ b.icono_inline or b.icono_url }}" alt="">{% else %}{{ b.icono }}{% endif %}
+        </span>
         <i class='bx bx-right-arrow-alt cons-card-arrow' aria-hidden="true"></i>
       </span>
       <span class="cons-card-title">{{ b.titulo }}</span>
@@ -213,13 +300,204 @@
     {% else %}
     <div class="cons-card desactivada">
       <span class="cons-card-top">
-        <span class="cons-card-icon" aria-hidden="true">{{ b.icono }}</span>
+        <span class="cons-card-icon" aria-hidden="true">
+          {% if b.icono_inline or b.icono_url %}<img src="{{ b.icono_inline or b.icono_url }}" alt="">{% else %}{{ b.icono }}{% endif %}
+        </span>
       </span>
       <span class="cons-card-title">{{ b.titulo }}</span>
       <span class="badge bg-warning text-dark badge-prox">Próximamente</span>
     </div>
     {% endif %}
-    {% endfor %}
+    {% if es_admin %}
+    <button type="button" class="cons-card-edit" title="Editar tarjeta" aria-label="Editar tarjeta">
+      <i class="fas fa-pencil-alt" aria-hidden="true"></i>
+    </button>
+    {% endif %}
+  </div>
+  {% endfor %}
   </div>
 </div>
+
+{% if session.get('user_rol') == 'Superadmin' %}
+<div class="modal fade" id="modalTarjeta" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title fw-bold">Editar tarjeta</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <label class="form-label small fw-semibold" for="tarjetaTitulo">Título</label>
+        <input type="text" class="form-control" id="tarjetaTitulo" maxlength="120" autocomplete="off">
+
+        <label class="form-label small fw-semibold mt-3" for="tarjetaIcono">Icono</label>
+        <div class="tarjeta-preview" id="tarjetaPreview"></div>
+        <input type="file" class="form-control form-control-sm" id="tarjetaIcono"
+               accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml">
+        <div class="form-text">PNG, JPG, WEBP, GIF o SVG · máximo 512 KB.</div>
+        <div class="text-danger small mt-1 d-none" id="tarjetaError"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-sm btn-outline-danger me-auto" id="btnQuitarIcono">Quitar icono</button>
+        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-sm btn-primary" id="btnGuardarTarjeta">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if session.get('user_rol') == 'Superadmin' %}
+<script>
+(function () {
+  const modalEl = document.getElementById('modalTarjeta');
+  if (!modalEl) return;
+
+  const tituloInput = document.getElementById('tarjetaTitulo');
+  const fileInput = document.getElementById('tarjetaIcono');
+  const preview = document.getElementById('tarjetaPreview');
+  const errorEl = document.getElementById('tarjetaError');
+  const btnQuitar = document.getElementById('btnQuitarIcono');
+  const btnGuardar = document.getElementById('btnGuardarTarjeta');
+  let actual = null;
+  let previewUrl = null;
+
+  function mostrarError(msg) {
+    if (!errorEl) return;
+    errorEl.textContent = msg;
+    errorEl.classList.remove('d-none');
+  }
+
+  function limpiarError() {
+    if (errorEl) errorEl.classList.add('d-none');
+  }
+
+  function pintarPreview(url, emoji) {
+    if (!preview) return;
+    preview.innerHTML = '';
+    if (url) {
+      const img = document.createElement('img');
+      img.src = url;
+      img.alt = '';
+      preview.appendChild(img);
+    } else {
+      preview.textContent = emoji || '';
+    }
+  }
+
+  function abrir(wrap) {
+    actual = wrap;
+    if (!actual) return;
+    tituloInput.value = actual.dataset.tituloActual || actual.dataset.tituloDefault || '';
+    fileInput.value = '';
+    limpiarError();
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+      previewUrl = null;
+    }
+    const iconoUrl = (function () {
+      const img = actual.querySelector('.cons-card-icon img');
+      return img ? img.src : '';
+    })();
+    pintarPreview(iconoUrl, actual.dataset.iconoDefault || '');
+    btnQuitar.style.display = iconoUrl ? '' : 'none';
+    bootstrap.Modal.getOrCreateInstance(modalEl).show();
+  }
+
+  document.querySelectorAll('.cons-card-edit').forEach(function (btn) {
+    btn.addEventListener('click', function (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      abrir(btn.closest('.cons-card-wrap'));
+    });
+  });
+
+  fileInput.addEventListener('change', function () {
+    const archivo = fileInput.files[0];
+    if (!archivo) return;
+    if (archivo.size > 512 * 1024) {
+      mostrarError('El icono no puede superar 512 KB.');
+      fileInput.value = '';
+      return;
+    }
+    if (!/^image\//.test(archivo.type)) {
+      mostrarError('Selecciona una imagen válida.');
+      fileInput.value = '';
+      return;
+    }
+    limpiarError();
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    previewUrl = URL.createObjectURL(archivo);
+    pintarPreview(previewUrl, '');
+  });
+
+  btnGuardar.addEventListener('click', async function () {
+    if (!actual) return;
+    const defaultTitle = (actual.dataset.tituloDefault || '').trim();
+    let titulo = tituloInput.value.trim();
+    if (titulo === defaultTitle) titulo = '';
+
+    const fd = new FormData();
+    fd.append('titulo', titulo);
+    if (fileInput.files[0]) fd.append('icono', fileInput.files[0]);
+
+    btnGuardar.disabled = true;
+    try {
+      const res = await fetch(actual.dataset.urlEdit, { method: 'POST', body: fd });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || 'No se pudo guardar');
+
+      const tituloFinal = data.titulo || defaultTitle;
+      actual.dataset.tituloActual = tituloFinal;
+      actual.querySelector('.cons-card-title').textContent = tituloFinal;
+
+      const iconoFinal = data.icono_inline || data.icono_url || '';
+      const iconEl = actual.querySelector('.cons-card-icon');
+      if (iconoFinal) {
+        iconEl.innerHTML = '<img src="' + iconoFinal + '" alt="">';
+      } else {
+        iconEl.textContent = actual.dataset.iconoDefault || '';
+      }
+
+      bootstrap.Modal.getInstance(modalEl).hide();
+    } catch (e) {
+      mostrarError(e.message);
+    } finally {
+      btnGuardar.disabled = false;
+    }
+  });
+
+  btnQuitar.addEventListener('click', async function () {
+    if (!actual) return;
+    btnQuitar.disabled = true;
+    try {
+      const res = await fetch(actual.dataset.urlQuitar, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || 'No se pudo quitar el icono');
+
+      actual.querySelector('.cons-card-icon').textContent = actual.dataset.iconoDefault || '';
+      const tituloFinal = data.titulo || actual.dataset.tituloDefault;
+      actual.dataset.tituloActual = tituloFinal;
+      actual.querySelector('.cons-card-title').textContent = tituloFinal;
+
+      bootstrap.Modal.getInstance(modalEl).hide();
+    } catch (e) {
+      mostrarError(e.message);
+    } finally {
+      btnQuitar.disabled = false;
+    }
+  });
+
+  modalEl.addEventListener('hidden.bs.modal', function () {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+      previewUrl = null;
+    }
+    actual = null;
+  });
+})();
+</script>
+{% endif %}
 {% endblock %}
