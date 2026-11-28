@@ -278,16 +278,22 @@
     }
   }
 
-  /* Pantallas medianas: solo el símbolo de marca, para no partir el menú en dos filas */
+  /* Pantallas medianas: nombre más compacto, sin el sufijo S.A.S */
   @media (min-width: 992px) and (max-width: 1199.98px) {
     .app-navbar .app-brand-name {
+      display: inline;
+      font-size: 0.82rem;
+      letter-spacing: 0.03em;
+    }
+
+    .app-navbar .app-brand-suffix {
       display: none;
     }
 
     .app-navbar .app-brand {
-      padding-right: 0;
-      border-right: 0;
-      margin-right: 0.95rem;
+      padding-right: 0.55rem;
+      border-right: 1px solid rgba(255, 255, 255, 0.10);
+      margin-right: 0.55rem;
     }
   }
 
