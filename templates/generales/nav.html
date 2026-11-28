@@ -112,14 +112,6 @@
         {% set en_clasificacion = ep.startswith('clasificacion.') %}
         <ul class="navbar-nav app-nav me-auto mb-2 mb-lg-0">
 
-          <!-- GESTIÓN AMBIENTAL (indicadores, solo lectura) -->
-          <li class="nav-item">
-            <a class="nav-link{{ ' is-current' if ep.startswith('gestion_ambiental.') }}"
-               href="{{ url_for('gestion_ambiental.inicio') }}">
-              <i class='bx bx-leaf'></i> Gestión Ambiental
-            </a>
-          </li>
-
           <!-- PRODUCCIÓN -->
           {% include 'generales/_menu_produccion.html' %}
 
@@ -147,6 +139,14 @@
                 </ul>
               </li>
             </ul>
+          </li>
+
+          <!-- GESTIÓN AMBIENTAL (indicadores, solo lectura) -->
+          <li class="nav-item">
+            <a class="nav-link{{ ' is-current' if ep.startswith('gestion_ambiental.') }}"
+               href="{{ url_for('gestion_ambiental.inicio') }}">
+              <i class='bx bx-leaf'></i> Gestión Ambiental
+            </a>
           </li>
 
         </ul>
@@ -293,18 +293,18 @@
 
   /* --- Enlaces principales --- */
   .app-navbar .navbar-nav {
-    gap: 0.15rem;
+    gap: 0.1rem;
   }
 
   .app-navbar .navbar-nav .nav-link {
     display: flex;
     align-items: center;
-    gap: 0.45rem;
-    height: 37px;
-    padding: 0 0.78rem;
+    gap: 0.38rem;
+    height: 33px;
+    padding: 0 0.62rem;
     border-radius: 7px;
     color: #c4c9d2;
-    font-size: 0.95rem;
+    font-size: 0.86rem;
     font-weight: 500;
     transition: color 0.15s ease, background-color 0.15s ease;
   }
@@ -359,11 +359,11 @@
   .app-navbar .dropdown-item {
     display: flex;
     align-items: center;
-    gap: 0.55rem;
-    padding: 0.46rem 0.65rem;
+    gap: 0.45rem;
+    padding: 0.38rem 0.55rem;
     border-radius: 6px;
     color: #c7ccd4;
-    font-size: 0.875rem;
+    font-size: 0.82rem;
     font-weight: 450;
     transition: background-color 0.14s ease, color 0.14s ease;
   }
@@ -380,7 +380,7 @@
   }
 
   .app-navbar .dropdown-item i {
-    width: 1rem;
+    width: 0.95rem;
     text-align: center;
     color: #8e959f;
     transition: color 0.14s ease;
